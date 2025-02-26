@@ -1,8 +1,8 @@
 <template>
   <div>
     <h2>Inscription</h2>
-    <input v-model="user.nom" placeholder="Nom" />
-    <input type="password" v-model="user.mdp" placeholder="Mot de passe" />
+    <input v-model="users.username" placeholder="Nom" />
+    <input type="password" v-model="users.password" placeholder="Mot de passe" />
     <button @click="register">S'inscrire</button>
   </div>
 </template>
@@ -13,23 +13,38 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      user: {
-        nom: '',
-        mdp: ''
+      users: {
+        username: '',
+        password: ''
       }
     };
   },
   methods: {
     async register() {
-      try {
-        const response = await axios.post('http://localhost:3000/api/users', this.user);
-        console.log('Réponse:', response.data);
-        // Ici, vous pouvez gérer la réponse, par exemple, informer l'utilisateur que l'inscription a réussi.
-      } catch (error) {
-        console.error('Erreur lors de l’inscription:', error.response.data);
-        // Gérer les erreurs, par exemple, informer l'utilisateur qu'une erreur s'est produite.
-      }
+        try {
+            // Envoyer une requête POST à l'API pour tenter de s'inscrire
+            const response = await axios.post('http://localhost:3000/api/users', this.users);
+
+            // Afficher la réponse dans la console (facultatif)
+            console.log('Réponse:', response.data);
+
+            // Si l'inscription est réussie, informer l'utilisateur et éventuellement rediriger
+            if (response.status === 201) {
+                // Informer l'utilisateur que l'inscription a réussi
+                alert('Inscription réussie ! Vous pouvez maintenant vous connecter.');
+
+                // Rediriger l'utilisateur vers la page de connexion
+                this.$router.push('/connexion');
+            } else {
+                console.error('Erreur inattendue lors de l’inscription.');
+            }
+        } catch (error) {
+            console.error('Erreur lors de l’inscription:', error.response?.data || error.message);
+            // Afficher un message d'erreur à l'utilisateur
+            this.errorMessage = error.response?.data?.message || 'Une erreur est survenue lors de l’inscription.';
+        }
     }
-  }
+}
+
 };
 </script>
