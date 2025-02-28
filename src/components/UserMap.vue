@@ -52,12 +52,12 @@
               <button @click="attaque(3)" class="btnbaratk">{{ dataplayer.equipe.pokemons[0]?.abilities[3] }}dd</button>
             </div>
             <div style="background-color: rgb(175, 175, 175);border-radius: 10px;" v-if="actionplayer.pkmnlist">
-              <button class="btnbarpkmn">{{ dataplayer.equipe.pokemons[0]?.name }}</button>
-              <button class="btnbarpkmn">{{ dataplayer.equipe.pokemons[1]?.name }}</button>
-              <button class="btnbarpkmn">{{ dataplayer.equipe.pokemons[2]?.name }}</button>
-              <button class="btnbarpkmn">{{ dataplayer.equipe.pokemons[3]?.name }}</button>
-              <button class="btnbarpkmn">{{ dataplayer.equipe.pokemons[4]?.name }}</button>
-              <button class="btnbarpkmn">{{ dataplayer.equipe.pokemons[5]?.name }}</button>
+              <button @click="changeAction(0)" class="btnbarpkmn">{{ dataplayer.equipe.pokemons[0]?.name }}</button>
+              <button @click="changeAction(1)" class="btnbarpkmn">{{ dataplayer.equipe.pokemons[1]?.name }}</button>
+              <button @click="changeAction(2)" class="btnbarpkmn">{{ dataplayer.equipe.pokemons[2]?.name }}</button>
+              <button @click="changeAction(3)" class="btnbarpkmn">{{ dataplayer.equipe.pokemons[3]?.name }}</button>
+              <button @click="changeAction(4)" class="btnbarpkmn">{{ dataplayer.equipe.pokemons[4]?.name }}</button>
+              <button @click="changeAction(5)" class="btnbarpkmn">{{ dataplayer.equipe.pokemons[5]?.name }}</button>
             </div>
           </div>
           <div style="width: 38%;height: 100%;">
@@ -72,7 +72,9 @@
         </div>
       </div>
       <canvas class="test" ref="monCanvas"></canvas>
-      <div v-if="textImageSequence.length > 0" style="width: 100%;height: 100%; filter: blur(4px) !important; position: absolute; top: 0; left: 0; background: rgb(0 0 0 / 74%); "></div>
+      <div v-if="textImageSequence.length > 0"
+        style="width: 100%;height: 100%; filter: blur(4px) !important; position: absolute; top: 0; left: 0; background: rgb(0 0 0 / 74%); ">
+      </div>
       <TextWithImage v-if="textImageSequence.length > 0" :sequence="textImageSequence" @sequence-end="clearSequence" />
     </div>
 
@@ -95,6 +97,7 @@ export default {
   },
   data() {
     return {
+      endSentences: null,
       textImageSequence: [],
       socket: null,
       storedCallback: null,
@@ -196,6 +199,7 @@ export default {
     },
     clearSequence() {
       // Remet à zéro la séquence, ce qui cache le composant enfant
+      this.socket.emit('onEndDialogue', this.endSentences);
       this.textImageSequence = [];
     },
 
@@ -220,6 +224,14 @@ export default {
       if (this.storedCallback) {
         console.log('la fuite');
         this.socket.emit('actionResponse', { action: 'flee' });
+        this.storedCallback = null
+      }
+    },
+
+    changeAction(x) {
+      if (this.storedCallback) {
+        console.log('la fuite');
+        this.socket.emit('actionResponse', { action: 'change', number: x });
         this.storedCallback = null
       }
     },
@@ -438,9 +450,10 @@ export default {
 
     this.socket.on('dialogue', (sentences) => {
       if (sentences && sentences.length > 0) {
-        this.updateTextImageSequence(sentences);
+        this.updateTextImageSequence(sentences[0]);
+        this.endSentences = sentences[1]
       } else {
-        this.textImageSequence = []; // Réinitialiser si rien n'est reçu
+        this.textImageSequence = [];
       }
     });
 
@@ -506,6 +519,8 @@ export default {
       // Vous pouvez effectuer d'autres actions ici, comme afficher une alerte, mettre à jour l'interface utilisateur, etc.
       // alert(data.message);
       this.battle = true;
+      console.log('il test ??');
+
     });
 
     this.socket.on('update', (data) => {
@@ -517,7 +532,7 @@ export default {
     this.socket.on('requestAction', (data) => {
       console.log(data.message);
       this.storedCallback = 1
-      
+
       // socket.emit('actionResponse', { action: 'attack' });
     });
 
