@@ -46,10 +46,10 @@
               {{ actionplayer.text }}
             </div>
             <div style="background-color: rgb(175, 175, 175);border-radius: 10px;" v-if="actionplayer.atkchoose">
-              <button @click="attaque(0)" class="btnbaratk">{{ dataplayer.equipe.pokemons[0]?.abilities[0] }}aa</button>
-              <button @click="attaque(1)" class="btnbaratk">{{ dataplayer.equipe.pokemons[0]?.abilities[1] }}bb</button>
-              <button @click="attaque(2)" class="btnbaratk">{{ dataplayer.equipe.pokemons[0]?.abilities[2] }}cc</button>
-              <button @click="attaque(3)" class="btnbaratk">{{ dataplayer.equipe.pokemons[0]?.abilities[3] }}dd</button>
+              <button @click="attaque(0)" class="btnbaratk">{{ dataplayer.equipe.pokemons[0]?.abilities[0] }}</button>
+              <button @click="attaque(1)" class="btnbaratk">{{ dataplayer.equipe.pokemons[0]?.abilities[1] }}</button>
+              <button @click="attaque(2)" class="btnbaratk">{{ dataplayer.equipe.pokemons[0]?.abilities[2] }}</button>
+              <button @click="attaque(3)" class="btnbaratk">{{ dataplayer.equipe.pokemons[0]?.abilities[3] }}</button>
             </div>
             <div style="background-color: rgb(175, 175, 175);border-radius: 10px;" v-if="actionplayer.pkmnlist">
               <button @click="changeAction(0)" class="btnbarpkmn">{{ dataplayer.equipe.pokemons[0]?.name }}</button>
