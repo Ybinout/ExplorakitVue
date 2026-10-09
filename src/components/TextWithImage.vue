@@ -1,9 +1,11 @@
 <template>
   <div style="overflow:hidden">
     <div class="text-with-image">
-      <img class="imagetoto" :src="currentImageSrc" alt="Illustration" />
+      
       <div class="text">{{ displayedText }}</div>
-      <div class="texts"></div>
+      <div class="texts">
+        <img class="imagetoto" :src="currentImageSrc" alt="Illustration" />
+      </div>
       
     </div>
   </div>
@@ -19,6 +21,14 @@ export default {
     charPerStep: {
       type: Number,
       default: 120, // Nombre de caractères à afficher à chaque appui sur la touche espace
+    },
+    soundVolume: {
+      type: Number,
+      default: 0.35,
+    },
+    soundEnabled: {
+      type: Boolean,
+      default: true,
     },
   },
   data() {
@@ -37,6 +47,11 @@ export default {
       return this.sequence[this.currentIndex]?.image || '';
     },
   },
+  watch: {
+    soundVolume(value) {
+      if (this.audio) this.audio.volume = Math.max(0, Math.min(1, Number(value) || 0));
+    },
+  },
   methods: {
     handleSpacePress(event) {
       if (event.code === 'Space') {
@@ -45,9 +60,9 @@ export default {
       }
     },
     playSound() {
-      if (this.audio) {
+      if (this.audio && this.soundEnabled && this.soundVolume > 0) {
         this.audio.currentTime = 0; // Remet le son au début si déjà joué
-        this.audio.play();
+        this.audio.play().catch(() => {});
       }
     },
     advanceText() {
@@ -86,7 +101,7 @@ export default {
   },
   mounted() {
     this.audio = new Audio(require('@/assets/msc/skip.mp3')); // Chargement du son
-    this.audio.volume = 0.02; // Ajuste le volume
+    this.audio.volume = Math.max(0, Math.min(1, this.soundVolume));
     this.resetText();
     this.advanceText();  // Affiche immédiatement le premier segment de texte
     window.addEventListener('keydown', this.handleSpacePress);
@@ -104,11 +119,12 @@ export default {
   left: 50%;
   transform: translate(-50%);
   max-width: 896px;
-  margin-top: 10%;
+  z-index: 999;
 }
 
 .text-with-image {
   text-align: center;
+  margin: 100px;
 }
 
 .text-with-image p {
@@ -142,9 +158,42 @@ export default {
   position: relative;
   left: 50%;
   transform: translate(-50%);
-  height: 500px;
+  height: 600px;
   font-size: 32px;
   border: 10px solid rgb(0, 0, 0);
   top: 0;
+}
+
+@media (max-width: 920px) {
+  .text-with-image {
+    margin: 8px 10px 0;
+  }
+
+  .text {
+    max-width: 100%;
+    min-height: 108px;
+    height: auto;
+    font-size: 18px;
+    line-height: 1.35;
+    border-width: 3px;
+    padding: 10px 12px;
+    text-align: left;
+    white-space: pre-wrap;
+  }
+
+  .texts {
+    max-width: 100%;
+    height: calc(100vh - 190px);
+    min-height: 280px;
+    border-width: 6px;
+    overflow: hidden;
+  }
+
+  .imagetoto {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
 }
 </style>

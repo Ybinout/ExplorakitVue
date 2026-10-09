@@ -1,15 +1,27 @@
 import Vue from 'vue';
 import Router from 'vue-router';
-import Inscription from '@/components/UserInscription.vue';
-import Connexion from '@/components/UserConnexion.vue';
-import test from '@/components/UserTest.vue';
-import Game from '@/components/UserMap.vue';
+import HomeMenu from '@/components/HomeMenu.vue';
+import { hasAuthenticatedSession } from '@/services/session';
+
+const Inscription = () => import(/* webpackChunkName: "account" */ '@/components/UserInscription.vue');
+const Connexion = () => import(/* webpackChunkName: "account" */ '@/components/UserConnexion.vue');
+const Game = () => import(/* webpackChunkName: "game" */ '@/components/UserMap.vue');
+const TestView = () => import(/* webpackChunkName: "test-view" */ '@/components/UserTest.vue');
 
 Vue.use(Router);
 
-export default new Router({
-  mode: 'history',  // Utilise le mode HTML5 History API. Retirez cette ligne si vous préférez le mode hash (#).
+function isAuthenticated() {
+  return hasAuthenticatedSession();
+}
+
+const router = new Router({
+  mode: 'history',
   routes: [
+    {
+      path: '/',
+      name: 'Home',
+      component: HomeMenu
+    },
     {
       path: '/inscription',
       name: 'Inscription',
@@ -23,12 +35,26 @@ export default new Router({
     {
       path: '/game',
       name: 'Game',
-      component: Game
+      component: Game,
+      meta: { requiresAuth: true }
     },
     {
       path: '/test',
       name: 'test',
-      component: test
+      component: TestView
+    },
+    {
+      path: '*',
+      redirect: '/'
     }
   ]
 });
+
+router.beforeEach((to, from, next) => {
+  if (to.matched.some(record => record.meta.requiresAuth) && !isAuthenticated()) {
+    return next('/connexion');
+  }
+  return next();
+});
+
+export default router;
