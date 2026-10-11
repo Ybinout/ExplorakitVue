@@ -3,13 +3,19 @@ const labels = {
     start: 'Village de départ', maison: 'Maison', maison2: 'Maison', etage: 'Étage', etage2: 'Étage',
     ville1: 'Ville du Lac', ville1_arene: 'Arène de la Ville du Lac', ville1_shop: 'Boutique de la Ville du Lac',
     centre: 'Centre Pokémon', cave1: 'Grotte', cave2: 'Profondeurs de la grotte',
-    pk1: 'Zone sauvage', pk2: 'Zone sauvage'
+    pk1: 'Zone sauvage', pk2: 'Zone sauvage',
+    gen_arene1: 'Archives de Clairbois', gen_arene2: 'Arène Marée · Wanda',
+    gen_arene3: 'Arène Minerai · Ana', gen_arene4: 'Arène Floraison · Raphael',
+    gen_arene5: 'Arène Dune · Hoze'
   },
   en: {
     start: 'Starting Village', maison: 'Home', maison2: 'Home', etage: 'Upstairs', etage2: 'Upstairs',
     ville1: 'Lake Town', ville1_arene: 'Lake Town Gym', ville1_shop: 'Lake Town Shop',
     centre: 'Pokémon Center', cave1: 'Cave', cave2: 'Cave Depths',
-    pk1: 'Wild Area', pk2: 'Wild Area'
+    pk1: 'Wild Area', pk2: 'Wild Area',
+    gen_arene1: 'Clairwood Archives', gen_arene2: 'Tide Gym · Wanda',
+    gen_arene3: 'Ore Gym · Ana', gen_arene4: 'Bloom Gym · Raphael',
+    gen_arene5: 'Dune Gym · Hoze'
   }
 };
 

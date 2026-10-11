@@ -2,9 +2,9 @@
   <main class="login-page">
     <button class="back-home" type="button" @click="$router.push('/')">← Retour</button>
     <section class="login-card">
-      <p class="eyebrow">REPRENDRE LA ROUTE</p>
+      <p class="eyebrow">RIFTMON · RETOUR AU CAMP</p>
       <h1>Bon retour,<br />dresseur.</h1>
-      <p class="intro">Ton équipe et le monde d’Explorakit t’attendent exactement là où tu les as laissés.</p>
+      <p class="intro">Retrouve ton dresseur, rejoins un Rift ou poursuis ton Aventure.</p>
 
       <form @submit.prevent="login">
         <label>
@@ -17,11 +17,11 @@
         </label>
         <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
         <button class="login-button" type="submit" :disabled="submitting">
-          {{ submitting ? 'Connexion…' : 'Continuer l’aventure →' }}
+          {{ submitting ? 'Connexion…' : ($route.query.redirect === '/game' ? 'Continuer l’aventure →' : 'Rejoindre RiftMon →') }}
         </button>
       </form>
 
-      <button class="new-game" type="button" @click="$router.push('/inscription')">Créer une nouvelle aventure</button>
+      <button class="new-game" type="button" @click="$router.push({ path: '/inscription', query: ['/drift', '/game'].includes($route.query.redirect) ? { redirect: $route.query.redirect } : {} })">Créer un dresseur</button>
     </section>
   </main>
 </template>
@@ -46,7 +46,7 @@ export default {
       try {
         const response = await api.post('/login', this.credentials);
         storeSession(response.data.user, response.data.token);
-        this.$router.push('/game');
+        this.$router.push(['/drift', '/game'].includes(this.$route.query.redirect) ? this.$route.query.redirect : '/');
       } catch (error) {
         this.errorMessage = error.response?.data?.message || 'Connexion impossible. Vérifie tes identifiants.';
       } finally {
@@ -73,4 +73,5 @@ input:focus { border-color: #c97cec; box-shadow: 0 0 0 3px rgba(201,124,236,.14)
 .new-game { display: block; margin: 21px auto 0; border: 0; background: transparent; color: #cdbbd9; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
 .error-message { margin: 0; color: #ffb1c0; font-size: 13px; text-align: center; }
 @media (max-width: 520px) { .login-card { padding: 30px 21px; } .back-home { position: absolute; } }
+.login-page { background: radial-gradient(ellipse at 60% 20%, #2c75b74d, transparent 65%), linear-gradient(100deg, #081d35ee, #193d60dc), url('~@/assets/backgroundmenu.webp') center/cover; }.login-card { border-color: #82b1d34d; background: #0d2844e8; }.eyebrow { color: #8bc5f0; }.intro { color: #adc2d3; }label { color: #d4e0e9; }input { border-color: #83aac44d; background: #071a2e99; }input:focus { border-color: #83bfee; box-shadow: 0 0 0 3px #83bfee24; }.login-button { border-color: #9cc9e9; background: linear-gradient(135deg, #377fae, #215683); box-shadow: 0 12px 30px #0a264347; }.new-game { color: #b1c7d9; }
 </style>

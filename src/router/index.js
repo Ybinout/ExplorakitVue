@@ -6,6 +6,7 @@ import { hasAuthenticatedSession } from '@/services/session';
 const Inscription = () => import(/* webpackChunkName: "account" */ '@/components/UserInscription.vue');
 const Connexion = () => import(/* webpackChunkName: "account" */ '@/components/UserConnexion.vue');
 const Game = () => import(/* webpackChunkName: "game" */ '@/components/UserMap.vue');
+const Drift = () => import(/* webpackChunkName: "drift" */ '@/components/drift/DriftLobby.vue');
 const TestView = () => import(/* webpackChunkName: "test-view" */ '@/components/UserTest.vue');
 
 Vue.use(Router);
@@ -39,6 +40,18 @@ const router = new Router({
       meta: { requiresAuth: true }
     },
     {
+      path: '/drift',
+      name: 'Drift',
+      component: Drift,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/drift/game',
+      name: 'DriftGame',
+      component: Game,
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/test',
       name: 'test',
       component: TestView
@@ -52,7 +65,7 @@ const router = new Router({
 
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth) && !isAuthenticated()) {
-    return next('/connexion');
+    return next({ path: '/connexion', query: { redirect: to.path.startsWith('/drift') ? '/drift' : '/game' } });
   }
   return next();
 });

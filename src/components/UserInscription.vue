@@ -88,7 +88,7 @@
         <p class="eyebrow">AVENTURE CRÉÉE</p>
         <h2>{{ form.username }}, {{ selectedStarter.name }} t’attend.</h2>
         <p>Ta mère a une mission importante à te confier. Le village est calme, mais la route ne le restera pas longtemps.</p>
-        <button class="primary-button launch-button" type="button" @click="$router.push('/game')">Entrer dans le monde</button>
+        <button class="primary-button launch-button" type="button" @click="$router.push(['/drift', '/game'].includes($route.query.redirect) ? $route.query.redirect : '/')">{{ $route.query.redirect === '/game' ? 'Entrer dans le monde' : 'Rejoindre le camp RiftMon' }}</button>
       </section>
     </section>
   </main>

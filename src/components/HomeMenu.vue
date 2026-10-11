@@ -1,105 +1,51 @@
 <template>
-  <main class="home-menu">
-    <div class="ambient ambient-one"></div>
-    <div class="ambient ambient-two"></div>
-
-    <section class="hero">
-      <p class="kicker">UN MONDE À EXPLORER ENSEMBLE</p>
-      <h1>Explora<span>kit</span></h1>
-      <p class="tagline">Pars sur les traces de ta sœur, forme une équipe unique et affronte les dresseurs qui se dressent sur ta route.</p>
-
-      <div class="feature-row" aria-label="Fonctionnalités principales">
-        <span>Monde partagé</span>
-        <span>Combats tactiques</span>
-        <span>Progression infinie</span>
+  <drift-lobby v-if="isLoggedIn" @logout="syncAuthState" />
+  <main v-else class="home-menu">
+    <section class="welcome" aria-labelledby="home-title">
+      <p class="kicker">UNE ÉQUIPE. UNE VIE. TA LÉGENDE.</p>
+      <h1 id="home-title">Rift<span>Mon</span><i aria-hidden="true">✦</i></h1>
+      <p class="tagline">Le monde t’attend.<br /><strong>Tes prochains rivaux aussi.</strong></p>
+      <div class="companions" aria-hidden="true">
+        <span class="rift-ring"></span>
+        <img class="companion-left" src="/img/pokemon/front/280.png" alt="" />
+        <img class="companion-center" src="/img/pokemon/front/133.png" alt="" />
+        <img class="companion-right" src="/img/pokemon/front/25.png" alt="" />
       </div>
-
-      <div v-if="isLoggedIn" class="player-card">
-        <div class="online-dot"></div>
-        <div>
-          <small>PARTIE DISPONIBLE</small>
-          <strong>{{ username }}</strong>
-        </div>
-      </div>
-
+      <p class="pitch">Explore, compose ton équipe et affronte les survivants.<br />De 2 à 16 dresseurs, jusqu’à cinq heures d’aventure.</p>
       <div class="home-actions">
-        <button v-if="isLoggedIn" class="main-action" @click="goTo('/game')">
-          Continuer l’aventure <span>→</span>
-        </button>
-        <button v-else class="main-action" @click="goTo('/inscription')">
-          Commencer l’aventure <span>→</span>
-        </button>
-
-        <button v-if="!isLoggedIn" class="secondary-action" @click="goTo('/connexion')">J’ai déjà une partie</button>
-        <button v-else class="secondary-action" @click="logout">Changer de dresseur</button>
+        <router-link class="main-action" to="/connexion">Se connecter <span aria-hidden="true">→</span></router-link>
+        <router-link class="secondary-action" to="/inscription">Créer mon dresseur</router-link>
       </div>
+      <p class="solo-note">L’Aventure solo t’attend aussi au camp.</p>
     </section>
-
     <footer>Fan game privé · Une aventure créée entre amis</footer>
   </main>
 </template>
 
 <script>
-import { clearSession, getSession } from '@/services/session';
+import { getSession } from '@/services/session';
 
 export default {
   name: 'HomeMenu',
-  data() {
-    return { isLoggedIn: false, username: '' };
-  },
+  components: { DriftLobby: () => import(/* webpackChunkName: "drift" */ './drift/DriftLobby.vue') },
+  data() { return { isLoggedIn: false }; },
   created() {
     this.syncAuthState();
     window.addEventListener('storage', this.syncAuthState);
   },
-  beforeDestroy() {
-    window.removeEventListener('storage', this.syncAuthState);
-  },
+  beforeDestroy() { window.removeEventListener('storage', this.syncAuthState); },
   methods: {
     syncAuthState() {
-      try {
-        const user = getSession();
-        this.isLoggedIn = Boolean(user?.id && user?.token);
-        this.username = this.isLoggedIn ? user.username : '';
-      } catch (error) {
-        clearSession();
-        this.isLoggedIn = false;
-        this.username = '';
-      }
-    },
-    goTo(path) { this.$router.push(path); },
-    logout() {
-      clearSession();
-      this.syncAuthState();
+      const user = getSession();
+      this.isLoggedIn = Boolean(user?.id && user?.token);
     }
   }
 };
 </script>
 
 <style scoped>
-.home-menu { position: relative; min-height: 100vh; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 50px 24px 26px; color: white; background: linear-gradient(90deg, rgba(4, 4, 17, .9) 0%, rgba(11, 7, 29, .63) 50%, rgba(7, 5, 22, .35) 100%), url("~@/assets/backgroundmenu.webp") center/cover; isolation: isolate; }
-.home-menu::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, rgba(4,3,14,.8), transparent 42%); }
-.ambient { position: absolute; z-index: -1; border-radius: 50%; filter: blur(80px); opacity: .35; }
-.ambient-one { width: 380px; height: 380px; left: -180px; top: 5%; background: #8738ba; }
-.ambient-two { width: 300px; height: 300px; right: -100px; bottom: -120px; background: #e25f9a; }
-.hero { width: min(730px, 100%); text-align: center; animation: reveal .7s ease-out both; }
-.kicker { margin: 0 0 10px; color: #edbdfb; font-size: 12px; font-weight: 900; letter-spacing: .24em; }
-h1 { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(66px, 13vw, 132px); font-weight: 500; line-height: .92; letter-spacing: -.065em; text-shadow: 0 14px 44px rgba(0,0,0,.45); }
-h1 span { color: #e9a6e7; }
-.tagline { max-width: 660px; margin: 26px auto; color: #ddd8e8; font-size: clamp(16px, 2.2vw, 20px); line-height: 1.65; text-shadow: 0 2px 16px rgba(0,0,0,.6); }
-.feature-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin-bottom: 30px; }
-.feature-row span { padding: 7px 11px; border: 1px solid rgba(239,218,255,.23); border-radius: 999px; background: rgba(18,12,37,.45); color: #cbc3d9; font-size: 12px; backdrop-filter: blur(8px); }
-.player-card { width: min(390px, 100%); box-sizing: border-box; display: flex; align-items: center; gap: 13px; margin: 0 auto 13px; padding: 13px 16px; border: 1px solid rgba(255,255,255,.16); border-radius: 14px; background: rgba(11,8,25,.62); text-align: left; backdrop-filter: blur(12px); }
-.online-dot { width: 10px; height: 10px; border-radius: 50%; background: #80e4ae; box-shadow: 0 0 13px #80e4ae; }
-.player-card div:last-child { display: grid; gap: 2px; }
-.player-card small { color: #9b91ab; font-size: 9px; letter-spacing: .16em; }
-.player-card strong { font-size: 15px; }
-.home-actions { width: min(390px, 100%); display: grid; gap: 11px; margin: auto; }
-.home-actions button { width: 100%; border-radius: 13px; padding: 14px 18px; color: white; font-size: 15px; font-weight: 800; cursor: pointer; transition: transform .18s, filter .18s, background .18s; }
-.home-actions button:hover { transform: translateY(-2px); filter: brightness(1.08); }
-.main-action { display: flex; align-items: center; justify-content: center; gap: 14px; border: 1px solid #efb8ff; background: linear-gradient(135deg, #9e50ca, #d25c9a); box-shadow: 0 13px 35px rgba(152, 54, 161, .32); }
-.main-action span { font-size: 21px; }
-.secondary-action { border: 1px solid rgba(255,255,255,.2); background: rgba(9,7,22,.6); backdrop-filter: blur(10px); }
-footer { position: absolute; bottom: 18px; color: rgba(236,228,244,.5); font-size: 11px; letter-spacing: .08em; }
-@keyframes reveal { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-@media (max-width: 560px) { .home-menu { justify-content: flex-start; padding-top: 16vh; } .kicker { font-size: 10px; } .tagline { margin-block: 20px; } footer { position: static; margin-top: 42px; } }
+.home-menu { box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 50px 24px 24px; color: #f7f0df; background: radial-gradient(ellipse at 50% 30%, #247bd35c, transparent 62%), linear-gradient(135deg, #071c34f5, #163e63eb), url('~@/assets/backgroundmenu.webp') center/cover; font-family: 'Trebuchet MS', Arial, sans-serif; }
+.welcome { width: min(580px, 100%); text-align: center; }.kicker { margin: 0 0 15px; color: #a0cce9; font-size: 10px; font-weight: 700; letter-spacing: .22em; }h1 { position: relative; width: fit-content; margin: auto; color: #8cccff; font: 700 clamp(62px, 14vw, 108px)/1 Georgia, serif; letter-spacing: -.055em; text-shadow: 0 5px #091b3080, 0 0 50px #52a7ff38; }h1 span { color: #d5ecff; }h1 i { position: absolute; right: -22px; top: -6px; color: #e7c886; font: 24px Georgia, serif; }.tagline { margin: 19px 0 0; color: #a6bfd3; font-size: 16px; line-height: 1.6; }.tagline strong { color: #f7f0df; font-weight: 400; }.companions { position: relative; height: 215px; width: 330px; max-width: 100%; margin: 0 auto; }.rift-ring { position: absolute; width: 190px; height: 170px; top: 25px; left: calc(50% - 95px); border: 1px solid #7cc3fa40; border-radius: 50%; box-shadow: 0 0 0 12px #79bdff09, inset 0 0 40px #63b5ff19; transform: rotate(-15deg); }.companions img { position: absolute; width: 125px; height: 125px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 12px 7px #0414257a); }.companions .companion-left { left: 0; top: 28px; }.companions .companion-right { right: 0; top: 33px; }.companions .companion-center { width: 155px; height: 155px; top: 60px; left: calc(50% - 77px); }.pitch { margin: 6px 0 25px; color: #b8cfdf; font-size: 13px; line-height: 1.8; }.home-actions { display: grid; gap: 11px; max-width: 350px; margin: auto; }.home-actions a { display: flex; align-items: center; justify-content: center; gap: 20px; min-height: 49px; padding: 5px 20px; border: 1px solid #86bce3; border-radius: 10px 4px 10px 4px; color: #eff7ff; font-weight: 700; font-size: 14px; text-decoration: none; }.home-actions .main-action { background: linear-gradient(#3687c6, #225f96); box-shadow: inset 0 -3px #0e375955, 0 8px 20px #03142640; }.home-actions .secondary-action { border-color: #adc1c754; background: #102b435c; color: #d1e1eb; }.home-actions a:focus-visible { outline: 3px solid #ecd69c; outline-offset: 4px; }.home-actions a:hover { filter: brightness(1.15); }.solo-note { margin: 19px 0 0; color: #8fabbe; font-size: 11px; }footer { margin-top: 40px; color: #7998af; font-size: 10px; }
+@media (max-width: 420px) { .home-menu { padding-top: 40px; }.kicker { font-size: 8px; letter-spacing: .14em; }.companions { height: 185px; }.companions .companion-center { top: 36px; }.companions .companion-left { top: 15px; }.companions .companion-right { top: 18px; }.pitch { font-size: 12px; }.tagline { font-size: 14px; }footer { margin-top: 30px; } }
+@media (max-height: 600px) and (min-width: 600px) { .home-menu { padding-top: 25px; }h1 { font-size: 66px; }.companions { height: 130px; }.companions img { width: 90px; height: 90px; }.companions .companion-center { width: 115px; height: 115px; top: 18px; left: calc(50% - 57px); }.rift-ring { width: 150px; height: 110px; top: 10px; left: calc(50% - 75px); }.tagline { margin-top: 12px; }.pitch { margin-bottom: 15px; }footer { margin-top: 20px; } }
 </style>

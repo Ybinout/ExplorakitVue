@@ -1,10 +1,11 @@
 <template>
-  <div style="overflow:hidden">
+  <div class="dialogue-shell">
     <div class="text-with-image">
       
       <div class="text">{{ displayedText }}</div>
       <div class="texts">
-        <img class="imagetoto" :src="currentImageSrc" alt="Illustration" />
+        <div v-if="portraitFrame" class="portrait-atlas" role="img" aria-label="Portrait du personnage" :style="portraitStyle"></div>
+        <img v-else class="imagetoto" :src="currentImageSrc" alt="Illustration" />
       </div>
       
     </div>
@@ -40,6 +41,11 @@ export default {
     };
   },
   computed: {
+    portraitFrame() { return this.sequence[this.currentIndex]?.portraitFrame; },
+    portraitStyle() {
+      const f = this.portraitFrame;
+      return { backgroundImage: `url(${this.currentImageSrc})`, backgroundSize: `${f.columns * 100}% ${f.rows * 100}%`, backgroundPosition: `${(f.index % f.columns) / (f.columns - 1) * 100}% ${Math.floor(f.index / f.columns) / (f.rows - 1) * 100}%` };
+    },
     currentText() {
       return this.sequence[this.currentIndex]?.text || '';
     },
@@ -113,87 +119,74 @@ export default {
 </script>
 
 <style scoped>
-.imagetoto {
-  position: absolute;
-  top: 0px;
-  left: 50%;
-  transform: translate(-50%);
-  max-width: 896px;
-  z-index: 999;
+.dialogue-shell {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  height: 100vh;
+  height: 100dvh;
+  padding: 24px;
+  overflow: hidden;
 }
 
 .text-with-image {
-  text-align: center;
-  margin: 100px;
-}
-
-.text-with-image p {
-  margin-top: 10px;
-  font-size: 16px;
-  white-space: pre-wrap;
-  /* Pour préserver les retours à la ligne du texte */
+  display: flex;
+  flex-direction: column;
+  width: min(900px, 100%);
+  height: min(760px, 100%);
+  min-height: 0;
 }
 
 .text {
-  background-color: #fff;
-  /* width: 100%; */
-  max-width: 900px;
-  left: 50%;
-  position: relative;
-  left: 50%;
-  transform: translate(-50%);
-  height: 85px;
-  font-size: 28px;
-  border: 5px solid gray;
-  top: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  padding: 5px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-height: 84px;
+  max-height: 42vh;
+  overflow-y: auto;
+  padding: 14px 18px;
+  color: #172333;
+  background: #fff;
+  border: 3px solid #8e9aa8;
+  border-radius: 12px 12px 0 0;
+  font: 20px/1.45 Arial, Helvetica, sans-serif;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .texts {
-  background-color: #000000;
-  /* width: 100%; */
-  max-width: 900px;
-  left: 50%;
-  position: relative;
-  left: 50%;
-  transform: translate(-50%);
-  height: 600px;
-  font-size: 32px;
-  border: 10px solid rgb(0, 0, 0);
-  top: 0;
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+  border: 6px solid #000;
+  border-radius: 0 0 12px 12px;
+}
+
+.imagetoto {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
 }
 
 @media (max-width: 920px) {
-  .text-with-image {
-    margin: 8px 10px 0;
+  .dialogue-shell {
+    padding: 10px 10px calc(118px + env(safe-area-inset-bottom));
   }
-
   .text {
-    max-width: 100%;
-    min-height: 108px;
-    height: auto;
-    font-size: 18px;
-    line-height: 1.35;
-    border-width: 3px;
+    min-height: 76px;
     padding: 10px 12px;
-    text-align: left;
-    white-space: pre-wrap;
-  }
-
-  .texts {
-    max-width: 100%;
-    height: calc(100vh - 190px);
-    min-height: 280px;
-    border-width: 6px;
-    overflow: hidden;
-  }
-
-  .imagetoto {
-    width: 100%;
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
+    font-size: 16px;
+    line-height: 1.4;
   }
 }
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .dialogue-shell { padding: 10px 118px 10px 10px; }
+}
+.portrait-atlas { width: 100%; max-width: 190px; aspect-ratio: 1; background-repeat: no-repeat; }
 </style>

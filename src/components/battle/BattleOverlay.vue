@@ -81,7 +81,7 @@
         <div class="battle-status-top">
           <span class="battle-status-name">{{ opponent.truename || opponent.name }}</span>
           <span class="battle-status-lvl">lv.{{ opponent.level }}</span>
-          <span class="battle-status-tier">K{{ opponent.k }}</span>
+          <potential-star :value="opponent.k" :language="preferences.language" />
           <span
             v-if="opponentStatus"
             :class="['battle-status-ailment', `status-${opponentStatus.key}`]"
@@ -104,7 +104,7 @@
         <div class="battle-status-top">
           <span class="battle-status-name">{{ currentPokemon.name || currentPokemon.truename }}</span>
           <span class="battle-status-lvl">lv.{{ currentPokemon.level }}</span>
-          <span class="battle-status-tier">K{{ currentPokemon.k }}</span>
+          <potential-star :value="currentPokemon.k" :language="preferences.language" />
           <span
             v-if="playerStatus"
             :class="['battle-status-ailment', `status-${playerStatus.key}`]"
@@ -114,6 +114,8 @@
           </span>
         </div>
         <health-bar :current-hp="currentPokemon.currentHp" :hp-max="currentPokemon.maxHp" />
+        <experience-bar :pokemon="currentPokemon" />
+        <span v-if="experienceNotice" class="experience-notice" role="status">{{ experienceNotice }}</span>
         <div class="battle-status-details">
           <span>{{ formatBattleHp(currentPokemon) }}</span>
           <span v-if="currentPokemon.passiveAbility">{{ tr('ability') }} : {{ localizedAbility(currentPokemon.passiveAbility) }}</span>
@@ -258,6 +260,8 @@
 </template>
 
 <script>
+import PotentialStar from '../PotentialStar.vue';
+import ExperienceBar from '../ExperienceBar.vue';
 import HealthBar from '../HealthBar.vue';
 import { getBattleStatus } from '@/services/gameView';
 import { localizeAbilityName, localizeMoveName, translate } from '@/services/i18n';
@@ -285,7 +289,7 @@ const FIELD_LABELS = {
 
 export default {
   name: 'BattleOverlay',
-  components: { HealthBar },
+  components: { HealthBar, ExperienceBar, PotentialStar },
   props: {
     active: { type: Boolean, default: false },
     bagItems: { type: Array, default: () => [] },
@@ -338,6 +342,10 @@ export default {
       },
       fieldState: { weather: null, terrain: null },
       soundEnabled: localStorage.getItem('battleSoundEnabled') !== 'false',
+      music: null,
+      musicKind: null,
+      experienceNotice: '',
+      experienceTimer: null,
       audioContext: null
     };
   },
@@ -410,17 +418,59 @@ export default {
     }
   },
   watch: {
+    audioVolume() { this.syncMusic(); },
+    soundEnabled() { this.syncMusic(); },
     active(isActive) {
-      if (!isActive) this.resetBattleUi();
+      if (!isActive) { this.stopMusic(); this.resetBattleUi(); }
     }
   },
+  mounted() {
+    window.addEventListener('pointerdown', this.resumeMusic);
+    window.addEventListener('keydown', this.resumeMusic);
+    document.addEventListener('visibilitychange', this.syncMusic);
+  },
   beforeDestroy() {
+    this.stopMusic();
+    clearTimeout(this.experienceTimer);
+    window.removeEventListener('pointerdown', this.resumeMusic);
+    window.removeEventListener('keydown', this.resumeMusic);
+    document.removeEventListener('visibilitychange', this.syncMusic);
     this.clearAllTimers();
     if (this.audioContext && typeof this.audioContext.close === 'function') {
       this.audioContext.close().catch(() => {});
     }
   },
   methods: {
+    startMusic(kind) {
+      this.stopMusic();
+      this.musicKind = kind;
+      const tracks = { wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/extended.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
+      this.music = new Audio(tracks[kind] || tracks.wild);
+      this.music.loop = true;
+      this.syncMusic();
+    },
+    syncMusic() {
+      if (!this.music) return;
+      this.music.volume = this.audioVolume * 0.65;
+      if (!this.active || !this.soundEnabled || !this.audioVolume || document.hidden) this.music.pause();
+      else if (this.music.paused) this.music.play().catch(() => {});
+    },
+    resumeMusic() { if (this.active) this.syncMusic(); },
+    stopMusic() {
+      if (this.music) { this.music.pause(); this.music.removeAttribute('src'); this.music.load(); }
+      this.music = null;
+      this.musicKind = null;
+    },
+    updateExperience(payload) {
+      const pokemon = payload?.pokemon;
+      const index = this.battleTeam.findIndex(entry => entry.uuid === pokemon?.uuid);
+      if (index < 0) return;
+      this.$set(this.player.equipe.pokemons, index, pokemon);
+      this.experienceNotice = pokemon.level > payload.previousLevel
+        ? `Niveau ${pokemon.level} !  +${payload.xpGained} XP` : `+${payload.xpGained} XP`;
+      clearTimeout(this.experienceTimer);
+      this.experienceTimer = setTimeout(() => { this.experienceNotice = ''; }, 2500);
+    },
     tr(key, parameters) {
       return translate(this.preferences.language, key, parameters);
     },
@@ -833,6 +883,8 @@ export default {
       this.clearHealthTimers();
     },
     resetBattleUi() {
+      clearTimeout(this.experienceTimer);
+      this.experienceNotice = '';
       this.clearAllTimers();
       this.player = null;
       this.opponent = null;
@@ -959,11 +1011,6 @@ export default {
 
 .battle-status-lvl {
   font-size: 10px;
-}
-
-.battle-status-tier {
-  font-size: 10px;
-  color: #3a4a7a;
 }
 
 .battle-status-details {
@@ -1804,8 +1851,7 @@ export default {
   }
 
   .battle-status-name,
-  .battle-status-lvl,
-  .battle-status-tier {
+  .battle-status-lvl {
     font-size: 8px;
   }
 
@@ -2084,4 +2130,5 @@ export default {
     animation: none !important;
   }
 }
+.experience-notice { color:#297eb5; font-size:11px; font-weight:800; }
 </style>

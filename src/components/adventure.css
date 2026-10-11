@@ -1,0 +1,87 @@
+/* Shared handheld-adventure art direction. Geometry stays owned by each component. */
+.game-root { font-family:Arial,Helvetica,sans-serif; --adventure-ink:#243c50; --adventure-paper:#fbf5e6; --adventure-gold:#c1a36a; }
+.game-root .game-stage button { cursor:pointer; }
+.game-root .game-stage button:disabled { cursor:default; }
+.game-root .game-stage button:focus-visible { outline:3px solid #dda953; outline-offset:2px; }
+.game-root .game-stage .menu-toggle-btn { min-height:44px; padding:8px 18px; border:2px solid #c3aa76; border-radius:10px 10px 16px 5px; background:#243c50; color:#fff4d9; box-shadow:0 3px 0 #102534, inset 0 0 0 2px #ffffff10; font:bold 13px Arial,sans-serif; }
+.game-root .game-stage .menu-toggle-btn::before { content:'✦'; color:#dbc188; margin-right:9px; }
+.game-root .game-stage .menu-dropdown { min-width:220px; padding:9px; border:2px solid #bba474; border-radius:14px; background:#faf3e1; box-shadow:0 0 0 3px #243c50,0 12px 32px #08162466; }
+.game-root .game-stage .menu-dropdown::before { content:'CARNET D’AVENTURE'; display:block; padding:7px 10px 12px; color:#8a7856; font:bold 9px Arial; letter-spacing:1.6px; }
+.game-root .game-stage .menu-dropdown-item { min-height:44px; padding:10px 14px; color:#243c50; border:0; border-radius:7px; font:600 13px Arial,sans-serif; }
+.game-root .game-stage .menu-dropdown-item::before { content:'◇'; margin-right:12px; color:#b39359; }
+.game-root .game-stage .menu-dropdown-item:hover { background:#243c50; color:#fff7e5; }
+.game-root .game-stage .location-banner { background:#233b50ed; border:1px solid #c5af80; border-radius:3px 18px 18px 3px; padding:9px 16px; color:#fff4de; font:600 12px Arial,sans-serif; box-shadow:0 3px 8px #0003; }
+.game-root .game-stage .location-pin { color:#d7ba77; }
+.game-root .game-stage .team-panel, .game-root .game-stage .bag-panel, .game-root .game-stage .appearance-panel { box-sizing:border-box; background:#faf4e5; border:2px solid #bfa678; border-radius:16px; padding:14px; color:#243c50; box-shadow:0 0 0 3px #243c50,0 15px 40px #0005; font-family:Arial,sans-serif; }
+.game-root .game-stage .team-panel { width:min(410px,calc(100% - 24px)); max-height:calc(100% - 76px); left:auto; right:14px; }
+.game-root .game-stage .team-title { display:flex; justify-content:space-between; align-items:center; color:#243c50; margin:0 0 14px; font:bold 23px Georgia,serif; }
+.game-root .game-stage .team-title small { display:block; color:#9d8352; font:bold 8px Arial; letter-spacing:1.6px; margin-bottom:4px; }
+.game-root .game-stage .team-close { width:44px; height:44px; border:1px solid #cbbb9b; border-radius:50%; background:transparent; color:#243c50; font-size:24px; }
+.game-root .game-stage .team-row { position:relative; background:linear-gradient(120deg,#fffdf6,#f0eadc); border:1px solid #d7c9ab; border-radius:10px 18px 10px 18px; padding:10px; box-shadow:0 3px 0 #dfd3b9; gap:10px; }
+.game-root .game-stage .team-row-visual { background:radial-gradient(circle,#fffef8,#e2e9d7); border:1px solid #cbd4be; border-radius:50% 50% 10px 10px; align-self:center; width:72px; min-width:72px; height:80px; padding:0; }
+.game-root .game-stage .team-pokemon-sprite { width:68px; height:68px; }
+.game-root .game-stage .team-row-name { color:#243c50; font:bold 14px Arial; }
+.game-root .game-stage .team-detail-link { border:0; background:none; padding:4px 0; min-height:36px; text-align:left; }
+.game-root .game-stage .team-detail-link span { color:#a68b56; }
+.game-root .game-stage .team-slot { color:#9a917d; font-size:9px; }
+.game-root .game-stage .team-level { white-space:nowrap; color:#fff8e9; background:#325267; border:0; font-size:10px; }
+.game-root .game-stage .team-row-meta { color:#647078; font:10px/1.5 Arial; }
+.game-root .game-stage .team-hp-track { height:6px; background:#d6dacd; border:0; }
+.game-root .game-stage .team-held-item-select { box-sizing:border-box; width:100%; min-height:32px; color:#526370; border:0; border-bottom:1px solid #c8bea8; border-radius:0; background:transparent; font:10px Arial; margin-top:4px; }
+.game-root .game-stage .team-order-btn { min-width:30px; min-height:38px; color:#546a75; background:#ece6d6; border:1px solid #d1c6ad; border-radius:8px; font:16px Arial; }
+.game-root .game-stage .team-state, .game-root .game-stage .bag-state, .game-root .game-stage .bag-title, .game-root .game-stage .appearance-title { color:#243c50; }
+.game-root .game-stage .bag-title, .game-root .game-stage .appearance-title { font:bold 23px Georgia,serif; margin-bottom:12px; }
+.game-root .game-stage .bag-item-row { color:#243c50; border-color:#dacdb4; padding:12px 8px; font:13px Arial; }
+.game-root .game-stage .bag-item-name { color:#243c50; }.game-root .game-stage .bag-item-qty { background:#e3d5b5; color:#735d34; border-radius:20px; padding:4px 10px; }
+.game-root .game-stage .appearance-option { background:#eee8d8; border-color:#d1c4a7; color:#243c50; border-radius:10px; }.game-root .game-stage .appearance-option.is-active { background:#dce8dc; border-color:#658b78; }
+.game-root .game-stage .info-panel, .game-root .game-stage .shop-card { background:#faf4e5; color:#243c50; border:2px solid #bfa678; box-shadow:0 0 0 4px #243c50,0 22px 65px #0007; border-radius:20px; font-family:Arial,sans-serif; }
+.game-root .game-stage .info-header, .game-root .game-stage .shop-header { border-color:#d3c19b; }
+.game-root .game-stage .info-header h2, .game-root .game-stage .shop-header h2 { font-family:Georgia,serif; }
+.game-root .game-stage .info-kicker, .game-root .game-stage .shop-kicker { color:#9f814b; letter-spacing:2px; }
+.game-root .game-stage .quest-card, .game-root .game-stage .badge-card, .game-root .game-stage .option-row, .game-root .game-stage .shop-item { background:#f0e8d5; color:#243c50; border:1px solid #d6c5a3; border-radius:12px; box-shadow:0 2px 0 #ded0b0; }
+.game-root .game-stage .quest-card p, .game-root .game-stage .empty-copy, .game-root .game-stage .option-row small, .game-root .game-stage .options-note, .game-root .game-stage .shop-item-description, .game-root .game-stage .shop-owned, .game-root .game-stage .save-copy, .game-root .game-stage .save-date { color:#667171; }
+.game-root .game-stage .badge-card.earned { background:#f5e7bd; border-color:#b99650; }.game-root .game-stage .badge-medal { color:#b9954e; text-shadow:0 2px 0 #fff5cd; }
+.game-root .game-stage .primary-button, .game-root .game-stage .close-button, .game-root .game-stage .shop-close, .game-root .game-stage .team-save-btn { background:#294a5c; border-color:#7c8e90; color:#fff6e0; min-height:44px; }
+.game-root .game-stage .shop-wallet { background:#efe0bc; color:#755c2b; border-color:#cbb783; }
+.game-root .game-stage .battle-status { border:2px solid #415466; border-radius:5px 19px 5px 19px; background:linear-gradient(145deg,#fffdf0,#eae4d4); box-shadow:0 3px 0 #bda779,0 7px 16px #0003; font-family:Arial,sans-serif; }
+.game-root .game-stage .battle-status-name { font-size:13px; font-weight:800; }.game-root .game-stage .battle-status-details { font-size:9px; }.game-root .game-stage .battle-status-tier { color:#947433; }
+.game-root .game-stage .battle-action-shell { background:linear-gradient(135deg,#294657,#182e40); border-top:3px solid #c3aa73; box-shadow:0 -4px 0 #172c3c; font-family:Arial,sans-serif; }
+.game-root .game-stage .battle-text-box { color:#fff4dd; border:1px solid #6e8190; background:#132c3d; box-shadow:inset 0 0 0 3px #ffffff06; border-radius:10px; font:16px/1.5 Arial,sans-serif; }
+.game-root .game-stage .battle-main-btn { border-radius:8px 15px 8px 15px; font:bold 13px Arial,sans-serif; border:2px solid #ffffff45; box-shadow:inset 0 1px 0 #ffffff38,0 3px 0 #0b2233; text-shadow:0 1px 1px #0004; }
+.game-root .game-stage .action-attack { background:#b55748; }.game-root .game-stage .action-bag { background:#ad8b43; }.game-root .game-stage .action-pokemon { background:#478777; }.game-root .game-stage .action-run { background:#536e9b; }
+.game-root .game-stage .battle-choice-btn { background:#f4ecd8; border:2px solid #b9a574; color:#233d51; border-radius:8px 14px 8px 14px; font:600 12px/1.35 Arial; }
+.game-root .game-stage .battle-choice-btn small { color:#60747b; }.game-root .game-stage .battle-turn-indicator { font:10px Arial; background:#213e50; border-color:#8b947e; }.game-root .game-stage .battle-sound-toggle { min-width:36px; min-height:36px; }
+.game-root .dialogue-layer .dialogue-shell { align-items:end; padding:30px 26px 45px; }
+.game-root .dialogue-layer .text-with-image { flex-direction:row-reverse; align-items:center; gap:20px; width:min(860px,100%); height:auto; padding:20px; box-sizing:border-box; background:linear-gradient(135deg,#fff9e8,#f1e6ce); border:2px solid #c1aa75; border-radius:10px 24px 10px 24px; box-shadow:0 0 0 5px #243d51,0 15px 60px #0008; }
+.game-root .dialogue-layer .text { flex:1; min-width:0; min-height:0; max-height:60vh; background:transparent; border:0; border-radius:0; padding:0; color:#263e50; font:18px/1.55 Arial; }
+.game-root .dialogue-layer .texts { flex:0 0 155px; height:155px; align-items:end; background:radial-gradient(ellipse at bottom,#d7dec9,transparent 70%); border:0; border-radius:50% 50% 12px 12px; }
+.game-root .dialogue-layer .portrait-atlas { width:155px; height:155px; flex-shrink:0; }
+@media(max-width:600px){
+  .game-root .game-stage .team-panel{right:10px;top:60px;max-height:calc(100dvh - 170px);padding:10px;}.game-root .game-stage .team-row{gap:7px;padding:8px}.game-root .game-stage .team-row-visual{width:53px;min-width:53px;height:64px}.game-root .game-stage .team-pokemon-sprite{width:52px;height:52px}.game-root .game-stage .team-row-name{font-size:12px}.game-root .game-stage .team-slot{display:none}.game-root .game-stage .team-order-btn{min-width:26px}.game-root .game-stage .location-banner{font-size:10px;padding:8px 12px}.game-root .game-stage .battle-status{padding:7px 8px;min-height:76px}.game-root .game-stage .battle-status-name{font-size:11px}.game-root .game-stage .battle-status-details{font-size:8px}.game-root .game-stage .battle-text-box{font-size:13px}.game-root .game-stage .battle-main-btn{font-size:12px}.game-root .game-stage .battle-choice-btn{font-size:11px}
+  .game-root .dialogue-layer .dialogue-shell{padding:12px 12px 110px}.game-root .dialogue-layer .text-with-image{gap:10px;padding:14px}.game-root .dialogue-layer .text{font-size:14px;line-height:1.5;max-height:65vh}.game-root .dialogue-layer .texts{flex-basis:80px;height:100px}.game-root .dialogue-layer .portrait-atlas{width:80px;height:80px}
+}
+@media(max-height:480px) and (orientation:landscape){.game-root .dialogue-layer .dialogue-shell{padding:15px 115px 18px 15px}.game-root .dialogue-layer .texts{flex-basis:95px;height:110px}.game-root .dialogue-layer .portrait-atlas{width:95px;height:95px}.game-root .dialogue-layer .text{font-size:14px}.game-root .game-stage .team-panel{max-height:calc(100dvh - 80px)}}
+
+.game-root .game-stage .info-header { background:#253e51; color:#fff3d9; }
+.game-root .game-stage .progress-columns h3, .game-root .game-stage .info-panel>h3 { color:#52665f; }
+.game-root .game-stage .completed-label { color:#3b7e67; }
+
+.game-root .dialogue-layer .portrait-atlas { clip-path:inset(1% 5% 0 5%); }
+@media(max-width:720px){.game-root .game-stage .battle-turn-indicator{left:12px;transform:none}}
+@media(max-height:480px) and (orientation:landscape){
+  .game-root .game-stage .battle{position:fixed;inset:0;top:0;width:100%;height:100dvh;min-height:0;animation:none}
+  .game-root .game-stage .battle-scene{inset:0 220px 0 0}
+  .game-root .game-stage .battle-action-shell{top:0;bottom:0;left:auto;right:0;width:220px;height:100%;min-height:0;flex-direction:column;padding:10px;gap:8px;border-top:0;border-left:3px solid #c3aa73}
+  .game-root .game-stage .battle-action-display{width:100%;flex:1;min-height:0;margin-top:35px;overflow:auto}
+  .game-root .game-stage .battle-text-box{height:100%;min-height:0;font-size:14px;padding:12px}
+  .game-root .game-stage .battle-main-actions{width:100%;min-height:102px;flex:0 0 auto}
+  .game-root .game-stage .battle-main-btn{min-height:46px}
+  .game-root .game-stage .battle-turn-indicator{top:10px;left:10px;transform:none;max-width:140px;font-size:9px}
+  .game-root .game-stage .battle-sound-toggle{top:8px;right:8px}
+  .game-root .game-stage .battle-status{width:min(245px,52%);min-height:76px;padding:8px}
+  .game-root .game-stage .battle-status-wild{top:10px;left:10px}
+  .game-root .game-stage .battle-status-player{right:10px;bottom:10px}
+  .game-root .game-stage .battle-sprite-player{left:20%;top:98%;--sprite-visible-size:90px}
+  .game-root .game-stage .battle-sprite-wild{left:76%;top:59%;--sprite-visible-size:90px}
+  .game-root .game-stage .battle-grid-pokemon{max-height:none}
+}

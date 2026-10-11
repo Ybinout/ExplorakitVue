@@ -1,8 +1,11 @@
-﻿<template>
-  <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled }]" style="background-color: black;">
+<template>
+  <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift }]" style="background-color: black;">
     <!-- <navBar></navBar> -->
     <div>
       <div class="game-stage">
+      <battle-result-panel v-if="battleResult" :result="battleResult" @continue="dismissBattleResult" />
+      <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
+      <drift-run-panel v-if="isDrift && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <battle-overlay
         ref="battleOverlay"
         :active="battle"
@@ -12,14 +15,19 @@
         @action="handleBattleAction"
         @request-bag="loadBagItems"
       />
-      <div class="game-shell">
+      <div class="game-shell" :inert="battleResult || driftSpectator ? '' : null" :aria-hidden="battleResult || driftSpectator ? 'true' : null">
+        <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
           <button class="menu-toggle-btn" @click="toggleMenu">
             {{ tr('menu') }}
           </button>
+          <div v-if="isDrift" class="drift-hud">
+            <div class="drift-clock"><drift-glyph name="clock" /><span><small>{{ driftPhaseLabel }}</small><strong>{{ driftCountdown || 'Rift' }}</strong></span></div>
+            <button class="drift-hud-toggle" :aria-expanded="isDriftPanelOpen" aria-label="Ouvrir le carnet Drift" @click="toggleDriftPanel"><drift-glyph /><span>Drifts <small>{{ driftState?.equipped?.length || 0 }}/5</small></span></button>
+          </div>
           <div v-if="isMenuOpen" class="menu-dropdown">
             <button
-              v-for="item in menuItems"
+              v-for="item in visibleMenuItems"
               :key="item.key"
               class="menu-dropdown-item"
               @click="handleMenuAction(item.key)"
@@ -30,18 +38,20 @@
         </div>
         <div v-if="!battle" class="location-banner">
           <span class="location-pin">◆</span>
-          <span>{{ locationLabel }}</span>
+          <span class="location-name">{{ locationLabel }}</span>
           <button v-if="isShopMap" class="location-shop-btn" type="button" @click="openShop">
             {{ tr('openShop') }}
           </button>
         </div>
+        </div>
         <div v-if="isBagOpen" class="bag-panel" ref="bagPanel">
           <div class="bag-title">{{ tr('bag') }}</div>
+          <p v-if="isDrift" class="bag-mode-note">Objets de cette expédition</p>
           <div v-if="bagLoading" class="bag-state">{{ tr('loading') }}</div>
           <div v-else-if="bagError" class="bag-state bag-error">{{ bagError }}</div>
-          <div v-else-if="bagItems.length === 0" class="bag-state">{{ tr('emptyBag') }}</div>
+          <div v-else-if="bagItems.length === 0" class="bag-state">{{ emptyBagLabel }}</div>
           <div v-else class="bag-items">
-            <div v-for="item in bagItems" :key="item.key" class="bag-item-row">
+            <div v-for="item in bagItems" :key="item.key" :data-item-key="item.key" class="bag-item-row">
               <span class="bag-item-name">{{ item.name }}</span>
               <span class="bag-item-qty">x{{ item.quantity }}</span>
             </div>
@@ -63,7 +73,7 @@
           </div>
         </div>
         <div v-if="isTeamPanelOpen" class="team-panel" ref="teamPanel">
-          <div class="team-title">{{ tr('team') }}</div>
+          <div class="team-title"><span><small>COMPAGNONS DE VOYAGE</small>{{ tr('team') }}</span><button class="team-close" aria-label="Fermer l’équipe" @click="isTeamPanelOpen = false">×</button></div>
           <div v-if="teamLoading" class="team-state">{{ tr('loading') }}</div>
           <div v-else-if="teamError" class="team-state team-error">{{ teamError }}</div>
           <div v-else-if="teamPokemons.length === 0" class="team-state">{{ tr('noPokemon') }}</div>
@@ -73,18 +83,18 @@
               :key="pokemon.uuid || `slot-${index}`"
               class="team-row"
             >
-              <div class="team-row-visual">
-                <img
+              <button class="team-row-visual" :aria-label="`Voir la fiche de ${pokemon.name}`" @click="openPokemonDetails(pokemon)">
+                <pokemon-portrait
                   v-if="pokemon.spriteId"
                   class="team-pokemon-sprite"
                   :src="getPokemonFrontSprite(pokemon.spriteId)"
                   alt=""
-                >
-              </div>
+                />
+              </button>
               <div class="team-row-main">
                 <div class="team-row-top">
                   <span class="team-slot">#{{ index + 1 }}</span>
-                  <span class="team-row-name">{{ pokemon.name }}</span>
+                  <button class="team-row-name team-detail-link" @click="openPokemonDetails(pokemon)">{{ pokemon.name }} <span>›</span></button>
                   <span class="team-level">lv.{{ pokemon.level }}</span>
                 </div>
                 <div class="team-hp-track">
@@ -94,6 +104,7 @@
                     :style="{ width: `${getTeamHpPercent(pokemon)}%` }"
                   ></div>
                 </div>
+                <experience-bar :pokemon="pokemon" />
                 <div class="team-row-meta">
                   {{ tr('hp') }} {{ pokemon.currentHp }} / {{ pokemon.maxHp }}
                 </div>
@@ -116,14 +127,14 @@
                   :disabled="index === 0 || teamSaving"
                   @click="moveTeamPokemon(index, 'up')"
                 >
-                  â†‘
+                  ↑
                 </button>
                 <button
                   class="team-order-btn"
                   :disabled="index === teamPokemons.length - 1 || teamSaving"
                   @click="moveTeamPokemon(index, 'down')"
                 >
-                  â†“
+                  ↓
                 </button>
               </div>
             </div>
@@ -160,7 +171,7 @@
         />
         <canvas class="test" ref="monCanvas"></canvas>
         <div
-          v-if="showMobileControls && !battle"
+          v-if="showMobileControls && !battle && !battleResult && !driftSpectator"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
           <div v-if="textImageSequence.length === 0" class="mobile-dpad" aria-label="Pad directionnel">
@@ -278,8 +289,8 @@
         </div>
       </div>
       </div>
-      <div v-if="textImageSequence.length > 0" class="dialogue-backdrop"></div>
-      <div v-if="textImageSequence.length > 0" class="dialogue-layer">
+      <div v-if="textImageSequence.length > 0 && !battleResult && !driftSpectator" class="dialogue-backdrop"></div>
+      <div v-if="textImageSequence.length > 0 && !battleResult && !driftSpectator" class="dialogue-layer">
         <TextWithImage
           :sequence="textImageSequence"
           :char-per-step="preferences.textSpeed"
@@ -289,7 +300,7 @@
         />
       </div>
       <button
-        v-if="showMobileControls && !battle && textImageSequence.length > 0"
+        v-if="showMobileControls && !battle && !battleResult && !driftSpectator && textImageSequence.length > 0"
         class="mobile-dialogue-action-top"
         @pointerdown.prevent="triggerMobileActionA"
       >
@@ -297,14 +308,18 @@
       </button>
     </div>
 
-    <!-- <button @click="toto()">TEST</button> -->
+    <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
 
 <script>
 import api from "@/services/api";
 import { getSession } from "@/services/session";
-import { createGameSocket } from "@/services/realtime";
+import { saveDriftReport } from "@/services/driftReportHistory";
+import DriftRunPanel from "./drift/DriftRunPanel.vue";
+import RiftSpectatorPanel from "./drift/RiftSpectatorPanel.vue";
+import DriftGlyph from "./drift/DriftGlyph.vue";
+import { createGameSocket, createDriftSocket } from "@/services/realtime";
 import {
   getDirectionFromAction,
   getDirectionFromDelta,
@@ -314,7 +329,13 @@ import {
   normalizeSpriteName,
   normalizeTeamPokemon
 } from "@/services/gameView";
+import PokemonPortrait from './PokemonPortrait.vue';
+import PokemonDetails from './menu/PokemonDetails.vue';
+import ExperienceBar from './ExperienceBar.vue';
+import './adventure.css';
 import BattleOverlay from './battle/BattleOverlay.vue';
+import BattleResultPanel from './battle/BattleResultPanel.vue';
+import { buildBattleResult } from '@/services/battleResult';
 import GameInfoPanels from './menu/GameInfoPanels.vue';
 import ShopPanel from './shop/ShopPanel.vue';
 import TextWithImage from './TextWithImage.vue';
@@ -333,7 +354,7 @@ const MAP_ASSET_ALIASES = Object.freeze({
 const mapAssetContext = require.context(
   '@/assets',
   false,
-  /^\.\/(?:start|etage2?|maison2?|pk[12]|route[1-6]|ville1|centre|cave[12]|gen_(?:route[1-8]|ville[1-5]|arene[1-5]|maison[1-3]|shop1))(?:_f)?\.png$/
+  /^\.\/(?:start|etage2?|maison2?|pk[12]|route[1-6]|ville1|centre|cave[12]|gen_(?:route[1-8]|ville[1-5]|arene[1-5]|maison(?:[1-3]|_ville[1-5]_[12])|shop(?:1|_ville[25]_1)))(?:_f)?\.png$/
 );
 
 function resolveMapAsset(mapName, foreground = false) {
@@ -344,7 +365,13 @@ function resolveMapAsset(mapName, foreground = false) {
 
 export default {
   components: {
-    // navBar
+    BattleResultPanel,
+    DriftRunPanel,
+    RiftSpectatorPanel,
+    DriftGlyph,
+    PokemonPortrait,
+    PokemonDetails,
+    ExperienceBar,
     TextWithImage,
     BattleOverlay,
     GameInfoPanels,
@@ -352,6 +379,7 @@ export default {
   },
   data() {
     return {
+      driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       endSentences: null,
       textImageSequence: [],
       socket: null,
@@ -360,6 +388,7 @@ export default {
       movementIntervalId: null,
       lock: false,
       battle: false,
+      battleResult: null,
       user: {
         nom: '',
         mdp: ''
@@ -382,6 +411,7 @@ export default {
       isBagOpen: false,
       isAppearancePanelOpen: false,
       isTeamPanelOpen: false,
+      selectedPokemonUuid: null,
       activeInfoPanel: '',
       menuDataLoading: false,
       pokedexState: { total: 493, seen: 0, caught: 0, entries: [] },
@@ -486,6 +516,15 @@ export default {
     };
   },
   computed: {
+    isDrift() { return this.$route.name === 'DriftGame'; },
+    emptyBagLabel() {
+      if (this.isDrift && this.driftState && !this.driftState.alive) return 'Ton expédition est terminée : ses objets ont disparu.';
+      return this.tr('emptyBag');
+    },
+    visibleMenuItems() { return this.isDrift ? [...this.menuItems.filter(i => !['pokedex', 'progress', 'save', 'appearance'].includes(i.key)), { key: 'drifts' }] : this.menuItems; },
+    driftPhaseLabel() { return { exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
+    driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
+    selectedPokemon() { return this.teamPokemons.find(pokemon => pokemon.uuid === this.selectedPokemonUuid); },
     locationLabel() {
       return getMapLocationLabel(this.map, this.preferences.language);
     },
@@ -506,6 +545,44 @@ export default {
   },
 
   methods: {
+    dismissBattleResult() {
+      this.releaseAllMovementKeys();
+      this.battleResult = null;
+      this.lock = Boolean(this.battle);
+    },
+    async leaveDrift() { if (await this.driftCommand({ name: 'drift:exit' })) this.$router.replace('/drift'); },
+    async watchDriftMatch(matchId) {
+      this.releaseAllMovementKeys();
+      await this.driftCommand({ name: 'drift:spectate', data: { matchId } });
+    },
+    closeDriftSpectator() {
+      this.driftSpectator = null;
+      this.releaseAllMovementKeys();
+      this.isDriftPanelOpen = true;
+      if (this.socket?.connected) this.driftCommand({ name: 'drift:stopSpectating' });
+    },
+    toggleDriftPanel() {
+      const open = !this.isDriftPanelOpen;
+      this.closeLegacyPanels();
+      this.isMenuOpen = false;
+      this.isDriftPanelOpen = open;
+      if (open) this.releaseAllMovementKeys();
+    },
+    openDriftTeam() { this.isDriftPanelOpen = false; this.handleMenuAction('pokemon'); },
+    async driftCommand({ name, data = {} }) {
+      if (!this.socket?.connected) return false;
+      try {
+        const response = await new Promise((resolve, reject) => this.socket.timeout(6000).emit(name, data, (error, result) => error ? reject(error) : resolve(result)));
+        if (!response?.success) throw new Error(response?.message || 'Action impossible.');
+        return true;
+      } catch (error) { this.showInteractionNotice(error.message); return false; }
+    },
+    openPokemonDetails(pokemon) { this.releaseAllMovementKeys(); this.selectedPokemonUuid = pokemon.uuid; },
+    navigatePokemonDetails(delta) {
+      const index = this.teamPokemons.findIndex(pokemon => pokemon.uuid === this.selectedPokemonUuid);
+      const next = this.teamPokemons[index + delta];
+      if (next) this.selectedPokemonUuid = next.uuid;
+    },
     tr(key, parameters) {
       return translate(this.preferences.language, key, parameters);
     },
@@ -530,7 +607,7 @@ export default {
     applyShopState(payload = {}) {
       if (!payload.success) return;
       if (Array.isArray(payload.catalog)) this.shop.catalog = payload.catalog;
-      if (Array.isArray(payload.items)) this.bagItems = payload.items;
+      this.applyBagItems(payload.items);
       this.shop.money = Number(payload.money) || 0;
       this.shop.loading = false;
       this.shop.error = '';
@@ -580,7 +657,7 @@ export default {
           if (Number.isFinite(Number(payload.money))) this.shop.money = Number(payload.money);
           return;
         }
-        if (Array.isArray(payload.items)) this.bagItems = payload.items;
+        this.applyBagItems(payload.items);
         this.shop.money = Number(payload.money) || 0;
         if (payload.progression) this.progressionState = payload.progression;
         const boughtItem = this.shop.catalog.find((item) => item.key === itemKey);
@@ -762,7 +839,7 @@ export default {
       this.syncPlayerIdleState();
     },
     onMobileDirectionPress(directionKey, event) {
-      if (this.battle) return;
+      if (this.battle || this.battleResult || this.driftSpectator) return;
       if (!Object.prototype.hasOwnProperty.call(this.keysPressed, directionKey)) return;
 
       if (event && event.target && typeof event.target.setPointerCapture === 'function' && event.pointerId !== undefined) {
@@ -792,7 +869,7 @@ export default {
       this.syncPlayerIdleState();
     },
     triggerMobileActionA() {
-      if (this.battle) return;
+      if (this.battle || this.battleResult || this.driftSpectator) return;
       if (this.textImageSequence.length > 0) {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
         return;
@@ -889,10 +966,14 @@ export default {
       return image;
     },
     syncPnjs(payload = {}) {
+      const previous = new Map(this.pnjs.map(pnj => [pnj.name, pnj]));
       const rawPnjs = Array.isArray(payload?.pnjs) ? payload.pnjs : [];
       this.pnjs = rawPnjs
         .map((pnj) => ({
           ...pnj,
+          fromX: payload.walking ? (previous.get(pnj.name)?.x ?? pnj.x) : pnj.x,
+          fromY: payload.walking ? (previous.get(pnj.name)?.y ?? pnj.y) : pnj.y,
+          movedAt: performance.now(),
           x: Number(pnj?.x),
           y: Number(pnj?.y),
           sprite: this.normalizePnjSpriteName(pnj?.sprite || 'perso1.png')
@@ -913,8 +994,19 @@ export default {
         const spriteSheet = this.ensurePnjSpriteSheet(pnj.sprite);
         if (!spriteSheet || !spriteSheet.complete) continue;
 
-        const drawX = pnj.x * 32 + 16 - 32;
-        const drawY = pnj.y * 32 + 16 - 42;
+        const progress = this.preferences.animationsEnabled ? Math.min(1, (performance.now() - pnj.movedAt) / 380) : 1;
+        const moving = progress < 1 && (pnj.fromX !== pnj.x || pnj.fromY !== pnj.y);
+        const px = (pnj.fromX ?? pnj.x) + (pnj.x - (pnj.fromX ?? pnj.x)) * progress;
+        const py = (pnj.fromY ?? pnj.y) + (pnj.y - (pnj.fromY ?? pnj.y)) * progress;
+        const drawX = px * 32 + 16 - 32;
+        const drawY = py * 32 + 16 - 42 - (moving ? Math.abs(Math.sin(progress * Math.PI * 3)) * 2 : 0);
+        if (pnj.spriteFrame) {
+          const frame = pnj.spriteFrame;
+          const width = spriteSheet.naturalWidth / frame.columns;
+          const height = spriteSheet.naturalHeight / frame.rows;
+          context.drawImage(spriteSheet, (frame.index % frame.columns) * width, Math.floor(frame.index / frame.columns) * height, width, height, drawX + 8, drawY + 4, 48, 48);
+          continue;
+        }
         const treatAsSpriteSheet =
           spriteSheet.naturalWidth >= this.spriteWidth * 2 &&
           spriteSheet.naturalHeight >= this.spriteHeight * 2;
@@ -949,7 +1041,21 @@ export default {
         this.socket.emit('setSprite', { sprite: normalizedSprite });
       }
     },
+    applyBagItems(items) {
+      if (!Array.isArray(items)) return;
+      this.bagItems = items;
+      this.bagLoading = false;
+      this.bagError = '';
+      // Socket inventory updates also refresh the carnet, so reopening the bag
+      // never restores a snapshot from before a capture or a purchase.
+      if (this.isDrift && this.driftState) this.$set(this.driftState, 'items', items);
+    },
     async loadBagItems() {
+      if (this.isDrift) {
+        this.bagError = '';
+        this.bagLoading = !this.driftState;
+        return;
+      }
       const userId = this.currentUserId || this.getStoredUserId();
       if (!userId) {
         this.bagError = 'Utilisateur non connecte.';
@@ -995,6 +1101,7 @@ export default {
       return choices;
     },
     async equipHeldItem(pokemon, itemKey) {
+      if (this.isDrift && !this.socket?.connected) return;
       if (!this.teamId || !pokemon?.uuid || this.teamSaving) return;
       this.teamSaving = true;
       this.teamError = '';
@@ -1021,7 +1128,7 @@ export default {
           result = response?.data || {};
         }
         pokemon.heldItem = result.heldItem || null;
-        if (Array.isArray(result.items)) this.bagItems = result.items;
+        this.applyBagItems(result.items);
       } catch (error) {
         this.teamError = error?.response?.data?.message || error?.message || "Impossible d'equiper cet objet.";
         await this.loadTeamPokemons();
@@ -1030,6 +1137,7 @@ export default {
       }
     },
     async loadTeamPokemons() {
+      if (this.isDrift) { this.teamId = "drift"; this.applyTeamPokemons(this.driftState?.team || []); return; }
       const userId = this.currentUserId || this.getStoredUserId();
       if (!userId) {
         this.teamError = 'Utilisateur non connecte.';
@@ -1108,6 +1216,7 @@ export default {
       this.teamDirty = true;
     },
     async saveTeamOrder() {
+      if (this.isDrift) { const ok = await this.driftCommand({ name: "drift:reorder", data: { orderedUuids: this.teamPokemons.map(p => p.uuid) } }); if (ok) { this.teamDirty = false; await this.loadTeamPokemons(); } return; }
       if (this.teamSaving || !this.teamDirty) return;
       if (!this.teamId) {
         this.teamError = "Equipe introuvable.";
@@ -1139,12 +1248,14 @@ export default {
       }
     },
     handleBattleAction(payload = {}) {
+      if (this.battleResult || this.driftSpectator) return;
       if (!this.socket || !this.socket.connected) return;
       const action = typeof payload.action === 'string' ? payload.action : '';
       if (!['attack', 'flee', 'change', 'bag'].includes(action)) return;
-      this.socket.emit('actionResponse', payload);
+      this.socket.emit('actionResponse', this.isDrift ? { ...payload, turnId: this.driftTurnId } : payload);
     },
     menuItemLabel(item) {
+      if (item.key === "drifts") return "Drifts et tournoi";
       if (item.key !== 'save') return this.tr(item.key);
       if (this.saveState.status === 'syncing') return this.tr('saving');
       if (this.saveState.status === 'synced') return `${this.tr('save')} ✓`;
@@ -1160,12 +1271,14 @@ export default {
       this.activeInfoPanel = '';
     },
     async loadPokedexState() {
+      if (this.isDrift) return;
       const userId = this.currentUserId || this.getStoredUserId();
       if (!userId) return;
       const response = await api.get(`/users/${userId}/pokedex`);
       this.pokedexState = response?.data || this.pokedexState;
     },
     async loadProgressionState() {
+      if (this.isDrift) return;
       const userId = this.currentUserId || this.getStoredUserId();
       if (!userId) return;
       const response = await api.get(`/users/${userId}/progress`);
@@ -1192,6 +1305,7 @@ export default {
       }
     },
     async saveGameNow() {
+      if (this.isDrift) return;
       if (!this.socket?.connected) {
         this.saveState = { ...this.saveState, status: 'error', message: 'Serveur déconnecté. Reconnexion en cours…' };
         return;
@@ -1223,6 +1337,7 @@ export default {
     },
     async handleMenuAction(actionKey) {
       this.isMenuOpen = false;
+      if (actionKey === "drifts") { this.closeLegacyPanels(); this.isDriftPanelOpen = true; return; }
 
       if (actionKey === 'pokedex' || actionKey === 'progress') {
         await this.openServerPanel(actionKey);
@@ -1279,6 +1394,7 @@ export default {
       this.closeLegacyPanels();
     },
     handleOutsideMenuClick(event) {
+      if (this.selectedPokemonUuid) return;
       const header = this.$refs.gameHeader;
       const bagPanel = this.$refs.bagPanel;
       const appearancePanel = this.$refs.appearancePanel;
@@ -1324,7 +1440,7 @@ export default {
 
       // Mettre Ã  jour `textImageSequence` avec les sentences reÃ§ues du serveur
       this.textImageSequence = sentences.map(sentence => {
-        return { text: sentence.text, image: images[sentence.imageName] };
+        return { text: sentence.text, image: images[sentence.imageName], portraitFrame: sentence.portraitFrame };
       });
     },
     clearSequence() {
@@ -1335,6 +1451,7 @@ export default {
 
 
     espace() {
+      if (this.battleResult || this.driftSpectator) return;
       console.log('espace');
       if (this.interactionChoice.visible || this.incomingRequest.visible) {
         return;
@@ -1397,6 +1514,9 @@ export default {
       }
     },
     handleKeydown(e) {
+      if (this.battleResult || this.driftSpectator) { this.releaseAllMovementKeys(); return; }
+      if (this.isDriftPanelOpen) { if (e.key === "Escape") this.isDriftPanelOpen = false; return; }
+      if (this.selectedPokemonUuid) return;
       if (e.key === 'Escape') {
         if (this.interactionChoice.visible) {
           this.closeInteractionChoice();
@@ -1414,18 +1534,29 @@ export default {
           this.$refs.battleOverlay?.closePanels();
         }
       }
-      if (Object.prototype.hasOwnProperty.call(this.keysPressed, e.key)) {
+      if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey
+        || e.target?.closest?.('input, textarea, select, [contenteditable="true"]')
+        || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) return;
+      const directionKey = this.getMovementKey(e);
+      if (directionKey) {
+        e.preventDefault();
         const wasMoving = Object.values(this.keysPressed).some(Boolean);
-        this.keysPressed[e.key] = true;
+        this.keysPressed[directionKey] = true;
         if (!wasMoving) this.restartMovementInput();
       }
       if (e.code === 'Space') {
+        e.preventDefault();
         this.espace();
       }
     },
+    getMovementKey(e) {
+      const key = String(e.key || '').toLowerCase();
+      return { z: 'z', w: 'z', arrowup: 'z', q: 'q', a: 'q', arrowleft: 'q', s: 's', arrowdown: 's', d: 'd', arrowright: 'd' }[key] || null;
+    },
     handleKeyup(e) {
-      if (Object.prototype.hasOwnProperty.call(this.keysPressed, e.key)) {
-        this.keysPressed[e.key] = false;
+      const directionKey = this.getMovementKey(e);
+      if (directionKey) {
+        this.keysPressed[directionKey] = false;
         this.syncPlayerIdleState();
       }
     },
@@ -1507,6 +1638,10 @@ export default {
     }
     ,
     updatePlayerPosition() {
+      if (this.battleResult || this.driftSpectator || this.isDriftPanelOpen || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== "exploration")) || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) {
+        this.releaseAllMovementKeys();
+        return;
+      }
       if (!this.socket || !this.socket.connected || !this.socket.id) return;
 
       let action = null;
@@ -1600,6 +1735,7 @@ export default {
 
   },
   mounted() {
+    document.body.classList.add("in-world");
 
 
 
@@ -1621,14 +1757,48 @@ export default {
       return;
     }
 
-    this.socket = createGameSocket(token);
+    this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token);
+    if (this.isDrift) {
+      this.driftClockTimer = setInterval(() => { this.driftClock = Date.now(); }, 250);
+      this.socket.on('drift:bootstrap', payload => { this.driftCatalogue = payload.catalogue; });
+      this.socket.on('drift:spectator', frame => {
+        if (frame.active && !this.battle) {
+          this.driftSpectator = frame;
+          this.releaseAllMovementKeys();
+          this.closeLegacyPanels();
+          this.selectedPokemonUuid = null;
+          this.isMenuOpen = false;
+          this.textImageSequence = [];
+          this.isDriftPanelOpen = false;
+        } else if (frame.reason === 'finished' && this.driftSpectator?.matchId === frame.matchId) {
+          this.driftSpectator = { ...this.driftSpectator, ...frame };
+        } else if (!frame.active) {
+          this.driftSpectator = null;
+          this.isDriftPanelOpen = true;
+        }
+      });
+      this.socket.on('drift:state', state => {
+        const previousPhase = this.driftState?.phase; const previousAlive = this.driftState?.alive;
+        this.driftState = state; this.driftOffset = state.serverNow - Date.now(); this.teamId = 'drift';
+        if (state.phase === 'results' && state.report && this.archivedDriftRunId !== state.report.runId) {
+          this.archivedDriftRunId = state.report.runId;
+          if (!saveDriftReport(userId, state.report)) this.interactionNotice = 'Le souvenir n’a pas pu être enregistré sur cet appareil. Tu peux encore exporter le bilan avant de quitter.';
+        }
+        this.applyBagItems(state.items || []); this.shop.money = state.money;
+        if (!this.teamDirty || this.battle || !state.alive) this.applyTeamPokemons(state.team || []);
+        if ((!state.alive || state.phase !== 'exploration') && (previousPhase !== state.phase || previousAlive !== state.alive)) { this.textImageSequence = []; this.isDriftPanelOpen = true; }
+      });
+      this.socket.on('drift:lobby', lobby => { if (!lobby && this.driftState) this.$router.replace('/drift'); });
+      this.socket.on('drift:replaced', () => { this.socket.disconnect(); this.$router.replace('/'); });
+      this.socket.on('connect', () => this.socket.emit('drift:enter', {}, response => { if (!response?.success) this.$router.replace('/drift'); }));
+    }
 
     this.socket.on("connect", () => {
       console.log(`ConnectÃ© au serveur en tant qu'utilisateur ${userId}`);
       this.saveState = {
         ...this.saveState,
         status: this.saveState.lastSyncedAt ? 'synced' : 'idle',
-        message: 'Connecté : sauvegarde automatique active.'
+        message: this.isDrift ? 'Session Drift en cours.' : 'Connecté : sauvegarde automatique active.'
       };
     });
 
@@ -1786,7 +1956,7 @@ export default {
       const teamFromPayload = Array.isArray(payload?.equipe?.pokemons)
         ? payload.equipe.pokemons
         : [];
-      if (teamFromPayload.length > 0) {
+      if (teamFromPayload.length > 0 || this.isDrift) {
         this.applyTeamPokemons(teamFromPayload);
       }
 
@@ -1802,6 +1972,7 @@ export default {
       if (healedTeam.length > 0) {
         this.applyTeamPokemons(healedTeam);
       }
+      if (this.battleResult) this.battleResult.recoveryMessage = payload.message || 'Ton équipe a été soignée et ramenée en lieu sûr.';
       this.showInteractionNotice(
         payload.message || 'Ton equipe a ete soignee et tu as ete ramene en lieu sur.'
       );
@@ -1833,9 +2004,16 @@ export default {
 
 
 
-    this.socket.on('endbattle', () => {
+    this.socket.on('endbattle', (payload) => {
+      this.battleResult = buildBattleResult(payload, this.isDrift ? 'drift' : 'adventure');
+      this.releaseAllMovementKeys();
+      this.closeLegacyPanels();
+      this.closeInfoPanel();
+      this.closeShop();
+      this.isMenuOpen = false;
+      this.selectedPokemonUuid = null;
       this.battle = false;
-      this.lock = false;
+      this.lock = true;
       this.loadTeamPokemons();
     });
 
@@ -1923,16 +2101,23 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.battle = false;
+      if (this.driftSpectator) { this.driftSpectator = null; this.isDriftPanelOpen = true; }
+      this.$refs.battleOverlay?.stopMusic();
       this.saveState = { ...this.saveState, status: 'error', message: 'Hors ligne : reconnexion automatique…' };
     });
 
 
     this.socket.on('battletrigger', (data) => {
+      this.battleResult = null;
+      this.driftSpectator = null;
+      if (this.isDrift) { this.isDriftPanelOpen = false; this.closeLegacyPanels(); this.textImageSequence = []; }
       this.closeInteractionChoice();
       this.clearIncomingRequest();
       this.closeChatSession(true);
       this.$refs.battleOverlay?.resetBattleUi();
       this.battle = true;
+      this.$nextTick(() => this.$refs.battleOverlay?.startMusic(data?.battleType || 'wild'));
       if (data?.message) this.$nextTick(() => this.$refs.battleOverlay?.showMessage(data.message));
 
     });
@@ -1944,6 +2129,7 @@ export default {
 
 
     this.socket.on('requestAction', (data) => {
+      if (this.isDrift) this.driftTurnId = data?.turnId;
       this.$refs.battleOverlay?.requestAction(data?.message || 'Choisis une action.');
     });
 
@@ -1952,7 +2138,7 @@ export default {
     });
 
     this.socket.on('bagUpdated', (data) => {
-      if (Array.isArray(data?.items)) this.bagItems = data.items;
+      this.applyBagItems(data?.items);
     });
 
     this.socket.on('shopOpened', (data) => {
@@ -1975,6 +2161,8 @@ export default {
       this.$refs.battleOverlay?.updateFieldState(data);
     });
 
+    this.socket.on('battleExperience', data => this.$refs.battleOverlay?.updateExperience(data));
+
     this.socket.on('introAnimation', (data) => {
       this.lock = true;
       this.$refs.battleOverlay?.updateBattleState(data);
@@ -1983,6 +2171,9 @@ export default {
 
 
 
+    // The shared Socket.IO manager may have been created by the Rift hub with
+    // autoConnect disabled. Both worlds connect after registering listeners.
+    this.socket.connect();
     window.addEventListener('keydown', this.handleKeydown);
     window.addEventListener('keyup', this.handleKeyup);
     window.addEventListener('mousedown', this.handleOutsideMenuClick);
@@ -2016,6 +2207,8 @@ export default {
   }
   ,
   beforeDestroy() {
+    document.body.classList.remove("in-world");
+    if (this.driftClockTimer) clearInterval(this.driftClockTimer);
     this.stopMovementLoop();
     this.stopGameLoop();
     window.removeEventListener('keydown', this.handleKeydown);
@@ -2058,7 +2251,7 @@ export default {
   margin: 5px;
 }
 
-body {
+body.in-world {
   overflow: hidden;
 }
 
@@ -2082,11 +2275,10 @@ body {
 }
 
 * {
-  font-family: 'Press Start 2P', cursive;
   box-sizing: border-box;
 }
 
-body {
+body.in-world {
   background-color: black;
 }
 
@@ -2459,16 +2651,29 @@ button:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #f4f4f4;
-  border: 1px solid #2d2d2d;
+  gap: 12px;
+  color: #243c50;
+  border: 1px solid #dacdb4;
   border-radius: 6px;
-  background: #1a1a1a;
+  background: #fffcf3;
   padding: 7px 8px;
 }
 
 .bag-item-name,
 .bag-item-qty {
-  font-size: 9px;
+  font: 13px/1.4 Arial, sans-serif;
+}
+
+.bag-item-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bag-item-qty {
+  flex-shrink: 0;
+  min-width: 44px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .appearance-panel {
@@ -3143,5 +3348,43 @@ button:hover {
     margin-top: 0;
   }
 
+}
+</style>
+
+<style scoped>
+.world-toolbar { display: contents; }
+.game-root.is-drift .world-toolbar { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px 5px; border: 1px solid #7a8174; border-bottom-color: #a18c61; border-radius: 9px 9px 0 0; background: #142b3b; box-shadow: inset 0 0 0 2px #ffffff05; }
+.game-root.is-drift .game-header { height: auto; min-height: 44px; gap: 10px; padding: 0; border: 0; background: transparent; }
+.game-root.is-drift .menu-toggle-btn { flex-shrink: 0; }
+.game-root.is-drift .menu-dropdown { left: 0; z-index: 60; }
+.game-root.is-drift .location-banner { position: static; align-self: flex-end; gap: 6px; max-width: 100%; min-height: 21px; padding: 2px 5px; border: 0; border-radius: 0; box-shadow: none; background: transparent; color: #c5d0c3; font: 11px/1.4 'Trebuchet MS', sans-serif; }
+.game-root.is-drift .location-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-root.is-drift .location-shop-btn { flex-shrink: 0; min-height: 32px; margin: 0; padding: 4px 9px; border: 1px solid #72897d; border-radius: 5px; background: #294c51; color: #f6edcf; font-size: 10px; }
+.drift-hud { display: flex; align-items: center; gap: 14px; min-width: 0; margin-left: auto; color: #fff1cf; font: 12px 'Trebuchet MS', sans-serif; }
+.drift-clock { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.drift-clock > svg { flex-shrink: 0; width: 18px; height: 18px; color: #c5a568; }
+.drift-clock > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.drift-clock small { color: #a9bfb8; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drift-clock strong { font-variant-numeric: tabular-nums; font-size: 18px; letter-spacing: .03em; }
+.drift-hud-toggle { display: flex; align-items: center; gap: 7px; flex-shrink: 0; min-height: 44px; border: 1px solid #ac9b70; border-radius: 7px; padding: 6px 11px; background: #264551; color: #efebd5; cursor: pointer; font: inherit; box-shadow: inset 0 0 0 2px #ffffff05; }
+.drift-hud-toggle > svg { width: 20px; height: 20px; color: #c5a568; }
+.drift-hud-toggle small { margin-left: 5px; color: #a9c7bc; font-size: 10px; }
+.drift-hud-toggle:hover { background: #335865; }
+.drift-hud-toggle:focus-visible { outline: 2px solid #e1bd74; outline-offset: 3px; }
+.bag-mode-note { margin: -5px 0 10px; color: #586c63; font: 11px/1.4 Arial, sans-serif; }
+@media(max-width:550px) {
+  .game-root.is-drift .world-toolbar { padding-inline: 6px; }
+  .game-root.is-drift .game-header { gap: 8px; }
+  .game-root.is-drift .menu-toggle-btn { padding-inline: 10px; font-size: 12px; }
+  .game-root.is-drift .menu-toggle-btn::before { margin-right: 6px; }
+  .game-root.is-drift .location-banner { font-size: 10px; }
+  .drift-hud { gap: 8px; }
+  .drift-clock { gap: 5px; }
+  .drift-clock > svg { display: none; }
+  .drift-clock strong { font-size: 16px; }
+  .drift-clock small { max-width: 88px; font-size: 9px; }
+  .drift-hud-toggle { gap: 5px; padding-inline: 8px; font-size: 11px; }
+  .drift-hud-toggle > svg { width: 17px; height: 17px; }
+  .drift-hud-toggle small { margin-left: 3px; font-size: 10px; }
 }
 </style>

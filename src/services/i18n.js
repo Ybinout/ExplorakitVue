@@ -4,6 +4,10 @@ export const SUPPORTED_LANGUAGES = Object.freeze(['fr', 'en']);
 
 const messages = {
   fr: {
+    dexJournal: "Carnet d'exploration", dexCollection: 'Votre collection', dexSearch: 'Nom ou numéro…',
+    dexRegion: 'Région', dexAllRegions: 'Toutes régions', dexFilter: 'État de découverte', dexNumberOrder: 'N° national',
+    dexUndiscovered: 'À découvrir', dexEmptyHelp: 'Essayez un autre nom, numéro ou filtre.', dexReset: 'Effacer les filtres',
+    dexResults: '{count} entrées', dexGenerations: 'Générations',
     close: 'Fermer', loading: 'Chargement…', empty: 'Aucun résultat.',
     menu: 'Menu', pokedex: 'Pokédex', progress: 'Quêtes et badges', pokemon: 'Pokémon', appearance: 'Apparence',
     bag: 'Sac', save: 'Sauvegarder', options: 'Options', openShop: 'Acheter', seen: 'vus', caughtPlural: 'capturés', species: 'espèces',
@@ -32,6 +36,10 @@ const messages = {
     ballDrops: 'La Ball retombe…', captured: '{pokemon} est capturé !', escaped: "{pokemon} s'est échappé !"
   },
   en: {
+    dexJournal: 'Field journal', dexCollection: 'Your collection', dexSearch: 'Name or number…',
+    dexRegion: 'Region', dexAllRegions: 'All regions', dexFilter: 'Discovery status', dexNumberOrder: 'National no.',
+    dexUndiscovered: 'Undiscovered', dexEmptyHelp: 'Try another name, number or filter.', dexReset: 'Clear filters',
+    dexResults: '{count} entries', dexGenerations: 'Generations',
     close: 'Close', loading: 'Loading…', empty: 'No results.',
     menu: 'Menu', pokedex: 'Pokédex', progress: 'Quests and badges', pokemon: 'Pokémon', appearance: 'Appearance',
     bag: 'Bag', save: 'Save', options: 'Options', openShop: 'Shop', seen: 'seen', caughtPlural: 'caught', species: 'species',
