@@ -53,7 +53,7 @@
             <div class="team-intro"><div><span class="section-caption">TES COMPAGNONS</span><h3>{{ state.team.length }} Pokémon à protéger</h3></div><button v-if="state.alive" class="secondary-button" @click="$emit('team')">Fiches & ordre <span aria-hidden="true">↗</span></button></div>
             <p class="quiet team-note">Soigne tes compagnons avant de repartir : chaque K.O. est définitif.</p>
             <div class="companion-grid"><article v-for="pokemon in state.team" :key="pokemon.uuid" class="companion">
-              <div class="companion-art"><pokemon-portrait :src="`/img/pokemon/front/${pokemon.data.id}.png`" :alt="pokemon.data.name.french || pokemon.name" /></div>
+              <div class="companion-art"><pokemon-portrait :src="`${$assetBase}img/pokemon/front/${pokemon.data.id}.png`" :alt="pokemon.data.name.french || pokemon.name" /></div>
               <div class="companion-info"><div class="companion-name"><h3>{{ pokemon.data.name.french || pokemon.name }}</h3><span>N. {{ pokemon.level }}</span></div><div class="hp-label"><span>PV</span><strong>{{ pokemon.currentHp }} / {{ pokemon.maxHp }}</strong></div><div class="hp-track" :class="{ low: hpPercent(pokemon) < 30 }"><i :style="{ width: hpPercent(pokemon) + '%' }"></i></div><div v-if="state.phase === 'exploration'" class="potion-actions"><button v-for="item in potions" :key="item.key" :disabled="pokemon.currentHp >= pokemon.maxHp" @click="command('drift:heal', { pokemonUuid: pokemon.uuid, itemKey: item.key })">{{ item.name }} <small>×{{ item.quantity }}</small></button><span v-if="!potions.length" class="quiet">Plus de potions dans le sac.</span></div></div>
             </article></div>
           </template>

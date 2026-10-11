@@ -7,33 +7,15 @@
       </header>
 
       <section class="drift-hero" aria-labelledby="drift-title">
-        <div class="hero-title"><p class="eyebrow">TON PROCHAIN DÉFI COMMENCE ICI</p>
-          <h1 id="drift-title">Rift<span>Mon</span><i class="title-spark" aria-hidden="true">✦</i></h1>
-          <p class="hero-copy">Pars à l’aventure.<br /><strong>Reviens en légende.</strong></p>
-          <div class="rule-ribbon"><span><drift-glyph name="players" /> 2–16 dresseurs</span><span><drift-glyph name="clock" /> Jusqu’à 5 h</span><span><drift-glyph name="drift" /> 5 Drifts</span></div>
+        <div class="hero-title">
+          <p class="eyebrow">LE CAMP DE BASE</p>
+          <h1 id="drift-title">Rift<span>Mon</span></h1>
+          <p class="hero-copy">Une équipe, une vie. À toi de jouer.</p>
         </div>
-        <div class="companion-art" aria-hidden="true">
-          <div class="companion-orbit"><drift-glyph name="compass" /></div>
-          <span class="orbit-star star-one">✦</span><span class="orbit-star star-two">✧</span>
-          <img class="companion companion-left" src="/img/pokemon/front/280.png" alt="" />
-          <img class="companion companion-right" src="/img/pokemon/front/25.png" alt="" />
-          <img class="companion companion-center" src="/img/pokemon/front/133.png" alt="" />
-          <span class="companion-caption">Ton prochain compagnon t’attend</span>
-        </div>
+        <img class="camp-companion" :src="$assetBase + 'img/pokemon/front/133.png'" alt="" />
       </section>
-
-      <section class="profile-strip" aria-label="Ton palmarès RiftMon" data-rift-profile :aria-busy="profileLoading">
-        <div class="profile-identity"><span class="trainer-token" aria-hidden="true"><i class="trainer-sprite" /></span><div><small>TON CARNET DE DRESSEUR</small><strong>{{ username }}</strong></div></div>
-        <dl class="profile-stats">
-          <div><dt><drift-glyph name="trophy" /> Victoires</dt><dd data-rift-wins>{{ profileValue('wins') }}</dd></div>
-          <div><dt><drift-glyph name="defense" /> Défaites</dt><dd data-rift-losses>{{ profileValue('losses') }}</dd></div>
-          <div><dt><drift-glyph name="compass" /> Parties</dt><dd data-rift-games>{{ profileValue('gamesStarted') }}</dd></div>
-          <div class="coin-stat"><dt><drift-glyph name="coin" /> Pièces</dt><dd data-rift-coins>{{ profileValue('coins') }}</dd></div>
-        </dl>
-        <button class="shop-soon" disabled data-rift-shop><drift-glyph name="coin" /><span>Boutique<small>Bientôt</small></span></button>
-      </section>
-      <p v-if="profileError" class="profile-error" role="status">Palmarès indisponible. <button :disabled="profileLoading" @click="loadProfile">Actualiser</button></p>
-      <p v-else class="reward-note"><drift-glyph name="coin" /> Le vainqueur gagne 2,5 pièces par dresseur au départ et par minute d’exploration.</p>
+      <button class="solo-adventure" data-rift-solo :disabled="busy" @click="playAdventure"><span class="solo-icon"><drift-glyph name="progress" /></span><span><strong>Jouer une aventure en solo</strong><span>Avance à ton rythme dans un monde partagé. Multijoueur facultatif.</span></span><b aria-hidden="true">→</b></button>
+      <div v-if="!lobby" class="play-intro"><h2>Ou jouer une partie RiftMon</h2><p>Rejoins des dresseurs ou prépare une partie pour tes amis.</p></div>
 
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <template v-if="connectionFailed">
@@ -42,12 +24,12 @@
       </template>
 
       <div v-if="!lobby" class="hub-tabs" aria-label="Préparer une partie">
-        <button :aria-pressed="hubTab === 'browse'" data-rift-browse-tab @click="hubTab = 'browse'"><drift-glyph name="search" /> Trouver un Rift</button>
-        <button :aria-pressed="hubTab === 'create'" data-rift-create-tab @click="hubTab = 'create'"><drift-glyph name="compass" /> Créer un Rift</button>
+        <button :aria-pressed="hubTab === 'browse'" data-rift-browse-tab @click="hubTab = 'browse'"><drift-glyph name="search" /> Rejoindre une partie</button>
+        <button :aria-pressed="hubTab === 'create'" data-rift-create-tab @click="hubTab = 'create'"><drift-glyph name="compass" /> Créer une partie</button>
       </div>
       <div class="camp-layout" :class="{ 'has-lobby': lobby }">
         <section class="camp-card lobby-card" :class="{ 'mobile-hidden': !lobby && hubTab !== 'create' }" aria-labelledby="camp-title">
-          <div class="section-heading"><span class="section-emblem"><drift-glyph :name="lobby ? 'team' : 'compass'" /></span><div><p class="eyebrow">{{ lobby ? 'AU POINT DE RENDEZ-VOUS' : 'LE DÉPART T’APPARTIENT' }}</p><h2 id="camp-title">{{ lobby ? 'Ton groupe d’aventure' : 'Créer un Rift' }}</h2></div><span v-if="lobby" class="room-count">{{ lobby.players.length }}/{{ lobby.capacity }}</span></div>
+          <div class="section-heading"><span class="section-emblem"><drift-glyph :name="lobby ? 'team' : 'compass'" /></span><div><p class="eyebrow">{{ lobby ? 'AU POINT DE RENDEZ-VOUS' : 'LE DÉPART T’APPARTIENT' }}</p><h2 id="camp-title">{{ lobby ? 'Ton groupe d’aventure' : 'Ta prochaine partie' }}</h2></div><span v-if="lobby" class="room-count">{{ lobby.players.length }}/{{ lobby.capacity }}</span></div>
 
           <template v-if="!lobby">
             <form @submit.prevent="createLobby">
@@ -58,22 +40,18 @@
               <fieldset :disabled="busy || !connected || !bootstrapped"><legend><drift-glyph name="clock" /> Le temps d’exploration</legend>
                 <div class="choice-row duration-row"><button v-for="minutes in durations" :key="minutes" type="button" :data-rift-duration="minutes" :class="{ selected: durationMinutes === minutes }" :aria-pressed="durationMinutes === minutes" @click="durationMinutes = minutes">{{ durationLabel(minutes) }}</button></div>
               </fieldset>
-              <div class="reward-preview" data-rift-reward-preview aria-live="polite"><span class="reward-seal" aria-hidden="true"><drift-glyph name="coin" /></span><div><small>PRIME DU VAINQUEUR</small><strong>Jusqu’à {{ rewardEstimate.toLocaleString('fr-FR') }} pièces</strong><span>Maximum pour {{ rewardParticipants }} dresseurs · {{ durationLabel(rewardMinutes) }}</span><p>Selon l’exploration réellement jouée : fin anticipée, prime au prorata. Le tournoi ne compte pas.</p></div></div>
+              <details class="reward-details" data-rift-reward-preview><summary>Récompense : jusqu’à {{ rewardEstimate.toLocaleString('fr-FR') }} pièces <span aria-hidden="true">+</span></summary><p>2,5 pièces par dresseur et par minute d’exploration pour le vainqueur. Estimation pour {{ rewardParticipants }} joueurs, {{ durationLabel(rewardMinutes) }}. Une fin anticipée réduit la prime ; le tournoi ne compte pas.</p></details>
               <p class="quiet creation-hint">{{ visibility === 'public' ? 'Ton salon apparaîtra dans les Rifts ouverts.' : 'Seuls les joueurs avec ton code peuvent rejoindre.' }}</p>
               <button class="gold-button" data-rift-create :disabled="busy || !connected || !bootstrapped"><drift-glyph name="compass" /> Créer mon expédition <span class="button-arrow" aria-hidden="true">→</span></button>
             </form>
-            <form class="join-form" @submit.prevent="joinLobby">
-              <label for="drift-code">Un ami t’attend déjà ?</label>
-              <div><input id="drift-code" v-model.trim="inviteCode" maxlength="8" minlength="8" pattern="[a-fA-F0-9]{8}" required autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="Code du salon" />
-                <button class="subtle-button" :disabled="busy || !connected || !bootstrapped">Rejoindre</button></div>
-            </form>
+
           </template>
 
           <template v-else>
             <div class="invite"><div><small>{{ lobby.visibility === 'public' ? 'RIFT PUBLIC · INVITE TES RIVAUX' : 'RIFT PRIVÉ · INVITE TES RIVAUX' }}</small><strong>{{ lobby.code }}</strong></div><button class="subtle-button" @click="copyCode">{{ copied ? 'Copié !' : 'Copier le code' }}</button></div>
             <div class="lobby-rules"><label><span><drift-glyph name="players" /> Dresseurs</span><select :value="lobby.capacity" :disabled="!isHost || busy || !connected" @change="configure('capacity', Number($event.target.value))"><option v-for="size in capacities" :key="size" :value="size" :disabled="size < lobby.players.length">{{ size }} joueurs</option></select></label>
               <label><span><drift-glyph name="clock" /> Exploration</span><select :value="lobby.durationMinutes" :disabled="!isHost || busy || !connected" @change="configure('durationMinutes', Number($event.target.value))"><option v-for="minutes in durations" :key="minutes" :value="minutes">{{ durationLabel(minutes) }}</option></select></label></div>
-            <div class="reward-preview" data-rift-reward-preview aria-live="polite"><span class="reward-seal" aria-hidden="true"><drift-glyph name="coin" /></span><div><small>PRIME DU VAINQUEUR</small><strong>Jusqu’à {{ rewardEstimate.toLocaleString('fr-FR') }} pièces</strong><span>Maximum pour {{ rewardParticipants }} dresseurs · {{ durationLabel(rewardMinutes) }}</span><p>Selon l’exploration réellement jouée : fin anticipée, prime au prorata. Le tournoi ne compte pas.</p></div></div>
+            <details class="reward-details" data-rift-reward-preview><summary>Récompense : jusqu’à {{ rewardEstimate.toLocaleString('fr-FR') }} pièces <span aria-hidden="true">+</span></summary><p>2,5 pièces par dresseur et par minute d’exploration pour le vainqueur. Estimation pour {{ rewardParticipants }} joueurs, {{ durationLabel(rewardMinutes) }}. Une fin anticipée réduit la prime ; le tournoi ne compte pas.</p></details>
             <label class="room-visibility">Visibilité du salon<select :value="lobby.visibility || 'private'" :disabled="!isHost || busy || !connected" @change="configure('visibility', $event.target.value)"><option value="public">Public · dans les Rifts ouverts</option><option value="private">Privé · sur invitation</option></select></label>
             <p class="quiet room-hint">{{ isHost ? 'Tes règles, votre aventure. Un changement annule les prêts.' : 'Le créateur choisit les règles de l’expédition.' }}</p>
             <ul class="players" :class="{ 'large-party': lobby.capacity > 4 }" aria-label="Dresseurs du salon">
@@ -88,29 +66,48 @@
         </section>
 
         <section v-if="!lobby" class="camp-card room-browser" :class="{ 'mobile-hidden': hubTab !== 'browse' }" aria-labelledby="rooms-title" data-rift-browser>
-          <div class="section-heading"><span class="section-emblem"><drift-glyph name="search" /></span><div><p class="eyebrow">IL RESTE UNE PLACE POUR TOI</p><h2 id="rooms-title">Rifts ouverts</h2></div><button class="refresh-rooms" :disabled="!connected || listLoading" aria-label="Actualiser les Rifts ouverts" @click="refreshLobbies"><drift-glyph name="counter" /></button></div>
-          <label class="room-search" for="rift-search"><span class="sr-only">Chercher un salon par dresseur ou code</span><drift-glyph name="search" /><input id="rift-search" v-model.trim="lobbySearch" type="search" placeholder="Un dresseur, un code…" autocomplete="off" /></label>
+          <div class="section-heading"><span class="section-emblem"><drift-glyph name="search" /></span><div><p class="eyebrow">IL RESTE UNE PLACE POUR TOI</p><h2 id="rooms-title">Parties disponibles</h2></div><button class="refresh-rooms" :disabled="!connected || listLoading" aria-label="Actualiser les Rifts ouverts" @click="refreshLobbies"><drift-glyph name="counter" /></button></div>
+          <label v-if="publicLobbies.length || lobbySearch" class="room-search" for="rift-search"><span class="sr-only">Chercher un salon par dresseur ou code</span><drift-glyph name="search" /><input id="rift-search" v-model.trim="lobbySearch" type="search" placeholder="Un dresseur, un code…" autocomplete="off" /></label>
           <p class="quiet live-rooms" role="status"><i :class="{ online: connected && listLoaded }" />{{ listLoading ? 'À la recherche de rivaux…' : listLoaded ? `${filteredLobbies.length} salon${filteredLobbies.length > 1 ? 's' : ''} disponible${filteredLobbies.length > 1 ? 's' : ''}` : 'Connexion aux Rifts…' }}</p>
           <p v-if="listError" class="room-list-error" role="alert">{{ listError }}</p>
           <ul v-else-if="filteredLobbies.length" class="open-rooms" aria-label="Salons publics disponibles">
             <li v-for="room in filteredLobbies" :key="room.code" :data-rift-room="room.code"><span class="room-icon" aria-hidden="true"><drift-glyph name="compass" /></span><div class="room-info"><strong>Le Rift de {{ room.hostName }}</strong><span><drift-glyph name="players" /> {{ room.playerCount }}/{{ room.capacity }} <i>·</i> <drift-glyph name="clock" /> {{ durationLabel(room.durationMinutes) }}</span><small>{{ room.code }}</small></div><button class="subtle-button" :disabled="busy || !connected || room.playerCount >= room.capacity" @click="joinPublicLobby(room.code)">Rejoindre <span aria-hidden="true">→</span></button></li>
           </ul>
-          <div v-else-if="listLoaded && !listLoading" class="rooms-empty"><drift-glyph name="compass" /><strong>{{ lobbySearch ? 'Aucun Rift ne correspond.' : 'Le prochain départ attend son chef.' }}</strong><p>{{ lobbySearch ? 'Essaie un autre nom, ou rejoins un ami avec son code.' : 'Crée ton salon pour réunir les premiers dresseurs.' }}</p><button class="subtle-button" @click="focusCreate">Créer un Rift</button></div>
-          <div class="public-rule"><drift-glyph name="trophy" /><p>Explore à ton rythme, puis affronte les survivants dans un tournoi tiré au sort.</p></div>
+          <div v-else-if="listLoaded && !listLoading" class="rooms-empty"><drift-glyph name="compass" /><strong>{{ lobbySearch ? 'Aucun Rift ne correspond.' : 'Le camp est calme pour le moment.' }}</strong><p>{{ lobbySearch ? 'Essaie un autre nom, ou rejoins un ami avec son code.' : 'Lance une partie et invite tes amis à te rejoindre.' }}</p><button class="gold-button" @click="focusCreate">Créer une partie</button></div>
+            <form class="join-form" @submit.prevent="joinLobby">
+              <label for="drift-code">Tu as un code d’invitation ?</label>
+              <div><input id="drift-code" v-model.trim="inviteCode" maxlength="8" minlength="8" pattern="[a-fA-F0-9]{8}" required autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="Code du salon" />
+                <button class="subtle-button" :disabled="busy || !connected || !bootstrapped">Rejoindre</button></div>
+            </form>
         </section>
-        <aside v-else class="expedition-guide" aria-labelledby="guide-title">
+        <details v-else class="expedition-guide"><summary>Comment se déroule une partie ?</summary>
           <div class="guide-heading"><p class="eyebrow">UNE ÉQUIPE · UNE VIE</p><h2 id="guide-title">Écris ta propre légende.</h2><p>Le même monde. Un nouveau départ.<br />Et un seul vainqueur.</p></div>
           <ol class="adventure-steps"><li><span class="step-symbol"><drift-glyph name="compass" /></span><div><small>01 · L’EXPLORATION</small><strong>Un compagnon, mille possibles.</strong><p>Un petit Pokémon aléatoire au départ. Capture, entraîne et soigne ton équipe.</p></div></li>
             <li><span class="step-symbol"><drift-glyph name="drift" /></span><div><small>02 · LES DRIFTS</small><strong>Forge ta stratégie.</strong><p>Gagne des Drifts en combat et équipe jusqu’à cinq pouvoirs pour prendre l’avantage.</p></div></li>
             <li><span class="step-symbol"><drift-glyph name="trophy" /></span><div><small>03 · LE DERNIER DUEL</small><strong>Fais face aux survivants.</strong><p>Un tirage au sort compose le tournoi. En cas d’exemption, regarde les duels en attendant ton tour.</p></div></li></ol>
           <div class="survival-note"><span aria-hidden="true">!</span><p><strong>Chaque K.O. est définitif.</strong> Même au tournoi. Sans Pokémon vivant, l’expédition s’arrête pour toi.</p></div>
           <p class="adventure-note">Une parenthèse entre amis. Ton aventure principale conserve son équipe et ses objets.</p>
-        </aside>
+        </details>
       </div>
 
+
+      <div class="camp-extras">
+        <details class="profile-details"><summary><span>Mon palmarès</span><span aria-hidden="true">+</span></summary>
+      <section class="profile-strip" aria-label="Ton palmarès RiftMon" data-rift-profile :aria-busy="profileLoading">
+        <div class="profile-identity"><span class="trainer-token" aria-hidden="true"><i class="trainer-sprite" /></span><div><small>TON CARNET DE DRESSEUR</small><strong>{{ username }}</strong></div></div>
+        <dl class="profile-stats">
+          <div><dt><drift-glyph name="trophy" /> Victoires</dt><dd data-rift-wins>{{ profileValue('wins') }}</dd></div>
+          <div><dt><drift-glyph name="defense" /> Défaites</dt><dd data-rift-losses>{{ profileValue('losses') }}</dd></div>
+          <div><dt><drift-glyph name="compass" /> Parties</dt><dd data-rift-games>{{ profileValue('gamesStarted') }}</dd></div>
+          <div class="coin-stat"><dt><drift-glyph name="coin" /> Pièces</dt><dd data-rift-coins>{{ profileValue('coins') }}</dd></div>
+        </dl>
+
+      </section>
+      <p v-if="profileError" class="profile-error" role="status">Palmarès indisponible. <button :disabled="profileLoading" @click="loadProfile">Actualiser</button></p>
+        </details>
       <section class="camp-card history" data-drift-history aria-labelledby="history-title">
         <details>
-          <summary data-drift-history-toggle><span class="section-emblem"><drift-glyph name="trophy" /></span><div><p class="eyebrow">LES SOUVENIRS DU VOYAGE</p><h2 id="history-title">Tes expéditions</h2></div><span class="history-count">{{ reports.length }} / 10</span></summary>
+          <summary data-drift-history-toggle><span class="section-emblem"><drift-glyph name="trophy" /></span><div><h2 id="history-title">Tes expéditions</h2></div><span class="history-count">{{ reports.length }} / 10</span></summary>
           <p class="quiet history-note">Jusqu’à dix bilans enregistrés pour ton compte sur cet appareil, selon l’espace disponible. Exporte tes favoris depuis leur bilan pour les conserver.</p>
           <p v-if="!reports.length" class="quiet">Ton prochain bilan complet apparaîtra ici à la fin de la partie.</p>
           <div v-else class="history-list" aria-label="Choisir une expédition passée">
@@ -124,7 +121,7 @@
       </section>
 
       <section class="camp-card catalogue" aria-labelledby="catalogue-title">
-        <details @toggle="catalogueOpen = $event.target.open"><summary><span class="section-emblem"><drift-glyph name="drift" /></span><div><p class="eyebrow">LE CARNET DES POUVOIRS</p><h2 id="catalogue-title">Les {{ definitions.length || 59 }} Drifts</h2></div><span class="catalogue-toggle">{{ catalogueOpen ? 'Refermer' : 'Découvrir' }} <b aria-hidden="true">{{ catalogueOpen ? '−' : '+' }}</b></span></summary>
+        <details @toggle="catalogueOpen = $event.target.open"><summary><span class="section-emblem"><drift-glyph name="drift" /></span><div><h2 id="catalogue-title">Les {{ definitions.length || 59 }} Drifts</h2></div><span class="catalogue-toggle">{{ catalogueOpen ? 'Refermer' : 'Découvrir' }} <b aria-hidden="true">{{ catalogueOpen ? '−' : '+' }}</b></span></summary>
           <div class="catalogue-body"><div class="catalogue-controls"><label><span><drift-glyph name="search" /> Trouver un Drift</span><input v-model="search" type="search" placeholder="Nom, effet, catégorie…" /></label>
               <label><span><drift-glyph name="drift" /> Rareté</span><select v-model="rarity"><option v-for="tier in rarities" :key="tier.key" :value="tier.key">{{ tier.name }}</option></select></label></div>
             <p class="quiet catalogue-caption">{{ filteredDefinitions.length }} pouvoirs · Les effets d’XP et d’économie restent réservés à l’exploration.</p>
@@ -136,7 +133,8 @@
           </div>
         </details>
       </section>
-      <button class="solo-adventure" data-rift-solo :disabled="busy" @click="playAdventure"><span class="solo-icon"><drift-glyph name="progress" /></span><span><small>TON VOYAGE CONTINUE</small><strong>Jouer en solo · Aventure</strong><span>Retrouve ton équipe et ton histoire.</span></span><b aria-hidden="true">→</b></button>
+
+      </div>
       <footer class="drift-footer"><span>RIFTMON</span><span>Le voyage dure une partie. Le souvenir reste.</span></footer>
     </div>
   </main>
@@ -313,4 +311,102 @@ fieldset { padding: 0; border: 0; margin: 0 0 18px; min-width: 0; }legend, label
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }
 .reward-preview { display: flex; align-items: flex-start; gap: 12px; margin: 17px 0; padding: 15px 14px; border: 1px solid #a4bcd07d; border-radius: 10px 3px 10px 3px; background: linear-gradient(110deg, #244d6c, #163752); box-shadow: inset 3px 0 #bda169; }.reward-seal { display: grid; place-items: center; flex: 0 0 32px; height: 36px; margin-top: 4px; color: #e1c487; }.reward-seal .drift-glyph-icon { width: 26px; height: 26px; }.reward-preview > div { min-width: 0; }.reward-preview small { display: block; color: #d0ba8e; font-size: 8px; letter-spacing: .09em; }.reward-preview strong { display: block; margin: 4px 0; color: #fbf0d8; font: 500 23px/1.2 Georgia, serif; }.reward-preview span:not(.reward-seal) { display: block; color: #c1d8e9; font-size: 10px; }.reward-preview p { margin: 9px 0 0; color: #aac5d8; font-size: 10px; line-height: 1.6; }
 @media (max-width: 370px) { .reward-preview { gap: 8px; padding: 13px 10px; }.reward-seal { flex-basis: 25px; }.reward-preview strong { font-size: 21px; } }
+
+/* Camp: one decision at a time, with optional details below the play area. */
+.drift-page { background: radial-gradient(ellipse at 85% 0%, #254b6966, transparent 55%), #0c2033; padding: 20px 24px 32px; font-size: 15px; }
+.drift-shell { max-width: 780px; }
+.drift-nav { min-height: 42px; padding-bottom: 12px; border-bottom: 1px solid #ffffff12; }
+.camp-label { font-size: 10px; letter-spacing: .08em; }
+.account-nav { flex-shrink: 0; }
+.connection, .connection > span { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.account-button { font-size: 12px; min-height: 44px; }
+.drift-hero { display: flex; justify-content: space-between; padding: 28px 0 26px; gap: 16px; }
+.hero-title h1 { font-size: 58px; line-height: 1; }
+.hero-title > .eyebrow { font-size: 10px; margin-bottom: 10px; letter-spacing: .12em; }
+.hero-copy { font-size: 15px; margin: 12px 0 0; color: #b4c8d9; }
+.camp-companion { width: 120px; height: 120px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 8px 15px #0005); }
+.play-intro { margin: 0 0 20px; }
+.play-intro h2 { font: 600 25px/1.3 'Trebuchet MS', sans-serif; }
+.play-intro p { color: #a9c0d2; margin: 7px 0 0; font-size: 14px; }
+.hub-tabs { display: flex; gap: 4px; margin: 0 0 16px; padding: 5px; border: 1px solid #48647b; border-radius: 12px; background: #081a2a; }
+.hub-tabs button { display: flex; align-items: center; justify-content: center; gap: 9px; flex: 1; min-height: 48px; border: 0; border-radius: 8px; color: #a9c2d7; background: transparent; font-size: 15px; font-weight: 700; }
+.hub-tabs .drift-glyph-icon { width: 19px; height: 19px; }
+.hub-tabs button[aria-pressed="true"] { background: #315c7c; color: #fff; box-shadow: none; }
+.camp-layout, .camp-layout.has-lobby { display: flex; flex-direction: column; gap: 16px; }
+.camp-layout > * { width: 100%; }
+.camp-layout .mobile-hidden { display: none; }
+.camp-card { padding: 24px; border: 1px solid #49667c80; border-radius: 14px; background: #142e44; box-shadow: none; }
+.section-heading .eyebrow { display: none; }
+.section-heading .section-emblem { display: none; }
+.camp-card .section-heading h2 { font: 600 20px/1.3 'Trebuchet MS', sans-serif; }
+.section-heading, .room-browser .section-heading { margin-bottom: 16px; }
+.rooms-empty { border: 0; background: #10273b; padding: 22px 16px; }
+.rooms-empty > .drift-glyph-icon { width: 30px; height: 30px; margin-bottom: 12px; }
+.rooms-empty strong { font: 600 18px/1.4 'Trebuchet MS', sans-serif; }
+.rooms-empty p { font-size: 14px; max-width: 420px; }
+.rooms-empty .gold-button { width: auto; min-width: 210px; margin-top: 6px; }
+.live-rooms { font-size: 12px; }
+.join-form { margin-top: 22px; padding-top: 20px; }
+.join-form label { font-size: 14px; color: #bdcfdd; margin-bottom: 10px; }
+.join-form > div { max-width: 470px; }
+.creation-rules { grid-template-columns: 1fr 1fr; }
+.creation-rules label { display: block; font-size: 14px; }
+.creation-rules select { display: block; max-width: none; width: 100%; margin-top: 8px; font-size: 15px; }
+legend { font-size: 14px; }
+.duration-row button { flex: 1 0 70px; font-size: 14px; }
+.reward-details { margin: 12px 0 18px; border-top: 1px solid #ffffff18; border-bottom: 1px solid #ffffff18; }
+.reward-details summary { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0; color: #b9ccdb; font-size: 13px; cursor: pointer; list-style: none; }
+.reward-details p { color: #b4c8d9; font-size: 13px; margin: 0 0 16px; line-height: 1.7; }
+.creation-hint { font-size: 12px; }
+.gold-button, .subtle-button { font-size: 14px; min-height: 46px; }
+.solo-adventure { margin: 0 0 28px; padding: 22px; border: 1px solid #84baa3; border-radius: 14px; background: linear-gradient(115deg, #285047, #193c3f); gap: 16px; box-shadow: 0 6px 24px #0002; }
+.solo-adventure .solo-icon { display: grid; border: 0; background: #173b45; width: 42px; flex-basis: 42px; height: 42px; border-radius: 10px; }
+.solo-adventure strong { font: 700 20px/1.4 'Trebuchet MS', sans-serif; }
+.solo-adventure > span > span { font-size: 14px; color: #c6e0d6; line-height: 1.6; }
+.camp-extras { margin-top: 14px; }
+.camp-extras > .camp-card, .profile-details { padding: 0; margin: 0; border: 0; border-bottom: 1px solid #ffffff14; border-radius: 0; background: transparent; box-shadow: none; }
+.camp-extras summary, .profile-details > summary { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 12px 2px; list-style: none; color: #b1c6d7; cursor: pointer; }
+.camp-extras summary h2 { font: 400 14px/1.4 'Trebuchet MS', sans-serif; }
+.camp-extras summary .section-emblem { display: none; }
+.profile-details > summary { justify-content: space-between; font-size: 14px; }
+.catalogue-toggle { font-size: 12px; }
+.catalogue-toggle b { border: 0; width: auto; height: auto; font-size: 18px; }
+.profile-strip { margin: 0 0 12px; padding: 18px; border-radius: 10px; }
+.profile-identity { width: 150px; }
+.catalogue-body { padding: 0 0 18px; }
+.history-note { margin-top: 0; }
+.expedition-guide { padding: 14px 20px; border: 1px solid #ffffff18; border-radius: 10px; }
+.expedition-guide > summary { cursor: pointer; color: #b5cbda; font-size: 14px; }
+.expedition-guide .guide-heading { padding-top: 20px; }
+.drift-footer { margin-top: 20px; font-size: 10px; color: #93aabd; }
+@media (max-width: 680px) {
+ .drift-page { padding: 12px 16px 24px; }
+ .camp-label { font-size: 8px; }
+ .camp-label .drift-glyph-icon { display: none; }
+ .account-nav { gap: 8px; }
+ .connection, .connection > span { max-width: 100px; font-size: 12px; }
+ .account-button { font-size: 11px; }
+ .drift-hero { padding: 24px 0; }
+ .hero-title h1 { font-size: 45px; }
+ .hero-title > .eyebrow { font-size: 9px; }
+ .hero-copy { font-size: 13px; max-width: 210px; }
+ .camp-companion { width: 82px; height: 96px; }
+ .play-intro h2 { font-size: 22px; }
+ .play-intro p { font-size: 13px; }
+ .hub-tabs button { font-size: 13px; gap: 6px; }
+ .hub-tabs .drift-glyph-icon { display: none; }
+ .camp-card { padding: 18px; }
+ .camp-card .section-heading h2 { font-size: 18px; }
+ .rooms-empty { padding: 20px 10px; }
+ .rooms-empty strong { font-size: 16px; }
+ .rooms-empty p { font-size: 13px; }
+ .creation-rules { grid-template-columns: 1fr; gap: 16px; }
+ .profile-strip { display: flex; flex-wrap: wrap; }
+ .profile-stats { flex-basis: 100%; }
+ .solo-adventure { padding: 18px 14px; gap: 10px; }
+ .solo-adventure strong { font-size: 17px; }
+ .solo-adventure > span > span { font-size: 12px; }
+ .drift-footer > span:last-child { display: none; }
+}
+
 </style>

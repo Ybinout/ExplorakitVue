@@ -7,7 +7,7 @@
       </header>
       <div class="companion-body">
         <div class="companion-identity">
-          <div class="companion-art"><span class="companion-number">N° {{ String(pokemon.spriteId).padStart(3, '0') }}</span><pokemon-portrait :src="`/img/pokemon/front/${pokemon.spriteId}.png`" :alt="pokemon.truename || pokemon.name" /><span class="companion-level">Niv. {{ pokemon.level }}</span></div>
+          <div class="companion-art"><span class="companion-number">N° {{ String(pokemon.spriteId).padStart(3, '0') }}</span><pokemon-portrait :src="`${$assetBase}img/pokemon/front/${pokemon.spriteId}.png`" :alt="pokemon.truename || pokemon.name" /><span class="companion-level">Niv. {{ pokemon.level }}</span></div>
           <div class="companion-types"><span v-for="type in pokemon.data.type" :key="type">{{ typeNames[type] || type }}</span></div>
           <p class="companion-species">{{ pokemon.truename }}</p>
           <div class="companion-health"><strong>PV</strong><span>{{ pokemon.currentHp }} / {{ pokemon.maxHp }}</span><div><i :style="{ width: hpPercent + '%' }"></i></div></div>

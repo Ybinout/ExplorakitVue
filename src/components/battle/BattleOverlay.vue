@@ -481,7 +481,7 @@ export default {
       const id = Number.parseInt(pokemon?.data?.id, 10);
       if (!Number.isInteger(id) || id <= 0) return '';
       const folder = side === 'back' ? 'back' : 'front';
-      return `/img/pokemon/${folder}/${id}.png`;
+      return `${process.env.BASE_URL}img/pokemon/${folder}/${id}.png`;
     },
     getPokemonBattleKey(pokemon) {
       return pokemon?.uuid || `${pokemon?.data?.id || 'pokemon'}-${pokemon?.name || pokemon?.truename || ''}`;

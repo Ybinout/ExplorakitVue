@@ -7,9 +7,9 @@
       <p class="tagline">Le monde t’attend.<br /><strong>Tes prochains rivaux aussi.</strong></p>
       <div class="companions" aria-hidden="true">
         <span class="rift-ring"></span>
-        <img class="companion-left" src="/img/pokemon/front/280.png" alt="" />
-        <img class="companion-center" src="/img/pokemon/front/133.png" alt="" />
-        <img class="companion-right" src="/img/pokemon/front/25.png" alt="" />
+        <img class="companion-left" :src="$assetBase + 'img/pokemon/front/280.png'" alt="" />
+        <img class="companion-center" :src="$assetBase + 'img/pokemon/front/133.png'" alt="" />
+        <img class="companion-right" :src="$assetBase + 'img/pokemon/front/25.png'" alt="" />
       </div>
       <p class="pitch">Explore, compose ton équipe et affronte les survivants.<br />De 2 à 16 dresseurs, jusqu’à cinq heures d’aventure.</p>
       <div class="home-actions">

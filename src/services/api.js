@@ -2,7 +2,7 @@ import axios from 'axios';
 import { clearSession, getSession } from './session';
 
 const origin = process.env.VUE_APP_API_BASE_URL
-  || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+  || (typeof window !== 'undefined' ? `${window.location.origin}${process.env.BASE_URL.replace(/\/$/, '')}` : 'http://localhost:3000');
 
 const api = axios.create({
   baseURL: `${origin.replace(/\/$/, '')}/api`,

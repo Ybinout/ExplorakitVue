@@ -7,7 +7,7 @@
         <div class="duel-stage" aria-label="Les deux combattants">
           <article v-for="(player,index) in frame.players || []" :key="player.id" class="duelist" :class="{ 'duelist-right': index === 1, fallen: player.pokemon && player.pokemon.currentHp <= 0 }" :data-spectator-player="player.id">
             <div class="trainer-name">{{ player.username }}</div>
-            <div class="pokemon-stage"><span class="platform" /><pokemon-portrait v-if="player.pokemon" :src="`/img/pokemon/front/${player.pokemon.pokemonId}.png`" :alt="player.pokemon.name" /><drift-glyph v-else name="team" /></div>
+            <div class="pokemon-stage"><span class="platform" /><pokemon-portrait v-if="player.pokemon" :src="`${$assetBase}img/pokemon/front/${player.pokemon.pokemonId}.png`" :alt="player.pokemon.name" /><drift-glyph v-else name="team" /></div>
             <div v-if="player.pokemon" class="combatant-info"><h3>{{ player.pokemon.name }} <small>N. {{ player.pokemon.level }}</small></h3><div class="health-caption"><span>PV</span><strong>{{ player.pokemon.currentHp }} / {{ player.pokemon.maxHp }}</strong></div><div class="health-track" :class="{ low: hpPercent(player.pokemon) < 30 }" role="progressbar" :aria-label="`PV de ${player.pokemon.name}`" :aria-valuenow="player.pokemon.currentHp" :aria-valuemin="0" :aria-valuemax="player.pokemon.maxHp"><i :style="{ width: hpPercent(player.pokemon) + '%' }" /></div><span class="status">{{ statusLabel(player.pokemon.status) }}</span></div>
             <p v-else class="empty-combatant">Changement de Pokémon…</p>
           </article>

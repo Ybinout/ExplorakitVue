@@ -44,7 +44,7 @@
           <article v-for="pokemon in filteredEntries" :key="pokemon.id" :class="['dex-entry', { 'is-unknown': !pokemon.seen, 'is-caught': pokemon.caught }]">
             <div class="dex-entry-top"><span class="dex-number">#{{ String(pokemon.id).padStart(3, '0') }}</span><span v-if="pokemon.caught" class="dex-caught" :aria-label="tr('caught')" :title="tr('caught')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 8 3 3 5-6"/></svg></span><span v-else-if="pokemon.seen" class="dex-seen" :aria-label="tr('spotted')" :title="tr('spotted')"></span></div>
             <div class="dex-sprite">
-              <img v-if="pokemon.seen" :src="`/img/pokemon/front/${pokemon.id}.png`" alt="" width="80" height="80" loading="lazy" decoding="async">
+              <img v-if="pokemon.seen" :src="`${$assetBase}img/pokemon/front/${pokemon.id}.png`" alt="" width="80" height="80" loading="lazy" decoding="async">
               <span v-else class="dex-unregistered" aria-hidden="true"><span class="dex-ball"></span></span>
             </div>
             <h3 :title="pokemon.seen ? pokemon.name : tr('dexUndiscovered')">{{ pokemon.seen ? pokemon.name : '— — —' }}</h3>

@@ -5,6 +5,7 @@ const socketOrigin = process.env.VUE_APP_SOCKET_URL
 
 export function createGameSocket(token) {
   return io(socketOrigin, {
+    path: `${process.env.BASE_URL || '/'}socket.io`,
     auth: { token },
     transports: ['websocket', 'polling']
   });
@@ -12,6 +13,7 @@ export function createGameSocket(token) {
 
 export function createDriftSocket(token) {
   return io(`${socketOrigin.replace(/\/$/, '')}/drift`, {
+    path: `${process.env.BASE_URL || '/'}socket.io`,
     auth: { token }, autoConnect: false, transports: ['websocket', 'polling']
   });
 }

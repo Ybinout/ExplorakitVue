@@ -598,7 +598,7 @@ export default {
     normalizeTeamPokemon,
     getPokemonFrontSprite(spriteId) {
       const id = Number.parseInt(spriteId, 10);
-      return Number.isInteger(id) && id > 0 ? `/img/pokemon/front/${id}.png` : '';
+      return Number.isInteger(id) && id > 0 ? `${process.env.BASE_URL}img/pokemon/front/${id}.png` : '';
     },
     closeShop() {
       this.shop.visible = false;

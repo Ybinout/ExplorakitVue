@@ -1,4 +1,4 @@
-const SESSION_KEY = 'user';
+const SESSION_KEY = 'explorakit.user';
 
 export function getSession() {
   try {

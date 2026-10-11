@@ -108,7 +108,7 @@ export default {
     number(value) { return (Number(value) || 0).toLocaleString('fr-FR'); },
     numberOrDash(value) { return value == null ? '—' : this.number(value); },
     stat(key) { return this.selected?.stats?.[key] || 0; },
-    portrait(pokemon) { return `/img/pokemon/front/${Number(pokemon.pokemonId) || 1}.png`; },
+    portrait(pokemon) { return `${process.env.BASE_URL}img/pokemon/front/${Number(pokemon.pokemonId) || 1}.png`; },
     typeLabel(value) { return TYPES[value] || value; },
     natureLabel(value) { return NATURES[value] || value; },
     moveLabel(move) { return localizeMoveName(typeof move === 'string' ? move : move.name || move.fname || move.ename || 'Capacité', 'fr'); },

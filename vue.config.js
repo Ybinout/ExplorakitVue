@@ -3,6 +3,7 @@ const path = require('path');
 
 module.exports = defineConfig({
   transpileDependencies: true,
+  publicPath: process.env.VUE_APP_PUBLIC_PATH || '/',
   outputDir: path.resolve(__dirname, '../dist'),  // Placez le dossier dist un niveau au-dessus du dossier actuel
 
   // Ajoutez la configuration de Webpack pour gérer les alias
