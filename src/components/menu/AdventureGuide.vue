@@ -1,124 +1,38 @@
 <template>
-  <section class="adventure-guide" aria-label="Carnet d’aventure" @keydown.stop @keyup.stop>
-    <details>
-      <summary>
-        <span>{{ objective ? 'Ton objectif' : 'Ton aventure' }}</span
-        ><span>Objectif et aide +</span>
-      </summary>
-      <p class="objective">
-        {{ objective ? objective.text : 'Explore, complète tes quêtes et prends soin de ton équipe.' }}
-      </p>
-      <p v-if="objective && objective.destination" class="destination">
-        Destination : {{ objective.destination }}
-      </p>
-      <details class="help">
-        <summary>Comment jouer ?</summary>
-        <ol>
-          <li>Déplace-toi avec ZQSD, les flèches ou le pavé tactile.</li>
-          <li>Approche un personnage et appuie sur Espace ou A pour parler.</li>
-          <li>Capture des Pokémon sauvages avec les Balls du sac pendant un combat.</li>
-          <li>
-            Le Centre soigne gratuitement ton équipe. Les Potions et Rappels du sac s’utilisent hors combat.
-          </li>
-          <li>
-            Menu → Quêtes pour suivre ton histoire. Tu peux jouer seul ; les duels avec les autres joueurs
-            sont facultatifs.
-          </li>
-        </ol>
-        <p>
-          Ta progression se sauvegarde automatiquement. Menu → Sauvegarde permet de vérifier la
-          synchronisation.
-        </p>
-      </details>
+  <section class="adventure-guide" :aria-label="english ? 'Your objective' : 'Ton objectif'">
+    <h3>{{ english ? 'Your objective' : 'Ton objectif' }}</h3>
+    <p class="objective">{{ objective ? objective.text : (english ? 'Explore, complete quests and look after your team.' : 'Explore, complète tes quêtes et prends soin de ton équipe.') }}</p>
+    <p v-if="objective && objective.destination" class="destination">Destination : {{ objective.destination }}</p>
+    <details class="help">
+      <summary>{{ english ? 'How to play' : 'Comment jouer ?' }}</summary>
+      <ol>
+        <li>{{ english ? 'Move with ZQSD, the arrow keys or the touch controls.' : 'Déplace-toi avec ZQSD, les flèches ou le pavé tactile.' }}</li>
+        <li>{{ english ? 'Approach a character and press Space or A to talk.' : 'Approche un personnage et appuie sur Espace ou A pour parler.' }}</li>
+        <li>{{ english ? 'Catch wild Pokémon with Balls from your bag during battle.' : 'Capture des Pokémon sauvages avec les Balls du sac pendant un combat.' }}</li>
+        <li>{{ english ? 'The Pokémon Centre and your mother heal your team for free. Use Potions and Revives from your bag outside battle.' : 'Le Centre et ta mère soignent gratuitement ton équipe. Les Potions et Rappels du sac s’utilisent hors combat.' }}</li>
+        <li>{{ english ? 'You can play alone. Battles with other players are optional.' : 'Tu peux jouer seul ; les duels avec les autres joueurs sont facultatifs.' }}</li>
+      </ol>
+      <p>{{ english ? 'Progress is saved automatically. Menu → Save lets you check synchronisation.' : 'Ta progression se sauvegarde automatiquement. Menu → Sauvegarde permet de vérifier la synchronisation.' }}</p>
     </details>
-    <span class="objective-preview" v-if="objective">{{ objective.text }}</span>
   </section>
 </template>
 <script>
-export default { props: { objective: { type: Object, default: null } } };
+export default {
+  props: { objective: { type: Object, default: null }, language: { type: String, default: 'fr' } },
+  computed: { english() { return this.language === 'en'; } }
+};
 </script>
 <style scoped>
 .adventure-guide {
-  position: absolute;
-  z-index: 6;
-  left: 12px;
-  top: 76px;
-  width: min(390px, calc(100% - 24px));
-  color: var(--journal-ink);
-  background: var(--journal-paper);
-  border: 1px solid var(--journal-border);
-  border-radius: 14px;
-  padding: 10px 12px;
-  box-shadow: 0 5px 20px #152b2426;
-  text-align: left;
-  font: 13px/1.5 var(--journal-font);
+  margin-bottom:24px; padding:16px; color:var(--journal-ink); background:var(--journal-soft);
+  border:1px solid var(--journal-border); border-radius:12px; text-align:left; font:13px/1.6 var(--journal-font);
 }
-.adventure-guide summary {
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 44px;
-  align-items: center;
-  font-weight: bold;
-}
-.adventure-guide summary span:last-child {
-  font-size: 11px;
-  color: var(--journal-accent);
-}
-.objective {
-  margin: 8px 0;
-}
-.destination {
-  color: var(--journal-accent);
-}
-.objective-preview {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--journal-muted);
-  font-size: 11px;
-}
-.adventure-guide:has(> details[open]) > .objective-preview {
-  display: none;
-}
-.help {
-  border-top: 1px solid var(--journal-border);
-  margin-top: 12px;
-  padding-top: 8px;
-}
-.help ol {
-  padding-left: 20px;
-}
-.help li {
-  margin-bottom: 8px;
-}
-.help p {
-  color: var(--journal-muted);
-}
-.adventure-guide:has(> details[open]) {
-  max-height: min(55vh, calc(100vh - 200px));
-  overflow: auto;
-}
-@media (max-width: 600px) {
-  .adventure-guide {
-    top: 76px;
-    width: calc(100% - 24px);
-    padding: 6px 10px;
-  }
-  .adventure-guide summary {
-    font-size: 12px;
-  }
-}
-@media (max-height: 500px) {
-  .adventure-guide {
-    width: 260px;
-    top: 76px;
-    font-size: 11px;
-  }
-  .objective-preview {
-    display: none;
-  }
-}
+.adventure-guide h3 { margin:0 0 10px; color:var(--journal-heading); font-size:16px; }
+.objective { margin:0 0 10px; }
+.destination { color:var(--journal-accent); font-weight:600; }
+.help { border-top:1px solid var(--journal-border); margin-top:14px; padding-top:4px; }
+.help summary { cursor:pointer; min-height:44px; padding-block:10px; color:var(--journal-accent); font-weight:600; }
+.help ol { padding-left:20px; }
+.help li { margin-bottom:8px; }
+.help p { color:var(--journal-muted); }
 </style>

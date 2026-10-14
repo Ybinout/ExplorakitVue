@@ -13,6 +13,7 @@
       <div v-if="loading" class="panel-state">{{ tr('syncingServer') }}</div>
 
       <template v-else-if="active === 'progress'">
+        <adventure-guide :objective="progress.objective || null" :language="preferences.language" />
         <div class="progress-columns">
           <section>
             <h3>{{ tr('activeQuests') }}</h3>
@@ -89,10 +90,11 @@
 <script>
 import { translate } from '@/services/i18n';
 import PokedexPanel from './PokedexPanel.vue';
+import AdventureGuide from './AdventureGuide.vue';
 
 export default {
   name: 'GameInfoPanels',
-  components: { PokedexPanel },
+  components: { PokedexPanel, AdventureGuide },
   props: {
     active: { type: String, default: '' },
     loading: { type: Boolean, default: false },

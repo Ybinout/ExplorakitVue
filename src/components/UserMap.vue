@@ -1,9 +1,8 @@
 <template>
-  <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift }]" style="background-color: black;">
+  <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift, 'is-mobile': showMobileControls }]">
     <!-- <navBar></navBar> -->
-    <div>
+    <div class="game-layout">
       <div class="game-stage">
-      <adventure-guide v-if="!isDrift && !battle && !battleResult && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !textImageSequence.length && !activeInfoPanel && !shop.visible" :objective="progressionState.objective || null" />
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
       <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
       <battle-result-panel v-if="battleResult" :result="battleResult" @continue="dismissBattleResult" />
@@ -181,7 +180,10 @@
           @close="closeShop"
           @buy="buyShopItem"
         />
-        <canvas class="test" ref="monCanvas"></canvas>
+        <div class="world-viewport" ref="worldViewport">
+          <canvas class="test" ref="monCanvas" :aria-label="locationLabel"></canvas>
+        </div>
+        <div v-if="showMobileControls" class="mobile-control-dock">
         <div
           v-if="showMobileControls && !battle && !battleResult && !driftSpectator && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
@@ -189,6 +191,7 @@
           <div v-if="textImageSequence.length === 0" class="mobile-dpad" aria-label="Pad directionnel">
             <button
               class="mobile-dpad-btn mobile-dpad-up"
+              aria-label="Aller en haut"
               @pointerdown.prevent="onMobileDirectionPress('z', $event)"
               @pointerup.prevent="onMobileDirectionRelease('z', $event)"
               @pointercancel.prevent="onMobileDirectionRelease('z', $event)"
@@ -198,6 +201,7 @@
             </button>
             <button
               class="mobile-dpad-btn mobile-dpad-left"
+              aria-label="Aller à gauche"
               @pointerdown.prevent="onMobileDirectionPress('q', $event)"
               @pointerup.prevent="onMobileDirectionRelease('q', $event)"
               @pointercancel.prevent="onMobileDirectionRelease('q', $event)"
@@ -208,6 +212,7 @@
             <div class="mobile-dpad-center"></div>
             <button
               class="mobile-dpad-btn mobile-dpad-right"
+              aria-label="Aller à droite"
               @pointerdown.prevent="onMobileDirectionPress('d', $event)"
               @pointerup.prevent="onMobileDirectionRelease('d', $event)"
               @pointercancel.prevent="onMobileDirectionRelease('d', $event)"
@@ -217,6 +222,7 @@
             </button>
             <button
               class="mobile-dpad-btn mobile-dpad-down"
+              aria-label="Aller en bas"
               @pointerdown.prevent="onMobileDirectionPress('s', $event)"
               @pointerup.prevent="onMobileDirectionRelease('s', $event)"
               @pointercancel.prevent="onMobileDirectionRelease('s', $event)"
@@ -225,13 +231,17 @@
               ▼
             </button>
           </div>
+          <div v-if="textImageSequence.length === 0" class="mobile-action-group">
           <button
-            v-if="textImageSequence.length === 0"
-            :class="['mobile-action-a', { 'dialogue-action': textImageSequence.length > 0 }]"
+            class="mobile-action-a"
+            :aria-label="preferences.language === 'en' ? 'Interact' : 'Parler ou agir'"
             @pointerdown.prevent="triggerMobileActionA"
           >
             A
           </button>
+          <span>{{ preferences.language === 'en' ? 'Interact' : 'Parler / agir' }}</span>
+          </div>
+        </div>
         </div>
         <div v-if="interactionNotice" class="interaction-notice">
           {{ interactionNotice }}
@@ -314,6 +324,7 @@
       <button
         v-if="showMobileControls && !battle && !battleResult && !driftSpectator && textImageSequence.length > 0"
         class="mobile-dialogue-action-top"
+        :aria-label="preferences.language === 'en' ? 'Continue dialogue' : 'Continuer le dialogue'"
         @pointerdown.prevent="triggerMobileActionA"
       >
         A
@@ -326,7 +337,7 @@
 
 <script>
 import {resolveMapAsset} from '@/services/mapAssets';
-import AdventureGuide from './menu/AdventureGuide.vue';
+import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
 import JournalIcon from './menu/JournalIcon.vue';
 import api from "@/services/api";
 import { getSession } from "@/services/session";
@@ -348,6 +359,7 @@ import PokemonPortrait from './PokemonPortrait.vue';
 import PokemonDetails from './menu/PokemonDetails.vue';
 import ExperienceBar from './ExperienceBar.vue';
 import './adventure.css';
+import './worldViewport.css';
 import BattleOverlay from './battle/BattleOverlay.vue';
 import BattleResultPanel from './battle/BattleResultPanel.vue';
 import { buildBattleResult } from '@/services/battleResult';
@@ -366,7 +378,6 @@ const MOVEMENT_INTERPOLATION_MS = 175;
 export default {
   components: {
     JournalIcon,
-    AdventureGuide,
     BattleResultPanel,
     DriftRunPanel,
     RiftSpectatorPanel,
@@ -444,6 +455,7 @@ export default {
       currentUserId: null,
       currentUsername: '',
       showMobileControls: false,
+      worldFrame: { width: WORLD_WIDTH, height: WORLD_HEIGHT, pixelRatio: 1 },
       interactionChoice: {
         visible: false,
         targetId: null,
@@ -831,10 +843,25 @@ export default {
       this.chatDraft = '';
     },
     updateMobileControlsVisibility() {
-      this.showMobileControls = window.innerWidth <= 920;
+      this.showMobileControls = window.innerWidth <= 920 || window.matchMedia('(pointer: coarse)').matches;
       if (!this.showMobileControls) {
         this.releaseAllMovementKeys();
       }
+      this.$nextTick(this.resizeWorldViewport);
+    },
+    resizeWorldViewport() {
+      const canvas = this.$refs.monCanvas;
+      const viewport = this.$refs.worldViewport;
+      if (!canvas || !viewport) return;
+      const width = Math.max(1, viewport.clientWidth);
+      const height = Math.max(1, viewport.clientHeight);
+      const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
+      if (width === this.worldFrame.width && height === this.worldFrame.height && pixelRatio === this.worldFrame.pixelRatio
+        && canvas.width === Math.round(width * pixelRatio)) return;
+      this.worldFrame = { width, height, pixelRatio };
+      canvas.width = Math.round(width * pixelRatio);
+      canvas.height = Math.round(height * pixelRatio);
+      this.drawPlayers();
     },
     syncPlayerIdleState() {
       if (!this.socket || !this.socket.id) return;
@@ -1534,6 +1561,7 @@ export default {
       if (this.isDriftPanelOpen) { if (e.key === "Escape") this.isDriftPanelOpen = false; return; }
       if (this.selectedPokemonUuid) return;
       if (e.key === 'Escape') {
+        this.closeInfoPanel();
         if (this.interactionChoice.visible) {
           this.closeInteractionChoice();
         }
@@ -1685,10 +1713,15 @@ export default {
 
       // Clear the canvas for the new render
       c.clearRect(0, 0, canvas.width, canvas.height);
+      const camera = getWorldCamera(this.worldFrame.width, this.worldFrame.height, this.players[this.socket?.id], this.showMobileControls);
+      const scale = camera.scale * this.worldFrame.pixelRatio;
+      c.save();
+      c.imageSmoothingEnabled = false;
+      c.setTransform(scale, 0, 0, scale, -camera.x * scale, -camera.y * scale);
 
       // Fill the canvas with the map image
       if (this.mapImage) {
-        c.drawImage(this.mapImage, 0, 0, canvas.width, canvas.height);
+        c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
       }
 
       this.drawPnjs(c);
@@ -1739,8 +1772,9 @@ export default {
 
       // Dessiner les Ã©lÃ©ments de premier plan si nÃ©cessaire
       if (this.foregroundImage) {
-        c.drawImage(this.foregroundImage, 0, 0, canvas.width, canvas.height);
+        c.drawImage(this.foregroundImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
       }
+      c.restore();
     },
 
 
@@ -2200,8 +2234,11 @@ export default {
     this.updateMobileControlsVisibility();
 
     const canvas = this.$refs.monCanvas;
-    canvas.width = 28 * 16 * 2;
-    canvas.height = 20 * 16 * 2;
+    canvas.width = WORLD_WIDTH;
+    canvas.height = WORLD_HEIGHT;
+    this.worldResizeObserver = new ResizeObserver(this.resizeWorldViewport);
+    this.worldResizeObserver.observe(this.$refs.worldViewport);
+    this.$nextTick(this.resizeWorldViewport);
 
     this.startGameLoop();
     this.startMovementLoop();
@@ -2225,6 +2262,7 @@ export default {
   ,
   beforeDestroy() {
     document.body.classList.remove("in-world");
+    this.worldResizeObserver?.disconnect();
     if (this.driftClockTimer) clearInterval(this.driftClockTimer);
     this.stopMovementLoop();
     this.stopGameLoop();
