@@ -1,48 +1,159 @@
-/* Shared handheld-adventure art direction. Geometry stays owned by each component. */
-.game-root { font-family:Arial,Helvetica,sans-serif; --adventure-ink:#243c50; --adventure-paper:#fbf5e6; --adventure-gold:#c1a36a; }
+/* World UI shares the Pokédex tokens in styles/field-journal.css. */
+.game-root { font-family:var(--journal-font); color-scheme:light; }
 .game-root .game-stage button { cursor:pointer; }
 .game-root .game-stage button:disabled { cursor:default; }
-.game-root .game-stage button:focus-visible { outline:3px solid #dda953; outline-offset:2px; }
-.game-root .game-stage .menu-toggle-btn { min-height:44px; padding:8px 18px; border:2px solid #c3aa76; border-radius:10px 10px 16px 5px; background:#243c50; color:#fff4d9; box-shadow:0 3px 0 #102534, inset 0 0 0 2px #ffffff10; font:bold 13px Arial,sans-serif; }
-.game-root .game-stage .menu-toggle-btn::before { content:'✦'; color:#dbc188; margin-right:9px; }
-.game-root .game-stage .menu-dropdown { min-width:220px; padding:9px; border:2px solid #bba474; border-radius:14px; background:#faf3e1; box-shadow:0 0 0 3px #243c50,0 12px 32px #08162466; }
-.game-root .game-stage .menu-dropdown::before { content:'CARNET D’AVENTURE'; display:block; padding:7px 10px 12px; color:#8a7856; font:bold 9px Arial; letter-spacing:1.6px; }
-.game-root .game-stage .menu-dropdown-item { min-height:44px; padding:10px 14px; color:#243c50; border:0; border-radius:7px; font:600 13px Arial,sans-serif; }
-.game-root .game-stage .menu-dropdown-item::before { content:'◇'; margin-right:12px; color:#b39359; }
-.game-root .game-stage .menu-dropdown-item:hover { background:#243c50; color:#fff7e5; }
-.game-root .game-stage .location-banner { background:#233b50ed; border:1px solid #c5af80; border-radius:3px 18px 18px 3px; padding:9px 16px; color:#fff4de; font:600 12px Arial,sans-serif; box-shadow:0 3px 8px #0003; }
-.game-root .game-stage .location-pin { color:#d7ba77; }
-.game-root .game-stage .team-panel, .game-root .game-stage .bag-panel, .game-root .game-stage .appearance-panel { box-sizing:border-box; background:#faf4e5; border:2px solid #bfa678; border-radius:16px; padding:14px; color:#243c50; box-shadow:0 0 0 3px #243c50,0 15px 40px #0005; font-family:Arial,sans-serif; }
-.game-root .game-stage .team-panel { width:min(410px,calc(100% - 24px)); max-height:calc(100% - 76px); left:auto; right:14px; }
-.game-root .game-stage .team-title { display:flex; justify-content:space-between; align-items:center; color:#243c50; margin:0 0 14px; font:bold 23px Georgia,serif; }
-.game-root .game-stage .team-title small { display:block; color:#9d8352; font:bold 8px Arial; letter-spacing:1.6px; margin-bottom:4px; }
-.game-root .game-stage .team-close { width:44px; height:44px; border:1px solid #cbbb9b; border-radius:50%; background:transparent; color:#243c50; font-size:24px; }
-.game-root .game-stage .team-row { position:relative; background:linear-gradient(120deg,#fffdf6,#f0eadc); border:1px solid #d7c9ab; border-radius:10px 18px 10px 18px; padding:10px; box-shadow:0 3px 0 #dfd3b9; gap:10px; }
-.game-root .game-stage .team-row-visual { background:radial-gradient(circle,#fffef8,#e2e9d7); border:1px solid #cbd4be; border-radius:50% 50% 10px 10px; align-self:center; width:72px; min-width:72px; height:80px; padding:0; }
+.game-root .game-stage :is(button, input, select, summary):focus-visible { outline:2px solid var(--journal-accent); outline-offset:3px; }
+.game-root .game-stage .world-toolbar {
+  display:flex; align-items:center; gap:16px; min-height:64px; padding:9px 14px;
+  background:var(--journal-card); border:1px solid var(--journal-border); border-radius:16px 16px 0 0;
+}
+.game-root .game-stage .game-header { position:relative; height:auto; padding:0; background:none; border:0; }
+.game-root .game-stage .menu-toggle-btn {
+  display:flex; align-items:center; gap:10px; min-height:44px; padding:10px 16px;
+  border:1px solid var(--journal-border); border-radius:10px; background:var(--journal-soft);
+  color:var(--journal-heading); font:600 13px var(--journal-font); box-shadow:none;
+}
+.game-root .game-stage .menu-toggle-btn:hover,
+.game-root .game-stage .menu-toggle-btn[aria-expanded=true] { background:var(--journal-selected); border-color:#99b39e; }
+.game-root .game-stage .menu-dropdown {
+  top:calc(100% + 16px); left:0; width:250px; min-width:0; max-width:calc(100vw - 28px);
+  max-height:calc(100dvh - 100px); overflow:auto; overscroll-behavior:contain; padding:10px;
+  border:1px solid var(--journal-border); border-radius:16px; background:var(--journal-paper);
+  box-shadow:var(--journal-shadow); z-index:60;
+}
+.game-root .menu-caption { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 4px 6px; padding:10px 6px 14px; border-bottom:1px solid var(--journal-border); color:var(--journal-muted); font:700 10px var(--journal-font); text-transform:uppercase; letter-spacing:.12em; }
+.game-root .menu-caption small { font-size:9px; font-weight:400; letter-spacing:.04em; }
+.game-root .game-stage .menu-dropdown-item { display:flex; align-items:center; gap:13px; min-height:46px; padding:10px 12px; color:var(--journal-ink); border:0; border-radius:9px; font:500 14px var(--journal-font); }
+.game-root .menu-dropdown-item .journal-icon { color:var(--journal-accent); width:19px; height:19px; }
+.game-root .game-stage .menu-dropdown-item:hover { background:var(--journal-selected); color:var(--journal-heading); }
+.game-root .game-stage .location-banner { position:static; margin-left:auto; max-width:calc(100% - 120px); min-width:0; gap:10px; padding:0; border:0; border-radius:0; background:transparent; color:var(--journal-ink); box-shadow:none; font:600 14px/1.3 var(--journal-font); }
+.game-root .game-stage .location-pin { width:20px; height:20px; color:var(--journal-accent); }
+.game-root .location-copy { display:flex; flex-direction:column; gap:3px; min-width:0; text-align:left; }
+.game-root .location-copy small { color:var(--journal-muted); font-size:9px; font-weight:400; letter-spacing:.1em; text-transform:uppercase; }
+.game-root .location-name { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.game-root .game-stage .location-shop-btn { flex:none; min-height:44px; margin:0; padding:8px 12px; border:1px solid var(--journal-border); border-radius:9px; background:var(--journal-soft); color:var(--journal-accent); font:600 12px var(--journal-font); }
+.game-root .game-stage .location-shop-btn:hover { background:var(--journal-selected); }
+
+/* Quick panels: the same paper cards, header and close control as the Pokédex. */
+.game-root .game-stage :is(.team-panel, .bag-panel, .appearance-panel) { box-sizing:border-box; top:76px; left:12px; width:min(380px,calc(100% - 24px)); max-height:min(620px,calc(100dvh - 145px)); padding:18px; background:var(--journal-paper); border:1px solid var(--journal-border); border-radius:18px; color:var(--journal-ink); box-shadow:var(--journal-shadow); font:13px/1.4 var(--journal-font); overscroll-behavior:contain; }
+.game-root .game-stage .team-panel { left:auto; right:12px; width:min(430px,calc(100% - 24px)); }
+.game-root .game-stage :is(.team-title, .bag-title, .appearance-title) { display:flex; justify-content:space-between; align-items:center; gap:12px; color:var(--journal-heading); margin:0 0 16px; padding-bottom:14px; border-bottom:1px solid var(--journal-border); font:700 24px/1.2 var(--journal-font); letter-spacing:-.6px; }
+.game-root .game-stage :is(.team-title, .bag-title, .appearance-title) small { display:block; color:var(--journal-muted); font:700 9px var(--journal-font); text-transform:uppercase; letter-spacing:.12em; margin-bottom:5px; }
+.game-root .game-stage :is(.team-close, .panel-close, .close-button, .shop-close) { flex:none; display:grid; place-items:center; width:44px; height:44px; padding:0; border:1px solid var(--journal-border); border-radius:50%; background:transparent; color:var(--journal-muted); font:26px var(--journal-font); }
+.game-root .game-stage :is(.team-close, .panel-close, .close-button, .shop-close):hover { background:var(--journal-soft); }
+.game-root .game-stage .team-row { position:relative; background:var(--journal-card); border:1px solid var(--journal-border); border-radius:12px; padding:12px; box-shadow:none; gap:10px; }
+.game-root .game-stage .team-row-visual { background:var(--journal-soft); border:0; border-radius:12px; align-self:center; width:72px; min-width:72px; height:80px; padding:0; }
 .game-root .game-stage .team-pokemon-sprite { width:68px; height:68px; }
-.game-root .game-stage .team-row-name { color:#243c50; font:bold 14px Arial; }
-.game-root .game-stage .team-detail-link { border:0; background:none; padding:4px 0; min-height:36px; text-align:left; }
-.game-root .game-stage .team-detail-link span { color:#a68b56; }
-.game-root .game-stage .team-slot { color:#9a917d; font-size:9px; }
-.game-root .game-stage .team-level { white-space:nowrap; color:#fff8e9; background:#325267; border:0; font-size:10px; }
-.game-root .game-stage .team-row-meta { color:#647078; font:10px/1.5 Arial; }
-.game-root .game-stage .team-hp-track { height:6px; background:#d6dacd; border:0; }
-.game-root .game-stage .team-held-item-select { box-sizing:border-box; width:100%; min-height:32px; color:#526370; border:0; border-bottom:1px solid #c8bea8; border-radius:0; background:transparent; font:10px Arial; margin-top:4px; }
-.game-root .game-stage .team-order-btn { min-width:30px; min-height:38px; color:#546a75; background:#ece6d6; border:1px solid #d1c6ad; border-radius:8px; font:16px Arial; }
-.game-root .game-stage .team-state, .game-root .game-stage .bag-state, .game-root .game-stage .bag-title, .game-root .game-stage .appearance-title { color:#243c50; }
-.game-root .game-stage .bag-title, .game-root .game-stage .appearance-title { font:bold 23px Georgia,serif; margin-bottom:12px; }
-.game-root .game-stage .bag-item-row { color:#243c50; border-color:#dacdb4; padding:12px 8px; font:13px Arial; }
-.game-root .game-stage .bag-item-name { color:#243c50; }.game-root .game-stage .bag-item-qty { background:#e3d5b5; color:#735d34; border-radius:20px; padding:4px 10px; }
-.game-root .game-stage .appearance-option { background:#eee8d8; border-color:#d1c4a7; color:#243c50; border-radius:10px; }.game-root .game-stage .appearance-option.is-active { background:#dce8dc; border-color:#658b78; }
-.game-root .game-stage .info-panel, .game-root .game-stage .shop-card { background:#faf4e5; color:#243c50; border:2px solid #bfa678; box-shadow:0 0 0 4px #243c50,0 22px 65px #0007; border-radius:20px; font-family:Arial,sans-serif; }
-.game-root .game-stage .info-header, .game-root .game-stage .shop-header { border-color:#d3c19b; }
-.game-root .game-stage .info-header h2, .game-root .game-stage .shop-header h2 { font-family:Georgia,serif; }
-.game-root .game-stage .info-kicker, .game-root .game-stage .shop-kicker { color:#9f814b; letter-spacing:2px; }
-.game-root .game-stage .quest-card, .game-root .game-stage .badge-card, .game-root .game-stage .option-row, .game-root .game-stage .shop-item { background:#f0e8d5; color:#243c50; border:1px solid #d6c5a3; border-radius:12px; box-shadow:0 2px 0 #ded0b0; }
-.game-root .game-stage .quest-card p, .game-root .game-stage .empty-copy, .game-root .game-stage .option-row small, .game-root .game-stage .options-note, .game-root .game-stage .shop-item-description, .game-root .game-stage .shop-owned, .game-root .game-stage .save-copy, .game-root .game-stage .save-date { color:#667171; }
-.game-root .game-stage .badge-card.earned { background:#f5e7bd; border-color:#b99650; }.game-root .game-stage .badge-medal { color:#b9954e; text-shadow:0 2px 0 #fff5cd; }
-.game-root .game-stage .primary-button, .game-root .game-stage .close-button, .game-root .game-stage .shop-close, .game-root .game-stage .team-save-btn { background:#294a5c; border-color:#7c8e90; color:#fff6e0; min-height:44px; }
-.game-root .game-stage .shop-wallet { background:#efe0bc; color:#755c2b; border-color:#cbb783; }
+.game-root .game-stage .team-row-name { color:var(--journal-heading); font:700 14px var(--journal-font); }
+.game-root .game-stage .team-detail-link { border:0; background:none; padding:4px 0; min-height:44px; text-align:left; }
+.game-root .game-stage .team-detail-link span { color:var(--journal-accent); }
+.game-root .game-stage .team-slot { color:var(--journal-muted); font-size:10px; }
+.game-root .game-stage .team-level { white-space:nowrap; color:var(--journal-accent); background:var(--journal-soft); border:0; font-size:11px; }
+.game-root .game-stage .team-row-meta { color:var(--journal-muted); font:11px/1.5 var(--journal-font); }
+.game-root .game-stage .team-hp-track { height:6px; background:var(--journal-border); border:0; }
+.game-root .game-stage .team-held-item-select { box-sizing:border-box; width:100%; min-height:44px; color:var(--journal-ink); border:1px solid var(--journal-border); border-radius:8px; background:var(--journal-card); font:11px var(--journal-font); margin-top:6px; padding:4px; }
+.game-root .game-stage .team-order-btn { min-width:44px; min-height:44px; color:var(--journal-accent); background:var(--journal-soft); border:1px solid var(--journal-border); border-radius:8px; font:18px var(--journal-font); }
+.game-root .game-stage .team-row-actions { flex-direction:column; justify-content:center; }
+.game-root .game-stage :is(.team-state, .bag-state) { color:var(--journal-muted); font:13px/1.5 var(--journal-font); }
+.game-root .game-stage :is(.team-error, .bag-error, .shop-error) { color:var(--journal-danger); }
+.game-root .game-stage .bag-item-row { flex-wrap:wrap; background:var(--journal-card); color:var(--journal-ink); border-color:var(--journal-border); border-radius:10px; padding:12px; font:13px var(--journal-font); }
+.game-root .game-stage .bag-item-name { color:var(--journal-ink); }
+.game-root .game-stage .bag-item-qty { flex:none; background:var(--journal-soft); color:var(--journal-accent); border-radius:20px; padding:4px 10px; }
+.game-root .game-stage .bag-item-row select { width:100%; min-width:0; max-width:100%; min-height:44px; margin-top:4px; padding:8px; color:var(--journal-ink); background:var(--journal-paper); border:1px solid var(--journal-border); border-radius:8px; font:12px var(--journal-font); }
+.game-root .game-stage .appearance-option { background:var(--journal-card); border-color:var(--journal-border); color:var(--journal-ink); border-radius:12px; box-shadow:none; }
+.game-root .game-stage .appearance-option:hover { background:var(--journal-soft); }
+.game-root .game-stage .appearance-option.is-active { background:var(--journal-selected); border-color:var(--journal-progress); box-shadow:inset 0 0 0 1px var(--journal-progress); }
+.game-root .game-stage .appearance-label { font:12px var(--journal-font); }
+
+/* Journal, settings and in-world shops. */
+.game-root .game-stage :is(.info-backdrop, .shop-backdrop) { position:fixed; inset:0; z-index:1200; padding:24px; background:var(--journal-backdrop); backdrop-filter:blur(7px); }
+.game-root .game-stage :is(.info-panel, .shop-card) { width:min(820px,100%); max-height:min(780px,90dvh); background:var(--journal-paper); color:var(--journal-ink); border:1px solid var(--journal-border); box-shadow:var(--journal-shadow); border-radius:20px; font:13px/1.5 var(--journal-font); overscroll-behavior:contain; }
+.game-root .game-stage :is(.info-header, .shop-header) { background:var(--journal-card); color:var(--journal-heading); border-bottom:1px solid var(--journal-border); }
+.game-root .game-stage :is(.info-header h2, .shop-header h2) { font:700 26px/1.2 var(--journal-font); letter-spacing:-.8px; }
+.game-root .game-stage :is(.info-kicker, .shop-kicker) { color:var(--journal-muted); font:700 9px var(--journal-font); letter-spacing:.15em; }
+.game-root .game-stage :is(.quest-card, .badge-card, .option-row, .shop-item) { background:var(--journal-card); color:var(--journal-ink); border:1px solid var(--journal-border); border-radius:12px; box-shadow:none; }
+.game-root .game-stage :is(.quest-card p, .empty-copy, .panel-state, .option-row small, .options-note, .shop-item-description, .shop-owned, .save-copy, .save-date) { color:var(--journal-muted); }
+.game-root .game-stage :is(.progress-columns h3, .info-panel>h3) { color:var(--journal-heading); }
+.game-root .game-stage .quest-track { background:var(--journal-border); }
+.game-root .game-stage .quest-track span { background:var(--journal-progress); }
+.game-root .game-stage .completed-label { color:var(--journal-accent); }
+.game-root .game-stage .badge-card.earned { background:var(--journal-selected); border-color:#98b398; }
+.game-root .game-stage .badge-medal { color:var(--journal-progress); text-shadow:none; }
+.game-root .game-stage .badge-card:not(.earned) .badge-medal { color:#a5afa0; }
+.game-root .game-stage .save-orb { color:var(--journal-accent); background:var(--journal-selected); box-shadow:none; }
+.game-root .game-stage .save-orb.error { color:var(--journal-danger); background:#f7e6df; }
+.game-root .game-stage :is(.primary-button, .team-save-btn, .shop-buy-controls button) { background:var(--journal-accent); border:1px solid var(--journal-accent); border-radius:9px; color:#fff; min-height:44px; font:600 13px var(--journal-font); }
+.game-root .game-stage :is(.option-row select, .shop-buy-controls select) { min-height:44px; max-width:100%; background:var(--journal-paper); color:var(--journal-ink); border:1px solid var(--journal-border); border-radius:8px; font:13px var(--journal-font); }
+.game-root .game-stage .option-row input { accent-color:var(--journal-accent); }
+.game-root .game-stage .shop-card { display:flex; flex-direction:column; }
+.game-root .game-stage .shop-header { flex:none; gap:12px; padding:20px 24px; }
+.game-root .game-stage .shop-wallet { flex:none; padding:13px 24px; background:var(--journal-soft); color:var(--journal-heading); border-color:var(--journal-border); border-width:1px; font:13px var(--journal-font); }
+.game-root .game-stage .shop-list { min-height:0; max-height:none; padding:16px 24px; }
+.game-root .game-stage .shop-item { padding:14px; margin-bottom:10px; }
+.game-root .game-stage .shop-item-title { font:700 14px var(--journal-font); }
+.game-root .game-stage .shop-owned { font:11px var(--journal-font); }
+.game-root .game-stage :is(.shop-error, .shop-empty) { font:13px/1.5 var(--journal-font); }
+
+/* Dialogue and multiplayer prompts use the same surfaces. */
+.game-root .dialogue-layer .dialogue-shell { align-items:end; padding:30px 26px 45px; }
+.game-root .dialogue-layer .text-with-image { flex-direction:row-reverse; align-items:center; gap:20px; width:min(860px,100%); height:auto; padding:24px; box-sizing:border-box; background:var(--journal-paper); border:1px solid var(--journal-border); border-radius:20px; box-shadow:var(--journal-shadow); }
+.game-root .dialogue-layer .text { flex:1; min-width:0; min-height:0; max-height:60vh; background:transparent; border:0; border-radius:0; padding:0; color:var(--journal-ink); font:18px/1.55 var(--journal-font); }
+.game-root .dialogue-layer .texts { flex:0 0 155px; height:155px; align-items:end; background:var(--journal-soft); border:0; border-radius:16px; }
+.game-root .dialogue-layer .portrait-atlas { width:155px; height:155px; flex-shrink:0; clip-path:inset(1% 5% 0 5%); }
+.game-root .game-stage :is(.interaction-card, .chat-panel, .interaction-notice) { background:var(--journal-paper); color:var(--journal-ink); border:1px solid var(--journal-border); border-radius:14px; box-shadow:var(--journal-shadow); font:13px/1.5 var(--journal-font); }
+.game-root .game-stage :is(.interaction-text, .interaction-note) { color:var(--journal-muted); font-size:13px; }
+.game-root .game-stage :is(.interaction-btn, .chat-close-btn, .chat-send-btn) { min-height:44px; padding:8px 12px; background:var(--journal-accent); color:white; border:1px solid var(--journal-accent); border-radius:8px; font:12px var(--journal-font); }
+.game-root .game-stage .interaction-btn-muted { background:var(--journal-soft); color:var(--journal-ink); border-color:var(--journal-border); }
+.game-root .game-stage .chat-header { background:var(--journal-soft); border-color:var(--journal-border); }
+.game-root .game-stage .chat-title { color:var(--journal-heading); font:700 13px var(--journal-font); }
+.game-root .game-stage .chat-message-row { background:var(--journal-card); color:var(--journal-ink); border-color:var(--journal-border); font:13px/1.5 var(--journal-font); }
+.game-root .game-stage .chat-message-row.is-me { background:var(--journal-selected); }
+.game-root .game-stage :is(.chat-message-row.is-system, .chat-author) { color:var(--journal-muted); }
+.game-root .game-stage .chat-input { background:var(--journal-card); color:var(--journal-ink); border-color:var(--journal-border); min-height:44px; font:13px var(--journal-font); }
+.game-root .game-stage .chat-input-row { border-color:var(--journal-border); }
+
+@media(max-width:920px) {
+  .game-root .game-stage .mobile-dpad-btn { background:var(--journal-paper); border:1px solid var(--journal-border); color:var(--journal-accent); border-radius:16px; box-shadow:0 4px 14px #152b2426; font:24px var(--journal-font); }
+  .game-root .game-stage .mobile-dpad-center { background:var(--journal-soft); border:1px solid var(--journal-border); border-radius:16px; box-shadow:none; }
+  .game-root :is(.mobile-action-a, .mobile-dialogue-action-top) { background:var(--journal-accent); border:2px solid #d3e1d0; color:#fff; box-shadow:0 5px 18px #152b2440; text-shadow:none; font-family:var(--journal-font); }
+}
+@media(max-width:600px) {
+  .game-root .game-stage .world-toolbar { padding:9px 10px; gap:8px; border-radius:0; }
+  .game-root .game-stage .menu-toggle-btn { padding:8px 12px; gap:8px; }
+  .game-root .game-stage .location-banner { font-size:13px; max-width:calc(100% - 98px); gap:6px; }
+  .game-root .game-stage .location-name { white-space:normal; }
+  .game-root .location-banner:has(.location-shop-btn) .location-copy small { display:none; }
+  .game-root .location-banner:has(.location-shop-btn) .location-name { font-size:12px; }
+  .game-root .game-stage .location-shop-btn { padding:6px; font-size:11px; }
+  .game-root .game-stage .location-pin { width:16px; height:16px; }
+  .game-root .game-stage :is(.team-panel, .bag-panel, .appearance-panel) { top:76px; padding:14px; max-height:calc(100dvh - 92px); }
+  .game-root .game-stage .team-row { gap:7px; padding:9px; }
+  .game-root .game-stage .team-row-visual { width:48px; min-width:48px; height:60px; }
+  .game-root .game-stage .team-pokemon-sprite { width:48px; height:48px; }
+  .game-root .game-stage .team-row-name { font-size:13px; }
+  .game-root .game-stage .team-slot { display:none; }
+  .game-root .game-stage :is(.info-backdrop, .shop-backdrop) { padding:8px; }
+  .game-root .game-stage :is(.info-panel, .shop-card) { height:auto; max-height:calc(100dvh - 16px); border-radius:16px; }
+  .game-root .game-stage :is(.info-header h2, .shop-header h2) { font-size:24px; }
+  .game-root .game-stage .shop-header { padding:16px; }
+  .game-root .game-stage .shop-list { padding:12px; }
+  .game-root .dialogue-layer .dialogue-shell { padding:12px 12px 110px; }
+  .game-root .dialogue-layer .text-with-image { gap:10px; padding:16px; }
+  .game-root .dialogue-layer .text { font-size:14px; line-height:1.5; max-height:65vh; }
+  .game-root .dialogue-layer .texts { flex-basis:80px; height:100px; }
+  .game-root .dialogue-layer .portrait-atlas { width:80px; height:80px; }
+}
+@media(max-height:500px) and (orientation:landscape) {
+  .game-root .game-stage { margin-top:0; }
+  .game-root .game-stage :is(.team-panel, .bag-panel, .appearance-panel) { max-height:calc(100dvh - 88px); }
+  .game-root .game-stage .menu-dropdown { max-height:calc(100dvh - 90px); }
+  .game-root .dialogue-layer .dialogue-shell { padding:15px 115px 18px 15px; }
+  .game-root .dialogue-layer .texts { flex-basis:95px; height:110px; }
+  .game-root .dialogue-layer .portrait-atlas { width:95px; height:95px; }
+  .game-root .dialogue-layer .text { font-size:14px; }
+}
+
+/* Existing combat controls retain their semantic colours and tested geometry. */
 .game-root .game-stage .battle-status { border:2px solid #415466; border-radius:5px 19px 5px 19px; background:linear-gradient(145deg,#fffdf0,#eae4d4); box-shadow:0 3px 0 #bda779,0 7px 16px #0003; font-family:Arial,sans-serif; }
 .game-root .game-stage .battle-status-name { font-size:13px; font-weight:800; }.game-root .game-stage .battle-status-details { font-size:9px; }.game-root .game-stage .battle-status-tier { color:#947433; }
 .game-root .game-stage .battle-action-shell { background:linear-gradient(135deg,#294657,#182e40); border-top:3px solid #c3aa73; box-shadow:0 -4px 0 #172c3c; font-family:Arial,sans-serif; }
@@ -51,22 +162,15 @@
 .game-root .game-stage .action-attack { background:#b55748; }.game-root .game-stage .action-bag { background:#ad8b43; }.game-root .game-stage .action-pokemon { background:#478777; }.game-root .game-stage .action-run { background:#536e9b; }
 .game-root .game-stage .battle-choice-btn { background:#f4ecd8; border:2px solid #b9a574; color:#233d51; border-radius:8px 14px 8px 14px; font:600 12px/1.35 Arial; }
 .game-root .game-stage .battle-choice-btn small { color:#60747b; }.game-root .game-stage .battle-turn-indicator { font:10px Arial; background:#213e50; border-color:#8b947e; }.game-root .game-stage .battle-sound-toggle { min-width:36px; min-height:36px; }
-.game-root .dialogue-layer .dialogue-shell { align-items:end; padding:30px 26px 45px; }
-.game-root .dialogue-layer .text-with-image { flex-direction:row-reverse; align-items:center; gap:20px; width:min(860px,100%); height:auto; padding:20px; box-sizing:border-box; background:linear-gradient(135deg,#fff9e8,#f1e6ce); border:2px solid #c1aa75; border-radius:10px 24px 10px 24px; box-shadow:0 0 0 5px #243d51,0 15px 60px #0008; }
-.game-root .dialogue-layer .text { flex:1; min-width:0; min-height:0; max-height:60vh; background:transparent; border:0; border-radius:0; padding:0; color:#263e50; font:18px/1.55 Arial; }
-.game-root .dialogue-layer .texts { flex:0 0 155px; height:155px; align-items:end; background:radial-gradient(ellipse at bottom,#d7dec9,transparent 70%); border:0; border-radius:50% 50% 12px 12px; }
-.game-root .dialogue-layer .portrait-atlas { width:155px; height:155px; flex-shrink:0; }
+
 @media(max-width:600px){
-  .game-root .game-stage .team-panel{right:10px;top:60px;max-height:calc(100dvh - 170px);padding:10px;}.game-root .game-stage .team-row{gap:7px;padding:8px}.game-root .game-stage .team-row-visual{width:53px;min-width:53px;height:64px}.game-root .game-stage .team-pokemon-sprite{width:52px;height:52px}.game-root .game-stage .team-row-name{font-size:12px}.game-root .game-stage .team-slot{display:none}.game-root .game-stage .team-order-btn{min-width:26px}.game-root .game-stage .location-banner{font-size:10px;padding:8px 12px}.game-root .game-stage .battle-status{padding:7px 8px;min-height:76px}.game-root .game-stage .battle-status-name{font-size:11px}.game-root .game-stage .battle-status-details{font-size:8px}.game-root .game-stage .battle-text-box{font-size:13px}.game-root .game-stage .battle-main-btn{font-size:12px}.game-root .game-stage .battle-choice-btn{font-size:11px}
-  .game-root .dialogue-layer .dialogue-shell{padding:12px 12px 110px}.game-root .dialogue-layer .text-with-image{gap:10px;padding:14px}.game-root .dialogue-layer .text{font-size:14px;line-height:1.5;max-height:65vh}.game-root .dialogue-layer .texts{flex-basis:80px;height:100px}.game-root .dialogue-layer .portrait-atlas{width:80px;height:80px}
+  .game-root .game-stage .battle-status{padding:7px 8px;min-height:76px}
+  .game-root .game-stage .battle-status-name{font-size:11px}
+  .game-root .game-stage .battle-status-details{font-size:8px}
+  .game-root .game-stage .battle-text-box{font-size:13px}
+  .game-root .game-stage .battle-main-btn{font-size:12px}
+  .game-root .game-stage .battle-choice-btn{font-size:11px}
 }
-@media(max-height:480px) and (orientation:landscape){.game-root .dialogue-layer .dialogue-shell{padding:15px 115px 18px 15px}.game-root .dialogue-layer .texts{flex-basis:95px;height:110px}.game-root .dialogue-layer .portrait-atlas{width:95px;height:95px}.game-root .dialogue-layer .text{font-size:14px}.game-root .game-stage .team-panel{max-height:calc(100dvh - 80px)}}
-
-.game-root .game-stage .info-header { background:#253e51; color:#fff3d9; }
-.game-root .game-stage .progress-columns h3, .game-root .game-stage .info-panel>h3 { color:#52665f; }
-.game-root .game-stage .completed-label { color:#3b7e67; }
-
-.game-root .dialogue-layer .portrait-atlas { clip-path:inset(1% 5% 0 5%); }
 @media(max-width:720px){.game-root .game-stage .battle-turn-indicator{left:12px;transform:none}}
 @media(max-height:480px) and (orientation:landscape){
   .game-root .game-stage .battle{position:fixed;inset:0;top:0;width:100%;height:100dvh;min-height:0;animation:none}

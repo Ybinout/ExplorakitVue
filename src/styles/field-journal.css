@@ -1,0 +1,17 @@
+/* Shared with the Pokédex: paper surfaces, sage accents and quiet borders. */
+#app {
+  --journal-font: Arial, Helvetica, sans-serif;
+  --journal-paper: #f7f8f3;
+  --journal-card: #fcfcf8;
+  --journal-soft: #edf2e9;
+  --journal-selected: #e5eddd;
+  --journal-ink: #253b39;
+  --journal-heading: #233e37;
+  --journal-muted: #5c716b;
+  --journal-border: #d3ddd2;
+  --journal-accent: #287366;
+  --journal-progress: #528268;
+  --journal-danger: #a33f35;
+  --journal-shadow: 0 18px 60px #152b242e;
+  --journal-backdrop: rgba(10, 20, 20, .7);
+}

@@ -2,7 +2,7 @@
   <section class="adventure-guide" aria-label="Carnet d’aventure" @keydown.stop @keyup.stop>
     <details>
       <summary>
-        <span>◆ {{ objective ? 'Ton objectif' : 'Ton aventure' }}</span
+        <span>{{ objective ? 'Ton objectif' : 'Ton aventure' }}</span
         ><span>Objectif et aide +</span>
       </summary>
       <p class="objective">
@@ -42,15 +42,16 @@ export default { props: { objective: { type: Object, default: null } } };
   position: absolute;
   z-index: 6;
   left: 12px;
-  top: 58px;
+  top: 76px;
   width: min(390px, calc(100% - 24px));
-  color: #eef4e8;
-  background: #102939ed;
-  border: 1px solid #809989;
-  border-radius: 9px;
+  color: var(--journal-ink);
+  background: var(--journal-paper);
+  border: 1px solid var(--journal-border);
+  border-radius: 14px;
   padding: 10px 12px;
+  box-shadow: 0 5px 20px #152b2426;
   text-align: left;
-  font: 13px/1.5 'Trebuchet MS', sans-serif;
+  font: 13px/1.5 var(--journal-font);
 }
 .adventure-guide summary {
   cursor: pointer;
@@ -63,27 +64,27 @@ export default { props: { objective: { type: Object, default: null } } };
 }
 .adventure-guide summary span:last-child {
   font-size: 11px;
-  color: #b6ccda;
+  color: var(--journal-accent);
 }
 .objective {
   margin: 8px 0;
 }
 .destination {
-  color: #e8cf9a;
+  color: var(--journal-accent);
 }
 .objective-preview {
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #c5d4dc;
+  color: var(--journal-muted);
   font-size: 11px;
 }
 .adventure-guide:has(> details[open]) > .objective-preview {
   display: none;
 }
 .help {
-  border-top: 1px solid #ffffff26;
+  border-top: 1px solid var(--journal-border);
   margin-top: 12px;
   padding-top: 8px;
 }
@@ -94,7 +95,7 @@ export default { props: { objective: { type: Object, default: null } } };
   margin-bottom: 8px;
 }
 .help p {
-  color: #c5d4dc;
+  color: var(--journal-muted);
 }
 .adventure-guide:has(> details[open]) {
   max-height: min(55vh, calc(100vh - 200px));
@@ -102,7 +103,7 @@ export default { props: { objective: { type: Object, default: null } } };
 }
 @media (max-width: 600px) {
   .adventure-guide {
-    top: 90px;
+    top: 76px;
     width: calc(100% - 24px);
     padding: 6px 10px;
   }
@@ -113,7 +114,7 @@ export default { props: { objective: { type: Object, default: null } } };
 @media (max-height: 500px) {
   .adventure-guide {
     width: 260px;
-    top: 54px;
+    top: 76px;
     font-size: 11px;
   }
   .objective-preview {

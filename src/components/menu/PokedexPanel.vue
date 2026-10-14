@@ -139,12 +139,12 @@ export default {
   align-items:center;
   justify-content:center;
   padding:24px;
-  background:rgba(10,20,20,.7);
+  background:var(--journal-backdrop);
   backdrop-filter:blur(7px);
 }
 .dex,.dex * {
   box-sizing:border-box;
-  font-family:Arial,Helvetica,sans-serif;
+  font-family:var(--journal-font);
 }
 .dex {
   display:flex;
@@ -154,9 +154,9 @@ export default {
   height:min(780px,90dvh);
   min-height:0;
   overflow:hidden;
-  color:#253b39;
-  background:#f7f8f3;
-  border:1px solid #d3ddd2;
+  color:var(--journal-ink);
+  background:var(--journal-paper);
+  border:1px solid var(--journal-border);
   border-radius:20px;
   box-shadow:0 24px 90px #0005;
   text-align:left;
@@ -171,7 +171,7 @@ export default {
   cursor:pointer;
 }
 .dex button:focus-visible,.dex select:focus-visible,.dex input:focus-visible,.dex-scroll:focus-visible {
-  outline:2px solid #287366;
+  outline:2px solid var(--journal-accent);
   outline-offset:3px;
 }
 .dex-header {
@@ -180,7 +180,7 @@ export default {
   justify-content:space-between;
   gap:16px;
   padding:22px 26px 18px;
-  background:#fcfcf8;
+  background:var(--journal-card);
 }
 .dex-brand {
   display:flex;
@@ -189,7 +189,7 @@ export default {
 }
 .dex-eyebrow {
   margin:0 0 3px;
-  color:#5c716b;
+  color:var(--journal-muted);
   font-size:9px;
   font-weight:700;
   letter-spacing:.15em;
@@ -201,7 +201,7 @@ export default {
 }
 .dex h2 {
   margin:0;
-  color:#233e37;
+  color:var(--journal-heading);
   font-size:28px;
   font-weight:700;
   letter-spacing:-1.2px;
@@ -268,7 +268,7 @@ export default {
   align-items:center;
   gap:10px 20px;
   padding:13px 26px 16px;
-  background:#edf2e9;
+  background:var(--journal-soft);
   border-top:1px solid #e2e8de;
   border-bottom:1px solid #dfe6d9;
 }
@@ -325,7 +325,7 @@ export default {
   transform:translate(-50%,-50%);
   width:6px;
   height:6px;
-  background:#edf2e9;
+  background:var(--journal-soft);
   border:1.5px solid currentColor;
   border-radius:50%;
 }
@@ -339,13 +339,13 @@ export default {
 .dex-progress>span {
   display:block;
   height:100%;
-  background:#528268;
+  background:var(--journal-progress);
   border-radius:3px;
 }
 .dex-tools {
   flex:none;
   padding:18px 26px 0;
-  background:#f7f8f3;
+  background:var(--journal-paper);
 }
 .dex-search-row {
   display:flex;
@@ -424,7 +424,7 @@ export default {
 .dex-filters button.selected {
   border-color:#d9e1d2;
   color:#2e513f;
-  background:#e5eddd;
+  background:var(--journal-selected);
   font-weight:700;
 }
 .dex-filters button span {

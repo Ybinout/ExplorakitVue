@@ -6,7 +6,7 @@
           <div class="shop-kicker">{{ text.counter }}</div>
           <h2>{{ text.title }}</h2>
         </div>
-        <button class="shop-close" type="button" @click="$emit('close')">×</button>
+        <button class="shop-close" :aria-label="language === 'en' ? 'Close' : 'Fermer'" type="button" @click="$emit('close')">×</button>
       </header>
 
       <div class="shop-wallet">{{ text.wallet }} <strong>{{ money }} ₽</strong></div>
@@ -20,7 +20,7 @@
             <div class="shop-owned">{{ text.owned }} : {{ ownedQuantity(item.key) }}</div>
           </div>
           <div class="shop-buy-controls">
-            <select v-model.number="quantities[item.key]" :disabled="loading">
+            <select :aria-label="`${language === 'en' ? 'Quantity' : 'Quantité'} · ${item.name}`" v-model.number="quantities[item.key]" :disabled="loading">
               <option :value="1">×1</option>
               <option :value="5">×5</option>
               <option :value="10">×10</option>

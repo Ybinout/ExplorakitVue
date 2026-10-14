@@ -3,7 +3,7 @@
     <!-- <navBar></navBar> -->
     <div>
       <div class="game-stage">
-      <adventure-guide v-if="!isDrift && !battle && !battleResult && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !textImageSequence.length && !activeInfoPanel && !shop.visible" :objective="progressionState.objective || null" />
+      <adventure-guide v-if="!isDrift && !battle && !battleResult && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !textImageSequence.length && !activeInfoPanel && !shop.visible" :objective="progressionState.objective || null" />
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
       <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
       <battle-result-panel v-if="battleResult" :result="battleResult" @continue="dismissBattleResult" />
@@ -21,34 +21,37 @@
       <div class="game-shell" :inert="battleResult || driftSpectator ? '' : null" :aria-hidden="battleResult || driftSpectator ? 'true' : null">
         <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
-          <button class="menu-toggle-btn" @click="toggleMenu">
+          <button ref="menuToggle" class="menu-toggle-btn" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
+            <journal-icon name="menu" />
             {{ tr('menu') }}
           </button>
           <div v-if="isDrift" class="drift-hud">
             <div class="drift-clock"><drift-glyph name="clock" /><span><small>{{ driftPhaseLabel }}</small><strong>{{ driftCountdown || 'Rift' }}</strong></span></div>
             <button class="drift-hud-toggle" :aria-expanded="isDriftPanelOpen" aria-label="Ouvrir le carnet Drift" @click="toggleDriftPanel"><drift-glyph /><span>Drifts <small>{{ driftState?.equipped?.length || 0 }}/5</small></span></button>
           </div>
-          <div v-if="isMenuOpen" class="menu-dropdown">
+          <nav v-if="isMenuOpen" id="adventure-menu" class="menu-dropdown" :aria-label="tr('menu')">
+            <div class="menu-caption"><span>Explorakit</span><small>{{ isDrift ? 'RiftMon' : (preferences.language === 'en' ? 'Adventure' : 'Aventure') }}</small></div>
             <button
               v-for="item in visibleMenuItems"
               :key="item.key"
               class="menu-dropdown-item"
+              :data-menu-action="item.key"
               @click="handleMenuAction(item.key)"
             >
-              {{ menuItemLabel(item) }}
+              <journal-icon :name="item.key" /><span>{{ menuItemLabel(item) }}</span>
             </button>
-          </div>
+          </nav>
         </div>
         <div v-if="!battle" class="location-banner">
-          <span class="location-pin">◆</span>
-          <span class="location-name">{{ locationLabel }}</span>
+          <journal-icon class="location-pin" name="location" />
+          <span class="location-copy"><small>{{ preferences.language === 'en' ? 'Current location' : 'Tu es ici' }}</small><span class="location-name" :title="locationLabel">{{ locationLabel }}</span></span>
           <button v-if="isShopMap" class="location-shop-btn" type="button" @click="openShop">
             {{ tr('openShop') }}
           </button>
         </div>
         </div>
         <div v-if="isBagOpen" class="bag-panel" ref="bagPanel">
-          <div class="bag-title">{{ tr('bag') }}</div>
+          <div class="bag-title"><span><small>Explorakit</small>{{ tr('bag') }}</span><button class="panel-close" :aria-label="tr('close')" @click="isBagOpen = false">×</button></div>
           <p v-if="isDrift" class="bag-mode-note">Objets de cette expédition</p>
           <p v-if="bagError" class="bag-state bag-error" role="alert">{{ bagError }}</p>
           <p v-if="medicineNotice" class="bag-state" role="status">{{ medicineNotice }}</p>
@@ -63,13 +66,14 @@
           </div>
         </div>
         <div v-if="isAppearancePanelOpen" class="appearance-panel" ref="appearancePanel">
-          <div class="appearance-title">{{ tr('appearance') }}</div>
+          <div class="appearance-title"><span><small>Explorakit</small>{{ tr('appearance') }}</span><button class="panel-close" :aria-label="tr('close')" @click="isAppearancePanelOpen = false">×</button></div>
           <div class="appearance-grid">
             <button
               v-for="spriteOption in availableSprites"
               :key="spriteOption.key"
               class="appearance-option"
               :class="{ 'is-active': selectedSprite === spriteOption.key }"
+              :aria-pressed="selectedSprite === spriteOption.key"
               @click="selectPlayerSprite(spriteOption.key)"
             >
               <img class="appearance-preview" :src="spriteOption.src" alt="">
@@ -116,6 +120,7 @@
                 <div class="team-row-meta">{{ tr('ability') }} : {{ localizedAbility(pokemon.passiveAbility) || tr('noAbility') }}</div>
                 <select
                   class="team-held-item-select"
+                  :aria-label="`${preferences.language === 'en' ? 'Held item' : 'Objet tenu'} · ${pokemon.name}`"
                   :value="pokemon.heldItem || ''"
                   :disabled="teamSaving"
                   @change="equipHeldItem(pokemon, $event.target.value)"
@@ -129,6 +134,7 @@
               <div class="team-row-actions">
                 <button
                   class="team-order-btn"
+                  :aria-label="`${preferences.language === 'en' ? 'Move up' : 'Monter'} ${pokemon.name}`"
                   :disabled="index === 0 || teamSaving"
                   @click="moveTeamPokemon(index, 'up')"
                 >
@@ -136,6 +142,7 @@
                 </button>
                 <button
                   class="team-order-btn"
+                  :aria-label="`${preferences.language === 'en' ? 'Move down' : 'Descendre'} ${pokemon.name}`"
                   :disabled="index === teamPokemons.length - 1 || teamSaving"
                   @click="moveTeamPokemon(index, 'down')"
                 >
@@ -176,7 +183,7 @@
         />
         <canvas class="test" ref="monCanvas"></canvas>
         <div
-          v-if="showMobileControls && !battle && !battleResult && !driftSpectator"
+          v-if="showMobileControls && !battle && !battleResult && !driftSpectator && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
           <div v-if="textImageSequence.length === 0" class="mobile-dpad" aria-label="Pad directionnel">
@@ -320,6 +327,7 @@
 <script>
 import {resolveMapAsset} from '@/services/mapAssets';
 import AdventureGuide from './menu/AdventureGuide.vue';
+import JournalIcon from './menu/JournalIcon.vue';
 import api from "@/services/api";
 import { getSession } from "@/services/session";
 import { saveDriftReport } from "@/services/driftReportHistory";
@@ -357,6 +365,7 @@ const MOVEMENT_INTERPOLATION_MS = 175;
 
 export default {
   components: {
+    JournalIcon,
     AdventureGuide,
     BattleResultPanel,
     DriftRunPanel,
@@ -1537,13 +1546,14 @@ export default {
         this.isMenuOpen = false;
         this.isBagOpen = false;
         this.isTeamPanelOpen = false;
+        this.isAppearancePanelOpen = false;
         if (this.battle) {
           this.$refs.battleOverlay?.closePanels();
         }
       }
       if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey
         || e.target?.closest?.('input, textarea, select, [contenteditable="true"]')
-        || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) return;
+        || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) return;
       const directionKey = this.getMovementKey(e);
       if (directionKey) {
         e.preventDefault();
@@ -1645,7 +1655,7 @@ export default {
     }
     ,
     updatePlayerPosition() {
-      if (this.battleResult || this.driftSpectator || this.isDriftPanelOpen || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== "exploration")) || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) {
+      if (this.battleResult || this.driftSpectator || this.isDriftPanelOpen || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== "exploration")) || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) {
         this.releaseAllMovementKeys();
         return;
       }
@@ -3360,24 +3370,24 @@ button:hover {
 
 <style scoped>
 .world-toolbar { display: contents; }
-.game-root.is-drift .world-toolbar { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px 5px; border: 1px solid #7a8174; border-bottom-color: #a18c61; border-radius: 9px 9px 0 0; background: #142b3b; box-shadow: inset 0 0 0 2px #ffffff05; }
-.game-root.is-drift .game-header { height: auto; min-height: 44px; gap: 10px; padding: 0; border: 0; background: transparent; }
+.game-root.is-drift .world-toolbar { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px 5px; border: 1px solid var(--journal-border); border-radius: 16px 16px 0 0; background: var(--journal-card); box-shadow: none; }
+.game-root.is-drift .game-header { width: 100%; height: auto; min-height: 44px; gap: 10px; padding: 0; border: 0; background: transparent; }
 .game-root.is-drift .menu-toggle-btn { flex-shrink: 0; }
 .game-root.is-drift .menu-dropdown { left: 0; z-index: 60; }
-.game-root.is-drift .location-banner { position: static; align-self: flex-end; gap: 6px; max-width: 100%; min-height: 21px; padding: 2px 5px; border: 0; border-radius: 0; box-shadow: none; background: transparent; color: #c5d0c3; font: 11px/1.4 'Trebuchet MS', sans-serif; }
+.game-root.is-drift .location-banner { position: static; align-self: flex-end; gap: 6px; max-width: 100%; min-height: 21px; padding: 2px 5px; border: 0; border-radius: 0; box-shadow: none; background: transparent; color: var(--journal-ink); font: 12px/1.4 var(--journal-font); }
 .game-root.is-drift .location-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.game-root.is-drift .location-shop-btn { flex-shrink: 0; min-height: 32px; margin: 0; padding: 4px 9px; border: 1px solid #72897d; border-radius: 5px; background: #294c51; color: #f6edcf; font-size: 10px; }
-.drift-hud { display: flex; align-items: center; gap: 14px; min-width: 0; margin-left: auto; color: #fff1cf; font: 12px 'Trebuchet MS', sans-serif; }
+.game-root.is-drift .location-shop-btn { flex-shrink: 0; min-height: 44px; margin: 0; padding: 6px 10px; border: 1px solid var(--journal-border); border-radius: 8px; background: var(--journal-soft); color: var(--journal-accent); font-size: 12px; }
+.drift-hud { display: flex; align-items: center; gap: 14px; min-width: 0; margin-left: auto; color: var(--journal-heading); font: 12px var(--journal-font); }
 .drift-clock { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.drift-clock > svg { flex-shrink: 0; width: 18px; height: 18px; color: #c5a568; }
+.drift-clock > svg { flex-shrink: 0; width: 18px; height: 18px; color: var(--journal-accent); }
 .drift-clock > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.drift-clock small { color: #a9bfb8; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drift-clock small { color: var(--journal-muted); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .drift-clock strong { font-variant-numeric: tabular-nums; font-size: 18px; letter-spacing: .03em; }
-.drift-hud-toggle { display: flex; align-items: center; gap: 7px; flex-shrink: 0; min-height: 44px; border: 1px solid #ac9b70; border-radius: 7px; padding: 6px 11px; background: #264551; color: #efebd5; cursor: pointer; font: inherit; box-shadow: inset 0 0 0 2px #ffffff05; }
-.drift-hud-toggle > svg { width: 20px; height: 20px; color: #c5a568; }
-.drift-hud-toggle small { margin-left: 5px; color: #a9c7bc; font-size: 10px; }
-.drift-hud-toggle:hover { background: #335865; }
-.drift-hud-toggle:focus-visible { outline: 2px solid #e1bd74; outline-offset: 3px; }
+.drift-hud-toggle { display: flex; align-items: center; gap: 7px; flex-shrink: 0; min-height: 44px; border: 1px solid var(--journal-border); border-radius: 7px; padding: 6px 11px; background: var(--journal-soft); color: var(--journal-ink); cursor: pointer; font: inherit; box-shadow: inset 0 0 0 2px #ffffff05; }
+.drift-hud-toggle > svg { width: 20px; height: 20px; color: var(--journal-accent); }
+.drift-hud-toggle small { margin-left: 5px; color: var(--journal-muted); font-size: 10px; }
+.drift-hud-toggle:hover { background: var(--journal-selected); }
+.drift-hud-toggle:focus-visible { outline: 2px solid var(--journal-accent); outline-offset: 3px; }
 .bag-mode-note { margin: -5px 0 10px; color: #586c63; font: 11px/1.4 Arial, sans-serif; }
 @media(max-width:550px) {
   .game-root.is-drift .world-toolbar { padding-inline: 6px; }
@@ -3397,5 +3407,5 @@ button:hover {
 </style>
 
 <style scoped>
-.recovery-notice{position:absolute;z-index:20;top:65px;left:5%;width:90%;padding:12px;background:#173851;color:#fff;border:1px solid #a7c7df;border-radius:8px}.bag-item-row{flex-wrap:wrap}.bag-item-row select{width:100%;max-width:100%;min-height:44px;margin-top:6px;color:#eef4e8;background:#163544;border:1px solid #7f999a;border-radius:6px}
+.recovery-notice{position:absolute;z-index:20;top:65px;left:5%;width:90%;padding:12px;background:#173851;color:#fff;border:1px solid #a7c7df;border-radius:8px}
 </style>

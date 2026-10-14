@@ -1,5 +1,6 @@
 import Vue from 'vue';
 import App from './App.vue';
+import './styles/field-journal.css';
 import router from './router/index';  // Importez le routeur que vous venez de créer
 
 Vue.prototype.$assetBase = process.env.BASE_URL;
