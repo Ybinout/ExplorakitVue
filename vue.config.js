@@ -10,8 +10,8 @@ module.exports = defineConfig({
   chainWebpack: (config) => {
     config.plugin('copy').tap(([options]) => {
       options.patterns.push(
-        { from: path.resolve(__dirname, 'src/assets/dp2'), to: path.resolve(__dirname, '../dist/img/pokemon/front') },
-        { from: path.resolve(__dirname, 'src/assets/back'), to: path.resolve(__dirname, '../dist/img/pokemon/back') }
+        { from: path.resolve(__dirname, 'src/assets/dp2'), to: 'img/pokemon/front' },
+        { from: path.resolve(__dirname, 'src/assets/back'), to: 'img/pokemon/back' }
       );
       return [options];
     });

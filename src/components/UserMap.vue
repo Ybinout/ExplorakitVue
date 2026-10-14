@@ -3,6 +3,9 @@
     <!-- <navBar></navBar> -->
     <div>
       <div class="game-stage">
+      <adventure-guide v-if="!isDrift && !battle && !battleResult && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !textImageSequence.length && !activeInfoPanel && !shop.visible" :objective="progressionState.objective || null" />
+      <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
+      <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
       <battle-result-panel v-if="battleResult" :result="battleResult" @continue="dismissBattleResult" />
       <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
       <drift-run-panel v-if="isDrift && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
@@ -47,13 +50,15 @@
         <div v-if="isBagOpen" class="bag-panel" ref="bagPanel">
           <div class="bag-title">{{ tr('bag') }}</div>
           <p v-if="isDrift" class="bag-mode-note">Objets de cette expédition</p>
+          <p v-if="bagError" class="bag-state bag-error" role="alert">{{ bagError }}</p>
+          <p v-if="medicineNotice" class="bag-state" role="status">{{ medicineNotice }}</p>
           <div v-if="bagLoading" class="bag-state">{{ tr('loading') }}</div>
-          <div v-else-if="bagError" class="bag-state bag-error">{{ bagError }}</div>
           <div v-else-if="bagItems.length === 0" class="bag-state">{{ emptyBagLabel }}</div>
           <div v-else class="bag-items">
             <div v-for="item in bagItems" :key="item.key" :data-item-key="item.key" class="bag-item-row">
               <span class="bag-item-name">{{ item.name }}</span>
               <span class="bag-item-qty">x{{ item.quantity }}</span>
+              <select v-if="!isDrift && item.category === 'medicine'" :disabled="medicineBusy || teamLoading" aria-label="Choisir le Pokémon à soigner" @change="useAdventureMedicine(item.key,$event)"><option value="">Utiliser sur…</option><option v-for="p in teamPokemons" :key="p.uuid" :value="p.uuid">{{ p.name }} · {{ p.currentHp }}/{{ p.maxHp }} PV</option></select>
             </div>
           </div>
         </div>
@@ -313,6 +318,8 @@
 </template>
 
 <script>
+import {resolveMapAsset} from '@/services/mapAssets';
+import AdventureGuide from './menu/AdventureGuide.vue';
 import api from "@/services/api";
 import { getSession } from "@/services/session";
 import { saveDriftReport } from "@/services/driftReportHistory";
@@ -347,24 +354,10 @@ import { getMapLocationLabel } from '@/services/mapLocations';
 
 const MOVEMENT_INPUT_INTERVAL_MS = 150;
 const MOVEMENT_INTERPOLATION_MS = 175;
-const MAP_ASSET_ALIASES = Object.freeze({
-  ville1_arene: 'gen_arene1',
-  ville1_shop: 'gen_shop1'
-});
-const mapAssetContext = require.context(
-  '@/assets',
-  false,
-  /^\.\/(?:start|etage2?|maison2?|pk[12]|route[1-6]|ville1|centre|cave[12]|gen_(?:route[1-8]|ville[1-5]|arene[1-5]|maison(?:[1-3]|_ville[1-5]_[12])|shop(?:1|_ville[25]_1)))(?:_f)?\.png$/
-);
-
-function resolveMapAsset(mapName, foreground = false) {
-  const suffix = foreground ? '_f' : '';
-  const assetMapName = MAP_ASSET_ALIASES[mapName] || mapName;
-  return mapAssetContext(`./${assetMapName}${suffix}.png`);
-}
 
 export default {
   components: {
+    AdventureGuide,
     BattleResultPanel,
     DriftRunPanel,
     RiftSpectatorPanel,
@@ -380,6 +373,7 @@ export default {
   data() {
     return {
       driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
+      medicineBusy:false, medicineNotice:'',
       endSentences: null,
       textImageSequence: [],
       socket: null,
@@ -545,6 +539,18 @@ export default {
   },
 
   methods: {
+    useAdventureMedicine(itemKey,event) {
+      const pokemonUuid=event.target.value; event.target.value='';
+      if(!pokemonUuid||this.medicineBusy)return;
+      this.medicineNotice='';
+      if(!this.socket?.connected){this.bagError='Reconnecte-toi pour utiliser un objet.';return;}
+      this.medicineBusy=true;
+      this.socket.timeout(8000).emit('useMedicine',{itemKey,pokemonUuid},(error,response)=>{
+        this.medicineBusy=false; this.bagError=error?'Le serveur ne répond pas.':response?.success?'':response?.message||'Soin impossible.';
+        if(response?.items)this.applyBagItems(response.items);
+        if(response?.success)this.medicineNotice='Soin appliqué et sauvegardé.';
+      });
+    },
     dismissBattleResult() {
       this.releaseAllMovementKeys();
       this.battleResult = null;
@@ -1367,7 +1373,8 @@ export default {
         }
 
         this.isBagOpen = true;
-        await this.loadBagItems();
+        this.medicineNotice='';
+        await Promise.all([this.loadBagItems(), this.loadTeamPokemons()]);
         return;
       }
 
@@ -3387,4 +3394,8 @@ button:hover {
   .drift-hud-toggle > svg { width: 17px; height: 17px; }
   .drift-hud-toggle small { margin-left: 3px; font-size: 10px; }
 }
+</style>
+
+<style scoped>
+.recovery-notice{position:absolute;z-index:20;top:65px;left:5%;width:90%;padding:12px;background:#173851;color:#fff;border:1px solid #a7c7df;border-radius:8px}.bag-item-row{flex-wrap:wrap}.bag-item-row select{width:100%;max-width:100%;min-height:44px;margin-top:6px;color:#eef4e8;background:#163544;border:1px solid #7f999a;border-radius:6px}
 </style>

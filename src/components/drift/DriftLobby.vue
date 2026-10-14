@@ -92,9 +92,10 @@
 
 
       <div class="camp-extras">
+        <rift-collection :coins="profile ? profile.coins : 0" @appearance="appearance=$event" @purchase="loadProfile" />
         <details class="profile-details"><summary><span>Mon palmarès</span><span aria-hidden="true">+</span></summary>
-      <section class="profile-strip" aria-label="Ton palmarès RiftMon" data-rift-profile :aria-busy="profileLoading">
-        <div class="profile-identity"><span class="trainer-token" aria-hidden="true"><i class="trainer-sprite" /></span><div><small>TON CARNET DE DRESSEUR</small><strong>{{ username }}</strong></div></div>
+      <section class="profile-strip" :style="appearance.color ? {borderColor:appearance.color,boxShadow:`inset 0 0 0 2px ${appearance.color}`} : {}" aria-label="Ton palmarès RiftMon" data-rift-profile :aria-busy="profileLoading">
+        <div class="profile-identity"><span class="trainer-token" aria-hidden="true"><i class="trainer-sprite" /></span><div><small>TON CARNET DE DRESSEUR</small><strong>{{ username }}</strong><span v-if="appearance.title" class="profile-title">{{ appearance.title }}</span></div></div>
         <dl class="profile-stats">
           <div><dt><drift-glyph name="trophy" /> Victoires</dt><dd data-rift-wins>{{ profileValue('wins') }}</dd></div>
           <div><dt><drift-glyph name="defense" /> Défaites</dt><dd data-rift-losses>{{ profileValue('losses') }}</dd></div>
@@ -107,8 +108,9 @@
         </details>
       <section class="camp-card history" data-drift-history aria-labelledby="history-title">
         <details>
-          <summary data-drift-history-toggle><span class="section-emblem"><drift-glyph name="trophy" /></span><div><h2 id="history-title">Tes expéditions</h2></div><span class="history-count">{{ reports.length }} / 10</span></summary>
-          <p class="quiet history-note">Jusqu’à dix bilans enregistrés pour ton compte sur cet appareil, selon l’espace disponible. Exporte tes favoris depuis leur bilan pour les conserver.</p>
+          <summary data-drift-history-toggle><span class="section-emblem"><drift-glyph name="trophy" /></span><div><h2 id="history-title">Tes expéditions</h2></div><span class="history-count">{{ reports.length }}</span></summary>
+          <p class="quiet history-note">Tes vingt dernières expéditions synchronisées avec ton compte, complétées par les souvenirs de cet appareil. Les anciennes parties non archivées côté serveur restent locales.</p>
+          <p v-if="historyError" class="quiet" role="status">Historique en ligne indisponible. <button class="subtle-button" @click="loadHistory">Réessayer</button></p>
           <p v-if="!reports.length" class="quiet">Ton prochain bilan complet apparaîtra ici à la fin de la partie.</p>
           <div v-else class="history-list" aria-label="Choisir une expédition passée">
             <button v-for="report in reports" :key="report.runId" :data-drift-history-run="report.runId" :aria-pressed="selectedReportId === report.runId" @click="selectedReportId = report.runId">
@@ -144,20 +146,21 @@
 import { clearSession, getSession } from '@/services/session';
 import api from '@/services/api';
 import { createDriftSocket, getDriftConnectionFailure } from '@/services/realtime';
+import RiftCollection from './RiftCollection.vue';
 import DriftGlyph from './DriftGlyph.vue';
 import DriftRunReport from './DriftRunReport.vue';
 import { readDriftReports } from '@/services/driftReportHistory';
 
 export default {
   name: 'DriftLobby',
-  components: { DriftGlyph, DriftRunReport },
+  components: { RiftCollection, DriftGlyph, DriftRunReport },
   data() {
     const user = getSession() || {};
     return { userId: Number(user.id), username: user.username || 'Dresseur', socket: null, connected: false,
       bootstrapped: false, connectionFailed: false, connectionFailureKind: '', lobby: null, busy: false, error: '', capacity: 4, durationMinutes: 30,
       capacities: Array.from({ length: 15 }, (_, index) => index + 2), durations: [20, 30, 40, 60, 90, 120, 300], inviteCode: '', copied: false,
       visibility: 'public', hubTab: 'browse', publicLobbies: [], lobbySearch: '', listLoading: false, listLoaded: false, listError: '',
-      profile: null, profileLoading: false, profileError: false,
+      appearance:{title:'',color:''}, historyError:false, profile: null, profileLoading: false, profileError: false,
       catalogueOpen: false, search: '', rarity: 'common', definitions: [], rarities: [],
       reports: readDriftReports(user.id), selectedReportId: null };
   },
@@ -183,6 +186,7 @@ export default {
   },
   mounted() {
     this.loadProfile();
+    this.loadHistory();
     this.socket = createDriftSocket(getSession()?.token);
     this.socket.on('connect', () => { this.connected = true; this.bootstrapped = false; this.connectionFailed = false; this.connectionFailureKind = ''; this.error = ''; });
     this.socket.on('disconnect', () => { this.connected = false; this.bootstrapped = false; this.listLoaded = false; this.publicLobbies = []; });
@@ -202,6 +206,14 @@ export default {
   },
   beforeDestroy() { this.socket?.removeAllListeners(); this.socket?.disconnect(); },
   methods: {
+    async loadHistory(){
+      this.historyError=false;
+      try {
+        const remote=(await api.get('/rift/history')).data.reports||[];
+        const combined=new Map([...this.reports,...remote].map(r=>[r.runId,r]));
+        this.reports=[...combined.values()].sort((a,b)=>b.finishedAt-a.finishedAt).slice(0,20);
+      }catch(e){this.historyError=true;}
+    },
     normalizeSearch(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); },
     durationLabel(minutes) {
       return minutes >= 60 ? `${Math.floor(minutes / 60)} h${minutes % 60 ? ` ${minutes % 60}` : ''}` : `${minutes} min`;
@@ -410,3 +422,5 @@ legend { font-size: 14px; }
 }
 
 </style>
+
+<style scoped>.profile-title{display:block;color:#3d5c69;font-size:11px;margin-top:5px}</style>
