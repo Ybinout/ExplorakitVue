@@ -88,7 +88,7 @@
         <p class="eyebrow">AVENTURE CRÉÉE</p>
         <h2>{{ form.username }}, {{ selectedStarter.name }} t’attend.</h2>
         <p>Ta mère a une mission importante à te confier. Le village est calme, mais la route ne le restera pas longtemps.</p>
-        <button class="primary-button launch-button" type="button" @click="$router.push(['/drift', '/game', '/colosseum'].includes($route.query.redirect) ? $route.query.redirect : '/')">{{ $route.query.redirect === '/game' ? 'Entrer dans le monde' : 'Choisir mon aventure' }}</button>
+        <button class="primary-button launch-button" type="button" @click="$router.push(loginDestination($route.query.redirect))">{{ $route.query.redirect === '/game' ? 'Entrer dans le monde' : 'Choisir mon aventure' }}</button>
       </section>
     </section>
   </main>
@@ -96,7 +96,7 @@
 
 <script>
 import api from '@/services/api';
-import { storeSession } from '@/services/session';
+import { storeSession, loginDestination } from '@/services/session';
 import avatarOne from '@/assets/sprite.png';
 import avatarTwo from '@/assets/sprite2.png';
 import bulbasaur from '@/assets/dp2/1.png';
@@ -140,6 +140,7 @@ export default {
     }
   },
   methods: {
+    loginDestination,
     nextStep() {
       this.errorMessage = '';
       if (this.step === 0) {

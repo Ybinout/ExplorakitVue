@@ -21,14 +21,14 @@
         </button>
       </form>
 
-      <button class="new-game" type="button" @click="$router.push({ path: '/inscription', query: ['/drift', '/game', '/colosseum'].includes($route.query.redirect) ? { redirect: $route.query.redirect } : {} })">Créer un dresseur</button>
+      <button class="new-game" type="button" @click="$router.push({ path: '/inscription', query: { redirect: loginDestination($route.query.redirect) } })">Créer un dresseur</button>
     </section>
   </main>
 </template>
 
 <script>
 import api from '@/services/api';
-import { storeSession } from '@/services/session';
+import { storeSession, loginDestination } from '@/services/session';
 
 export default {
   name: 'UserConnexion',
@@ -40,13 +40,14 @@ export default {
     };
   },
   methods: {
+    loginDestination,
     async login() {
       this.errorMessage = '';
       this.submitting = true;
       try {
         const response = await api.post('/login', this.credentials);
         storeSession(response.data.user, response.data.token);
-        this.$router.push(['/drift', '/game', '/colosseum'].includes(this.$route.query.redirect) ? this.$route.query.redirect : '/');
+        this.$router.push(loginDestination(this.$route.query.redirect));
       } catch (error) {
         this.errorMessage = error.response?.data?.message || 'Connexion impossible. Vérifie tes identifiants.';
       } finally {

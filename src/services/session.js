@@ -24,3 +24,7 @@ export function hasAuthenticatedSession() {
   const session = getSession();
   return Boolean(session?.id && session?.token);
 }
+
+export function loginDestination(value) {
+  return typeof value === 'string' && (/^\/(?:game|drift|colosseum)$/.test(value) || /^\/profil\/[1-9]\d*$/.test(value) || /^\/dresseurs(?:\?onglet=(?:amis|classement|recherche))?$/.test(value)) ? value : '/';
+}

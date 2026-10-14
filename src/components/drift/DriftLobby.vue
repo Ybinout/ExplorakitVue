@@ -16,6 +16,7 @@
       </section>
 
 
+      <rift-rank-summary :in-lobby="Boolean(lobby)" />
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <template v-if="connectionFailed">
         <button v-if="connectionFailureKind === 'session'" class="subtle-button reconnect-button" @click="$router.push({ path: '/connexion', query: { redirect: '/drift' } })">Se reconnecter au compte</button>
@@ -146,6 +147,7 @@
 import { clearSession, getSession } from '@/services/session';
 import api from '@/services/api';
 import { createDriftSocket, getDriftConnectionFailure } from '@/services/realtime';
+import RiftRankSummary from '../social/RiftRankSummary.vue';
 import RiftCollection from './RiftCollection.vue';
 import DriftGlyph from './DriftGlyph.vue';
 import DriftRunReport from './DriftRunReport.vue';
@@ -153,7 +155,7 @@ import { readDriftReports } from '@/services/driftReportHistory';
 
 export default {
   name: 'DriftLobby',
-  components: { RiftCollection, DriftGlyph, DriftRunReport },
+  components: { RiftRankSummary, RiftCollection, DriftGlyph, DriftRunReport },
   data() {
     const user = getSession() || {};
     return { userId: Number(user.id), username: user.username || 'Dresseur', socket: null, connected: false,

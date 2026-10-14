@@ -5,6 +5,7 @@
       <div class="cover-copy"><span class="eyebrow">LE CARNET DES SURVIVANTS</span><h3>{{ winner ? `${winner.username} remporte l’expédition` : 'Chacun a laissé sa trace' }}</h3><p>{{ players.length }} dresseurs · {{ duration(report.durationMs) }} de voyage<span v-if="report.rules?.durationMinutes"> · exploration prévue : {{ report.rules.durationMinutes }} min</span></p></div>
       <button class="export-button" data-report-export @click="downloadReport"><drift-glyph name="progress" />Garder le carnet <small>Fichier JSON</small></button>
     </header>
+    <p v-if="ratingChange" class="report-note" data-report-rating><strong>Elo Rift : {{ ratingChange.before }} → {{ ratingChange.after }} ({{ ratingChange.delta>0 ? '+' : '' }}{{ ratingChange.delta }})</strong> · Place {{ ratingChange.place }}/{{ players.length }}. <router-link :to="`/profil/${userId}`" target="_blank" rel="noopener">Voir mon profil ↗</router-link></p>
     <p class="report-note">Les équipes, les Balls et le butin jouables ont été effacés à la fin de cette expédition. Leurs souvenirs restent dans ce carnet : retrouve le parcours de chaque dresseur.</p>
 
     <section v-if="accountReward" class="report-account-reward" data-report-account-reward data-rift-reward-detail aria-label="Calcul de la prime du vainqueur">
@@ -82,6 +83,7 @@ export default {
   props: { report: { type: Object, required: true }, userId: { type: [Number, String], default: null } },
   data() { return { selectedId: null, teamView: 'final', eventLimit: 40, downloadFeedback: '', statisticGroups: STATISTIC_GROUPS, attributes: [{ key: 'hp', label: 'PV' }, { key: 'attack', label: 'Attaque' }, { key: 'defense', label: 'Défense' }, { key: 'specialAttack', label: 'Atq. Spé.' }, { key: 'specialDefense', label: 'Déf. Spé.' }, { key: 'speed', label: 'Vitesse' }] }; },
   computed: {
+    ratingChange() { return this.report.ratingChanges?.find(p=>p.userId===Number(this.userId)); },
     accountReward() {
       const reward = this.report.accountReward;
       return reward?.version === 1 && ['participantCount', 'explorationMs', 'coinsPerPlayerMinute', 'coinsAwarded'].every(key => Number.isFinite(reward[key]) && reward[key] >= 0) ? reward : null;
