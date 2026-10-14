@@ -52,6 +52,8 @@ const router = new Router({
       component: Game,
       meta: { requiresAuth: true }
     },
+    { path: '/colosseum', name: 'Colosseum', component: () => import(/* webpackChunkName: "colosseum" */ '@/components/drift/ColosseumLobby.vue'), meta: { requiresAuth: true } },
+    { path: '/colosseum/game', name: 'ColosseumGame', component: Game, meta: { requiresAuth: true } },
     {
       path: '/test',
       name: 'test',
@@ -66,7 +68,7 @@ const router = new Router({
 
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth) && !isAuthenticated()) {
-    return next({ path: '/connexion', query: { redirect: to.path.startsWith('/drift') ? '/drift' : '/game' } });
+    return next({ path: '/connexion', query: { redirect: to.path.startsWith('/colosseum') ? '/colosseum' : to.path.startsWith('/drift') ? '/drift' : '/game' } });
   }
   return next();
 });

@@ -1,0 +1,61 @@
+<template>
+  <main class="colosseum-page" data-colosseum-lobby>
+    <nav><router-link to="/">← Les trois aventures</router-link><span>RIFTMON / COLOSSEUM</span></nav>
+    <header><div><p class="eyebrow">UNE ÉQUIPE. UN RECORD À BATTRE.</p><h1>Rift Colosseum</h1><p>Une heure pour te préparer.<br />Puis, repousse tes limites dans l’arène.</p></div><div class="hero-mark" aria-hidden="true"><drift-glyph name="trophy" /><img :src="$assetBase + 'img/pokemon/front/448.png'" alt="" /></div></header>
+    <div class="colosseum-layout">
+      <section class="start-card" aria-labelledby="challenge-title"><p class="eyebrow">LE DÉFI SOLO</p><h2 id="challenge-title">Prépare ton expédition</h2>
+        <ol><li><span>01</span><div><strong>Explore pendant 1 heure</strong><p>Pars sur les mêmes cartes avec un Pokémon de base aléatoire, hors légendaires. Capture ton équipe et trouve des Drifts.</p></div></li><li><span>02</span><div><strong>Entre au Colosseum</strong><p>À la fin du chrono, ton équipe rejoint l’arène. Enchaîne des dresseurs de plus en plus puissants.</p></div></li><li><span>03</span><div><strong>Gravis le classement</strong><p>Les survivants sont soignés entre les combats. Chaque K.O. est définitif, même pendant l’exploration.</p></div></li></ol>
+        <p class="connection-note">Le chrono continue si tu te déconnectes. Tu as 90 secondes pour revenir.</p>
+        <p v-if="error" class="error" role="alert">{{ error }}</p>
+        <p v-if="foreignLobby" class="error">Tu as déjà un salon Rift. <router-link to="/drift">Revenir à mon Rift →</router-link></p>
+        <router-link v-else-if="activeRun" class="primary" to="/colosseum/game" data-colosseum-resume>Reprendre mon défi <span>→</span></router-link>
+        <button v-else class="primary" data-colosseum-start :disabled="busy || !loaded || !connected" @click="start">{{ busy ? 'Préparation…' : !loaded ? 'Connexion…' : 'Lancer mon heure d’exploration' }} <span>→</span></button>
+        <button v-if="!connected && connectionFailed" class="retry" @click="retry">Réessayer la connexion</button>
+        <p class="separate-save">L’équipe de ton Aventure reste dans sa propre sauvegarde.</p>
+      </section>
+      <section class="leaderboard" aria-labelledby="ranking-title" data-colosseum-leaderboard><div class="ranking-heading"><div><p class="eyebrow">LES DRESSEURS DU COLOSSEUM</p><h2 id="ranking-title">Le classement</h2></div><button class="retry" :disabled="loading" aria-label="Actualiser le classement" @click="loadRanking">↻</button></div>
+        <p class="ranking-note">Ton meilleur score compte. Première victoire : 300 points.<br />Chaque victoire rapporte 100 × le numéro du défi + 10 × le niveau adverse × le nombre de Pokémon adverses.</p>
+        <div v-if="personal" class="personal-best" data-colosseum-personal><span>TON RECORD · #{{ personal.rank }}</span><strong>{{ number(personal.score) }} <small>points</small></strong><span>{{ personal.wins }} victoire{{ personal.wins > 1 ? 's' : '' }}</span></div>
+        <p v-if="loading" role="status" class="empty">Chargement du classement…</p><p v-else-if="rankingError" class="error" role="alert">Le classement est indisponible. <button class="retry" @click="loadRanking">Réessayer</button></p>
+        <div v-else-if="!entries.length" class="empty"><drift-glyph name="trophy" /><h3>La première place t’attend.</h3><p>Termine une tentative avec au moins une victoire au Colosseum pour inscrire ton nom ici.</p></div>
+        <ol v-else class="rank-list"><li v-for="entry in entries" :key="entry.userId" :class="{ me: entry.userId === userId }"><span class="rank">{{ entry.rank }}</span><div class="rank-body"><div class="rank-title"><strong>{{ entry.username }}<small v-if="entry.userId === userId"> · toi</small></strong><b>{{ number(entry.score) }} <small>pts</small></b></div><span class="wins">{{ entry.wins }} victoire{{ entry.wins > 1 ? 's' : '' }} · {{ date(entry.finishedAt) }}</span><div class="record-team" aria-label="Équipe du dernier combat"><span v-for="(p,index) in entry.team" :key="index" :title="`${p.name} · N. ${p.level}${p.knockedOut ? ' · K.O.' : ''}`"><img :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name" /><small>N. {{ p.level }}{{ p.knockedOut ? ' · K.O.' : '' }}</small></span></div></div></li></ol>
+        <p class="ranking-note">Équipes du dernier combat de chaque record. À égalité, le premier record établi conserve sa place. Les 50 meilleurs dresseurs sont affichés.</p>
+      </section>
+    </div>
+  </main>
+</template>
+<script>
+import api from '@/services/api';
+import { getSession } from '@/services/session';
+import { createDriftSocket, getDriftConnectionFailure } from '@/services/realtime';
+import DriftGlyph from './DriftGlyph.vue';
+export default {
+  name:'ColosseumLobby', components:{ DriftGlyph },
+  data() { return { socket:null,connected:false,loaded:false,connectionFailed:false,lobby:null,busy:false,error:'',loading:false,rankingError:false,entries:[],personal:null,userId:Number(getSession()?.id) }; },
+  computed:{ foreignLobby() { return this.lobby && this.lobby.mode !== 'colosseum'; }, activeRun() { return this.lobby?.mode === 'colosseum' && !['lobby','results'].includes(this.lobby.phase); } },
+  mounted() {
+    this.loadRanking();this.socket=createDriftSocket(getSession()?.token);
+    this.socket.on('connect',()=>{this.connected=true;this.connectionFailed=false;this.error='';});
+    this.socket.on('disconnect',()=>{this.connected=false;this.loaded=false;});
+    this.socket.on('connect_error',e=>{this.connectionFailed=true;this.error=getDriftConnectionFailure(e).message;});
+    this.socket.on('drift:lobby',lobby=>{this.lobby=lobby;this.loaded=true;});this.socket.connect();
+  },
+  beforeDestroy() { this.socket?.removeAllListeners();this.socket?.disconnect(); },
+  methods:{
+    retry() { this.socket.auth={token:getSession()?.token};this.socket.connect(); },
+    number(n) { return Number(n).toLocaleString('fr-FR'); },
+    date(n) { return new Date(n).toLocaleDateString('fr-FR',{timeZone:'Europe/Paris'}); },
+    async loadRanking() { this.loading=true;this.rankingError=false;try { const {data}=await api.get('/rift/colosseum/leaderboard');this.entries=data.entries;this.personal=data.personal; }catch(e){this.rankingError=true;}finally{this.loading=false;} },
+    async start() {
+      if(this.busy || !this.connected)return;this.busy=true;this.error='';
+      try { const result=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('colosseum:start',{},(e,r)=>e?reject(e):resolve(r)));if(!result?.ok)throw Error(result?.message || 'Lancement indisponible.');this.$router.push('/colosseum/game'); }
+      catch(e){this.error=e.message || 'Le serveur ne répond pas.';}finally{this.busy=false;}
+    }
+  }
+};
+</script>
+<style scoped>
+.colosseum-page{box-sizing:border-box;min-height:100dvh;padding:0 max(22px,calc((100vw - 1080px)/2)) 40px;background:#f7f8f3;color:#253b39;font-family:Arial,Helvetica,sans-serif}.colosseum-page nav{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #d3ddd2;font-size:11px}.colosseum-page a{color:#287366}.colosseum-page nav a{text-decoration:none;display:flex;align-items:center;min-height:44px}.colosseum-page nav span{font-size:9px;letter-spacing:.12em;color:#5c716b}header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:38px 0 30px}.eyebrow{font-size:9px;font-weight:700;letter-spacing:.15em;color:#8a6d36;margin:0 0 12px}h1{font:500 clamp(34px,5vw,52px)/1.1 Georgia,serif;margin:0;letter-spacing:-.035em}header p:last-child{color:#5c716b;font-size:14px;line-height:1.7;margin-bottom:0}.hero-mark{width:190px;height:160px;position:relative;flex-shrink:0}.hero-mark svg{position:absolute;inset:0;width:130px;height:130px;color:#ddcfaf;opacity:.7}.hero-mark img{position:absolute;right:0;bottom:0;width:140px;height:140px;object-fit:contain;image-rendering:pixelated}.colosseum-layout{display:grid;grid-template-columns:1fr 1.15fr;gap:24px;align-items:start}.start-card,.leaderboard{min-width:0;border:1px solid #d3ddd2;border-radius:16px;background:#fcfcf8;padding:28px}h2{font:500 27px/1.2 Georgia,serif;margin:0 0 22px;letter-spacing:-.025em}.start-card ol{list-style:none;padding:0;display:grid;gap:22px;margin:0 0 24px}.start-card li{display:flex;align-items:flex-start;gap:14px}.start-card li>span{font:18px Georgia,serif;color:#b29b70;padding-top:1px}.start-card strong{font-size:13px}.start-card li p{font-size:12px;line-height:1.75;color:#5c716b;margin:7px 0 0}.connection-note{padding:12px;background:#f4efe4;border-radius:8px;color:#76613c;font-size:11px;line-height:1.65}.primary{box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:52px;border:1px solid #287366;border-radius:9px;background:#287366;color:white!important;text-decoration:none;padding:12px 16px;font:700 12px Arial;cursor:pointer;margin-top:22px}.primary:disabled{opacity:.6;cursor:wait}.primary span{font-size:20px}.separate-save{text-align:center;font-size:10px;line-height:1.6;color:#5c716b;margin-bottom:0}.ranking-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.ranking-heading h2{margin-bottom:12px}.retry{border:1px solid #d3ddd2;border-radius:7px;background:#edf2e9;color:#287366;min-height:44px;min-width:44px;padding:8px;cursor:pointer}.ranking-note{font-size:10px;color:#5c716b;line-height:1.7}.personal-best{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;padding:15px;background:#e5eddd;border-radius:9px;margin:18px 0}.personal-best>span{font-size:10px}.personal-best>strong{font:24px Georgia,serif}.personal-best small{font:11px Arial}.empty{text-align:center;padding:28px 8px;color:#5c716b;font-size:12px;line-height:1.7}.empty svg{width:44px;height:44px;color:#b29b70}.empty h3{color:#253b39;font:23px Georgia,serif}.rank-list{list-style:none;padding:0;margin:20px 0}.rank-list>li{display:flex;gap:13px;padding:18px 0;border-top:1px solid #e1e6de}.rank-list>li.me{background:#edf2e9;border-radius:8px;padding-inline:10px}.rank{color:#8a6d36;font:23px Georgia,serif;min-width:20px}.rank-body{flex:1;min-width:0}.rank-title{display:flex;justify-content:space-between;gap:8px;font-size:12px}.rank-title>strong{overflow-wrap:anywhere;min-width:0}.rank-title b{white-space:nowrap;color:#287366}.rank-title small{font-size:9px;font-weight:400}.wins{display:block;margin:6px 0;color:#5c716b;font-size:9px}.record-team{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}.record-team>span{min-width:0;display:flex;align-items:center;flex-direction:column}.record-team img{width:100%;max-width:50px;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}.record-team small{font-size:8px;text-align:center;color:#5c716b}.error{color:#a33f35;font-size:12px;line-height:1.6}.colosseum-page :focus-visible{outline:3px solid #287366;outline-offset:3px}
+@media(max-width:740px){.colosseum-layout{grid-template-columns:1fr;gap:18px}.start-card,.leaderboard{padding:22px}.hero-mark{width:110px;height:135px}.hero-mark svg{width:80px;height:80px}.hero-mark img{width:110px;height:110px}header{padding:28px 0}.colosseum-page{padding-inline:18px}header p:last-child{font-size:12px}.eyebrow{font-size:8px}h1{font-size:34px}.colosseum-page nav span{font-size:8px}.colosseum-page nav{font-size:10px}.record-team img{max-width:56px}}
+@media(max-width:360px){.hero-mark{display:none}.start-card,.leaderboard{padding:18px}.colosseum-page{padding-inline:14px}.primary{font-size:11px}}
+</style>

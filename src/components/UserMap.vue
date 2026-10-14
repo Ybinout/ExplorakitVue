@@ -29,7 +29,7 @@
             <button class="drift-hud-toggle" :aria-expanded="isDriftPanelOpen" aria-label="Ouvrir le carnet Drift" @click="toggleDriftPanel"><drift-glyph /><span>Drifts <small>{{ driftState?.equipped?.length || 0 }}/5</small></span></button>
           </div>
           <nav v-if="isMenuOpen" id="adventure-menu" class="menu-dropdown" :aria-label="tr('menu')">
-            <div class="menu-caption"><span>Explorakit</span><small>{{ isDrift ? 'RiftMon' : (preferences.language === 'en' ? 'Adventure' : 'Aventure') }}</small></div>
+            <div class="menu-caption"><span>Explorakit</span><small>{{ isDrift ? (isColosseum ? 'Colosseum' : 'RiftMon') : (preferences.language === 'en' ? 'Adventure' : 'Aventure') }}</small></div>
             <button
               v-for="item in visibleMenuItems"
               :key="item.key"
@@ -531,16 +531,19 @@ export default {
     };
   },
   computed: {
-    isDrift() { return this.$route.name === 'DriftGame'; },
+    isColosseum() { return this.$route.name === 'ColosseumGame' || this.driftState?.mode === 'colosseum'; },
+    driftLobbyPath() { return this.isColosseum ? '/colosseum' : '/drift'; },
+    isDrift() { return ['DriftGame','ColosseumGame'].includes(this.$route.name); },
     emptyBagLabel() {
       if (this.isDrift && this.driftState && !this.driftState.alive) return 'Ton expédition est terminée : ses objets ont disparu.';
       return this.tr('emptyBag');
     },
     visibleMenuItems() { return this.isDrift ? [...this.menuItems.filter(i => !['pokedex', 'progress', 'save', 'appearance'].includes(i.key)), { key: 'drifts' }] : this.menuItems; },
-    driftPhaseLabel() { return { exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
-    driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
+    driftPhaseLabel() { return { exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', colosseum_ready: 'Colosseum · prêt ?', colosseum_battle: 'Colosseum', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
+    driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return this.isColosseum && this.driftState?.colosseum ? `${this.driftState.colosseum.score} pts` : ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
     selectedPokemon() { return this.teamPokemons.find(pokemon => pokemon.uuid === this.selectedPokemonUuid); },
     locationLabel() {
+      if (this.isColosseum && this.map === 'ville1_arene' && this.driftState?.phase !== 'exploration') return 'Colosseum';
       return getMapLocationLabel(this.map, this.preferences.language);
     },
     isShopMap() {
@@ -577,7 +580,7 @@ export default {
       this.battleResult = null;
       this.lock = Boolean(this.battle);
     },
-    async leaveDrift() { if (await this.driftCommand({ name: 'drift:exit' })) this.$router.replace('/drift'); },
+    async leaveDrift() { if (await this.driftCommand({ name: 'drift:exit' })) this.$router.replace(this.driftLobbyPath); },
     async watchDriftMatch(matchId) {
       this.releaseAllMovementKeys();
       await this.driftCommand({ name: 'drift:spectate', data: { matchId } });
@@ -1297,7 +1300,7 @@ export default {
       this.socket.emit('actionResponse', this.isDrift ? { ...payload, turnId: this.driftTurnId } : payload);
     },
     menuItemLabel(item) {
-      if (item.key === "drifts") return "Drifts et tournoi";
+      if (item.key === "drifts") return this.isColosseum ? "Drifts et Colosseum" : "Drifts et tournoi";
       if (item.key !== 'save') return this.tr(item.key);
       if (this.saveState.status === 'syncing') return this.tr('saving');
       if (this.saveState.status === 'synced') return `${this.tr('save')} ✓`;
@@ -1831,7 +1834,7 @@ export default {
       this.socket.on('drift:state', state => {
         const previousPhase = this.driftState?.phase; const previousAlive = this.driftState?.alive;
         this.driftState = state; this.driftOffset = state.serverNow - Date.now(); this.teamId = 'drift';
-        if (state.phase === 'results' && state.report && this.archivedDriftRunId !== state.report.runId) {
+        if (state.mode !== 'colosseum' && state.phase === 'results' && state.report && this.archivedDriftRunId !== state.report.runId) {
           this.archivedDriftRunId = state.report.runId;
           if (!saveDriftReport(userId, state.report)) this.interactionNotice = 'Le souvenir n’a pas pu être enregistré sur cet appareil. Tu peux encore exporter le bilan avant de quitter.';
         }
@@ -1839,9 +1842,9 @@ export default {
         if (!this.teamDirty || this.battle || !state.alive) this.applyTeamPokemons(state.team || []);
         if ((!state.alive || state.phase !== 'exploration') && (previousPhase !== state.phase || previousAlive !== state.alive)) { this.textImageSequence = []; this.isDriftPanelOpen = true; }
       });
-      this.socket.on('drift:lobby', lobby => { if (!lobby && this.driftState) this.$router.replace('/drift'); });
+      this.socket.on('drift:lobby', lobby => { if (!lobby && this.driftState) this.$router.replace(this.driftLobbyPath); });
       this.socket.on('drift:replaced', () => { this.socket.disconnect(); this.$router.replace('/'); });
-      this.socket.on('connect', () => this.socket.emit('drift:enter', {}, response => { if (!response?.success) this.$router.replace('/drift'); }));
+      this.socket.on('connect', () => this.socket.emit('drift:enter', {}, response => { if (!response?.success) this.$router.replace(this.driftLobbyPath); }));
     }
 
     this.socket.on("connect", () => {

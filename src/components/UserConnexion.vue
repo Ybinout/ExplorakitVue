@@ -17,11 +17,11 @@
         </label>
         <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
         <button class="login-button" type="submit" :disabled="submitting">
-          {{ submitting ? 'Connexion…' : ($route.query.redirect === '/game' ? 'Continuer l’aventure →' : 'Rejoindre RiftMon →') }}
+          {{ submitting ? 'Connexion…' : ($route.query.redirect === '/game' ? 'Continuer l’aventure →' : 'Choisir mon aventure →') }}
         </button>
       </form>
 
-      <button class="new-game" type="button" @click="$router.push({ path: '/inscription', query: ['/drift', '/game'].includes($route.query.redirect) ? { redirect: $route.query.redirect } : {} })">Créer un dresseur</button>
+      <button class="new-game" type="button" @click="$router.push({ path: '/inscription', query: ['/drift', '/game', '/colosseum'].includes($route.query.redirect) ? { redirect: $route.query.redirect } : {} })">Créer un dresseur</button>
     </section>
   </main>
 </template>
@@ -46,7 +46,7 @@ export default {
       try {
         const response = await api.post('/login', this.credentials);
         storeSession(response.data.user, response.data.token);
-        this.$router.push(['/drift', '/game'].includes(this.$route.query.redirect) ? this.$route.query.redirect : '/');
+        this.$router.push(['/drift', '/game', '/colosseum'].includes(this.$route.query.redirect) ? this.$route.query.redirect : '/');
       } catch (error) {
         this.errorMessage = error.response?.data?.message || 'Connexion impossible. Vérifie tes identifiants.';
       } finally {

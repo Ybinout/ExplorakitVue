@@ -1,9 +1,9 @@
 <template>
   <div class="drift-backdrop" @click.self="close" @keydown.esc.stop="escape" @keydown.tab="trapFocus">
-    <section ref="dialog" class="run-panel" role="dialog" aria-modal="true" aria-labelledby="drift-run-title">
+    <section ref="dialog" class="run-panel" :class="{ 'colosseum-panel': isColosseum }" role="dialog" aria-modal="true" aria-labelledby="drift-run-title">
       <header class="run-heading">
         <div class="heading-mark"><drift-glyph :name="state?.phase === 'exploration' ? 'compass' : 'trophy'" /></div>
-        <div class="heading-copy"><small>RIFTMON / EXPÉDITION RIFT</small><h2 id="drift-run-title">{{ state?.phase === 'results' ? 'Bilan de l’expédition' : state?.phase === 'exploration' ? 'Carnet d’expédition' : 'Le tournoi des survivants' }}</h2></div>
+        <div class="heading-copy"><small>{{ isColosseum ? 'RIFTMON / COLOSSEUM' : 'RIFTMON / EXPÉDITION RIFT' }}</small><h2 id="drift-run-title">{{ state?.phase === 'results' ? 'Bilan de l’expédition' : state?.phase === 'exploration' ? 'Carnet d’expédition' : isColosseum ? 'Le défi du Colosseum' : 'Le tournoi des survivants' }}</h2></div>
         <button ref="close" class="icon-button close-button" aria-label="Fermer le carnet Drift" @click="close"><drift-glyph name="close" /></button>
       </header>
       <template v-if="state">
@@ -58,7 +58,8 @@
             </article></div>
           </template>
           <rift-participants v-if="tab === 'players'" :state="state" :user-id="userId" @watch="$emit('watch', $event)" />
-          <template v-if="tab === 'tournament'">
+          <colosseum-run v-if="isColosseum && tab === 'tournament'" :state="state" @ready="command('drift:roundReady')" />
+          <template v-if="!isColosseum && tab === 'tournament'">
             <div v-if="state.phase === 'results' && state.settlement" class="account-reward" data-rift-account-reward>
               <p role="status">{{ accountSettlementText }}</p>
               <p v-if="state.settlement.reward && !state.report?.accountReward" class="reward-detail" data-rift-reward-detail>Prime du vainqueur : {{ formatValue(state.settlement.reward.coinsAwarded) }} pièces · {{ state.settlement.reward.participantCount }} dresseurs au départ · {{ rewardDuration(state.settlement.reward.explorationMs) }} d’exploration. {{ formatValue(state.settlement.reward.coinsPerPlayerMinute) }} pièces par dresseur et minute, arrondies à l’inférieur. Le tournoi ne compte pas.</p>
@@ -76,7 +77,7 @@
             </template>
           </template>
         </div>
-        <footer class="run-footer"><span class="footer-status" role="status">{{ feedback || (inShop && tab === 'drifts' ? 'Boutique · Tu peux revendre tes Drifts non équipés.' : state.alive ? 'Une expédition. Une seule vie.' : 'Une nouvelle expédition t’attend.') }}</span><button v-if="state.alive" class="leave-button" @click="askConfirmation('abandon')">Abandonner</button><button v-else class="secondary-button" data-drift-action="exit" @click="$emit('leave')">Retour au salon <span aria-hidden="true">→</span></button></footer>
+        <footer class="run-footer"><span class="footer-status" role="status">{{ feedback || (inShop && tab === 'drifts' ? 'Boutique · Tu peux revendre tes Drifts non équipés.' : state.alive ? 'Une expédition. Une seule vie.' : 'Une nouvelle expédition t’attend.') }}</span><button v-if="state.alive" class="leave-button" @click="askConfirmation('abandon')">Abandonner</button><button v-else class="secondary-button" data-drift-action="exit" @click="$emit('leave')">{{ isColosseum ? 'Retour au classement' : 'Retour au salon' }} <span aria-hidden="true">→</span></button></footer>
         <div v-if="confirmation" class="confirmation-backdrop" @click.self="cancelConfirmation"><section ref="confirm" class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="drift-confirm-title" aria-describedby="drift-confirm-copy"><drift-glyph :name="confirmation === 'discard' ? 'drift' : 'compass'" /><h3 id="drift-confirm-title">{{ confirmation === 'discard' ? 'Se séparer de ce Drift ?' : 'Quitter l’expédition ?' }}</h3><p id="drift-confirm-copy">{{ confirmation === 'discard' ? `${definition(discardTarget).name} disparaîtra de ton sac. Tu peux aussi le revendre en boutique pour ${salePrice(discardTarget)} ₽.` : 'Ton équipe, tes Drifts et ton butin seront perdus.' }}</p><div><button class="secondary-button" data-drift-action="cancel" @click="cancelConfirmation">{{ confirmation === 'discard' ? 'Conserver' : 'Continuer' }}</button><button class="danger-button" data-drift-action="confirm" @click="confirmAction">{{ confirmation === 'discard' ? 'Supprimer' : 'Abandonner' }}</button></div></section></div>
       </template>
       <p v-else class="loading-state">Ouverture de ton carnet…</p>
@@ -88,12 +89,13 @@
 import { getSession } from '@/services/session';
 import DriftGlyph from './DriftGlyph.vue';
 import DriftRunReport from './DriftRunReport.vue';
+import ColosseumRun from './ColosseumRun.vue';
 import RiftParticipants from './RiftParticipants.vue';
 import PokemonPortrait from '../PokemonPortrait.vue';
 
 export default {
   name: 'DriftRunPanel',
-  components: { DriftGlyph, DriftRunReport, RiftParticipants, PokemonPortrait },
+  components: { DriftGlyph, DriftRunReport, ColosseumRun, RiftParticipants, PokemonPortrait },
   props: { state: Object, catalogue: Object, inShop: Boolean, feedback: { type: String, default: '' } },
   data() {
     return { tab: this.state?.phase === 'exploration' ? 'drifts' : 'tournament', search: '', selectedId: null, mobileDetails: false,
@@ -101,6 +103,7 @@ export default {
       prices: { common: 50, rare: 120, epic: 300, legendary: 800, mythic: 2000 } };
   },
   computed: {
+    isColosseum() { return this.state?.mode === 'colosseum'; },
     accountSettlementText() {
       const settlement = this.state?.settlement;
       if (settlement?.status !== 'complete') return this.state?.winnerId === this.userId ? 'Ta victoire est en cours d’enregistrement. La prime attend confirmation.' : 'Ton résultat est en cours d’enregistrement sur ton compte RiftMon…';
@@ -108,7 +111,7 @@ export default {
       if (settlement.coinsAwarded == null || !Number.isFinite(Number(settlement.coinsAwarded))) return 'Ta victoire a été enregistrée sur ton compte RiftMon.';
       return `${this.formatValue(settlement.coinsAwarded)} pièces RiftMon ajoutées à ton compte.`;
     },
-    tabs() { return this.state?.phase === 'results' && this.state.report ? [{ key: 'tournament', label: 'Bilan & tableau final', icon: 'trophy' }] : [{ key: 'drifts', label: 'Drifts', icon: 'drift' }, { key: 'team', label: 'Équipe', icon: 'team' }, { key: 'players', label: 'Survivants', icon: 'players' }, { key: 'tournament', label: 'Tournoi', icon: 'trophy' }]; },
+    tabs() { if (this.isColosseum) return this.state.phase === 'results' ? [{key:'tournament',label:'Bilan du défi',icon:'trophy'}] : [{key:'drifts',label:'Drifts',icon:'drift'},{key:'team',label:'Équipe',icon:'team'},{key:'tournament',label:'Colosseum',icon:'trophy'}]; return this.state?.phase === 'results' && this.state.report ? [{ key: 'tournament', label: 'Bilan & tableau final', icon: 'trophy' }] : [{ key: 'drifts', label: 'Drifts', icon: 'drift' }, { key: 'team', label: 'Équipe', icon: 'team' }, { key: 'players', label: 'Survivants', icon: 'players' }, { key: 'tournament', label: 'Tournoi', icon: 'trophy' }]; },
     hasBye() { return this.state?.alive && this.state.matches.some(match => match.round === this.state.currentRound && match.status === 'bye' && match.players.includes(this.userId)); },
     outcomeReason() {
       if (this.state?.winnerId === this.userId) return 'Tu es le dernier dresseur en lice. L’expédition est terminée, même si le chrono n’était pas écoulé.';
@@ -207,4 +210,5 @@ button, input { font: inherit; }button { min-height: 44px; cursor: pointer; }but
 }
 @media (max-height: 500px) and (min-width: 601px) { .drift-backdrop { padding: 10px 20px; }.run-panel { height: calc(100dvh - 20px); }.run-heading { min-height: 56px; padding-block: 6px; }.run-heading h2 { font-size: 23px; }.run-tabs button { padding-block: 10px; }.run-content { padding-block: 14px; }.run-footer { min-height: 48px; }.equipped-slots button { height: 70px; }.tournament-empty { min-height: 180px; } }
 .account-reward { margin: 0 0 16px; }.account-reward p { margin: 0; }.account-reward .reward-detail { margin-top: 8px; padding-top: 8px; border-top: 1px solid #b5cbd4; font-size: 10px; }
+.run-panel.colosseum-panel{--paper:#f7f8f3;--gold:#d3ddd2;--night:#233e37;border-color:#d3ddd2;box-shadow:0 18px 60px #152b2440}.colosseum-panel .run-heading{background:#fcfcf8;color:#233e37}.colosseum-panel .heading-copy small{color:#5c716b}.colosseum-panel .heading-mark,.colosseum-panel .icon-button{color:#287366;border-color:#d3ddd2;background:#edf2e9}.colosseum-panel .run-tabs{background:#edf2e9;border-color:#d3ddd2}.colosseum-panel .run-tabs button[aria-selected="true"]{color:#287366}.colosseum-panel .run-tabs button[aria-selected="true"]::after{background:#287366}.colosseum-panel .run-footer{background:#edf2e9;border-color:#d3ddd2}
 </style>

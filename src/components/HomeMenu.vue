@@ -1,51 +1,35 @@
 <template>
-  <drift-lobby v-if="isLoggedIn" @logout="syncAuthState" />
-  <main v-else class="home-menu">
-    <section class="welcome" aria-labelledby="home-title">
-      <p class="kicker">UNE ÉQUIPE. UNE VIE. TA LÉGENDE.</p>
-      <h1 id="home-title">Rift<span>Mon</span><i aria-hidden="true">✦</i></h1>
-      <p class="tagline">Le monde t’attend.<br /><strong>Tes prochains rivaux aussi.</strong></p>
-      <div class="companions" aria-hidden="true">
-        <span class="rift-ring"></span>
-        <img class="companion-left" :src="$assetBase + 'img/pokemon/front/280.png'" alt="" />
-        <img class="companion-center" :src="$assetBase + 'img/pokemon/front/133.png'" alt="" />
-        <img class="companion-right" :src="$assetBase + 'img/pokemon/front/25.png'" alt="" />
-      </div>
-      <p class="pitch">Explore, compose ton équipe et affronte les survivants.<br />De 2 à 16 dresseurs, jusqu’à cinq heures d’aventure.</p>
-      <div class="home-actions">
-        <router-link class="main-action" to="/connexion">Se connecter <span aria-hidden="true">→</span></router-link>
-        <router-link class="secondary-action" to="/inscription">Créer mon dresseur</router-link>
-      </div>
-      <p class="solo-note">L’Aventure solo t’attend aussi au camp.</p>
+  <main class="mode-home" data-mode-menu>
+    <nav class="home-nav" aria-label="Compte"><router-link class="brand" to="/">✧ <span>EXPLORAKIT</span></router-link><div v-if="session"><span>{{ session.username }}</span><button @click="logout">Déconnexion</button></div><router-link v-else to="/connexion">Se connecter</router-link></nav>
+    <header class="home-intro"><p class="eyebrow">LE CAMP DES DRESSEURS</p><h1>À chaque envie,<br /><em>son aventure.</em></h1><p>Prends ton temps, retrouve tes amis ou vise le sommet.<br class="desktop-break" /> Choisis ton prochain départ.</p></header>
+    <section class="mode-grid" aria-label="Choisir un mode de jeu">
+      <router-link v-for="mode in modes" :key="mode.key" :to="mode.path" :data-mode="mode.key" class="mode-card" :class="mode.key">
+        <div class="mode-art" aria-hidden="true"><span class="art-ring"></span><drift-glyph :name="mode.icon" /><img :src="`${$assetBase}img/pokemon/front/${mode.pokemon}.png`" alt="" /></div>
+        <div class="mode-copy"><span class="mode-label">{{ mode.label }}</span><h2>{{ mode.title }}</h2><p>{{ mode.description }}</p><div class="mode-tags"><span v-for="tag in mode.tags" :key="tag">{{ tag }}</span></div><span class="mode-cta">{{ mode.cta }} <span aria-hidden="true">↗</span></span></div>
+      </router-link>
     </section>
-    <footer>Fan game privé · Une aventure créée entre amis</footer>
+    <p class="save-note"><drift-glyph name="team" /> Ton aventure et tes expéditions ont chacune leur équipe.</p>
+    <footer><span>EXPLORAKIT · RIFTMON</span><span v-if="!session">Nouveau ici ? <router-link to="/inscription">Créer mon dresseur</router-link></span><span v-else>À toi d’écrire la suite.</span></footer>
   </main>
 </template>
-
 <script>
-import { getSession } from '@/services/session';
-
+import { getSession, clearSession } from '@/services/session';
+import DriftGlyph from './drift/DriftGlyph.vue';
 export default {
-  name: 'HomeMenu',
-  components: { DriftLobby: () => import(/* webpackChunkName: "drift" */ './drift/DriftLobby.vue') },
-  data() { return { isLoggedIn: false }; },
-  created() {
-    this.syncAuthState();
-    window.addEventListener('storage', this.syncAuthState);
-  },
-  beforeDestroy() { window.removeEventListener('storage', this.syncAuthState); },
-  methods: {
-    syncAuthState() {
-      const user = getSession();
-      this.isLoggedIn = Boolean(user?.id && user?.token);
-    }
-  }
+  name: 'HomeMenu', components: { DriftGlyph },
+  data() { return { session: getSession(), modes: [
+    { key:'adventure', path:'/game', label:'À TON RYTHME', title:'L’Aventure', description:'Explore le monde, collectionne les badges et fais grandir ton équipe. Le multijoueur reste facultatif.', tags:['Sauvegarde permanente','Sans chrono'], cta:'Jouer une aventure solo', pokemon:133, icon:'compass' },
+    { key:'rift', path:'/drift', label:'ENTRE AMIS', title:'Rift multijoueur', description:'Compose ton équipe avant le tournoi final. Survis à tes rivaux et invente ta combinaison de Drifts.', tags:['2 à 16 joueurs','K.O. définitifs'], cta:'Rejoindre un Rift', pokemon:25, icon:'players' },
+    { key:'colosseum', path:'/colosseum', label:'LE DÉFI SOLO', title:'Rift Colosseum', description:'Une heure pour bâtir ton équipe, puis des dresseurs toujours plus forts. Jusqu’où iras-tu ?', tags:['1 h d’exploration','Classement'], cta:'Entrer au Colosseum', pokemon:448, icon:'trophy' }
+  ] }; },
+  created() { window.addEventListener('storage', this.sync); },
+  beforeDestroy() { window.removeEventListener('storage', this.sync); },
+  methods: { sync() { this.session=getSession(); }, logout() { clearSession();this.sync(); } }
 };
 </script>
-
 <style scoped>
-.home-menu { box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 50px 24px 24px; color: #f7f0df; background: radial-gradient(ellipse at 50% 30%, #247bd35c, transparent 62%), linear-gradient(135deg, #071c34f5, #163e63eb), url('~@/assets/backgroundmenu.webp') center/cover; font-family: 'Trebuchet MS', Arial, sans-serif; }
-.welcome { width: min(580px, 100%); text-align: center; }.kicker { margin: 0 0 15px; color: #a0cce9; font-size: 10px; font-weight: 700; letter-spacing: .22em; }h1 { position: relative; width: fit-content; margin: auto; color: #8cccff; font: 700 clamp(62px, 14vw, 108px)/1 Georgia, serif; letter-spacing: -.055em; text-shadow: 0 5px #091b3080, 0 0 50px #52a7ff38; }h1 span { color: #d5ecff; }h1 i { position: absolute; right: -22px; top: -6px; color: #e7c886; font: 24px Georgia, serif; }.tagline { margin: 19px 0 0; color: #a6bfd3; font-size: 16px; line-height: 1.6; }.tagline strong { color: #f7f0df; font-weight: 400; }.companions { position: relative; height: 215px; width: 330px; max-width: 100%; margin: 0 auto; }.rift-ring { position: absolute; width: 190px; height: 170px; top: 25px; left: calc(50% - 95px); border: 1px solid #7cc3fa40; border-radius: 50%; box-shadow: 0 0 0 12px #79bdff09, inset 0 0 40px #63b5ff19; transform: rotate(-15deg); }.companions img { position: absolute; width: 125px; height: 125px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 12px 7px #0414257a); }.companions .companion-left { left: 0; top: 28px; }.companions .companion-right { right: 0; top: 33px; }.companions .companion-center { width: 155px; height: 155px; top: 60px; left: calc(50% - 77px); }.pitch { margin: 6px 0 25px; color: #b8cfdf; font-size: 13px; line-height: 1.8; }.home-actions { display: grid; gap: 11px; max-width: 350px; margin: auto; }.home-actions a { display: flex; align-items: center; justify-content: center; gap: 20px; min-height: 49px; padding: 5px 20px; border: 1px solid #86bce3; border-radius: 10px 4px 10px 4px; color: #eff7ff; font-weight: 700; font-size: 14px; text-decoration: none; }.home-actions .main-action { background: linear-gradient(#3687c6, #225f96); box-shadow: inset 0 -3px #0e375955, 0 8px 20px #03142640; }.home-actions .secondary-action { border-color: #adc1c754; background: #102b435c; color: #d1e1eb; }.home-actions a:focus-visible { outline: 3px solid #ecd69c; outline-offset: 4px; }.home-actions a:hover { filter: brightness(1.15); }.solo-note { margin: 19px 0 0; color: #8fabbe; font-size: 11px; }footer { margin-top: 40px; color: #7998af; font-size: 10px; }
-@media (max-width: 420px) { .home-menu { padding-top: 40px; }.kicker { font-size: 8px; letter-spacing: .14em; }.companions { height: 185px; }.companions .companion-center { top: 36px; }.companions .companion-left { top: 15px; }.companions .companion-right { top: 18px; }.pitch { font-size: 12px; }.tagline { font-size: 14px; }footer { margin-top: 30px; } }
-@media (max-height: 600px) and (min-width: 600px) { .home-menu { padding-top: 25px; }h1 { font-size: 66px; }.companions { height: 130px; }.companions img { width: 90px; height: 90px; }.companions .companion-center { width: 115px; height: 115px; top: 18px; left: calc(50% - 57px); }.rift-ring { width: 150px; height: 110px; top: 10px; left: calc(50% - 75px); }.tagline { margin-top: 12px; }.pitch { margin-bottom: 15px; }footer { margin-top: 20px; } }
+.mode-home{box-sizing:border-box;min-height:100dvh;padding:0 max(24px,calc((100vw - 1120px)/2));background:radial-gradient(ellipse at 80% 0,#dce8d980,transparent 55%),#f7f8f3;color:#253b39;font-family:Arial,Helvetica,sans-serif}.home-nav{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:86px;border-bottom:1px solid #d3ddd2;font-size:13px}.home-nav a{color:inherit;text-decoration:none}.brand{display:flex;align-items:center;gap:9px;font-size:25px;color:#287366!important}.brand span{font-size:11px;letter-spacing:.18em;font-weight:700}.home-nav>div{display:flex;align-items:center;gap:16px;min-width:0}.home-nav>div>span{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.home-nav button{border:1px solid #d3ddd2;border-radius:8px;background:#fcfcf8;color:#5c716b;padding:10px;min-height:44px;cursor:pointer}.home-intro{padding:50px 0 36px}.eyebrow{font-size:10px;letter-spacing:.2em;font-weight:700;color:#287366;margin:0 0 18px}.home-intro h1{font:500 clamp(38px,5vw,60px)/1.08 Georgia,serif;letter-spacing:-.035em;margin:0;color:#233e37}.home-intro h1 em{font-style:normal;color:#648074}.home-intro>p:last-child{font-size:14px;line-height:1.7;color:#5c716b;margin:20px 0 0}.mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}.mode-card{display:flex;flex-direction:column;border:1px solid #d3ddd2;border-radius:18px;background:#fcfcf8;overflow:hidden;text-decoration:none;color:inherit;transition:transform .18s,box-shadow .18s}.mode-card:hover{transform:translateY(-4px);box-shadow:0 14px 28px #253b3912}.mode-card:focus-visible,.mode-home a:focus-visible,.mode-home button:focus-visible{outline:3px solid #287366;outline-offset:4px}.mode-art{height:164px;position:relative;overflow:hidden;background:#e5eddd;border-bottom:1px solid #d3ddd2}.rift .mode-art{background:#e1edf1}.colosseum .mode-art{background:#efe7d9}.mode-art>svg{position:absolute;width:78px;height:78px;left:34px;top:44px;color:#70957c;opacity:.65}.rift .mode-art>svg{color:#658b9d}.colosseum .mode-art>svg{color:#b18a47}.art-ring{position:absolute;width:180px;height:180px;border:1px solid #ffffffb0;border-radius:50%;right:10px;top:-8px;box-shadow:0 0 0 18px #ffffff30,0 0 0 38px #ffffff20}.mode-art img{position:absolute;width:144px;height:144px;object-fit:contain;image-rendering:pixelated;right:26px;bottom:0;filter:drop-shadow(0 9px 5px #253b3920)}.mode-copy{display:flex;flex:1;flex-direction:column;padding:26px}.mode-label{font-size:9px;letter-spacing:.17em;color:#5c716b;font-weight:700}.mode-copy h2{margin:10px 0 12px;font:500 29px/1.15 Georgia,serif;color:#233e37;letter-spacing:-.03em}.mode-copy>p{margin:0 0 20px;font-size:13px;line-height:1.75;color:#5c716b;flex:1}.mode-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px}.mode-tags span{padding:5px 7px;background:#f1f4ed;border-radius:5px;font-size:10px;color:#5c716b}.mode-cta{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:18px;border-top:1px solid #d3ddd2;min-height:28px;font-size:12px;font-weight:700;color:#287366}.mode-cta>span{font-size:20px}.save-note{display:flex;justify-content:center;align-items:center;gap:8px;font-size:11px;color:#5c716b;margin:26px 0 42px}.save-note svg{width:16px;height:16px;flex-shrink:0}footer{display:flex;align-items:center;justify-content:space-between;gap:15px;border-top:1px solid #d3ddd2;padding:20px 0 26px;font-size:10px;color:#5c716b}footer>span:first-child{letter-spacing:.12em}footer a{color:#287366}
+@media(max-width:850px){.mode-home{padding-inline:20px}.mode-grid{gap:12px}.mode-copy{padding:20px}.mode-copy h2{font-size:25px}.mode-art img{right:8px}.mode-art>svg{left:18px}}
+@media(max-width:640px){.mode-home{padding-inline:18px}.home-nav{min-height:70px}.home-nav>div{gap:8px}.home-nav>div>span{max-width:85px}.brand span{font-size:9px}.home-intro{padding:30px 0 25px}.home-intro h1{font-size:39px}.home-intro>p:last-child{font-size:12px;margin-top:14px}.desktop-break{display:none}.mode-grid{grid-template-columns:1fr;gap:14px}.mode-card{display:grid;grid-template-columns:94px minmax(0,1fr);border-radius:13px}.mode-art{height:auto;border-bottom:0;border-right:1px solid #d3ddd2}.mode-art img{width:108px;height:108px;max-width:none;right:-9px;top:50%;transform:translateY(-50%)}.mode-art>svg{width:36px;height:36px;top:17px;left:29px;opacity:.45}.art-ring{width:135px;height:135px;top:20%;right:-20px}.mode-copy{padding:18px 15px}.mode-copy h2{font-size:25px;margin:7px 0 9px}.mode-copy>p{font-size:11px;line-height:1.6;margin-bottom:12px}.mode-tags{gap:4px;margin-bottom:12px}.mode-tags span{font-size:9px;padding:4px 5px}.mode-label{font-size:8px}.mode-cta{font-size:11px;padding-top:10px;min-height:30px}.save-note{align-items:flex-start;text-align:center;font-size:10px;line-height:1.5;margin:23px 0 27px}footer{font-size:9px;align-items:flex-start;line-height:1.6}footer>span{max-width:50%}}
+@media(prefers-reduced-motion:reduce){.mode-card{transition:none}.mode-card:hover{transform:none}}
 </style>

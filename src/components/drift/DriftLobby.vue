@@ -1,6 +1,6 @@
 <template>
   <main class="drift-page" data-rift-hub>
-    <div class="drift-shell">
+    <div class="drift-shell"><router-link class="modes-back" to="/">← Choisir un mode</router-link>
       <header class="drift-nav">
         <span class="camp-label"><drift-glyph name="compass" /> LE CAMP DES DRESSEURS</span>
         <div class="account-nav"><span class="connection" role="status"><i :class="{ online: connected }"></i><span>{{ username }}</span></span><button class="account-button" :disabled="busy || Boolean(lobby)" :title="lobby ? 'Quitte le salon pour changer de compte' : 'Changer de compte'" @click="logout">Déconnexion</button></div>
@@ -162,7 +162,7 @@ export default {
       visibility: 'public', hubTab: 'browse', publicLobbies: [], lobbySearch: '', listLoading: false, listLoaded: false, listError: '',
       appearance:{title:'',color:''}, historyError:false, profile: null, profileLoading: false, profileError: false,
       catalogueOpen: false, search: '', rarity: 'common', definitions: [], rarities: [],
-      reports: readDriftReports(user.id), selectedReportId: null };
+      reports: readDriftReports(user.id).filter(r => r.mode !== 'colosseum'), selectedReportId: null };
   },
   computed: {
     rewardParticipants() { return this.lobby?.capacity || this.capacity; },
@@ -201,7 +201,7 @@ export default {
       this.refreshLobbies();
     });
     this.socket.on('drift:lobbies', rooms => { this.publicLobbies = Array.isArray(rooms) ? rooms : []; this.listLoaded = true; this.listError = ''; });
-    this.socket.on('drift:lobby', lobby => { this.lobby = lobby; if (lobby && lobby.phase !== 'lobby') this.$router.replace('/drift/game'); });
+    this.socket.on('drift:lobby', lobby => { this.lobby = lobby; if (lobby?.mode === 'colosseum') this.$router.replace(lobby.phase === 'lobby' || lobby.phase === 'results' ? '/colosseum' : '/colosseum/game'); else if (lobby && lobby.phase !== 'lobby') this.$router.replace('/drift/game'); });
     this.socket.connect();
   },
   beforeDestroy() { this.socket?.removeAllListeners(); this.socket?.disconnect(); },
@@ -291,6 +291,7 @@ export default {
 </script>
 
 <style scoped>
+.modes-back{display:inline-flex;align-items:center;min-height:44px;color:#d5ecff;text-decoration:none;font-size:12px;margin-bottom:8px;}
 .drift-page { --ink: #142b3b; --paper: #f5efdf; --gold: #c5a568; --mint: #83c2f1; --muted: #aac0d2; box-sizing: border-box; min-height: 100vh; padding: 12px 28px 26px; color: var(--paper); background: radial-gradient(ellipse at 76% 8%, #4a9ae944, transparent 42%), linear-gradient(125deg, #081d36f5, #173d60ee), url('~@/assets/backgroundmenu.webp') center/cover fixed; font: 13px/1.5 'Trebuchet MS', Arial, sans-serif; text-align: left; }
 .drift-shell { max-width: 1080px; margin: auto; }.drift-page *, .drift-page *::before, .drift-page *::after { box-sizing: border-box; }
 .drift-nav { display: flex; justify-content: space-between; align-items: center; gap: 14px; min-height: 44px; color: #c6d3d3; font-size: 12px; }.drift-nav a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: inherit; text-decoration: none; }.drift-nav .drift-glyph-icon { width: 17px; height: 17px; }.connection { display: flex; align-items: center; gap: 8px; min-width: 0; }.connection > span { min-width: 0; overflow-wrap: anywhere; }.connection i { flex: 0 0 6px; height: 6px; border-radius: 50%; background: var(--gold); }.connection i.online { background: var(--mint); box-shadow: 0 0 8px #89c7ba65; }
@@ -423,4 +424,5 @@ legend { font-size: 14px; }
 
 </style>
 
-<style scoped>.profile-title{display:block;color:#3d5c69;font-size:11px;margin-top:5px}</style>
+<style scoped>
+.modes-back{display:inline-flex;align-items:center;min-height:44px;color:#d5ecff;text-decoration:none;font-size:12px;margin-bottom:8px;}.profile-title{display:block;color:#3d5c69;font-size:11px;margin-top:5px}</style>
