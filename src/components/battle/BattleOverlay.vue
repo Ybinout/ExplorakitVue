@@ -262,6 +262,7 @@
 <script>
 import PotentialStar from '../PotentialStar.vue';
 import ExperienceBar from '../ExperienceBar.vue';
+import './battleViewport.css';
 import HealthBar from '../HealthBar.vue';
 import { getBattleStatus } from '@/services/gameView';
 import { localizeAbilityName, localizeMoveName, translate } from '@/services/i18n';
