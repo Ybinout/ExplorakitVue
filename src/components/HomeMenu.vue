@@ -9,18 +9,20 @@
       </router-link>
     </section>
     <p class="save-note"><drift-glyph name="team" /> Ton aventure et tes expéditions ont chacune leur équipe.</p>
+    <pwa-install />
     <footer><span>EXPLORAKIT · RIFTMON</span><span v-if="!session">Nouveau ici ? <router-link to="/inscription">Créer mon dresseur</router-link></span><span v-else>À toi d’écrire la suite.</span></footer>
   </main>
 </template>
 <script>
 import { getSession, clearSession } from '@/services/session';
+import PwaInstall from './PwaInstall.vue';
 import DriftGlyph from './drift/DriftGlyph.vue';
 export default {
-  name: 'HomeMenu', components: { DriftGlyph },
+  name: 'HomeMenu', components: { DriftGlyph, PwaInstall },
   data() { return { session: getSession(), modes: [
     { key:'adventure', path:'/game', label:'À TON RYTHME', title:'L’Aventure', description:'Explore le monde, collectionne les badges et fais grandir ton équipe. Le multijoueur reste facultatif.', tags:['Sauvegarde permanente','Sans chrono'], cta:'Jouer une aventure solo', pokemon:133, icon:'compass' },
     { key:'rift', path:'/drift', label:'ENTRE AMIS', title:'Rift multijoueur', description:'Compose ton équipe avant le tournoi final. Survis à tes rivaux et invente ta combinaison de Drifts.', tags:['2 à 16 joueurs','K.O. définitifs'], cta:'Rejoindre un Rift', pokemon:25, icon:'players' },
-    { key:'colosseum', path:'/colosseum', label:'LE DÉFI SOLO', title:'Rift Colosseum', description:'Une heure pour bâtir ton équipe, puis des dresseurs toujours plus forts. Jusqu’où iras-tu ?', tags:['1 h d’exploration','Classement'], cta:'Entrer au Colosseum', pokemon:448, icon:'trophy' }
+    { key:'colosseum', path:'/colosseum', label:'LE DÉFI SOLO', title:'Rift Colosseum', description:'30 minutes ou 1 heure pour bâtir ton équipe, puis des dresseurs toujours plus forts. Jusqu’où iras-tu ?', tags:['30 min ou 1 h','Classement'], cta:'Entrer au Colosseum', pokemon:448, icon:'trophy' }
   ] }; },
   created() { window.addEventListener('storage', this.sync); },
   beforeDestroy() { window.removeEventListener('storage', this.sync); },
@@ -32,4 +34,5 @@ export default {
 @media(max-width:850px){.mode-home{padding-inline:20px}.mode-grid{gap:12px}.mode-copy{padding:20px}.mode-copy h2{font-size:25px}.mode-art img{right:8px}.mode-art>svg{left:18px}}
 @media(max-width:640px){.mode-home{padding-inline:18px}.home-nav{min-height:70px}.home-nav>div{gap:8px}.home-nav>div>span{max-width:85px}.brand span{font-size:9px}.home-intro{padding:30px 0 25px}.home-intro h1{font-size:39px}.home-intro>p:last-child{font-size:12px;margin-top:14px}.desktop-break{display:none}.mode-grid{grid-template-columns:1fr;gap:14px}.mode-card{display:grid;grid-template-columns:94px minmax(0,1fr);border-radius:13px}.mode-art{height:auto;border-bottom:0;border-right:1px solid #d3ddd2}.mode-art img{width:108px;height:108px;max-width:none;right:-9px;top:50%;transform:translateY(-50%)}.mode-art>svg{width:36px;height:36px;top:17px;left:29px;opacity:.45}.art-ring{width:135px;height:135px;top:20%;right:-20px}.mode-copy{padding:18px 15px}.mode-copy h2{font-size:25px;margin:7px 0 9px}.mode-copy>p{font-size:11px;line-height:1.6;margin-bottom:12px}.mode-tags{gap:4px;margin-bottom:12px}.mode-tags span{font-size:9px;padding:4px 5px}.mode-label{font-size:8px}.mode-cta{font-size:11px;padding-top:10px;min-height:30px}.save-note{align-items:flex-start;text-align:center;font-size:10px;line-height:1.5;margin:23px 0 27px}footer{font-size:9px;align-items:flex-start;line-height:1.6}footer>span{max-width:50%}}
 @media(prefers-reduced-motion:reduce){.mode-card{transition:none}.mode-card:hover{transform:none}}
+.mode-home{padding-top:env(safe-area-inset-top);padding-bottom:max(40px,env(safe-area-inset-bottom))}
 </style>

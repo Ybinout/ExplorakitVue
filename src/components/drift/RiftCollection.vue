@@ -109,8 +109,8 @@ export default {
 </script>
 <style scoped>
 .collection {
-  border-bottom: 1px solid #ffffff18;
-  color: #c1d3e0;
+  border-bottom: 1px solid var(--journal-border);
+  color: var(--journal-ink);
   text-align: left;
 }
 .collection > summary {
@@ -129,7 +129,7 @@ export default {
   font-size: 13px;
 }
 .balance {
-  color: #e5c88c;
+  color: #806639;
 }
 .collection-grid {
   display: grid;
@@ -138,8 +138,8 @@ export default {
 }
 .collection-grid article {
   position: relative;
-  background: #163147;
-  border: 1px solid #58717e;
+  background: var(--journal-card);
+  border: 1px solid var(--journal-border);
   border-radius: 10px;
   padding: 15px;
   display: flex;
@@ -147,7 +147,7 @@ export default {
 }
 .preview {
   font-size: 28px;
-  color: var(--cosmetic-color, #e5c88c);
+  color: var(--cosmetic-color, #806639);
 }
 h3 {
   font-size: 15px;
@@ -160,9 +160,9 @@ article p {
 }
 button {
   min-height: 44px;
-  background: #264a61;
-  color: #eef5f5;
-  border: 1px solid #87a1b3;
+  background: var(--journal-accent);
+  color: #ffffff;
+  border: 1px solid var(--journal-accent);
   border-radius: 6px;
   cursor: pointer;
 }
@@ -172,11 +172,11 @@ button:disabled {
 }
 button:focus-visible,
 summary:focus-visible {
-  outline: 2px solid #c9e2f4;
+  outline: 2px solid var(--journal-accent);
   outline-offset: 3px;
 }
 .equipped {
-  color: #b3dec3;
+  color: var(--journal-accent);
   font-size: 12px;
   margin-top: 8px;
 }

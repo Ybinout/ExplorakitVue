@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "Explorakit · RiftMon",
+  "short_name": "Explorakit",
+  "description": "Ton aventure, les Rifts entre amis et le défi Colosseum.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f8f3",
+  "theme_color": "#f7f8f3",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "L’Aventure", "url": "game" },
+    { "name": "Rift multijoueur", "url": "drift" },
+    { "name": "Rift Colosseum", "url": "colosseum" }
+  ]
+}

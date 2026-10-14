@@ -1,16 +1,16 @@
 <template>
   <section class="colosseum-run" data-colosseum-run>
-    <p class="kicker">RIFT COLOSSEUM · SOLO</p><h3>{{ finished ? 'Ton passage au Colosseum' : state.phase === 'exploration' ? 'Une heure pour tout préparer' : `Défi ${next.wave} · ${next.title.split(' · ')[0]}` }}</h3>
+    <p class="kicker">RIFT COLOSSEUM · SOLO</p><h3>{{ finished ? 'Ton passage au Colosseum' : state.phase === 'exploration' ? `${durationLabel} pour tout préparer` : `Défi ${next.wave} · ${next.title.split(' · ')[0]}` }}</h3>
     <div class="score"><strong>{{ number(state.colosseum.score) }} <small>points</small></strong><span>{{ state.colosseum.wins }} victoire{{ state.colosseum.wins > 1 ? 's' : '' }}</span></div>
     <template v-if="finished"><p>{{ reason }}</p><p role="status">{{ state.settlement?.status === 'complete' ? state.colosseum.wins ? 'Résultat enregistré. Ton meilleur score figure au classement.' : 'Tentative enregistrée. Gagne un combat au Colosseum pour rejoindre le classement.' : 'Enregistrement de ton résultat…' }}</p><div v-if="state.colosseum.lastTeam.length" class="final-team"><div v-for="p in state.colosseum.lastTeam" :key="p.uuid"><img :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name" /><strong>{{ p.name }}</strong><span>N. {{ p.level }}{{ p.currentHp <= 0 ? ' · K.O.' : '' }}</span></div></div><p v-if="state.colosseum.lastTeam.length" class="hint">Ton équipe au dernier combat. Les Pokémon K.O. restent visibles dans ton record.</p></template>
-    <template v-else-if="state.phase === 'exploration'"><p>Capture tes compagnons, trouve des Drifts et prépare ta combinaison. Au bout d’une heure, ton équipe rejoindra automatiquement le Colosseum.</p><p>Chaque K.O. est définitif. Protège tes Pokémon !</p></template>
+    <template v-else-if="state.phase === 'exploration'"><p>Capture tes compagnons, trouve des Drifts et prépare ta combinaison. Au bout de {{ durationLabel.toLowerCase() }}, ton équipe rejoindra automatiquement le Colosseum.</p><p>Chaque K.O. est définitif. Protège tes Pokémon !</p></template>
     <template v-else><p>{{ next.size }} Pokémon adverses · niveau {{ next.level }}<span v-if="next.potential > 2"> · potentiel {{ next.potential }}</span></p><p class="reward">Prochaine victoire : +{{ number(next.points) }} points</p><p>Les survivants ont récupéré tous leurs PV et PP. Tu peux modifier leur ordre et tes Drifts avant d’entrer dans l’arène.</p><button class="start-wave" data-colosseum-ready :disabled="busy || state.phase !== 'colosseum_ready'" @click="ready">{{ busy ? 'Entrée dans l’arène…' : 'Affronter ce dresseur' }} <span>→</span></button><p class="hint">Le défi continue jusqu’à la perte du dernier Pokémon ou ton abandon. Fuir un combat du Colosseum met fin à la tentative.</p></template>
   </section>
 </template>
 <script>
 export default {
   name:'ColosseumRun',props:{state:Object},data(){return{busy:false};},
-  computed:{finished(){return this.state.phase==='results';},next(){return this.state.colosseum.next;},reason(){return {defeated:'Ton dernier Pokémon est tombé. Ton parcours s’arrête ici.',forfeit:'Tu as mis fin à cette tentative.',disconnected:'Tu n’es pas revenu dans les 90 secondes suivant ta déconnexion.'}[this.state.reason] || 'Cette tentative est terminée.';}},
+  computed:{durationLabel(){return this.state.durationMinutes===30?'30 minutes':'Une heure';},finished(){return this.state.phase==='results';},next(){return this.state.colosseum.next;},reason(){return {defeated:'Ton dernier Pokémon est tombé. Ton parcours s’arrête ici.',forfeit:'Tu as mis fin à cette tentative.',disconnected:'Tu n’es pas revenu dans les 90 secondes suivant ta déconnexion.'}[this.state.reason] || 'Cette tentative est terminée.';}},
   watch:{'state.phase'(){this.busy=false;}},
   methods:{number(n){return Number(n).toLocaleString('fr-FR');},ready(){if(this.busy)return;this.busy=true;this.$emit('ready');setTimeout(()=>{this.busy=false;},3000);}}
 };
