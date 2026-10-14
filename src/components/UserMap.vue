@@ -60,7 +60,17 @@
             <div v-for="item in bagItems" :key="item.key" :data-item-key="item.key" class="bag-item-row">
               <span class="bag-item-name">{{ item.name }}</span>
               <span class="bag-item-qty">x{{ item.quantity }}</span>
-              <select v-if="!isDrift && item.category === 'medicine'" :disabled="medicineBusy || teamLoading" aria-label="Choisir le Pokémon à soigner" @change="useAdventureMedicine(item.key,$event)"><option value="">Utiliser sur…</option><option v-for="p in teamPokemons" :key="p.uuid" :value="p.uuid">{{ p.name }} · {{ p.currentHp }}/{{ p.maxHp }} PV</option></select>
+              <p class="bag-item-description">{{ item.description }}</p>
+              <template v-if="isBagConsumable(item)">
+                <select :disabled="medicineBusy || teamLoading || !canUseBagConsumables" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
+                  <option value="">Choisir un Pokémon…</option>
+                  <option v-for="p in teamPokemons" :key="p.uuid" :value="p.uuid" :disabled="!canReceiveMedicine(item, p)">{{ p.name }} · {{ p.currentHp }}/{{ p.maxHp }} PV{{ medicineStatus(p) }}</option>
+                </select>
+                <button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagConsumables || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key]))" @click="useBagMedicine(item)">{{ medicineBusy ? 'Soin en cours…' : 'Utiliser' }}</button>
+                <small v-if="!canUseBagConsumables" class="bag-use-hint">{{ isDrift && driftState?.phase !== 'exploration' ? 'Soins automatiques entre les combats du tournoi.' : 'Disponible hors combat.' }}</small>
+                <small v-else-if="!teamPokemons.some(p => canReceiveMedicine(item, p))" class="bag-use-hint">Aucun Pokémon n’a besoin de cet objet.</small>
+              </template>
+              <small v-else-if="isDrift && item.revive" class="bag-use-hint">Les K.O. sont définitifs dans ce mode.</small>
             </div>
           </div>
         </div>
@@ -393,7 +403,7 @@ export default {
   data() {
     return {
       driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
-      medicineBusy:false, medicineNotice:'',
+      medicineBusy:false, medicineNotice:'', medicineTargets: {},
       endSentences: null,
       textImageSequence: [],
       socket: null,
@@ -552,6 +562,9 @@ export default {
     heldBagItems() {
       if (!Array.isArray(this.bagItems)) return [];
       return this.bagItems.filter((item) => item.category === 'held' && Number(item.quantity) > 0);
+    },
+    canUseBagConsumables() {
+      return !this.battle && (!this.isDrift || (this.driftState?.alive && this.driftState?.phase === 'exploration' && !this.driftState?.storagePaused && !this.driftState?.recoveryWaiting));
     }
   },
   watch: {
@@ -563,17 +576,35 @@ export default {
   },
 
   methods: {
-    useAdventureMedicine(itemKey,event) {
-      const pokemonUuid=event.target.value; event.target.value='';
-      if(!pokemonUuid||this.medicineBusy)return;
-      this.medicineNotice='';
-      if(!this.socket?.connected){this.bagError='Reconnecte-toi pour utiliser un objet.';return;}
-      this.medicineBusy=true;
-      this.socket.timeout(8000).emit('useMedicine',{itemKey,pokemonUuid},(error,response)=>{
-        this.medicineBusy=false; this.bagError=error?'Le serveur ne répond pas.':response?.success?'':response?.message||'Soin impossible.';
-        if(response?.items)this.applyBagItems(response.items);
-        if(response?.success)this.medicineNotice='Soin appliqué et sauvegardé.';
-      });
+    isBagConsumable(item) {
+      return Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse) && !(this.isDrift && item.revive));
+    },
+    canReceiveMedicine(item, pokemon) {
+      if (!pokemon) return false;
+      const effect = item.fieldUse || item;
+      if (effect.revive) return !this.isDrift && pokemon.currentHp <= 0;
+      if (pokemon.currentHp <= 0) return false;
+      return Boolean(((effect.heal || effect.healFraction || item.category === 'heal') && pokemon.currentHp < pokemon.maxHp) || effect.cure?.includes(pokemon.status));
+    },
+    medicineStatus(pokemon) {
+      const statuses = { poison: 'empoisonné', badly_poison: 'empoisonné', burn: 'brûlé', paralyze: 'paralysé', sleep: 'endormi', freeze: 'gelé' };
+      return pokemon.currentHp <= 0 ? ' · K.O.' : statuses[pokemon.status] ? ` · ${statuses[pokemon.status]}` : '';
+    },
+    async useBagMedicine(item) {
+      const pokemonUuid = this.medicineTargets[item.key];
+      const pokemon = this.teamPokemons.find(p => p.uuid === pokemonUuid);
+      if (this.medicineBusy || !this.canUseBagConsumables || !this.canReceiveMedicine(item, pokemon)) return;
+      this.medicineNotice = ''; this.bagError = '';
+      if (!this.socket?.connected) { this.bagError = 'Reconnecte-toi pour utiliser un objet.'; return; }
+      this.medicineBusy = true;
+      try {
+        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(this.isDrift ? 'drift:heal' : 'useMedicine', { itemKey: item.key, pokemonUuid }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
+        if (!response?.success) throw new Error(response?.message || 'Soin impossible.');
+        if (response.items) this.applyBagItems(response.items);
+        if (response.equipe) this.applyTeamPokemons(response.equipe.pokemons);
+        this.medicineNotice = `${item.name} utilisée sur ${pokemon.name}. Soin sauvegardé.`;
+      } catch (error) { this.bagError = error.message; }
+      finally { this.medicineBusy = false; }
     },
     dismissBattleResult() {
       this.releaseAllMovementKeys();

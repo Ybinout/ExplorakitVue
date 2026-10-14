@@ -60,6 +60,10 @@
 .game-root .game-stage .bag-item-name { color:var(--journal-ink); }
 .game-root .game-stage .bag-item-qty { flex:none; background:var(--journal-soft); color:var(--journal-accent); border-radius:20px; padding:4px 10px; }
 .game-root .game-stage .bag-item-row select { width:100%; min-width:0; max-width:100%; min-height:44px; margin-top:4px; padding:8px; color:var(--journal-ink); background:var(--journal-paper); border:1px solid var(--journal-border); border-radius:8px; font:12px var(--journal-font); }
+.game-root .game-stage .bag-item-description { flex-basis:100%; margin:2px 0; color:var(--journal-muted); font:12px/1.5 var(--journal-font); }
+.game-root .game-stage .bag-use-button { min-height:44px; width:100%; padding:10px; border:1px solid var(--journal-border); border-radius:8px; color:var(--journal-paper); background:var(--journal-accent); font:700 13px var(--journal-font); cursor:pointer; }
+.game-root .game-stage .bag-use-button:disabled { opacity:.5; cursor:default; }
+.game-root .game-stage .bag-use-hint { flex-basis:100%; color:var(--journal-muted); font:12px/1.4 var(--journal-font); }
 .game-root .game-stage .appearance-option { background:var(--journal-card); border-color:var(--journal-border); color:var(--journal-ink); border-radius:12px; box-shadow:none; }
 .game-root .game-stage .appearance-option:hover { background:var(--journal-soft); }
 .game-root .game-stage .appearance-option.is-active { background:var(--journal-selected); border-color:var(--journal-progress); box-shadow:inset 0 0 0 1px var(--journal-progress); }
