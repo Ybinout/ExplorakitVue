@@ -58,7 +58,7 @@
             </article></div>
           </template>
           <rift-participants v-if="tab === 'players'" :state="state" :user-id="userId" @watch="$emit('watch', $event)" />
-          <colosseum-run v-if="isColosseum && tab === 'tournament'" :state="state" @ready="command('drift:roundReady')" />
+          <colosseum-run v-if="isColosseum && tab === 'tournament'" :state="state" @ready="command('drift:roundReady')" @reward="command('colosseum:reward', $event)" @prepare="selectTab($event)" />
           <template v-if="!isColosseum && tab === 'tournament'">
             <div v-if="state.phase === 'results' && state.settlement" class="account-reward" data-rift-account-reward>
               <p role="status">{{ accountSettlementText }}</p>

@@ -1,0 +1,15 @@
+Generated with the built-in image_gen tool (generate mode), 15 October 2026.
+Project assets: colosseum-mobile-v2.webp (960px wide), colosseum-wide-v2.webp (1280px wide), encoded with sharp at WebP quality 82.
+
+Use case: stylized-concept
+Asset type: production background for a mobile portrait turn-based monster battle in RiftMon's Colosseum.
+Primary request: create a beautiful new vertically composed arena background, 1024x1536 portrait, designed for a phone rather than a stretched landscape.
+Scene: a welcoming ancient open-air stone colosseum, pale warm limestone, restrained sage-green and antique-gold cloth banners, repeating arches and small distant audience silhouettes, soft late-afternoon daylight.
+Style: polished hand-painted 2D JRPG game environment, clear shapes and restrained texture that complement crisp pixel-art monster sprites placed later by the game.
+Composition: the upper 25 percent contains the curved stands, arches and a very narrow band of sky. The lower 75 percent is a broad open warm sand-colored arena floor, gently foreshortened, extending fully to all edges. The opponent will stand near 76 percent across and 48 percent down; the player's monster near 22 percent across and 82 percent down. Keep those two areas uncluttered and evenly lit. No physical platforms, no large objects in foreground, no deep horizon, no giant empty sky. Subtle circular arena markings, soft ambient shadows along distant walls only. Top-left and lower-right will be covered by status cards, keep background detail subdued there.
+Constraints: background only; no monsters, no trainers, no characters in foreground, no readable text, no letters, no logos, no watermark, no interface, no borders. Opaque image.
+
+Landscape companion: built-in image_gen edit using the generated portrait as reference.
+Use case: style-transfer
+Asset type: landscape companion background for the same RiftMon Colosseum game arena.
+Use the referenced portrait background as the exact environment and art-style reference. Recompose it as a wide 1536x1024 landscape game background, rather than cropping or stretching it. Preserve the warm limestone colosseum, sage-green and antique-gold banners, hand-painted 2D JRPG treatment, afternoon lighting and broad empty sand-colored arena floor. Keep the stands and walls confined to the upper 30 percent. The lower 70 percent must be open arena floor with subtle circular markings. The opponent sprite will stand at 78 percent across and 60 percent down, the player at 21 percent across and 85 percent down; both need quiet floor behind them. No creatures, no trainers, no characters in foreground, no physical platforms, no lettering, no interface, no logo, no watermark. Opaque background.

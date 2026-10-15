@@ -15,6 +15,7 @@
         :bag-items="bagItems"
         :bag-loading="bagLoading"
         :preferences="preferences"
+        :colosseum-challenge="isColosseum && driftState?.phase !== 'exploration' ? driftState?.colosseum?.next : null"
         @action="handleBattleAction"
         @request-bag="loadBagItems"
       />

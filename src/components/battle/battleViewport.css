@@ -36,10 +36,19 @@
 .game-root.is-mobile .game-stage .battle-choice-btn { min-height:44px; padding:6px; font-size:11px; }
 .game-root.is-mobile .game-stage .battle-field-label { top:10px; left:auto; right:8px; transform:none; max-width:35%; }
 
+/* Portrait arena: positions follow the usable scene, not a desktop background. */
+.game-root.is-mobile .game-stage .battle-colosseum .battle-background { object-fit:cover; object-position:50% 55%; }
+.game-root.is-mobile .game-stage .battle-colosseum .battle-sprite-player { top:82%; --sprite-visible-size:clamp(80px,27vw,110px); }
+.game-root.is-mobile .game-stage .battle-colosseum .battle-sprite-wild { top:max(132px,52%); --sprite-visible-size:clamp(78px,25vw,106px); }
+.game-root.is-mobile .game-stage .battle-colosseum .battle-turn-indicator { flex-wrap:wrap; gap:3px 6px; border-radius:10px; }
+.game-root.is-mobile .game-stage .battle-challenge { flex-basis:100%; font-size:9px; }
+
 @media (orientation:portrait) and (max-height:600px) {
   .game-root.is-mobile .game-stage .battle-action-shell { grid-template-rows:44px 48px 92px; }
   .game-root.is-mobile .game-stage .battle-action-shell:has(.battle-grid) { grid-template-rows:44px 92px 92px; }
   .game-root.is-mobile .game-stage .battle-sprite-wild { top:min(64%,calc(100% - 120px)); }
+  .game-root.is-mobile .game-stage .battle-colosseum .battle-sprite-wild { top:min(64%,calc(100% - 120px)); }
+  .game-root.is-mobile .game-stage .battle-colosseum .battle-sprite-player { top:calc(100% - 18px); }
 }
 
 @media (orientation:landscape) {
@@ -48,4 +57,7 @@
   .game-root.is-mobile .game-stage .battle-sprite-player { --sprite-visible-size:90px; }
   .game-root.is-mobile .game-stage .battle-sprite-wild { --sprite-visible-size:90px; top:min(64%,calc(100% - 140px)); }
   .game-root.is-mobile .game-stage .battle-status { width:min(245px,52%); }
+  .game-root.is-mobile .game-stage .battle-colosseum .battle-background { object-fit:cover; object-position:50% 45%; }
+  .game-root.is-mobile .game-stage .battle-colosseum .battle-sprite-player { --sprite-visible-size:90px; top:calc(100% - 18px); }
+  .game-root.is-mobile .game-stage .battle-colosseum .battle-sprite-wild { --sprite-visible-size:90px; top:min(64%,calc(100% - 140px)); }
 }

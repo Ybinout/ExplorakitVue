@@ -1,5 +1,5 @@
 <template>
-  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled }]" role="region" :aria-label="tr('battle')">
+  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-colosseum': challenge }]" role="region" :aria-label="tr('battle')">
     <div
       ref="battleScene"
       :class="[
@@ -8,7 +8,8 @@
         { 'battle-impact-active': attackFx.wild.hit || attackFx.player.hit }
       ]"
     >
-      <img src="../../assets/battle/back.webp" class="battle-background" alt="">
+      <picture v-if="challenge" class="battle-arena-background"><source media="(orientation: landscape)" :srcset="require('@/assets/battle/colosseum-wide-v2.webp')"><img src="../../assets/battle/colosseum-mobile-v2.webp" class="battle-background battle-colosseum-background" alt=""></picture>
+      <img v-else src="../../assets/battle/back.webp" class="battle-background" alt="">
       <div class="battle-atmosphere" aria-hidden="true"></div>
       <div class="battle-weather-layer" aria-hidden="true"></div>
       <div class="battle-terrain-layer" aria-hidden="true"></div>
@@ -47,7 +48,7 @@
         ]"
       >
         <img
-          :class="['battle-sprite', { 'battle-hit-shake': attackFx.wild.hit }]"
+          :class="['battle-sprite', { 'battle-hit-shake': attackFx.wild.hit, 'battle-sprite-ready': battleSpriteStyles.wild['--sprite-image-width'] }]"
           :style="battleSpriteStyles.wild"
           :src="getPokemonSprite(opponent, 'front')"
           :alt="opponent.truename || opponent.name || 'Pokemon adverse'"
@@ -66,7 +67,7 @@
         ]"
       >
         <img
-          :class="['battle-sprite', { 'battle-hit-shake': attackFx.player.hit }]"
+          :class="['battle-sprite', { 'battle-hit-shake': attackFx.player.hit, 'battle-sprite-ready': battleSpriteStyles.player['--sprite-image-width'] }]"
           :style="battleSpriteStyles.player"
           :src="getPokemonSprite(currentPokemon, 'back')"
           :alt="currentPokemon.name || 'Ton Pokemon'"
@@ -179,6 +180,7 @@
       <div :class="['battle-turn-indicator', { 'is-ready': canChooseAction }]">
         <span class="battle-turn-dot" aria-hidden="true"></span>
         {{ turnLabel }}
+        <span v-if="challenge" class="battle-challenge" data-battle-challenge>{{ challenge.guardian ? 'Gardien' : 'Défi' }} {{ challenge.wave }} · {{ challenge.guardian?.name || challenge.difficulty?.label }}</span>
       </div>
 
       <button
@@ -295,6 +297,7 @@ export default {
   components: { HealthBar, ExperienceBar, PotentialStar },
   props: {
     active: { type: Boolean, default: false },
+    colosseumChallenge: { type: Object, default: null },
     bagItems: { type: Array, default: () => [] },
     bagLoading: { type: Boolean, default: false },
     preferences: {
@@ -305,6 +308,7 @@ export default {
   data() {
     return {
       player: null,
+      challenge: null,
       opponent: null,
       canAct: false,
       actionState: {
@@ -603,12 +607,19 @@ export default {
       }
     },
     updateBattleState(payload = {}) {
+      if (!this.player) this.challenge = this.colosseumChallenge;
       const nextPlayer = payload.player || null;
       const nextOpponent = payload.wildPokemon || null;
       const previousOpponentKey = this.getPokemonBattleKey(this.opponent);
       const previousPlayerKey = this.getPokemonBattleKey(this.currentPokemon);
       const previousOpponentHp = Number(this.opponent?.currentHp);
       const previousPlayerHp = Number(this.currentPokemon?.currentHp);
+      for (const [side, previous, next] of [['wild', this.opponent, nextOpponent], ['player', this.currentPokemon, nextPlayer?.equipe?.pokemons?.[0]]]) {
+        if (this.getPokemonBattleKey(previous) !== this.getPokemonBattleKey(next) || previous?.data?.id !== next?.data?.id) {
+          this.$set(this.battleSpriteStyles, side, {});
+          this.$set(this.battleSpriteMetrics, side, { widthRatio: 1, heightRatio: 1 });
+        }
+      }
       this.player = nextPlayer;
       this.opponent = nextOpponent;
       const nextOpponentHp = Number(this.opponent?.currentHp);
@@ -916,6 +927,7 @@ export default {
       this.clearHealthTimers();
     },
     resetBattleUi() {
+      this.challenge = null;
       this.cancelExperience();
       this.finishing = false;
       clearTimeout(this.experienceTimer);
@@ -957,6 +969,14 @@ export default {
   object-fit: cover;
   filter: saturate(1.2) contrast(1.05);
 }
+
+.battle-colosseum .battle-background { filter:none; object-position:50% 44%; }
+.battle-arena-background { position:absolute; inset:0; }
+.battle-challenge { color:#e7d19a; font:10px Arial,sans-serif; }
+.battle-colosseum .battle-sprite { filter:drop-shadow(0 5px 2px #49361645); }
+.battle-colosseum .battle-sprite:not(.battle-sprite-ready) { visibility:hidden; }
+.battle-sprite-wild .battle-sprite { image-rendering:auto; }
+.battle-colosseum .battle-sprite-player { top:88%; }
 
 .battle-atmosphere {
   position: absolute;
