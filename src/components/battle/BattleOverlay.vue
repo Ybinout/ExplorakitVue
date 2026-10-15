@@ -103,7 +103,7 @@
       >
         <div class="battle-status-top">
           <span class="battle-status-name">{{ currentPokemon.name || currentPokemon.truename }}</span>
-          <span class="battle-status-lvl">lv.{{ currentPokemon.level }}</span>
+          <span class="battle-status-lvl">lv.{{ experienceVisual?.uuid === currentPokemon.uuid ? experienceVisual.level : currentPokemon.level }}</span>
           <potential-star :value="currentPokemon.k" :language="preferences.language" />
           <span
             v-if="playerStatus"
@@ -114,7 +114,7 @@
           </span>
         </div>
         <health-bar :current-hp="currentPokemon.currentHp" :hp-max="currentPokemon.maxHp" />
-        <experience-bar :pokemon="currentPokemon" />
+        <experience-bar :pokemon="currentPokemon" :playback-percent="experienceVisual?.uuid === currentPokemon.uuid ? experienceVisual.percent : null" />
         <span v-if="experienceNotice" class="experience-notice" role="status">{{ experienceNotice }}</span>
         <div class="battle-status-details">
           <span>{{ formatBattleHp(currentPokemon) }}</span>
@@ -260,6 +260,7 @@
 </template>
 
 <script>
+import { playExperienceGain } from '@/services/experiencePlayback';
 import PotentialStar from '../PotentialStar.vue';
 import ExperienceBar from '../ExperienceBar.vue';
 import './battleViewport.css';
@@ -347,6 +348,9 @@ export default {
       musicKind: null,
       experienceNotice: '',
       experienceTimer: null,
+      experienceVisual: null,
+      experienceBusy: false,
+      finishing: false,
       audioContext: null
     };
   },
@@ -358,7 +362,7 @@ export default {
       return Array.isArray(this.player?.equipe?.pokemons) ? this.player.equipe.pokemons : [];
     },
     canChooseAction() {
-      return this.canAct && !this.captureFx.visible;
+      return this.canAct && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
     },
     turnLabel() {
       if (this.captureFx.visible) return this.tr('captureRunning');
@@ -431,6 +435,7 @@ export default {
     document.addEventListener('visibilitychange', this.syncMusic);
   },
   beforeDestroy() {
+    this.cancelExperience();
     this.stopMusic();
     clearTimeout(this.experienceTimer);
     window.removeEventListener('pointerdown', this.resumeMusic);
@@ -466,11 +471,43 @@ export default {
       const pokemon = payload?.pokemon;
       const index = this.battleTeam.findIndex(entry => entry.uuid === pokemon?.uuid);
       if (index < 0) return;
+      this.experienceBusy = true;
+      this._experienceAbort ||= new AbortController();
+      const signal = this._experienceAbort.signal;
+      const play = async () => {
+        if (signal.aborted) return;
+        this.experienceNotice = `+${payload.xpGained} XP`;
+        const reduced = !this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        await playExperienceGain(payload, frame => {
+          this.experienceVisual = { ...frame, uuid: pokemon.uuid };
+          if (frame.level > payload.previousLevel) this.experienceNotice = `Niveau ${frame.level} ! +${payload.xpGained} XP`;
+        }, signal, reduced);
+      };
+      const previous = this._experiencePlayback;
+      // The first frame is set synchronously, before the authoritative team update renders.
+      const task = previous ? previous.then(play) : play();
+      this._experiencePlayback = task;
       this.$set(this.player.equipe.pokemons, index, pokemon);
-      this.experienceNotice = pokemon.level > payload.previousLevel
-        ? `Niveau ${pokemon.level} !  +${payload.xpGained} XP` : `+${payload.xpGained} XP`;
-      clearTimeout(this.experienceTimer);
-      this.experienceTimer = setTimeout(() => { this.experienceNotice = ''; }, 2500);
+      task.finally(() => {
+        if (this._experiencePlayback !== task || signal.aborted) return;
+        this._experiencePlayback = null;
+        this.experienceBusy = false;
+        this.experienceVisual = null;
+        clearTimeout(this.experienceTimer);
+        this.experienceTimer = setTimeout(() => { this.experienceNotice = ''; }, 2000);
+      });
+    },
+    async finishPresentation() {
+      this.finishing = true;
+      this.canAct = false;
+      await this._experiencePlayback;
+    },
+    cancelExperience() {
+      this._experienceAbort?.abort();
+      this._experienceAbort = null;
+      this._experiencePlayback = null;
+      this.experienceVisual = null;
+      this.experienceBusy = false;
     },
     tr(key, parameters) {
       return translate(this.preferences.language, key, parameters);
@@ -884,6 +921,8 @@ export default {
       this.clearHealthTimers();
     },
     resetBattleUi() {
+      this.cancelExperience();
+      this.finishing = false;
       clearTimeout(this.experienceTimer);
       this.experienceNotice = '';
       this.clearAllTimers();

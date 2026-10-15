@@ -5,9 +5,10 @@
       <div class="game-stage">
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
       <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
+      <move-learning-panel v-if="learningVisible" :key="learningPokemon.pendingMoves[0].id" :pokemon="learningPokemon" :busy="learningBusy" :error="learningError" @choose="chooseLearnedMove" @later="learningDeferred = true" />
       <battle-result-panel v-if="battleResult" :result="battleResult" @continue="dismissBattleResult" />
       <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
-      <drift-run-panel v-if="isDrift && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
+      <drift-run-panel v-if="isDrift && isDriftPanelOpen && !battle && !battleResult && !driftSpectator && !learningVisible" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <battle-overlay
         ref="battleOverlay"
         :active="battle"
@@ -17,7 +18,7 @@
         @action="handleBattleAction"
         @request-bag="loadBagItems"
       />
-      <div class="game-shell" :inert="battleResult || driftSpectator ? '' : null" :aria-hidden="battleResult || driftSpectator ? 'true' : null">
+      <div class="game-shell" :inert="battleResult || driftSpectator || learningVisible ? '' : null" :aria-hidden="battleResult || driftSpectator || learningVisible ? 'true' : null">
         <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
           <button ref="menuToggle" class="menu-toggle-btn" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
@@ -29,6 +30,7 @@
             <button class="drift-hud-toggle" :aria-expanded="isDriftPanelOpen" aria-label="Ouvrir le carnet Drift" @click="toggleDriftPanel"><drift-glyph /><span>Drifts <small>{{ driftState?.equipped?.length || 0 }}/5</small></span></button>
           </div>
           <nav v-if="isMenuOpen" id="adventure-menu" class="menu-dropdown" :aria-label="tr('menu')">
+            <button v-if="learningPokemon" class="menu-dropdown-item" @click="openMoveLearning"><journal-icon name="pokemon" /><span>Attaques à apprendre</span></button>
             <div class="menu-caption"><span>Explorakit</span><small>{{ isDrift ? (isColosseum ? 'Colosseum' : 'RiftMon') : (preferences.language === 'en' ? 'Adventure' : 'Aventure') }}</small></div>
             <button
               v-for="item in visibleMenuItems"
@@ -195,7 +197,7 @@
         </div>
         <div v-if="showMobileControls" class="mobile-control-dock">
         <div
-          v-if="showMobileControls && !battle && !battleResult && !driftSpectator && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
+          v-if="showMobileControls && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
           <div v-if="textImageSequence.length === 0" class="mobile-dpad" aria-label="Pad directionnel">
@@ -332,7 +334,7 @@
         />
       </div>
       <button
-        v-if="showMobileControls && !battle && !battleResult && !driftSpectator && textImageSequence.length > 0"
+        v-if="showMobileControls && !battle && !battleResult && !driftSpectator && !learningVisible && textImageSequence.length > 0"
         class="mobile-dialogue-action-top"
         :aria-label="preferences.language === 'en' ? 'Continue dialogue' : 'Continuer le dialogue'"
         @pointerdown.prevent="triggerMobileActionA"
@@ -372,6 +374,7 @@ import './adventure.css';
 import './worldViewport.css';
 import BattleOverlay from './battle/BattleOverlay.vue';
 import BattleResultPanel from './battle/BattleResultPanel.vue';
+import MoveLearningPanel from './menu/MoveLearningPanel.vue';
 import { buildBattleResult } from '@/services/battleResult';
 import GameInfoPanels from './menu/GameInfoPanels.vue';
 import ShopPanel from './shop/ShopPanel.vue';
@@ -389,6 +392,7 @@ export default {
   components: {
     JournalIcon,
     BattleResultPanel,
+    MoveLearningPanel,
     DriftRunPanel,
     RiftSpectatorPanel,
     DriftGlyph,
@@ -413,6 +417,8 @@ export default {
       lock: false,
       battle: false,
       battleResult: null,
+      pendingBattleResult: null,
+      learningDeferred: false, learningBusy: false, learningError: '',
       user: {
         nom: '',
         mdp: ''
@@ -541,6 +547,11 @@ export default {
     };
   },
   computed: {
+    learningPokemon() {
+      if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
+      return this.teamPokemons.find(p => p.currentHp > 0 && p.pendingMoves?.length);
+    },
+    learningVisible() { return Boolean(this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator); },
     isColosseum() { return this.$route.name === 'ColosseumGame' || this.driftState?.mode === 'colosseum'; },
     driftLobbyPath() { return this.isColosseum ? '/colosseum' : '/drift'; },
     isDrift() { return ['DriftGame','ColosseumGame'].includes(this.$route.name); },
@@ -568,6 +579,7 @@ export default {
     }
   },
   watch: {
+    learningVisible(visible) { if (visible) { this.releaseAllMovementKeys(); this.learningError = ''; } },
     battle(isInBattle) {
       if (isInBattle) {
         this.releaseAllMovementKeys();
@@ -576,6 +588,32 @@ export default {
   },
 
   methods: {
+    openMoveLearning() { this.isMenuOpen = false; this.learningDeferred = false; this.releaseAllMovementKeys(); },
+    async chooseLearnedMove(slot) {
+      const pokemon = this.learningPokemon;
+      if (this.learningBusy || !pokemon || !this.socket?.connected) return;
+      this.learningBusy = true; this.learningError = '';
+      try {
+        const data = { pokemonUuid: pokemon.uuid, choiceId: pokemon.pendingMoves[0].id, slot };
+        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(this.isDrift ? 'drift:learnMove' : 'learnMove', data,
+          (error, result) => error ? reject(new Error('Connexion interrompue. Vérifie ton équipe avant de réessayer.')) : resolve(result)));
+        if (!response?.success) throw new Error(response?.message || 'Apprentissage indisponible.');
+        if (response.equipe) this.applyTeamPokemons(response.equipe.pokemons);
+      } catch (error) { this.learningError = error.message; }
+      finally { this.learningBusy = false; }
+    },
+    async presentBattleEnd(payload) {
+      const result = buildBattleResult(payload, this.isDrift ? 'drift' : 'adventure');
+      this.pendingBattleResult = result;
+      this.releaseAllMovementKeys();
+      this.closeLegacyPanels(); this.closeInfoPanel(); this.closeShop();
+      this.isMenuOpen = false; this.selectedPokemonUuid = null; this.lock = true;
+      await this.$refs.battleOverlay?.finishPresentation();
+      if (this.pendingBattleResult !== result || this._isDestroyed || this._isBeingDestroyed) return;
+      this.battleResult = result; this.pendingBattleResult = null;
+      this.battle = false;
+      this.loadTeamPokemons();
+    },
     isBagConsumable(item) {
       return Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse) && !(this.isDrift && item.revive));
     },
@@ -609,6 +647,7 @@ export default {
     dismissBattleResult() {
       this.releaseAllMovementKeys();
       this.battleResult = null;
+      this.learningDeferred = false;
       this.lock = Boolean(this.battle);
     },
     async leaveDrift() { if (await this.driftCommand({ name: 'drift:exit' })) this.$router.replace(this.driftLobbyPath); },
@@ -915,7 +954,7 @@ export default {
       this.syncPlayerIdleState();
     },
     onMobileDirectionPress(directionKey, event) {
-      if (this.battle || this.battleResult || this.driftSpectator) return;
+      if (this.battle || this.battleResult || this.driftSpectator || this.learningVisible) return;
       if (!Object.prototype.hasOwnProperty.call(this.keysPressed, directionKey)) return;
 
       if (event && event.target && typeof event.target.setPointerCapture === 'function' && event.pointerId !== undefined) {
@@ -945,7 +984,7 @@ export default {
       this.syncPlayerIdleState();
     },
     triggerMobileActionA() {
-      if (this.battle || this.battleResult || this.driftSpectator) return;
+      if (this.battle || this.battleResult || this.driftSpectator || this.learningVisible) return;
       if (this.textImageSequence.length > 0) {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
         return;
@@ -1324,7 +1363,7 @@ export default {
       }
     },
     handleBattleAction(payload = {}) {
-      if (this.battleResult || this.driftSpectator) return;
+      if (this.battleResult || this.driftSpectator || this.learningVisible) return;
       if (!this.socket || !this.socket.connected) return;
       const action = typeof payload.action === 'string' ? payload.action : '';
       if (!['attack', 'flee', 'change', 'bag'].includes(action)) return;
@@ -1528,7 +1567,7 @@ export default {
 
 
     espace() {
-      if (this.battleResult || this.driftSpectator) return;
+      if (this.battleResult || this.driftSpectator || this.learningVisible) return;
       console.log('espace');
       if (this.interactionChoice.visible || this.incomingRequest.visible) {
         return;
@@ -1591,7 +1630,7 @@ export default {
       }
     },
     handleKeydown(e) {
-      if (this.battleResult || this.driftSpectator) { this.releaseAllMovementKeys(); return; }
+      if (this.battleResult || this.driftSpectator || this.learningVisible) { this.releaseAllMovementKeys(); return; }
       if (this.isDriftPanelOpen) { if (e.key === "Escape") this.isDriftPanelOpen = false; return; }
       if (this.selectedPokemonUuid) return;
       if (e.key === 'Escape') {
@@ -1717,7 +1756,7 @@ export default {
     }
     ,
     updatePlayerPosition() {
-      if (this.battleResult || this.driftSpectator || this.isDriftPanelOpen || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== "exploration")) || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) {
+      if (this.battleResult || this.driftSpectator || this.learningVisible || this.isDriftPanelOpen || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== "exploration")) || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) {
         this.releaseAllMovementKeys();
         return;
       }
@@ -1916,6 +1955,7 @@ export default {
     });
 
     this.socket.on('playersList', (allPlayers) => {
+      if (!this.isDrift) this.loadTeamPokemons();
       console.log('Mise Ã  jour de la liste des joueurs:', allPlayers);
       this.players = allPlayers;
       for (const id in this.players) {
@@ -2057,7 +2097,8 @@ export default {
       if (healedTeam.length > 0) {
         this.applyTeamPokemons(healedTeam);
       }
-      if (this.battleResult) this.battleResult.recoveryMessage = payload.message || 'Ton équipe a été soignée et ramenée en lieu sûr.';
+      const result = this.battleResult || this.pendingBattleResult;
+      if (result) this.$set(result, 'recoveryMessage', payload.message || 'Ton équipe a été soignée et ramenée en lieu sûr.');
       this.showInteractionNotice(
         payload.message || 'Ton equipe a ete soignee et tu as ete ramene en lieu sur.'
       );
@@ -2089,18 +2130,7 @@ export default {
 
 
 
-    this.socket.on('endbattle', (payload) => {
-      this.battleResult = buildBattleResult(payload, this.isDrift ? 'drift' : 'adventure');
-      this.releaseAllMovementKeys();
-      this.closeLegacyPanels();
-      this.closeInfoPanel();
-      this.closeShop();
-      this.isMenuOpen = false;
-      this.selectedPokemonUuid = null;
-      this.battle = false;
-      this.lock = true;
-      this.loadTeamPokemons();
-    });
+    this.socket.on('endbattle', payload => this.presentBattleEnd(payload));
 
     this.socket.on('playerMoved', ({ id, player }) => {
       console.log('il mouve uwu');
@@ -2186,6 +2216,8 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.pendingBattleResult = null;
+      this.$refs.battleOverlay?.cancelExperience();
       this.battle = false;
       if (this.driftSpectator) { this.driftSpectator = null; this.isDriftPanelOpen = true; }
       this.$refs.battleOverlay?.stopMusic();
@@ -2194,6 +2226,7 @@ export default {
 
 
     this.socket.on('battletrigger', (data) => {
+      this.pendingBattleResult = null;
       this.battleResult = null;
       this.driftSpectator = null;
       if (this.isDrift) { this.isDriftPanelOpen = false; this.closeLegacyPanels(); this.textImageSequence = []; }
@@ -2295,6 +2328,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    this.pendingBattleResult = null;
     document.body.classList.remove("in-world");
     this.worldResizeObserver?.disconnect();
     if (this.driftClockTimer) clearInterval(this.driftClockTimer);

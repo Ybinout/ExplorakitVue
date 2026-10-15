@@ -2,9 +2,9 @@
   <div class="experience-strip" :title="`${progress.remaining} XP avant le niveau ${Number(pokemon.level) + 1}`">
     <span class="experience-label">EXP</span>
     <div class="experience-track" role="progressbar" aria-label="Expérience vers le prochain niveau"
-      :aria-valuenow="Math.round(progress.percent)" aria-valuemin="0" aria-valuemax="100"
-      :aria-valuetext="`${progress.earned} sur ${progress.needed} XP`">
-      <div class="experience-fill" :style="{ width: `${progress.percent}%` }"></div>
+      :aria-valuenow="Math.round(visiblePercent)" aria-valuemin="0" aria-valuemax="100"
+      :aria-valuetext="playbackPercent === null ? `${progress.earned} sur ${progress.needed} XP` : `${Math.round(visiblePercent)} % du niveau`">
+      <div class="experience-fill" :style="{ width: `${visiblePercent}%`, transition: playbackPercent === null ? undefined : 'none' }"></div>
     </div>
     <span v-if="detailed" class="experience-count">{{ progress.earned }} / {{ progress.needed }}</span>
   </div>
@@ -12,8 +12,11 @@
 <script>
 import { experienceProgress } from '@/services/pokemonProgress';
 export default {
-  props: { pokemon: { type: Object, required: true }, detailed: Boolean },
-  computed: { progress() { return experienceProgress(this.pokemon); } }
+  props: { pokemon: { type: Object, required: true }, detailed: Boolean, playbackPercent: { type: Number, default: null } },
+  computed: {
+    progress() { return experienceProgress(this.pokemon); },
+    visiblePercent() { return this.playbackPercent ?? this.progress.percent; }
+  }
 };
 </script>
 <style scoped>
