@@ -193,31 +193,33 @@
           @buy="buyShopItem"
         />
         <div class="world-viewport" ref="worldViewport">
-          <canvas class="test" ref="monCanvas" :aria-label="locationLabel"></canvas>
+          <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
+            @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
+            @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
+          <div v-if="mapLoading || mapLoadError" class="world-loading" role="status" :class="{ 'has-error': mapLoadError }">
+            <span>{{ mapLoadError || (preferences.language === 'en' ? 'Loading location…' : 'Chargement du lieu…') }}</span>
+            <button v-if="mapLoadError" @click="loadMapImage">{{ preferences.language === 'en' ? 'Retry' : 'Réessayer' }}</button>
+          </div>
         </div>
         <div v-if="showMobileControls" class="mobile-control-dock">
         <div
           v-if="showMobileControls && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
-          <div v-if="textImageSequence.length === 0" class="mobile-dpad" aria-label="Pad directionnel">
+          <div v-if="textImageSequence.length === 0" class="mobile-dpad" aria-label="Pad directionnel"
+            @pointerdown.prevent="startMobileGesture($event, 'pad')" @pointermove.prevent="moveMobileGesture"
+            @pointerup.prevent="endMobileGesture" @pointercancel.prevent="endMobileGesture" @lostpointercapture="endMobileGesture">
             <button
               class="mobile-dpad-btn mobile-dpad-up"
               aria-label="Aller en haut"
-              @pointerdown.prevent="onMobileDirectionPress('z', $event)"
-              @pointerup.prevent="onMobileDirectionRelease('z', $event)"
-              @pointercancel.prevent="onMobileDirectionRelease('z', $event)"
-              @pointerleave.prevent="onMobileDirectionRelease('z', $event)"
+              data-direction="z" :class="{ 'is-held': keysPressed.z }" @click="tapMobileDirection('z', $event)"
             >
               ▲
             </button>
             <button
               class="mobile-dpad-btn mobile-dpad-left"
               aria-label="Aller à gauche"
-              @pointerdown.prevent="onMobileDirectionPress('q', $event)"
-              @pointerup.prevent="onMobileDirectionRelease('q', $event)"
-              @pointercancel.prevent="onMobileDirectionRelease('q', $event)"
-              @pointerleave.prevent="onMobileDirectionRelease('q', $event)"
+              data-direction="q" :class="{ 'is-held': keysPressed.q }" @click="tapMobileDirection('q', $event)"
             >
               ◀
             </button>
@@ -225,20 +227,14 @@
             <button
               class="mobile-dpad-btn mobile-dpad-right"
               aria-label="Aller à droite"
-              @pointerdown.prevent="onMobileDirectionPress('d', $event)"
-              @pointerup.prevent="onMobileDirectionRelease('d', $event)"
-              @pointercancel.prevent="onMobileDirectionRelease('d', $event)"
-              @pointerleave.prevent="onMobileDirectionRelease('d', $event)"
+              data-direction="d" :class="{ 'is-held': keysPressed.d }" @click="tapMobileDirection('d', $event)"
             >
               ▶
             </button>
             <button
               class="mobile-dpad-btn mobile-dpad-down"
               aria-label="Aller en bas"
-              @pointerdown.prevent="onMobileDirectionPress('s', $event)"
-              @pointerup.prevent="onMobileDirectionRelease('s', $event)"
-              @pointercancel.prevent="onMobileDirectionRelease('s', $event)"
-              @pointerleave.prevent="onMobileDirectionRelease('s', $event)"
+              data-direction="s" :class="{ 'is-held': keysPressed.s }" @click="tapMobileDirection('s', $event)"
             >
               ▼
             </button>
@@ -350,6 +346,8 @@
 <script>
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
+import { createMapSceneLoader } from '@/services/mapScene';
+import { touchDirection } from '@/services/touchMovement';
 import JournalIcon from './menu/JournalIcon.vue';
 import api from "@/services/api";
 import { getSession } from "@/services/session";
@@ -431,6 +429,9 @@ export default {
       },
       foregroundImage: null,
       mapImage: null,
+      renderedMap: null,
+      mapLoading: true,
+      mapLoadError: '',
       map: "start",
       players: {},
       pnjs: [],
@@ -574,11 +575,19 @@ export default {
       if (!Array.isArray(this.bagItems)) return [];
       return this.bagItems.filter((item) => item.category === 'held' && Number(item.quantity) > 0);
     },
+    movementBlocked() {
+      return this.mapLoading || !!this.mapLoadError || this.lock || this.battle || this.battleResult || this.driftSpectator
+        || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
+        || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
+        || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
+        || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration'));
+    },
     canUseBagConsumables() {
       return !this.battle && (!this.isDrift || (this.driftState?.alive && this.driftState?.phase === 'exploration' && !this.driftState?.storagePaused && !this.driftState?.recoveryWaiting));
     }
   },
   watch: {
+    movementBlocked(blocked) { if (blocked) this.releaseAllMovementKeys(); },
     learningVisible(visible) { if (visible) { this.releaseAllMovementKeys(); this.learningError = ''; } },
     battle(isInBattle) {
       if (isInBattle) {
@@ -916,10 +925,8 @@ export default {
       this.chatDraft = '';
     },
     updateMobileControlsVisibility() {
+      this.releaseAllMovementKeys();
       this.showMobileControls = window.innerWidth <= 920 || window.matchMedia('(pointer: coarse)').matches;
-      if (!this.showMobileControls) {
-        this.releaseAllMovementKeys();
-      }
       this.$nextTick(this.resizeWorldViewport);
     },
     resizeWorldViewport() {
@@ -947,42 +954,50 @@ export default {
       }
     },
     releaseAllMovementKeys() {
+      const gesture = this._touchGesture;
+      this._touchGesture = null;
+      if (gesture) {
+        try { gesture.element.releasePointerCapture(gesture.id); } catch (_) { /* Already released. */ }
+      }
       this.keysPressed.z = false;
       this.keysPressed.q = false;
       this.keysPressed.s = false;
       this.keysPressed.d = false;
       this.syncPlayerIdleState();
     },
-    onMobileDirectionPress(directionKey, event) {
-      if (this.battle || this.battleResult || this.driftSpectator || this.learningVisible) return;
-      if (!Object.prototype.hasOwnProperty.call(this.keysPressed, directionKey)) return;
-
-      if (event && event.target && typeof event.target.setPointerCapture === 'function' && event.pointerId !== undefined) {
-        try {
-          event.target.setPointerCapture(event.pointerId);
-        } catch (error) {
-          // no-op
-        }
-      }
-
+    startMobileGesture(event, surface) {
+      if (!this.showMobileControls || this.movementBlocked || this._touchGesture || event.isPrimary === false
+        || (surface === 'map' && !['touch', 'pen'].includes(event.pointerType)) || event.button > 0) return;
+      event.preventDefault();
       this.releaseAllMovementKeys();
-      this.keysPressed[directionKey] = true;
-      this.restartMovementInput();
+      const element = event.currentTarget, rect = element.getBoundingClientRect();
+      this._touchGesture = { id: event.pointerId, element, surface, direction: null,
+        x: surface === 'pad' ? rect.left + rect.width / 2 : event.clientX,
+        y: surface === 'pad' ? rect.top + rect.height / 2 : event.clientY };
+      try { element.setPointerCapture(event.pointerId); } catch (_) { /* Pointer no longer active. */ }
+      if (surface === 'pad') this.moveMobileGesture(event);
     },
-    onMobileDirectionRelease(directionKey, event) {
-      if (!Object.prototype.hasOwnProperty.call(this.keysPressed, directionKey)) return;
-      this.keysPressed[directionKey] = false;
-
-      if (event && event.target && typeof event.target.releasePointerCapture === 'function' && event.pointerId !== undefined) {
-        try {
-          event.target.releasePointerCapture(event.pointerId);
-        } catch (error) {
-          // no-op
-        }
-      }
-
-      this.syncPlayerIdleState();
+    moveMobileGesture(event) {
+      const gesture = this._touchGesture;
+      if (!gesture || gesture.id !== event.pointerId) return;
+      if (this.movementBlocked) { this.releaseAllMovementKeys(); return; }
+      event.preventDefault();
+      const direction = touchDirection(event.clientX - gesture.x, event.clientY - gesture.y, gesture.direction);
+      if (direction === gesture.direction) return;
+      gesture.direction = direction;
+      for (const key of ['z', 'q', 's', 'd']) this.keysPressed[key] = key === direction;
+      if (direction) this.restartMovementInput();
+      else this.syncPlayerIdleState();
     },
+    endMobileGesture(event) {
+      if (this._touchGesture?.id === event.pointerId) this.releaseAllMovementKeys();
+    },
+    tapMobileDirection(direction, event) {
+      // Keyboard/assistive activation of the existing buttons still takes one step.
+      if (event.detail || this.movementBlocked) return;
+      this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
+    },
+    onWorldVisibility() { if (document.hidden) this.releaseAllMovementKeys(); },
     triggerMobileActionA() {
       if (this.battle || this.battleResult || this.driftSpectator || this.learningVisible) return;
       if (this.textImageSequence.length > 0) {
@@ -1081,6 +1096,8 @@ export default {
       return image;
     },
     syncPnjs(payload = {}) {
+      if ((payload.mapname || payload.mapname === '') && payload.mapname !== this.map) return;
+      if (payload.map && payload.map !== this.map) return;
       const previous = new Map(this.pnjs.map(pnj => [pnj.name, pnj]));
       const rawPnjs = Array.isArray(payload?.pnjs) ? payload.pnjs : [];
       this.pnjs = rawPnjs
@@ -1582,52 +1599,41 @@ export default {
     },
 
 
-    loadMapImage() {
-      this.mapImage = new Image();
-
-      // Gestionnaire d'erreurs pour le chargement de l'image
-      this.mapImage.onerror = (err) => {
-        console.error('Error loading the image:', err);
-      };
-
-      // Une fois l'image chargÃ©e, vous pouvez redessiner le canvas (optionnel)
-      this.mapImage.onload = () => {
-        this.drawPlayers();
-      };
-
-      // DÃ©finir la source de l'image, ce qui dÃ©clenchera le tÃ©lÃ©chargement de l'image
-      try {
-        this.mapImage.src = resolveMapAsset(this.map);
-      } catch (error) {
-        console.error(`Image de carte introuvable: ${this.map}`, error);
-      }
-
-    },
-    loadForegroundImage() {
+    async loadMapImage() {
       const requestedMap = this.map;
-      const foregroundImage = new Image();
-
-      foregroundImage.onerror = () => {
-        if (this.map === requestedMap) {
-          this.foregroundImage = null;
-          this.drawPlayers();
-        }
-      };
-
-      foregroundImage.onload = () => {
-        if (this.map === requestedMap) {
-          this.drawPlayers();
-        }
-      };
-
-      try {
-        foregroundImage.src = resolveMapAsset(requestedMap, true);
-        this.foregroundImage = foregroundImage;
-      } catch (error) {
-        // Certaines cartes n'ont volontairement pas de couche de premier plan.
-        this.foregroundImage = null;
-        this.drawPlayers();
+      const version = this._mapLoadVersion = (this._mapLoadVersion || 0) + 1;
+      if (!this.mapLoading && this.renderedMap && this.$refs.monCanvas) {
+        const canvas = this.$refs.monCanvas, held = document.createElement('canvas');
+        held.width = canvas.width; held.height = canvas.height;
+        held.getContext('2d').drawImage(canvas, 0, 0);
+        this._heldWorldFrame = held;
       }
+      this.mapLoading = true; this.mapLoadError = '';
+      this.releaseAllMovementKeys();
+      this._mapScenes ||= createMapSceneLoader(resolveMapAsset);
+      try {
+        const scene = await this._mapScenes.load(requestedMap);
+        if (version !== this._mapLoadVersion || this.map !== requestedMap || this._isBeingDestroyed || this._isDestroyed) return;
+        this.mapImage = scene.background;
+        this.foregroundImage = scene.foreground;
+        this.renderedMap = requestedMap;
+        this.mapLoading = false;
+        this.drawPlayers();
+      } catch (_) {
+        if (version !== this._mapLoadVersion || this._isBeingDestroyed || this._isDestroyed) return;
+        this.mapLoading = false;
+        this.mapLoadError = this.preferences.language === 'en' ? 'Unable to load this location.' : 'Impossible de charger ce lieu.';
+      }
+    },
+    drawHeldWorldFrame(context, canvas) {
+      context.save(); context.setTransform(1, 0, 0, 1, 0, 0);
+      context.fillStyle = '#173c37'; context.fillRect(0, 0, canvas.width, canvas.height);
+      const held = this._heldWorldFrame;
+      if (held?.width && held?.height) {
+        const scale = Math.max(canvas.width / held.width, canvas.height / held.height);
+        context.drawImage(held, (canvas.width - held.width * scale) / 2, (canvas.height - held.height * scale) / 2, held.width * scale, held.height * scale);
+      }
+      context.restore();
     },
     handleKeydown(e) {
       if (this.battleResult || this.driftSpectator || this.learningVisible) { this.releaseAllMovementKeys(); return; }
@@ -1756,7 +1762,7 @@ export default {
     }
     ,
     updatePlayerPosition() {
-      if (this.battleResult || this.driftSpectator || this.learningVisible || this.isDriftPanelOpen || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== "exploration")) || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) {
+      if (this.movementBlocked || document.hidden) {
         this.releaseAllMovementKeys();
         return;
       }
@@ -1783,10 +1789,18 @@ export default {
       if (!canvas) return;
       const c = canvas.getContext('2d');
       if (!c) return;
+      const me = this.players[this.socket?.id];
+      // Never combine a new position with the previous map, nor centre on a
+      // placeholder while the authoritative player snapshot is still arriving.
+      if (this.mapLoading || this.mapLoadError || this.renderedMap !== this.map
+        || !me || me.currentmap !== this.map || !this.mapImage?.complete || !this.mapImage.naturalWidth) {
+        this.drawHeldWorldFrame(c, canvas);
+        return;
+      }
 
       // Clear the canvas for the new render
       c.clearRect(0, 0, canvas.width, canvas.height);
-      const camera = getWorldCamera(this.worldFrame.width, this.worldFrame.height, this.players[this.socket?.id], this.showMobileControls);
+      const camera = getWorldCamera(this.worldFrame.width, this.worldFrame.height, me, this.showMobileControls);
       const scale = camera.scale * this.worldFrame.pixelRatio;
       c.save();
       c.imageSmoothingEnabled = false;
@@ -1844,7 +1858,7 @@ export default {
       }
 
       // Dessiner les Ã©lÃ©ments de premier plan si nÃ©cessaire
-      if (this.foregroundImage) {
+      if (this.foregroundImage?.complete && this.foregroundImage.naturalWidth) {
         c.drawImage(this.foregroundImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
       }
       c.restore();
@@ -1863,8 +1877,7 @@ export default {
 
 
 
-    this.loadMapImage();
-    this.loadForegroundImage();
+    // Wait for the server's saved map and position before painting a world.
     this.loadAvailableSprites();
     this.loadPnjSpriteSources();
     this.spriteSheet = this.ensureSpriteSheet('sprite.png');
@@ -1957,6 +1970,7 @@ export default {
     this.socket.on('playersList', (allPlayers) => {
       if (!this.isDrift) this.loadTeamPokemons();
       console.log('Mise Ã  jour de la liste des joueurs:', allPlayers);
+      if (!allPlayers[this.socket.id]) return;
       this.players = allPlayers;
       for (const id in this.players) {
         if (!this.players[id].direction) {
@@ -1974,10 +1988,9 @@ export default {
         this.selectedSprite = normalizedSprite;
         this.ensureSpriteSheet(normalizedSprite);
       }
-      if (me && me.currentmap && me.currentmap !== this.map) {
+      if (me && me.currentmap && (me.currentmap !== this.map || !this.renderedMap)) {
         this.map = me.currentmap;
         this.loadMapImage();
-        this.loadForegroundImage();
       }
     });
 
@@ -2133,6 +2146,7 @@ export default {
     this.socket.on('endbattle', payload => this.presentBattleEnd(payload));
 
     this.socket.on('playerMoved', ({ id, player }) => {
+      if (player.currentmap && player.currentmap !== this.map) return;
       console.log('il mouve uwu');
       if (this.players[id]) {
         const startX = this.players[id].x;
@@ -2164,6 +2178,7 @@ export default {
     });
 
     this.socket.on('newmap', ({ mapname, playersList }) => {
+      this.releaseAllMovementKeys();
       this.clearAllPlayers();
       this.players = playersList
       this.pnjs = [];
@@ -2184,7 +2199,6 @@ export default {
         this.closeShop();
       }
       this.loadMapImage();
-      this.loadForegroundImage();
       this.drawPlayers();
     });
 
@@ -2298,6 +2312,7 @@ export default {
     window.addEventListener('resize', this.updateMobileControlsVisibility);
     window.addEventListener('orientationchange', this.updateMobileControlsVisibility);
     window.addEventListener('blur', this.releaseAllMovementKeys);
+    document.addEventListener('visibilitychange', this.onWorldVisibility);
     this.updateMobileControlsVisibility();
 
     const canvas = this.$refs.monCanvas;
@@ -2328,6 +2343,9 @@ export default {
   }
   ,
   beforeDestroy() {
+    this._mapLoadVersion = (this._mapLoadVersion || 0) + 1;
+    this._mapScenes?.clear();
+    this._heldWorldFrame = null;
     this.pendingBattleResult = null;
     document.body.classList.remove("in-world");
     this.worldResizeObserver?.disconnect();
@@ -2340,6 +2358,7 @@ export default {
     window.removeEventListener('resize', this.updateMobileControlsVisibility);
     window.removeEventListener('orientationchange', this.updateMobileControlsVisibility);
     window.removeEventListener('blur', this.releaseAllMovementKeys);
+    document.removeEventListener('visibilitychange', this.onWorldVisibility);
     this.releaseAllMovementKeys();
     if (this.interactionNoticeTimer) {
       clearTimeout(this.interactionNoticeTimer);

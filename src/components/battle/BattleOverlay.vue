@@ -144,7 +144,7 @@
         v-if="resultFx.visible"
         :key="`result-${resultFx.nonce}`"
         :class="['battle-result-fx', `battle-result-${resultFx.actor}`]"
-        :style="getEffectPosition(resultFx.actor === 'opponent' ? 'wild' : 'player')"
+        :style="getResultPosition(resultFx.actor === 'opponent' ? 'wild' : 'player')"
         role="status"
         aria-live="assertive"
       >
@@ -261,6 +261,7 @@
 
 <script>
 import { playExperienceGain } from '@/services/experiencePlayback';
+import { BattleAudio } from '@/services/battleAudio';
 import PotentialStar from '../PotentialStar.vue';
 import ExperienceBar from '../ExperienceBar.vue';
 import './battleViewport.css';
@@ -350,8 +351,7 @@ export default {
       experienceTimer: null,
       experienceVisual: null,
       experienceBusy: false,
-      finishing: false,
-      audioContext: null
+      finishing: false
     };
   },
   computed: {
@@ -423,28 +423,30 @@ export default {
     }
   },
   watch: {
-    audioVolume() { this.syncMusic(); },
-    soundEnabled() { this.syncMusic(); },
+    audioVolume() { this.syncAudio(); },
+    soundEnabled() { this.syncAudio(); },
     active(isActive) {
-      if (!isActive) { this.stopMusic(); this.resetBattleUi(); }
+      if (!isActive) { this._battleAudio?.stop(); this.stopMusic(); this.resetBattleUi(); }
     }
   },
   mounted() {
-    window.addEventListener('pointerdown', this.resumeMusic);
-    window.addEventListener('keydown', this.resumeMusic);
-    document.addEventListener('visibilitychange', this.syncMusic);
+    this._battleAudio = new BattleAudio();
+    this.syncAudio();
+    window.addEventListener('pointerdown', this.resumeAudio);
+    window.addEventListener('pointerup', this.resumeAudio);
+    window.addEventListener('keydown', this.resumeAudio);
+    document.addEventListener('visibilitychange', this.syncAudio);
   },
   beforeDestroy() {
     this.cancelExperience();
     this.stopMusic();
     clearTimeout(this.experienceTimer);
-    window.removeEventListener('pointerdown', this.resumeMusic);
-    window.removeEventListener('keydown', this.resumeMusic);
-    document.removeEventListener('visibilitychange', this.syncMusic);
+    window.removeEventListener('pointerdown', this.resumeAudio);
+    window.removeEventListener('pointerup', this.resumeAudio);
+    window.removeEventListener('keydown', this.resumeAudio);
+    document.removeEventListener('visibilitychange', this.syncAudio);
     this.clearAllTimers();
-    if (this.audioContext && typeof this.audioContext.close === 'function') {
-      this.audioContext.close().catch(() => {});
-    }
+    this._battleAudio?.dispose();
   },
   methods: {
     startMusic(kind) {
@@ -457,11 +459,15 @@ export default {
     },
     syncMusic() {
       if (!this.music) return;
-      this.music.volume = this.audioVolume * 0.65;
+      this.music.volume = this.audioVolume * 0.4;
       if (!this.active || !this.soundEnabled || !this.audioVolume || document.hidden) this.music.pause();
       else if (this.music.paused) this.music.play().catch(() => {});
     },
-    resumeMusic() { if (this.active) this.syncMusic(); },
+    syncAudio() {
+      this._battleAudio?.setVolume(this.soundEnabled && !document.hidden ? this.audioVolume : 0);
+      this.syncMusic();
+    },
+    resumeAudio() { this.unlockAudio(); if (this.active) this.syncMusic(); },
     stopMusic() {
       if (this.music) { this.music.pause(); this.music.removeAttribute('src'); this.music.load(); }
       this.music = null;
@@ -647,6 +653,18 @@ export default {
       const geometry = this.getSpriteGeometry(side);
       return { left: `${geometry.centerX}px`, top: `${geometry.centerY}px` };
     },
+    getResultPosition(side) {
+      const geometry = this.getSpriteGeometry(side);
+      const width = this.$refs.battleScene?.clientWidth || 320;
+      const height = this.$refs.battleScene?.clientHeight || 220;
+      const maxWidth = Math.min(180, width - 16);
+      const labelHeight = this.resultFx.labels.length * 34;
+      return {
+        left: `${Math.max(maxWidth / 2 + 8, Math.min(width - maxWidth / 2 - 8, geometry.centerX))}px`,
+        top: `${Math.min(height - 8, Math.max(labelHeight + 8, geometry.bottomY - geometry.height - 8))}px`,
+        width: `${maxWidth}px`
+      };
+    },
     buildMovePath(actor, damageClass) {
       const sourceSide = actor === 'opponent' ? 'wild' : 'player';
       const targetSide = actor === 'opponent' ? 'player' : 'wild';
@@ -730,7 +748,7 @@ export default {
         visible: true,
         nonce: this.battleMoveFx.nonce + 1
       });
-      this.playSound(damageClass === 'status' ? 'status' : 'attack');
+      this._battleAudio?.move({ damageClass, moveType: payload.moveType || 'Normal' });
       this.moveTimer = setTimeout(() => {
         this.battleMoveFx.visible = false;
         this.moveTimer = null;
@@ -836,35 +854,12 @@ export default {
       }, resultDelay + 620));
       this.captureTimers = timers;
     },
-    ensureAudioContext() {
-      if (!this.soundEnabled || this.audioVolume <= 0) return null;
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContextClass) return null;
-      if (!this.audioContext) this.audioContext = new AudioContextClass();
-      return this.audioContext;
-    },
     unlockAudio() {
-      const context = this.ensureAudioContext();
-      if (context?.state === 'suspended') context.resume().catch(() => {});
+      this.syncAudio();
+      return this._battleAudio?.unlock();
     },
     tone(frequency, duration, options = {}) {
-      const context = this.ensureAudioContext();
-      if (!context || context.state !== 'running') return;
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      const start = context.currentTime + Number(options.delay || 0);
-      oscillator.type = options.type || 'sine';
-      oscillator.frequency.setValueAtTime(Math.max(40, frequency), start);
-      if (options.endFrequency) {
-        oscillator.frequency.exponentialRampToValueAtTime(Math.max(40, options.endFrequency), start + duration);
-      }
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(Number(options.volume || 0.06) * this.audioVolume, start + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start(start);
-      oscillator.stop(start + duration + 0.02);
+      this._battleAudio?.tone(frequency, duration, options);
     },
     playSound(kind) {
       if (!this.soundEnabled) return;
@@ -2063,18 +2058,20 @@ export default {
   border: 1px solid rgba(255, 255, 255, 0.42);
   font-size: 0.76rem;
   text-align: center;
+  line-height: 1.2;
+  box-shadow: 0 2px 6px #10232270;
   animation: battle-result-pop 1.05s ease-out forwards;
 }
 
 .battle-result-fx {
   position: absolute;
-  z-index: 24;
+  z-index: 72;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.3rem;
   pointer-events: none;
-  transform: translate(-50%, -125%);
+  transform: translate(-50%, -100%);
 }
 
 .battle-result-chip.result-critical {
