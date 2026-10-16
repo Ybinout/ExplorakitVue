@@ -344,7 +344,7 @@
       </button>
     </div>
 
-    <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
+    <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
 
@@ -426,6 +426,7 @@ export default {
       battleResult: null,
       pendingBattleResult: null,
       learningDeferred: false, learningBusy: false, learningError: '',
+      evolutionOptions: [], evolutionLoading: false, evolutionBusy: false, evolutionError: '', evolutionNotice: '',
       user: {
         nom: '',
         mdp: ''
@@ -561,7 +562,7 @@ export default {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
       return this.teamPokemons.find(p => p.currentHp > 0 && p.pendingMoves?.length);
     },
-    learningVisible() { return Boolean(this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator); },
+    learningVisible() { return Boolean(this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
     isColosseum() { return this.$route.name === 'ColosseumGame' || this.driftState?.mode === 'colosseum'; },
     driftLobbyPath() { return this.isColosseum ? '/colosseum' : '/drift'; },
     isDrift() { return ['DriftGame','ColosseumGame'].includes(this.$route.name); },
@@ -573,6 +574,7 @@ export default {
     driftPhaseLabel() { return { selection:'Choix du compagnon', exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', colosseum_ready: 'Colosseum · prêt ?', colosseum_battle: 'Colosseum', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
     driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return this.isColosseum && this.driftState?.colosseum ? `${this.driftState.colosseum.score} pts` : ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
     selectedPokemon() { return this.teamPokemons.find(pokemon => pokemon.uuid === this.selectedPokemonUuid); },
+    evolutionLookupKey() { const p = this.selectedPokemon; return p ? [p.uuid,p.data?.id,p.level,p.currentHp,p.attack,p.defense,(p.abilities || []).join(',')].join(':') : ''; },
     locationLabel() {
       if (this.isColosseum && this.map === 'ville1_arene' && this.driftState?.phase !== 'exploration') return 'Colosseum';
       return getMapLocationLabel(this.map, this.preferences.language);
@@ -596,6 +598,8 @@ export default {
     }
   },
   watch: {
+    evolutionLookupKey() { this.loadEvolutionOptions(); },
+    selectedPokemonUuid() { this.evolutionNotice = ''; },
     movementBlocked(blocked) { if (blocked) this.releaseAllMovementKeys(); },
     learningVisible(visible) { if (visible) { this.releaseAllMovementKeys(); this.learningError = ''; } },
     battle(isInBattle) {
@@ -606,6 +610,31 @@ export default {
   },
 
   methods: {
+    async loadEvolutionOptions() {
+      const pokemon = this.selectedPokemon, key = this.evolutionLookupKey;
+      this.evolutionOptions = []; this.evolutionError = '';
+      if (!pokemon || !this.socket?.connected) { this.evolutionLoading = false; return; }
+      this.evolutionLoading = true;
+      try {
+        const response = await new Promise((resolve,reject) => this.socket.timeout(8000).emit('getPokemonEvolutions', { pokemonUuid: pokemon.uuid }, (error,result) => error ? reject(new Error('Chargement indisponible. Réessaie dans un instant.')) : resolve(result)));
+        if (this.evolutionLookupKey !== key) return;
+        if (!response?.success) throw new Error(response?.message || 'Conditions indisponibles.');
+        this.evolutionOptions = response.options || [];
+      } catch (error) { if (this.evolutionLookupKey === key) this.evolutionError = error.message; }
+      finally { if (this.evolutionLookupKey === key) this.evolutionLoading = false; }
+    },
+    async evolveCompanion(targetId) {
+      const pokemon = this.selectedPokemon;
+      if (!pokemon || this.evolutionBusy || !this.socket?.connected || this.battle || this.battleResult) return;
+      this.evolutionBusy = true; this.evolutionError = ''; this.evolutionNotice = '';
+      try {
+        const response = await new Promise((resolve,reject) => this.socket.timeout(8000).emit('evolvePokemon', { pokemonUuid: pokemon.uuid, fromSpeciesId: pokemon.data.id, targetId }, (error,result) => error ? reject(new Error('Vérifie la fiche avant de réessayer : le serveur ne répond pas.')) : resolve(result)));
+        if (!response?.success) throw new Error(response?.message || 'Évolution indisponible.');
+        if (response.equipe?.pokemons) this.applyTeamPokemons(response.equipe.pokemons);
+        if (this.selectedPokemonUuid === pokemon.uuid) this.evolutionNotice = `${pokemon.truename || pokemon.name} a évolué en ${response.evolution.name} !`;
+      } catch (error) { if (this.selectedPokemonUuid === pokemon.uuid) this.evolutionError = error.message; }
+      finally { this.evolutionBusy = false; }
+    },
     openMoveLearning() { this.isMenuOpen = false; this.learningDeferred = false; this.releaseAllMovementKeys(); },
     async chooseLearnedMove(slot) {
       const pokemon = this.learningPokemon;

@@ -35,6 +35,21 @@
           <p class="companion-tip">{{ mode === 'ev' ? `Entraînement : ${effortTotal} / 510. Les adversaires vaincus améliorent progressivement tes statistiques.` : mode === 'iv' ? 'Les IV sont innés. Le potentiel multiplie leur contribution aux statistiques ; il ne modifie pas les EV.' : 'Les statistiques combinent espèce, niveau, nature, IV, potentiel et entraînement. Les effets temporaires du combat sont exclus.' }}</p>
         </div>
       </div>
+      <section class="companion-evolutions" aria-labelledby="companion-evolution-title">
+        <h3 ref="evolutionTitle" id="companion-evolution-title" tabindex="-1">Évolution</h3>
+        <p v-if="evolutionLoading" role="status">Chargement des conditions…</p>
+        <p v-else-if="!evolutionOptions.length && !evolutionError">Ce Pokémon n’a pas d’évolution dans RiftMon.</p>
+        <p v-else class="evolution-help">Les évolutions à branche unique se déclenchent avec l’XP. Tu peux aussi évoluer ici si les conditions sont remplies. Pour plusieurs formes, choisis celle que tu souhaites conserver.</p>
+        <p v-if="evolutionNotice" class="evolution-success" role="status">{{ evolutionNotice }}</p>
+        <p v-if="evolutionError" class="evolution-error" role="alert">{{ evolutionError }} <button @click="$emit('reload-evolutions')">Réessayer</button></p>
+        <article v-for="option in evolutionOptions" :key="option.targetId" :data-evolution-target="option.targetId">
+          <pokemon-portrait :src="`${$assetBase}img/pokemon/front/${option.targetId}.png`" :alt="option.name" />
+          <div><strong>{{ option.name }}</strong><p>{{ option.condition }}</p><small v-if="option.adaptation">Règle solo : {{ option.adaptation }}</small></div>
+          <span v-if="option.stone" class="evolution-stone">Avec une pierre</span>
+          <button v-else :disabled="!option.ready || !evolutionAllowed || evolutionBusy || evolutionLoading" @click="$emit('evolve',option.targetId)">{{ evolutionBusy ? 'Évolution…' : option.ready ? `Évoluer en ${option.name}` : 'Conditions requises' }}</button>
+        </article>
+        <p v-if="pokemon.currentHp <= 0 && evolutionOptions.length" class="evolution-help">Soigne ce Pokémon avant de le faire évoluer.</p>
+      </section>
       <footer class="companion-footer"><button :disabled="position <= 1" @click="$emit('navigate', -1)">‹ Précédent</button><span>TON ÉQUIPE · TON AVENTURE</span><button :disabled="position >= total" @click="$emit('navigate', 1)">Suivant ›</button></footer>
     </section>
   </div>
@@ -62,7 +77,7 @@ const natures = {
 };
 export default {
   components: { ExperienceBar, PokemonPortrait, PotentialStar },
-  props: { pokemon: { type: Object, required: true }, position: Number, total: Number },
+  props: { pokemon: { type: Object, required: true }, position: Number, total: Number, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
   data: () => ({ mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
     typeNames: { Grass: 'Plante', Fire: 'Feu', Water: 'Eau', Bug: 'Insecte', Flying: 'Vol', Electric: 'Électrik', Ground: 'Sol', Rock: 'Roche', Ice: 'Glace', Fighting: 'Combat', Psychic: 'Psy', Ghost: 'Spectre', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' } }),
   computed: {
@@ -81,6 +96,7 @@ export default {
     chartDescription() { return this.stats.map((stat, index) => `${stat.full} : ${this.values[index]}`).join(', '); },
     chartCaption() { return this.mode === 'stats' ? `Échelle commune : 0 à ${this.scale}` : this.mode === 'iv' ? 'Qualités innées · IV de 0 à 31' : 'Points d’effort · EV de 0 à 252 par statistique'; }
   },
+  watch: { evolutionNotice(value) { if(value)this.$nextTick(()=>this.$refs.evolutionTitle?.focus()); } },
   mounted() { this.previousFocus = document.activeElement; this.$refs.close.focus(); },
   beforeDestroy() { this.previousFocus?.focus?.(); },
   methods: {
@@ -104,6 +120,13 @@ export default {
 };
 </script>
 <style scoped>
+.companion-evolutions{padding:4px 26px 24px;border-top:1px solid var(--journal-border)}
+.companion-evolutions h3{font:24px Georgia,serif;margin:20px 0 10px}.evolution-help{font-size:12px;line-height:1.6;color:var(--journal-muted)}
+.companion-evolutions article{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--journal-border)}
+.companion-evolutions .pokemon-portrait{width:60px;height:60px;flex-shrink:0}.companion-evolutions article>div{flex:1;min-width:0}.companion-evolutions article p{font-size:12px;margin:5px 0}.companion-evolutions small{display:block;font-size:11px;line-height:1.5;color:var(--journal-muted)}
+.companion-evolutions button{min-height:44px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);color:var(--journal-ink);font:700 12px Arial;padding:10px;cursor:pointer}.companion-evolutions button:disabled{opacity:.5;cursor:default}.companion-evolutions button:focus-visible{outline:2px solid #287366;outline-offset:3px}.evolution-stone{font-size:11px;color:var(--journal-muted)}.evolution-error{color:#a33f35}.evolution-success{color:#287366}
+@media(max-width:540px){.companion-evolutions{padding:4px 18px 18px}.companion-evolutions article{flex-wrap:wrap;gap:10px}.companion-evolutions article>button,.companion-evolutions article>.evolution-stone{width:100%}.companion-evolutions article>div{min-width:130px}}
+
 .companion-backdrop{position:fixed;inset:0;z-index:1400;display:grid;place-items:center;padding:20px;background:var(--journal-backdrop);backdrop-filter:blur(5px);font:14px/1.45 Arial,sans-serif;color:var(--journal-ink)}
 .companion-sheet{width:min(790px,100%);max-height:calc(100dvh - 40px);overflow:auto;background:var(--journal-paper);border:1px solid var(--journal-border);border-radius:22px;box-shadow:var(--journal-shadow)}
 .companion-heading{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 26px;background:var(--journal-card);color:var(--journal-heading);border-bottom:1px solid var(--journal-border)}
