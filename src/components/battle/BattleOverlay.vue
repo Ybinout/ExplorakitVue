@@ -262,6 +262,7 @@
 </template>
 
 <script>
+import { createBattlePresentation } from '@/services/battlePresentation';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
 import PotentialStar from '../PotentialStar.vue';
@@ -311,6 +312,8 @@ export default {
       challenge: null,
       opponent: null,
       canAct: false,
+      presentationBusy: false,
+      usableMoveIndexes: null,
       actionState: {
         patient: false,
         attackPanel: false,
@@ -366,7 +369,7 @@ export default {
       return Array.isArray(this.player?.equipe?.pokemons) ? this.player.equipe.pokemons : [];
     },
     canChooseAction() {
-      return this.canAct && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
+      return this.canAct && !this.presentationBusy && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
     },
     turnLabel() {
       if (this.captureFx.visible) return this.tr('captureRunning');
@@ -442,6 +445,7 @@ export default {
     document.addEventListener('visibilitychange', this.syncAudio);
   },
   beforeDestroy() {
+    this._presentation?.cancel();
     this.cancelExperience();
     this.stopMusic();
     clearTimeout(this.experienceTimer);
@@ -453,6 +457,16 @@ export default {
     this._battleAudio?.dispose();
   },
   methods: {
+    presentEvent(method, payload) {
+      this._presentation ||= createBattlePresentation({ changed: busy => { this.presentationBusy = busy; } });
+      const delay = () => {
+        if (!this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
+        if (method === 'playMoveAnimation') return payload?.damageClass === 'status' ? 850 : 650;
+        if (method === 'playMoveResult') return this.resultFx.visible ? 1150 : 250;
+        return 0;
+      };
+      return this._presentation.push(() => this[method](payload), delay);
+    },
     startMusic(kind) {
       this.stopMusic();
       this.musicKind = kind;
@@ -468,6 +482,7 @@ export default {
       else if (this.music.paused) this.music.play().catch(() => {});
     },
     syncAudio() {
+      if (document.hidden) this._presentation?.skipWait();
       this._battleAudio?.setVolume(this.soundEnabled && !document.hidden ? this.audioVolume : 0);
       this.syncMusic();
     },
@@ -510,6 +525,7 @@ export default {
     async finishPresentation() {
       this.finishing = true;
       this.canAct = false;
+      await this._presentation?.drain();
       await this._experiencePlayback;
     },
     cancelExperience() {
@@ -540,6 +556,7 @@ export default {
       return `${currentHp}/${maxHp} PV`;
     },
     moveButtonLabel(index) {
+      if (Array.isArray(this.usableMoveIndexes) && !this.usableMoveIndexes.length && index === 0) return 'Lutte';
       const moveName = this.currentPokemon?.abilities?.[index];
       if (!moveName) return '-';
       const localizedName = localizeMoveName(moveName, this.preferences.language);
@@ -549,6 +566,7 @@ export default {
     isMoveUnavailable(index) {
       if (!this.canChooseAction) return true;
       const pokemon = this.currentPokemon;
+      if (Array.isArray(this.usableMoveIndexes)) return this.usableMoveIndexes.length ? !this.usableMoveIndexes.includes(index) : index !== 0;
       if (!pokemon?.abilities?.[index]) return true;
       const pp = Array.isArray(pokemon.movePp) ? pokemon.movePp : [];
       const allEmpty = pokemon.abilities.every((moveName, moveIndex) => !moveName || Number(pp[moveIndex]) <= 0);
@@ -607,6 +625,7 @@ export default {
       }
     },
     updateBattleState(payload = {}) {
+      this.usableMoveIndexes = Array.isArray(payload.usableMoveIndexes) ? payload.usableMoveIndexes : null;
       if (!this.player) this.challenge = this.colosseumChallenge;
       const nextPlayer = payload.player || null;
       const nextOpponent = payload.wildPokemon || null;
@@ -927,6 +946,8 @@ export default {
       this.clearHealthTimers();
     },
     resetBattleUi() {
+      this._presentation?.cancel();
+      this.usableMoveIndexes = null;
       this.challenge = null;
       this.cancelExperience();
       this.finishing = false;

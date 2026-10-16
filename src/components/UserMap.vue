@@ -5,10 +5,11 @@
       <div class="game-stage">
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
       <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
+      <starter-choice v-if="isDrift && driftState?.phase==='selection'" :choices="driftState.starterChoices" :seconds="Math.max(0,Math.ceil((driftState.selectionEndsAt-driftClock-driftOffset)/1000))" :busy="starterBusy" :error="starterError" @choose="chooseStarter" />
       <move-learning-panel v-if="learningVisible" :key="learningPokemon.pendingMoves[0].id" :pokemon="learningPokemon" :busy="learningBusy" :error="learningError" @choose="chooseLearnedMove" @later="learningDeferred = true" />
       <battle-result-panel v-if="battleResult" :result="battleResult" @continue="dismissBattleResult" />
       <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
-      <drift-run-panel v-if="isDrift && isDriftPanelOpen && !battle && !battleResult && !driftSpectator && !learningVisible" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
+      <drift-run-panel v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator && !learningVisible" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <battle-overlay
         ref="battleOverlay"
         :active="battle"
@@ -19,7 +20,7 @@
         @action="handleBattleAction"
         @request-bag="loadBagItems"
       />
-      <div class="game-shell" :inert="battleResult || driftSpectator || learningVisible ? '' : null" :aria-hidden="battleResult || driftSpectator || learningVisible ? 'true' : null">
+      <div class="game-shell" :inert="driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible ? '' : null" :aria-hidden="driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible ? 'true' : null">
         <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
           <button ref="menuToggle" class="menu-toggle-btn" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
@@ -65,12 +66,12 @@
               <span class="bag-item-qty">x{{ item.quantity }}</span>
               <p class="bag-item-description">{{ item.description }}</p>
               <template v-if="isBagConsumable(item)">
-                <select :disabled="medicineBusy || teamLoading || !canUseBagConsumables" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
+                <select :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
                   <option value="">Choisir un Pokémon…</option>
-                  <option v-for="p in teamPokemons" :key="p.uuid" :value="p.uuid" :disabled="!canReceiveMedicine(item, p)">{{ p.name }} · {{ p.currentHp }}/{{ p.maxHp }} PV{{ medicineStatus(p) }}</option>
+                  <option v-for="p in teamPokemons" :key="p.uuid" :value="p.uuid" :disabled="!canReceiveMedicine(item, p)">{{ p.name }}{{ item.category==='evolution' && item.evolutions?.[p.uuid] ? ` → ${item.evolutions[p.uuid].name}` : ` · ${p.currentHp}/${p.maxHp} PV${medicineStatus(p)}` }}</option>
                 </select>
-                <button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagConsumables || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key]))" @click="useBagMedicine(item)">{{ medicineBusy ? 'Soin en cours…' : 'Utiliser' }}</button>
-                <small v-if="!canUseBagConsumables" class="bag-use-hint">{{ isDrift && driftState?.phase !== 'exploration' ? 'Soins automatiques entre les combats du tournoi.' : 'Disponible hors combat.' }}</small>
+                <button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagItem(item) || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key]))" @click="useBagMedicine(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button>
+                <small v-if="!canUseBagItem(item)" class="bag-use-hint">{{ isDrift && driftState?.phase !== 'exploration' ? 'Soins automatiques entre les combats du tournoi.' : 'Disponible hors combat.' }}</small>
                 <small v-else-if="!teamPokemons.some(p => canReceiveMedicine(item, p))" class="bag-use-hint">Aucun Pokémon n’a besoin de cet objet.</small>
               </template>
               <small v-else-if="isDrift && item.revive" class="bag-use-hint">Les K.O. sont définitifs dans ce mode.</small>
@@ -142,6 +143,8 @@
                     {{ item.name }}{{ item.quantity ? ` (x${item.quantity})` : '' }}
                   </option>
                 </select>
+                <p v-if="pokemon.heldItem" class="team-item-description">{{ heldDescription(pokemon.heldItem) }}</p>
+                <p v-if="pokemon.riftFainted" class="team-item-description">Sauvé par un talisman · K.O. jusqu’à un soin hors combat.</p>
               </div>
               <div class="team-row-actions">
                 <button
@@ -185,6 +188,7 @@
         <shop-panel
           :visible="shop.visible"
           :catalog="shop.catalog"
+          :expedition="isDrift" :merchant="driftState?.merchant" :drift-catalogue="driftCatalogue" :drifts="driftState?.drifts || []" :equipped="driftState?.equipped || []" @merchant="merchantCommand"
           :items="bagItems"
           :money="shop.money"
           :loading="shop.loading"
@@ -367,6 +371,8 @@ import {
   normalizeTeamPokemon
 } from "@/services/gameView";
 import PokemonPortrait from './PokemonPortrait.vue';
+import StarterChoice from './drift/StarterChoice.vue';
+import heldItemDefinitions from '@/data/heldItems.json';
 import PokemonDetails from './menu/PokemonDetails.vue';
 import ExperienceBar from './ExperienceBar.vue';
 import './adventure.css';
@@ -389,6 +395,7 @@ const MOVEMENT_INTERPOLATION_MS = 175;
 
 export default {
   components: {
+    StarterChoice,
     JournalIcon,
     BattleResultPanel,
     MoveLearningPanel,
@@ -406,6 +413,7 @@ export default {
   data() {
     return {
       driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
+      starterBusy:false,starterError:'',
       medicineBusy:false, medicineNotice:'', medicineTargets: {},
       endSentences: null,
       textImageSequence: [],
@@ -562,7 +570,7 @@ export default {
       return this.tr('emptyBag');
     },
     visibleMenuItems() { return this.isDrift ? [...this.menuItems.filter(i => !['pokedex', 'progress', 'save', 'appearance'].includes(i.key)), { key: 'drifts' }] : this.menuItems; },
-    driftPhaseLabel() { return { exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', colosseum_ready: 'Colosseum · prêt ?', colosseum_battle: 'Colosseum', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
+    driftPhaseLabel() { return { selection:'Choix du compagnon', exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', colosseum_ready: 'Colosseum · prêt ?', colosseum_battle: 'Colosseum', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
     driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return this.isColosseum && this.driftState?.colosseum ? `${this.driftState.colosseum.score} pts` : ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
     selectedPokemon() { return this.teamPokemons.find(pokemon => pokemon.uuid === this.selectedPokemonUuid); },
     locationLabel() {
@@ -625,32 +633,34 @@ export default {
       this.loadTeamPokemons();
     },
     isBagConsumable(item) {
-      return Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse) && !(this.isDrift && item.revive));
+      return Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse || (this.isDrift && item.category==='evolution')) && !(this.isDrift && item.revive));
     },
+    canUseBagItem(item) { return item.category==='evolution' && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
     canReceiveMedicine(item, pokemon) {
       if (!pokemon) return false;
+      if(item.category==='evolution')return Boolean(item.evolutions?.[pokemon.uuid]);
       const effect = item.fieldUse || item;
       if (effect.revive) return !this.isDrift && pokemon.currentHp <= 0;
-      if (pokemon.currentHp <= 0) return false;
+      if (pokemon.currentHp <= 0 && !(this.isDrift && pokemon.riftFainted && (effect.heal || effect.healFraction || item.category==='heal'))) return false;
       return Boolean(((effect.heal || effect.healFraction || item.category === 'heal') && pokemon.currentHp < pokemon.maxHp) || effect.cure?.includes(pokemon.status));
     },
     medicineStatus(pokemon) {
       const statuses = { poison: 'empoisonné', badly_poison: 'empoisonné', burn: 'brûlé', paralyze: 'paralysé', sleep: 'endormi', freeze: 'gelé' };
-      return pokemon.currentHp <= 0 ? ' · K.O.' : statuses[pokemon.status] ? ` · ${statuses[pokemon.status]}` : '';
+      return pokemon.currentHp <= 0 ? pokemon.riftFainted ? ' · K.O. protégé' : ' · K.O.' : statuses[pokemon.status] ? ` · ${statuses[pokemon.status]}` : '';
     },
     async useBagMedicine(item) {
       const pokemonUuid = this.medicineTargets[item.key];
       const pokemon = this.teamPokemons.find(p => p.uuid === pokemonUuid);
-      if (this.medicineBusy || !this.canUseBagConsumables || !this.canReceiveMedicine(item, pokemon)) return;
+      if (this.medicineBusy || !this.canUseBagItem(item) || !this.canReceiveMedicine(item, pokemon)) return;
       this.medicineNotice = ''; this.bagError = '';
       if (!this.socket?.connected) { this.bagError = 'Reconnecte-toi pour utiliser un objet.'; return; }
       this.medicineBusy = true;
       try {
-        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(this.isDrift ? 'drift:heal' : 'useMedicine', { itemKey: item.key, pokemonUuid }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
+        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(this.isDrift ? item.category==='evolution'?'drift:evolve':'drift:heal' : 'useMedicine', { itemKey: item.key, pokemonUuid }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
         if (!response?.success) throw new Error(response?.message || 'Soin impossible.');
         if (response.items) this.applyBagItems(response.items);
         if (response.equipe) this.applyTeamPokemons(response.equipe.pokemons);
-        this.medicineNotice = `${item.name} utilisée sur ${pokemon.name}. Soin sauvegardé.`;
+        this.medicineNotice = response.evolution ? `${pokemon.name} a évolué en ${response.evolution.name} !` : `${item.name} utilisée sur ${pokemon.name}. Soin sauvegardé.`;
       } catch (error) { this.bagError = error.message; }
       finally { this.medicineBusy = false; }
     },
@@ -659,6 +669,17 @@ export default {
       this.battleResult = null;
       this.learningDeferred = false;
       this.lock = Boolean(this.battle);
+    },
+    async chooseStarter(pokemonUuid) {
+      if(this.starterBusy)return;this.starterBusy=true;this.starterError='';
+      if(!await this.driftCommand({name:'drift:chooseStarter',data:{pokemonUuid}}))this.starterError='Choix indisponible. Réessaie après la reconnexion.';
+      this.starterBusy=false;
+    },
+    async merchantCommand(command) {
+      if(this.shop.loading)return;this.shop.loading=true;this.shop.error='';
+      const ok=await this.driftCommand(command);this.shop.loading=false;
+      if(!ok)this.shop.error=this.interactionNotice || 'Transaction indisponible.';
+      else this.showInteractionNotice('Transaction sauvegardée.');
     },
     async leaveDrift() { if (await this.driftCommand({ name: 'drift:exit' })) this.$router.replace(this.driftLobbyPath); },
     async watchDriftMatch(matchId) {
@@ -750,7 +771,7 @@ export default {
       this.socket.emit('requestShop', (payload = {}) => {
         this.shop.loading = false;
         if (!payload.success) {
-          this.shop.error = this.getShopError(payload.reason);
+          this.shop.error = payload.message || this.getShopError(payload.reason);
           return;
         }
         this.applyShopState(payload);
@@ -763,7 +784,7 @@ export default {
       this.socket.emit('buyShopItem', { itemKey, quantity }, (payload = {}) => {
         this.shop.loading = false;
         if (!payload.success) {
-          this.shop.error = this.getShopError(payload.reason);
+          this.shop.error = payload.message || this.getShopError(payload.reason);
           if (Number.isFinite(Number(payload.money))) this.shop.money = Number(payload.money);
           return;
         }
@@ -1225,11 +1246,12 @@ export default {
       if (hpPercent > 20) return 'hp-mid';
       return 'hp-low';
     },
+    heldDescription(key) { return heldItemDefinitions[key]?.description || ''; },
     heldItemChoices(pokemon) {
       const choices = [...this.heldBagItems];
       const currentKey = pokemon?.heldItem;
       if (currentKey && !choices.some((item) => item.key === currentKey)) {
-        choices.unshift({ key: currentKey, name: currentKey, quantity: 0 });
+        choices.unshift({ key: currentKey, name: heldItemDefinitions[currentKey]?.name || currentKey, quantity: 0 });
       }
       return choices;
     },
@@ -1917,6 +1939,7 @@ export default {
       });
       this.socket.on('drift:state', state => {
         const previousPhase = this.driftState?.phase; const previousAlive = this.driftState?.alive;
+        if (previousPhase==='selection' && state.phase==='exploration') this.isDriftPanelOpen=false;
         this.driftState = state; this.driftOffset = state.serverNow - Date.now(); this.teamId = 'drift';
         if (state.mode !== 'colosseum' && state.phase === 'results' && state.report && this.archivedDriftRunId !== state.report.runId) {
           this.archivedDriftRunId = state.report.runId;
@@ -1924,7 +1947,7 @@ export default {
         }
         this.applyBagItems(state.items || []); this.shop.money = state.money;
         if (!this.teamDirty || this.battle || !state.alive) this.applyTeamPokemons(state.team || []);
-        if ((!state.alive || state.phase !== 'exploration') && (previousPhase !== state.phase || previousAlive !== state.alive)) { this.textImageSequence = []; this.isDriftPanelOpen = true; }
+        if ((!state.alive || !['exploration','selection'].includes(state.phase)) && (previousPhase !== state.phase || previousAlive !== state.alive)) { this.textImageSequence = []; this.isDriftPanelOpen = true; }
       });
       this.socket.on('drift:lobby', lobby => { if (!lobby && this.driftState) this.$router.replace(this.driftLobbyPath); });
       this.socket.on('drift:replaced', () => { this.socket.disconnect(); this.$router.replace('/'); });
@@ -2263,11 +2286,11 @@ export default {
 
     this.socket.on('requestAction', (data) => {
       if (this.isDrift) this.driftTurnId = data?.turnId;
-      this.$refs.battleOverlay?.requestAction(data?.message || 'Choisis une action.');
+      this.$refs.battleOverlay?.presentEvent('requestAction', data?.message || 'Choisis une action.');
     });
 
     this.socket.on('battleText', (data) => {
-      this.$refs.battleOverlay?.showMessage(data?.message || '...');
+      this.$refs.battleOverlay?.presentEvent('showMessage', data?.message || '...');
     });
 
     this.socket.on('bagUpdated', (data) => {
@@ -2279,26 +2302,26 @@ export default {
     });
 
     this.socket.on('captureAnimation', (data) => {
-      this.$refs.battleOverlay?.playCaptureAnimation(data);
+      this.$refs.battleOverlay?.presentEvent('playCaptureAnimation', data);
     });
 
     this.socket.on('battleMoveAnimation', (data) => {
-      this.$refs.battleOverlay?.playMoveAnimation(data);
+      this.$refs.battleOverlay?.presentEvent('playMoveAnimation', data);
     });
 
     this.socket.on('battleMoveResult', (data) => {
-      this.$refs.battleOverlay?.playMoveResult(data);
+      this.$refs.battleOverlay?.presentEvent('playMoveResult', data);
     });
 
     this.socket.on('battleFieldState', (data) => {
-      this.$refs.battleOverlay?.updateFieldState(data);
+      this.$refs.battleOverlay?.presentEvent('updateFieldState', data);
     });
 
-    this.socket.on('battleExperience', data => this.$refs.battleOverlay?.updateExperience(data));
+    this.socket.on('battleExperience', data => this.$refs.battleOverlay?.presentEvent('updateExperience', data));
 
     this.socket.on('introAnimation', (data) => {
       this.lock = true;
-      this.$refs.battleOverlay?.updateBattleState(data);
+      this.$refs.battleOverlay?.presentEvent('updateBattleState', data);
     });
 
 
@@ -3495,6 +3518,8 @@ button:hover {
 </style>
 
 <style scoped>
+.team-item-description{font:11px/1.6 Arial,sans-serif;color:#5c716b;margin:7px 0;}
+
 .world-toolbar { display: contents; }
 .game-root.is-drift .world-toolbar { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px 5px; border: 1px solid var(--journal-border); border-radius: 16px 16px 0 0; background: var(--journal-card); box-shadow: none; }
 .game-root.is-drift .game-header { width: 100%; height: auto; min-height: 44px; gap: 10px; padding: 0; border: 0; background: transparent; }

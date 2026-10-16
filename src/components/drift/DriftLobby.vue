@@ -82,10 +82,10 @@
         </section>
         <details v-else class="expedition-guide"><summary>Comment se déroule une partie ?</summary>
           <div class="guide-heading"><p class="eyebrow">UNE ÉQUIPE · UNE VIE</p><h2 id="guide-title">Écris ta propre légende.</h2><p>Le même monde. Un nouveau départ.<br />Et un seul vainqueur.</p></div>
-          <ol class="adventure-steps"><li><span class="step-symbol"><drift-glyph name="compass" /></span><div><small>01 · L’EXPLORATION</small><strong>Un compagnon, mille possibles.</strong><p>Un petit Pokémon aléatoire au départ. Capture, entraîne et soigne ton équipe. Les gains d’XP sont doublés.</p></div></li>
+          <ol class="adventure-steps"><li><span class="step-symbol"><drift-glyph name="compass" /></span><div><small>01 · L’EXPLORATION</small><strong>Un compagnon, mille possibles.</strong><p>Choisis ton compagnon parmi trois Pokémon de base aléatoires. Capture, entraîne et soigne ton équipe. Les gains d’XP sont doublés.</p></div></li>
             <li><span class="step-symbol"><drift-glyph name="drift" /></span><div><small>02 · LES DRIFTS</small><strong>Forge ta stratégie.</strong><p>Gagne des Drifts en combat et équipe jusqu’à cinq pouvoirs pour prendre l’avantage.</p></div></li>
             <li><span class="step-symbol"><drift-glyph name="trophy" /></span><div><small>03 · LE DERNIER DUEL</small><strong>Fais face aux survivants.</strong><p>Un tirage au sort compose le tournoi. En cas d’exemption, regarde les duels en attendant ton tour.</p></div></li></ol>
-          <div class="survival-note"><span aria-hidden="true">!</span><p><strong>Chaque K.O. est définitif.</strong> Même au tournoi. Sans Pokémon vivant, l’expédition s’arrête pour toi.</p></div>
+          <div class="survival-note"><span aria-hidden="true">!</span><p><strong>Un K.O. entraîne une perte définitive, sauf avec un talisman équipé.</strong> Il est consommé et son porteur reste K.O. jusqu’à un soin hors combat ou entre deux rounds. Perdre un match de tournoi t’élimine.</p></div>
           <p class="adventure-note">Une parenthèse entre amis. Ton aventure principale conserve son équipe et ses objets.</p>
         </details>
       </div>

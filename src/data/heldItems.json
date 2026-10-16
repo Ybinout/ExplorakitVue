@@ -1,0 +1,62 @@
+{
+  "oran_berry": {
+    "name": "Baie Oran",
+    "description": "Tenue, elle restaure 10 PV sous la moitié des PV. Peut aussi être consommée depuis le sac hors combat."
+  },
+  "sitrus_berry": {
+    "name": "Baie Sitrus",
+    "description": "Tenue, elle restaure un quart des PV sous la moitié des PV. Peut aussi être consommée depuis le sac hors combat."
+  },
+  "lum_berry": {
+    "name": "Baie Prine",
+    "description": "Tenue, elle soigne automatiquement un problème de statut. Peut aussi être consommée depuis le sac hors combat."
+  },
+  "leftovers": {
+    "name": "Restes",
+    "description": "Tenus, ils restaurent un seizième des PV à chaque tour."
+  },
+  "life_orb": {
+    "name": "Orbe Vie",
+    "description": "Augmente les dégâts de 30 %, mais coûte 10 % des PV max après une attaque qui inflige des dégâts."
+  },
+  "choice_band": {
+    "name": "Bandeau Choix",
+    "description": "Attaque ×1,5 ; bloque sur la première capacité utilisée jusqu’au changement de Pokémon."
+  },
+  "choice_specs": {
+    "name": "Lunettes Choix",
+    "description": "Attaque spéciale ×1,5 ; bloque sur la première capacité utilisée jusqu’au changement de Pokémon."
+  },
+  "choice_scarf": {
+    "name": "Mouchoir Choix",
+    "description": "Vitesse ×1,5 ; bloque sur la première capacité utilisée jusqu’au changement de Pokémon."
+  },
+  "focus_sash": {
+    "name": "Ceinture Force",
+    "description": "À pleine vie, survit à une attaque fatale avec 1 PV. Consommée après activation."
+  },
+  "assault_vest": {
+    "name": "Veste de Combat",
+    "description": "Défense spéciale ×1,5, mais interdit les capacités de statut."
+  },
+  "eviolite": {
+    "name": "Évoluroc",
+    "description": "Défense et Défense spéciale ×1,5 tant que le Pokémon peut encore évoluer."
+  },
+  "expert_belt": {
+    "name": "Ceinture Pro",
+    "description": "Augmente de 20 % les dégâts des attaques super efficaces."
+  },
+  "shell_bell": {
+    "name": "Grelot Coque",
+    "description": "Restaure un huitième des dégâts infligés après une attaque."
+  },
+  "rocky_helmet": {
+    "name": "Casque Brut",
+    "description": "Un adversaire qui frappe au contact perd un sixième de ses PV max par coup."
+  },
+  "rift_talisman": {
+    "name": "Talisman de sauvegarde",
+    "description": "Évite une perte définitive une fois. Consommé au K.O. : le Pokémon reste à 0 PV, indisponible jusqu’à un soin hors combat ou entre deux rounds."
+  }
+}
