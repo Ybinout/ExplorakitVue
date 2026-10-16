@@ -9,46 +9,16 @@
       <template v-if="state">
         <nav class="run-tabs" role="tablist" aria-label="Carnet Drift">
           <button v-for="item in tabs" :id="`drift-tab-${item.key}`" :key="item.key" :data-drift-tab="item.key" role="tab" :aria-selected="tab === item.key" :tabindex="tab === item.key ? 0 : -1" aria-controls="drift-tab-content" @click="selectTab(item.key)" @keydown="switchTab($event, item.key)">
-            <drift-glyph :name="item.icon" /><span>{{ item.label }}</span><small v-if="item.key === 'drifts'">{{ state.equipped.length }}/5</small>
+            <drift-glyph :name="item.icon" /><span>{{ item.label }}</span><small v-if="item.key === 'drifts'">{{ state.equipped.length }}/5</small><small v-if="item.key==='contracts' && state.contracts.some(c=>c.complete&&!c.claimed)" aria-label="Récompense prête">●</small>
           </button>
         </nav>
-        <div id="drift-tab-content" ref="content" class="run-content" :class="{ 'drifts-content': tab === 'drifts', 'has-drifts': state.drifts.length, 'viewing-detail': mobileDetails }" role="tabpanel" :aria-labelledby="`drift-tab-${tab}`" tabindex="0">
+        <div id="drift-tab-content" ref="content" class="run-content" :class="{ 'drifts-content': tab === 'drifts', 'has-drifts': state.drifts.length }" role="tabpanel" :aria-labelledby="`drift-tab-${tab}`" tabindex="0">
           <div v-if="!state.alive && !state.report" class="outcome" :class="{ victorious: state.winnerId === userId }">
             <drift-glyph :name="state.winnerId === userId ? 'trophy' : 'compass'" />
             <div><strong>{{ state.winnerId === userId ? 'L’expédition est à toi !' : state.phase === 'results' ? 'L’expédition est terminée' : 'Ton voyage s’arrête ici' }}</strong><p>{{ outcomeReason }}</p><p>Ton équipe, tes Balls et ton butin étaient propres à cette expédition : ils ont été effacés à sa fin.</p></div>
           </div>
-          <template v-if="tab === 'drifts'">
-            <section class="loadout" aria-label="Drifts équipés">
-              <div class="section-caption"><span>TA COMBINAISON</span><span>{{ state.equipped.length }} / {{ state.slotLimit }} équipés</span></div>
-              <div class="equipped-slots">
-                <button v-for="(drift, index) in equippedSlots" :key="index" :data-drift-slot="index" :class="[drift?.rarity, { filled: drift, selected: drift?.uuid === selectedId }]" :disabled="!drift" :aria-label="`Emplacement ${index + 1} : ${drift ? definition(drift).name : 'vide'}`" @click="inspect(drift)">
-                  <span class="slot-number">0{{ index + 1 }}</span><drift-glyph :category="drift ? definition(drift).category : null" :rarity="drift?.rarity" /><span class="slot-name">{{ drift ? definition(drift).name : 'Libre' }}</span>
-                </button>
-              </div>
-            </section>
-            <div class="inventory-toolbar"><label class="search"><drift-glyph name="search" /><input v-model="search" class="drift-search" type="search" aria-label="Chercher dans tes Drifts" placeholder="Chercher un Drift…" @input="mobileDetails = false" /></label><span class="inventory-count">{{ state.drifts.length }} trouvés</span><span class="money"><drift-glyph name="coin" />{{ state.money }}</span></div>
-            <div v-if="state.drifts.length" class="inventory-layout" :class="{ 'is-inspecting': mobileDetails }">
-              <div class="owned-collection">
-                <p class="section-caption">SAC DE DRIFTS <span>{{ filteredDrifts.length }} {{ filteredDrifts.length === 1 ? 'objet' : 'objets' }}</span></p>
-                <div class="owned-grid">
-                  <button v-for="drift in filteredDrifts" :key="drift.uuid" :data-drift-id="drift.uuid" class="owned-drift" :class="[drift.rarity, { selected: selectedDrift?.uuid === drift.uuid, equipped: state.equipped.includes(drift.uuid) }]" :aria-pressed="selectedId === drift.uuid" @click="inspect(drift)">
-                    <span class="item-seal"><drift-glyph :category="definition(drift).category" :rarity="drift.rarity" /></span><span class="item-copy"><strong>{{ definition(drift).name }}</strong><small>{{ rarityName(drift.rarity) }}</small></span><span v-if="state.equipped.includes(drift.uuid)" class="equipped-tick" aria-label="Équipé">✓</span>
-                  </button>
-                </div>
-                <p v-if="!filteredDrifts.length" class="quiet empty-search">Aucun Drift trouvé. Essaie un autre nom ou une catégorie.</p>
-              </div>
-              <aside v-if="selectedDrift" class="drift-detail" :class="selectedDrift.rarity" aria-labelledby="drift-detail-title">
-                <button class="detail-back" data-drift-action="back" @click="backToInventory"><drift-glyph name="back" />Tous mes Drifts</button>
-                <div class="detail-showcase"><span class="detail-orbit"></span><drift-glyph :category="definition(selectedDrift).category" :rarity="selectedDrift.rarity" /><span class="rarity-label">{{ rarityName(selectedDrift.rarity) }}</span></div>
-                <div class="detail-copy"><small>{{ definition(selectedDrift).category }}</small><h3 id="drift-detail-title" ref="detailTitle" tabindex="-1">{{ definition(selectedDrift).name }}</h3><p>{{ definition(selectedDrift).description }}</p><div class="effect-value"><strong>{{ formatValue(definition(selectedDrift).values[selectedDrift.rarity]) }}<small>{{ definition(selectedDrift).unit }}</small></strong><span>{{ definition(selectedDrift).stat }}</span></div><p v-if="selectedDrift.element" class="element-tag">Type {{ localizedType(selectedDrift.element) }}</p><p v-if="definition(selectedDrift).rule" class="effect-rule">{{ definition(selectedDrift).rule }}</p>
-                  <button class="primary equip-action" :data-drift-action="selectedEquipped ? 'unequip' : 'equip'" :disabled="!state.alive || Boolean(equipBlocked)" @click="command('drift:equip', { uuid: selectedDrift.uuid, enabled: !selectedEquipped })"><drift-glyph name="drift" />{{ selectedEquipped ? 'Retirer de ma combinaison' : 'Équiper ce Drift' }}</button>
-                  <p v-if="equipBlocked" class="limit-note">{{ equipBlocked }}</p>
-                  <div class="secondary-actions"><button v-if="inShop && state.phase === 'exploration'" data-drift-action="sell" :disabled="selectedEquipped || !state.alive" @click="command('drift:sell', { uuid: selectedDrift.uuid })">Vendre · {{ salePrice(selectedDrift) }} ₽</button><button data-drift-action="discard" :disabled="selectedEquipped || !state.alive" @click="askConfirmation('discard', selectedDrift)">Supprimer</button></div>
-                </div>
-              </aside>
-            </div>
-            <div v-else class="empty-inventory"><div class="empty-seal"><drift-glyph /></div><h3>Tout commence par une rencontre.</h3><p>Bats ou capture des Pokémon sauvages, ou défie des dresseurs : chaque réussite peut te rapporter un Drift. Les champions gardent les plus beaux trésors.</p><span>Cinq emplacements. À toi de choisir ta combinaison.</span></div>
-          </template>
+          <drift-inventory v-if="tab === 'drifts'" :state="state" :catalogue="catalogue" :in-shop="inShop" :execute="runCommand" @discard="askConfirmation('discard',$event)" />
+          <expedition-contracts v-if="tab === 'contracts'" :state="state" :execute="runCommand" />
           <template v-if="tab === 'team'">
             <div class="team-intro"><div><span class="section-caption">TES COMPAGNONS</span><h3>{{ state.team.length }} Pokémon à protéger</h3></div><button v-if="state.alive" class="secondary-button" @click="$emit('team')">Fiches & ordre <span aria-hidden="true">↗</span></button></div>
             <p class="quiet team-note">Soigne tes compagnons avant de repartir. Un talisman équipé évite une perte définitive une fois ; son porteur reste K.O. jusqu’au prochain soin.</p>
@@ -88,6 +58,8 @@
 <script>
 import { getSession } from '@/services/session';
 import DriftGlyph from './DriftGlyph.vue';
+import DriftInventory from './DriftInventory.vue';
+import ExpeditionContracts from './ExpeditionContracts.vue';
 import DriftRunReport from './DriftRunReport.vue';
 import ColosseumRun from './ColosseumRun.vue';
 import RiftParticipants from './RiftParticipants.vue';
@@ -95,10 +67,10 @@ import PokemonPortrait from '../PokemonPortrait.vue';
 
 export default {
   name: 'DriftRunPanel',
-  components: { DriftGlyph, DriftRunReport, ColosseumRun, RiftParticipants, PokemonPortrait },
-  props: { state: Object, catalogue: Object, inShop: Boolean, feedback: { type: String, default: '' } },
+  components: { DriftInventory, ExpeditionContracts, DriftGlyph, DriftRunReport, ColosseumRun, RiftParticipants, PokemonPortrait },
+  props: { initialTab: String, runCommand: Function, state: Object, catalogue: Object, inShop: Boolean, feedback: { type: String, default: '' } },
   data() {
-    return { tab: this.state?.phase === 'exploration' ? 'drifts' : 'tournament', search: '', selectedId: null, mobileDetails: false,
+    return { tab: this.state?.phase === 'exploration' ? this.initialTab || 'drifts' : 'tournament',
       confirmation: null, discardTarget: null, previousFocus: null, confirmationFocus: null, userId: Number(getSession()?.id),
       prices: { common: 50, rare: 120, epic: 300, legendary: 800, mythic: 2000 } };
   },
@@ -111,7 +83,13 @@ export default {
       if (settlement.coinsAwarded == null || !Number.isFinite(Number(settlement.coinsAwarded))) return 'Ta victoire a été enregistrée sur ton compte RiftMon.';
       return `${this.formatValue(settlement.coinsAwarded)} pièces RiftMon ajoutées à ton compte.`;
     },
-    tabs() { if (this.isColosseum) return this.state.phase === 'results' ? [{key:'tournament',label:'Bilan du défi',icon:'trophy'}] : [{key:'drifts',label:'Drifts',icon:'drift'},{key:'team',label:'Équipe',icon:'team'},{key:'tournament',label:'Colosseum',icon:'trophy'}]; return this.state?.phase === 'results' && this.state.report ? [{ key: 'tournament', label: 'Bilan & tableau final', icon: 'trophy' }] : [{ key: 'drifts', label: 'Drifts', icon: 'drift' }, { key: 'team', label: 'Équipe', icon: 'team' }, { key: 'players', label: 'Survivants', icon: 'players' }, { key: 'tournament', label: 'Tournoi', icon: 'trophy' }]; },
+    tabs() {
+      if(this.state?.phase==='results')return [{key:'tournament',label:this.isColosseum?'Bilan du défi':'Bilan & tableau',icon:'trophy'}];
+      const tabs=[{key:'drifts',label:'Drifts',icon:'drift'},{key:'team',label:'Équipe',icon:'team'}];
+      if(this.state?.contracts?.length)tabs.push({key:'contracts',label:'Contrats',icon:'compass'});
+      if(!this.isColosseum)tabs.push({key:'players',label:'Survivants',icon:'players'});
+      tabs.push({key:'tournament',label:this.isColosseum?'Colosseum':'Tournoi',icon:'trophy'});return tabs;
+    },
     hasBye() { return this.state?.alive && this.state.matches.some(match => match.round === this.state.currentRound && match.status === 'bye' && match.players.includes(this.userId)); },
     outcomeReason() {
       if (this.state?.winnerId === this.userId) return 'Tu es le dernier dresseur en lice. L’expédition est terminée, même si le chrono n’était pas écoulé.';
@@ -122,23 +100,13 @@ export default {
         not_ready: 'Tu n’étais pas prêt à la fin du délai de préparation : tu es éliminé.'
       }[this.state?.reason] || 'Tu ne participes plus à cette expédition.';
     },
-    filteredDrifts() { const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); const q = normalize(this.search); return (this.state?.drifts || []).filter(d => normalize(`${this.definition(d).name} ${this.definition(d).category}`).includes(q)); },
-    selectedDrift() { return this.state?.drifts.find(d => d.uuid === this.selectedId) || this.filteredDrifts[0] || null; },
-    selectedEquipped() { return Boolean(this.selectedDrift && this.state.equipped.includes(this.selectedDrift.uuid)); },
-    equippedSlots() { return Array.from({ length: this.state?.slotLimit || 5 }, (_, index) => this.state.drifts.find(d => d.uuid === this.state.equipped[index]) || null); },
-    equipBlocked() {
-      if (!this.selectedDrift || this.selectedEquipped) return '';
-      if (this.state.equipped.length >= this.state.slotLimit) return 'Tes cinq emplacements sont occupés. Retire un Drift pour en changer.';
-      return this.state.drifts.some(d => d.definitionId === this.selectedDrift.definitionId && this.state.equipped.includes(d.uuid)) ? 'Un Drift de cette famille est déjà équipé.' : '';
-    },
     potions() { return (this.state?.items || []).filter(i => i.category === 'heal' && i.quantity > 0); },
     rounds() { return [...new Set(this.state?.matches.map(m => m.round) || [])]; },
     canReady() { return this.state?.alive && this.state.matches.some(m => m.round === this.state.currentRound && m.status === 'waiting' && m.players.includes(this.userId)); }
   },
   watch: {
     'state.phase'(phase) { if (phase !== 'exploration') this.selectTab('tournament'); },
-    'state.alive'(alive) { if (!alive) this.confirmation = null; },
-    'state.drifts'() { if (this.selectedId && !this.state.drifts.some(d => d.uuid === this.selectedId)) { this.selectedId = null; this.mobileDetails = false; } }
+    'state.alive'(alive) { if (!alive) this.confirmation = null; }
   },
   mounted() { this.previousFocus = document.activeElement; this.$refs.close.focus(); },
   beforeDestroy() { if (this.previousFocus?.isConnected) this.previousFocus.focus(); },
@@ -156,10 +124,8 @@ export default {
     roundName(round) { const size = this.state.matches.filter(m => m.round === round).length; return size === 1 ? 'Finale' : size === 2 ? 'Demi-finales' : size === 4 ? 'Quarts de finale' : `Round ${round}`; },
     command(name, data = {}) { this.$emit('command', { name, data }); },
     close() { if (this.confirmation) this.cancelConfirmation(); else this.$emit('close'); },
-    escape(event) { event.preventDefault(); if (this.confirmation) this.cancelConfirmation(); else if (this.mobileDetails && window.matchMedia('(max-width: 600px)').matches) this.backToInventory(); else this.close(); },
-    inspect(drift) { this.selectedId = drift.uuid; this.mobileDetails = true; this.$nextTick(() => { if (window.matchMedia('(max-width: 600px)').matches) { this.$refs.detailTitle?.focus({ preventScroll: true }); this.$refs.content.scrollTop = 0; } }); },
-    backToInventory() { this.mobileDetails = false; this.$nextTick(() => this.$el.querySelector(`[data-drift-id="${this.selectedId}"]`)?.focus()); },
-    selectTab(key) { this.tab = key; this.mobileDetails = false; this.$nextTick(() => { if (this.$refs.content) this.$refs.content.scrollTop = 0; }); },
+    escape(event) { event.preventDefault(); if (this.confirmation) this.cancelConfirmation(); else this.close(); },
+    selectTab(key) { this.tab = key; this.$nextTick(() => { if (this.$refs.content) this.$refs.content.scrollTop = 0; }); },
     switchTab(event, key) {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault(); const index = this.tabs.findIndex(t => t.key === key);
@@ -213,4 +179,5 @@ button, input { font: inherit; }button { min-height: 44px; cursor: pointer; }but
 .run-panel.journal-panel{--paper:#f7f8f3;--gold:#d3ddd2;--night:#233e37;border-color:#d3ddd2;box-shadow:0 18px 60px #152b2440}.journal-panel .run-heading{background:#fcfcf8;color:#233e37}.journal-panel .heading-copy small{color:#5c716b}.journal-panel .heading-mark,.journal-panel .icon-button{color:#287366;border-color:#d3ddd2;background:#edf2e9}.journal-panel .run-tabs{background:#edf2e9;border-color:#d3ddd2}.journal-panel .run-tabs button[aria-selected="true"]{color:#287366}.journal-panel .run-tabs button[aria-selected="true"]::after{background:#287366}.journal-panel .run-footer{background:#edf2e9;border-color:#d3ddd2}
 
 .journal-panel{font-family:var(--journal-font);color:var(--journal-ink)}.journal-panel .equipped-slots button.filled{background:var(--journal-selected);color:var(--journal-ink)}.journal-panel .detail-showcase{background:var(--journal-soft)}.journal-panel .rarity-label{color:var(--journal-muted)}.journal-panel .item-seal{background:var(--journal-soft)}.journal-panel .owned-drift,.journal-panel .drift-detail,.journal-panel .companion,.journal-panel .match,.journal-panel .confirm{background:var(--journal-card);border-color:var(--journal-border)}.journal-panel .primary{background:var(--journal-accent);border-color:var(--journal-accent);color:white;box-shadow:none}.journal-panel .search input{background:var(--journal-card);border-color:var(--journal-border)}.journal-panel .confirm{box-shadow:var(--journal-shadow)}
+.run-tabs{flex-wrap:wrap}.run-tabs button{flex:1 1 auto;min-height:44px}.run-content.drifts-content{display:block;overflow-y:auto}
 </style>
