@@ -1,0 +1,62 @@
+{
+  "source": "https://github.com/PokeAPI/sprites",
+  "revision": "6e7928dcbd547d50b5c644fe76e093e8da98ac3f",
+  "assets": [
+    {
+      "file": "dp2/10017.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/10017.png"
+    },
+    {
+      "file": "back/10017.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/back/10017.png"
+    },
+    {
+      "file": "dp2/10026.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/10026.png"
+    },
+    {
+      "file": "back/10026.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/back/10026.png"
+    },
+    {
+      "file": "dp2/10127.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/10127.png"
+    },
+    {
+      "file": "back/10127.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/back/10127.png"
+    },
+    {
+      "file": "dp2/10136.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/10136.png"
+    },
+    {
+      "file": "back/10136.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/back/10136.png"
+    },
+    {
+      "file": "dp2/10120.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/10120.png"
+    },
+    {
+      "file": "back/10120.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/back/10120.png"
+    },
+    {
+      "file": "dp2/10117.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/10117.png"
+    },
+    {
+      "file": "back/10117.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/back/10117.png"
+    },
+    {
+      "file": "dp2/10143.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/10143.png"
+    },
+    {
+      "file": "back/10143.png",
+      "url": "https://raw.githubusercontent.com/PokeAPI/sprites/6e7928dcbd547d50b5c644fe76e093e8da98ac3f/sprites/pokemon/back/10143.png"
+    }
+  ]
+}

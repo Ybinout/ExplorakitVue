@@ -80,7 +80,7 @@
         :class="['battle-status', 'battle-status-wild', { 'battle-status-hit': attackFx.wild.hit }]"
       >
         <div class="battle-status-top">
-          <span class="battle-status-name">{{ opponent.truename || opponent.name }}</span>
+          <span class="battle-status-name">{{ opponent.__battle?.illusion?.name || opponent.truename || opponent.name }}</span>
           <span class="battle-status-lvl">lv.{{ opponent.level }}</span>
           <potential-star :value="opponent.k" :language="preferences.language" />
           <span
@@ -542,7 +542,7 @@ export default {
       return localizeAbilityName(name, this.preferences.language);
     },
     getPokemonSprite(pokemon, side) {
-      const id = Number.parseInt(pokemon?.data?.id, 10);
+      const id = Number.parseInt(pokemon?.__battle?.illusion?.id || pokemon?.__battle?.formSpriteId || pokemon?.data?.id, 10);
       if (!Number.isInteger(id) || id <= 0) return '';
       const folder = side === 'back' ? 'back' : 'front';
       return `${process.env.BASE_URL}img/pokemon/${folder}/${id}.png`;

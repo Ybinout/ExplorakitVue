@@ -14,6 +14,7 @@
           <experience-bar :pokemon="pokemon" detailed />
           <p class="companion-next">Prochain niveau : {{ progress.remaining }} XP</p>
           <div class="companion-traits"><span>Nature <strong>{{ nature.label }}</strong></span><small>{{ nature.effect }}</small><span>Talent <strong>{{ abilityName }}</strong></span><span>Potentiel <potential-star :value="pokemon.k" /></span></div>
+          <p v-if="abilityNotice" class="evolution-help" data-ability-notice>{{ abilityNotice }}</p>
         </div>
         <div class="companion-training">
           <div class="companion-tabs" role="tablist" aria-label="Graphique Pokémon">
@@ -84,6 +85,14 @@ export default {
     progress() { return experienceProgress(this.pokemon); },
     hpPercent() { return Math.min(100, this.pokemon.currentHp / this.pokemon.maxHp * 100); },
     abilityName() { return localizeAbilityName(this.pokemon.passiveAbility, 'fr') || '—'; },
+    abilityNotice() {
+      const name=this.pokemon.passiveAbility;
+      if(['Battery','Friend Guard','Healer','Minus','Plus','Receiver','Symbiosis','Telepathy'].includes(name))return 'Ce talent agit sur les alliés en combat double. Les modes actuels se jouent en un contre un.';
+      if(['Honey Gather','Illuminate'].includes(name))return 'L’effet hors combat de ce talent n’est pas encore disponible dans RiftMon.';
+      if(name==='Multitype')return 'Le changement de type nécessite une Plaque, un objet qui n’est pas encore proposé dans RiftMon.';
+      if(name==='RKS System')return 'Le changement de type nécessite un ROM, un objet qui n’est pas encore proposé dans RiftMon.';
+      return '';
+    },
     nature() {
       const n = natures[this.pokemon.nature] || ['Pudique'];
       const label = key => stats.find(stat => stat.key === key)?.label;
