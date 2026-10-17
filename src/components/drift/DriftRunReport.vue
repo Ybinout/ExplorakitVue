@@ -74,7 +74,7 @@ const TYPES = { Normal: 'Normal', Fire: 'Feu', Water: 'Eau', Electric: 'Électri
 const STATISTIC_GROUPS = [
   { title: 'Les rencontres', items: [{ key: 'battles', label: 'Combats disputés' }, { key: 'wildWins', label: 'Victoires sauvages' }, { key: 'trainerWins', label: 'Dresseurs vaincus' }, { key: 'arenaWins', label: 'Champions vaincus' }, { key: 'pvpWins', label: 'Duels remportés' }, { key: 'defeats', label: 'Défaites' }, { key: 'draws', label: 'Égalités' }, { key: 'interrupted', label: 'Combats interrompus' }, { key: 'fled', label: 'Fuites' }] },
   { title: 'Les compagnons', items: [{ key: 'captures', label: 'Captures réussies' }, { key: 'captureAttempts', label: 'Balls lancées' }, { key: 'pokemonLost', label: 'Pokémon tombés' }, { key: 'xpGained', label: 'XP gagnée' }, { key: 'levelsGained', label: 'Niveaux gagnés' }, { key: 'evolutions', label: 'Évolutions' }, { key: 'potionsUsed', label: 'Potions utilisées' }, { key: 'centerHeals', label: 'Soins au Centre' }] },
-  { title: 'La récolte', items: [{ key: 'moneyEarned', label: 'Argent gagné', suffix: ' ₽' }, { key: 'moneySpent', label: 'Argent dépensé', suffix: ' ₽' }, { key: 'driftsFound', label: 'Drifts trouvés' }, { key: 'driftsSold', label: 'Drifts revendus' }, { key: 'driftsDiscarded', label: 'Drifts supprimés' }, { key: 'steps', label: 'Pas parcourus' }] }
+  { title: 'La récolte', items: [{ key: 'moneyEarned', label: 'Argent gagné', suffix: ' ₽' }, { key: 'moneySpent', label: 'Argent dépensé', suffix: ' ₽' }, { key: 'driftsFound', label: 'Drifts trouvés' }, { key: 'driftsFused', label: 'Fusions de Drifts' }, { key: 'driftsSold', label: 'Drifts revendus' }, { key: 'driftsDiscarded', label: 'Drifts supprimés' }, { key: 'steps', label: 'Pas parcourus' }] }
 ];
 
 export default {
@@ -118,7 +118,7 @@ export default {
     mapLabel(map) { return getMapLocationLabel(map, 'fr'); },
     eventText(event) { return event.type === 'map' && event.map ? `Arrivée : ${this.mapLabel(event.map)}.` : event.text; },
     rarityLabel(key) { return { common: 'Commun', rare: 'Rare', epic: 'Épique', legendary: 'Légendaire', mythic: 'Mythique' }[key] || key; },
-    driftStatus(status) { return { equipped: 'Équipé', owned: 'Dans le sac', stored: 'Dans le sac', collected: 'Dans le sac', sold: 'Vendu', discarded: 'Supprimé' }[status] || 'Trouvé'; },
+    driftStatus(status) { return { equipped: 'Équipé', owned: 'Dans le sac', stored: 'Dans le sac', collected: 'Dans le sac', sold: 'Vendu', fused: 'Fusionné', discarded: 'Supprimé' }[status] || 'Trouvé'; },
     resultLabel(player) { if (player.id === this.report.winnerId) return 'Vainqueur'; return { disconnected: 'Forfait · déconnexion', forfeit: 'Abandon', defeated: 'Équipe tombée', not_ready: 'Forfait · non prêt', finished: 'Voyage terminé' }[player.reason] || 'Voyage terminé'; },
     duration(ms) { const seconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000)); const minutes = Math.floor(seconds / 60); return minutes >= 60 ? `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}` : `${minutes} min ${String(seconds % 60).padStart(2, '0')} s`; },
     elapsed(at) { const seconds = Math.max(0, Math.floor(((Number(at) || Number(this.report.startedAt)) - Number(this.report.startedAt)) / 1000)); const minutes = Math.floor(seconds / 60); return `${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`; },
