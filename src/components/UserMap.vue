@@ -17,6 +17,7 @@
         :bag-items="bagItems"
         :bag-loading="bagLoading"
         :preferences="preferences"
+        :notice="interactionNotice"
         :colosseum-challenge="isColosseum && driftState?.phase !== 'exploration' ? driftState?.colosseum?.next : null"
         @action="handleBattleAction"
         @request-bag="loadBagItems"
@@ -24,9 +25,10 @@
       <div class="game-shell" :inert="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible ? '' : null" :aria-hidden="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible ? 'true' : null">
         <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
-          <button ref="menuToggle" class="menu-toggle-btn" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
+          <button ref="menuToggle" class="menu-toggle-btn" :class="{ 'has-contract-reward': readyContractCount > 0 }" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
             <journal-icon name="menu" />
             {{ tr('menu') }}
+            <span v-if="readyContractCount" class="contract-reward-dot" data-contract-alert role="status" :aria-label="`${readyContractCount} récompense${readyContractCount > 1 ? 's' : ''} de contrat disponible${readyContractCount > 1 ? 's' : ''}`">{{ readyContractCount }}</span>
           </button>
           <div v-if="isDrift" class="drift-hud">
             <div class="drift-clock"><drift-glyph name="clock" /><span><small>{{ driftPhaseLabel }}</small><strong>{{ driftCountdown || 'Rift' }}</strong></span></div>
@@ -43,6 +45,7 @@
               @click="handleMenuAction(item.key)"
             >
               <journal-icon :name="item.key==='contracts'?'progress':item.key" /><span>{{ menuItemLabel(item) }}</span>
+              <small v-if="item.key==='contracts' && readyContractCount" class="contract-reward-label">{{ readyContractCount }} à récupérer</small>
             </button>
           </nav>
         </div>
@@ -212,7 +215,7 @@
           v-if="showMobileControls && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
-          <div v-if="textImageSequence.length === 0" class="mobile-dpad" aria-label="Pad directionnel"
+          <div class="mobile-dpad" :inert="textImageSequence.length ? '' : null" :aria-hidden="textImageSequence.length ? 'true' : null" aria-label="Pad directionnel"
             @pointerdown.prevent="startMobileGesture($event, 'pad')" @pointermove.prevent="moveMobileGesture"
             @pointerup.prevent="endMobileGesture" @pointercancel.prevent="endMobileGesture" @lostpointercapture="endMobileGesture">
             <button
@@ -245,19 +248,20 @@
               ▼
             </button>
           </div>
-          <div v-if="textImageSequence.length === 0" class="mobile-action-group">
+          <div class="mobile-action-group">
           <button
             class="mobile-action-a"
-            :aria-label="preferences.language === 'en' ? 'Interact' : 'Parler ou agir'"
+            :aria-label="textImageSequence.length ? (preferences.language === 'en' ? 'Continue dialogue' : 'Continuer le dialogue') : (preferences.language === 'en' ? 'Interact' : 'Parler ou agir')"
             @pointerdown.prevent="triggerMobileActionA"
+            @click="activateMobileActionA"
           >
             A
           </button>
-          <span>{{ preferences.language === 'en' ? 'Interact' : 'Parler / agir' }}</span>
+          <span>{{ textImageSequence.length ? (preferences.language === 'en' ? 'Continue' : 'Continuer') : (preferences.language === 'en' ? 'Interact' : 'Parler / agir') }}</span>
           </div>
         </div>
         </div>
-        <div v-if="interactionNotice" class="interaction-notice">
+        <div v-if="interactionNotice && !battle" class="interaction-notice">
           {{ interactionNotice }}
         </div>
         <div v-if="interactionChoice.visible" class="interaction-popup">
@@ -324,7 +328,6 @@
           </div>
         </div>
       </div>
-      </div>
       <div v-if="textImageSequence.length > 0 && !battleResult && !driftSpectator" class="dialogue-backdrop"></div>
       <div v-if="textImageSequence.length > 0 && !battleResult && !driftSpectator" class="dialogue-layer">
         <TextWithImage
@@ -335,14 +338,7 @@
           @sequence-end="clearSequence"
         />
       </div>
-      <button
-        v-if="showMobileControls && !battle && !battleResult && !driftSpectator && !learningVisible && textImageSequence.length > 0"
-        class="mobile-dialogue-action-top"
-        :aria-label="preferences.language === 'en' ? 'Continue dialogue' : 'Continuer le dialogue'"
-        @pointerdown.prevent="triggerMobileActionA"
-      >
-        A
-      </button>
+      </div>
     </div>
 
     <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
@@ -353,7 +349,7 @@
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
 import { createMapSceneLoader } from '@/services/mapScene';
-import { touchDirection } from '@/services/touchMovement';
+import { moveTouchGesture } from '@/services/touchMovement';
 import JournalIcon from './menu/JournalIcon.vue';
 import api from "@/services/api";
 import { getSession } from "@/services/session";
@@ -573,6 +569,7 @@ export default {
       return this.tr('emptyBag');
     },
     visibleMenuItems() { return this.isDrift ? [...this.menuItems.filter(i => !['pokedex', 'progress', 'save', 'appearance'].includes(i.key)), { key: 'drifts' }, ...(this.driftState?.contracts?.length?[{key:'contracts'}]:[])] : this.menuItems; },
+    readyContractCount() { return this.isDrift && this.driftState?.alive && this.driftState.phase === 'exploration' ? (this.driftState.contracts || []).filter(c => c.complete && !c.claimed).length : 0; },
     driftPhaseLabel() { return { selection:'Choix du compagnon', exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', colosseum_ready: 'Colosseum · prêt ?', colosseum_battle: 'Colosseum', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
     driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return this.isColosseum && this.driftState?.colosseum ? `${this.driftState.colosseum.score} pts` : ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
     selectedPokemon() { return this.teamPokemons.find(pokemon => pokemon.uuid === this.selectedPokemonUuid); },
@@ -588,21 +585,29 @@ export default {
       if (!Array.isArray(this.bagItems)) return [];
       return this.bagItems.filter((item) => item.category === 'held' && Number(item.quantity) > 0);
     },
-    movementBlocked() {
-      return this.mapLoading || !!this.mapLoadError || this.lock || this.battle || this.battleResult || this.driftSpectator
+    movementBlocked() { return this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
+    movementSuspended() {
+      return this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
-        || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration'));
+        || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
     },
     canUseBagConsumables() {
       return !this.battle && (!this.isDrift || (this.driftState?.alive && this.driftState?.phase === 'exploration' && !this.driftState?.storagePaused && !this.driftState?.recoveryWaiting));
     }
   },
   watch: {
+    mapLoadError(error) { if (error) this.releaseAllMovementKeys(); },
     evolutionLookupKey() { this.loadEvolutionOptions(); },
     selectedPokemonUuid() { this.evolutionNotice = ''; },
-    movementBlocked(blocked) { if (blocked) this.releaseAllMovementKeys(); },
+    movementSuspended(blocked) { if (blocked) this.releaseAllMovementKeys(); },
+    movementBlocked(blocked) {
+      if (blocked) {
+        if (this.mapLoading && !this.movementSuspended && this._touchGesture) this.setMobileDirection(null);
+        else this.releaseAllMovementKeys();
+      } else this.resumeMobileGesture();
+    },
     learningVisible(visible) { if (visible) { this.releaseAllMovementKeys(); this.learningError = ''; } },
     battle(isInBattle) {
       if (isInBattle) {
@@ -983,8 +988,11 @@ export default {
       this.chatDraft = '';
     },
     updateMobileControlsVisibility() {
-      this.releaseAllMovementKeys();
-      this.showMobileControls = window.innerWidth <= 920 || window.matchMedia('(pointer: coarse)').matches;
+      const mobile = window.innerWidth <= 920 || window.matchMedia('(pointer: coarse)').matches;
+      // Browser address bars resize the height during a swipe; keep that touch.
+      if (mobile !== this.showMobileControls || this._touchViewportWidth !== window.innerWidth) this.releaseAllMovementKeys();
+      this._touchViewportWidth = window.innerWidth;
+      this.showMobileControls = mobile;
       this.$nextTick(this.resizeWorldViewport);
     },
     resizeWorldViewport() {
@@ -1024,7 +1032,7 @@ export default {
       this.syncPlayerIdleState();
     },
     startMobileGesture(event, surface) {
-      if (!this.showMobileControls || this.movementBlocked || this._touchGesture || event.isPrimary === false
+      if (!this.showMobileControls || this.movementSuspended || this.mapLoadError || this._touchGesture || event.isPrimary === false
         || (surface === 'map' && !['touch', 'pen'].includes(event.pointerType)) || event.button > 0) return;
       event.preventDefault();
       this.releaseAllMovementKeys();
@@ -1038,14 +1046,25 @@ export default {
     moveMobileGesture(event) {
       const gesture = this._touchGesture;
       if (!gesture || gesture.id !== event.pointerId) return;
-      if (this.movementBlocked) { this.releaseAllMovementKeys(); return; }
+      if (this.movementSuspended || this.mapLoadError) { this.releaseAllMovementKeys(); return; }
       event.preventDefault();
-      const direction = touchDirection(event.clientX - gesture.x, event.clientY - gesture.y, gesture.direction);
+      const direction = moveTouchGesture(gesture, event.clientX, event.clientY);
       if (direction === gesture.direction) return;
       gesture.direction = direction;
+      this.setMobileDirection(this.movementBlocked ? null : direction);
+    },
+    setMobileDirection(direction) {
       for (const key of ['z', 'q', 's', 'd']) this.keysPressed[key] = key === direction;
       if (direction) this.restartMovementInput();
       else this.syncPlayerIdleState();
+    },
+    pauseMovementForMap() {
+      if (this._touchGesture && !this.movementSuspended && !this.mapLoadError) this.setMobileDirection(null);
+      else this.releaseAllMovementKeys();
+    },
+    resumeMobileGesture() {
+      const direction = this._touchGesture?.direction;
+      if (direction && !this.movementBlocked && !this.keysPressed[direction]) this.setMobileDirection(direction);
     },
     endMobileGesture(event) {
       if (this._touchGesture?.id === event.pointerId) this.releaseAllMovementKeys();
@@ -1056,7 +1075,9 @@ export default {
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
     onWorldVisibility() { if (document.hidden) this.releaseAllMovementKeys(); },
+    activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
+      this.releaseAllMovementKeys();
       if (this.battle || this.battleResult || this.driftSpectator || this.learningVisible) return;
       if (this.textImageSequence.length > 0) {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
@@ -1675,7 +1696,7 @@ export default {
         this._heldWorldFrame = held;
       }
       this.mapLoading = true; this.mapLoadError = '';
-      this.releaseAllMovementKeys();
+      this.pauseMovementForMap();
       this._mapScenes ||= createMapSceneLoader(resolveMapAsset);
       try {
         const scene = await this._mapScenes.load(requestedMap);
@@ -1685,6 +1706,7 @@ export default {
         this.renderedMap = requestedMap;
         this.mapLoading = false;
         this.drawPlayers();
+        this.resumeMobileGesture();
       } catch (_) {
         if (version !== this._mapLoadVersion || this._isBeingDestroyed || this._isDestroyed) return;
         this.mapLoading = false;
@@ -1829,7 +1851,8 @@ export default {
     ,
     updatePlayerPosition() {
       if (this.movementBlocked || document.hidden) {
-        this.releaseAllMovementKeys();
+        if (this.mapLoading && !document.hidden) this.pauseMovementForMap();
+        else this.releaseAllMovementKeys();
         return;
       }
       if (!this.socket || !this.socket.connected || !this.socket.id) return;
@@ -2247,7 +2270,7 @@ export default {
     });
 
     this.socket.on('newmap', ({ mapname, playersList }) => {
-      this.releaseAllMovementKeys();
+      this.pauseMovementForMap();
       this.clearAllPlayers();
       this.players = playersList
       this.pnjs = [];
@@ -2299,6 +2322,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.releaseAllMovementKeys();
       this.pendingBattleResult = null;
       this.$refs.battleOverlay?.cancelExperience();
       this.battle = false;
@@ -2520,10 +2544,6 @@ button:hover {
 }
 
 .mobile-controls-shell {
-  display: none;
-}
-
-.mobile-dialogue-action-top {
   display: none;
 }
 
@@ -3148,12 +3168,6 @@ button:hover {
     pointer-events: none;
   }
 
-  .mobile-controls-shell.dialogue-active {
-    z-index: 130;
-    justify-content: flex-end;
-    padding: 0 12px;
-  }
-
   .mobile-dpad,
   .mobile-action-a {
     pointer-events: auto;
@@ -3232,45 +3246,7 @@ button:hover {
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.42);
   }
 
-  .mobile-action-a.dialogue-action {
-    position: fixed;
-    right: 10px;
-    bottom: max(14px, env(safe-area-inset-bottom));
-    width: 96px;
-    height: 96px;
-    border-color: #ffe499;
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
-    z-index: 1000;
-  }
-
   .mobile-action-a:active {
-    transform: scale(0.96);
-    filter: brightness(1.1);
-  }
-
-  .mobile-dialogue-action-top {
-    display: block;
-    position: fixed;
-    right: 10px;
-    bottom: max(14px, env(safe-area-inset-bottom));
-    width: 98px;
-    height: 98px;
-    border-radius: 999px;
-    border: 2px solid #ffe499;
-    background: radial-gradient(circle at 30% 28%, #7ad1ff, #2f77d3 58%, #1f4594 100%);
-    color: #ffffff;
-    font-size: 34px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.28);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
-    z-index: 99999;
-    pointer-events: auto;
-    touch-action: none;
-    user-select: none;
-  }
-
-  .mobile-dialogue-action-top:active {
     transform: scale(0.96);
     filter: brightness(1.1);
   }
@@ -3606,4 +3582,10 @@ button:hover {
 
 <style scoped>
 .recovery-notice{position:absolute;z-index:20;top:65px;left:5%;width:90%;padding:12px;background:#173851;color:#fff;border:1px solid #a7c7df;border-radius:8px}
+.has-contract-reward{position:relative}
+.contract-reward-dot{position:absolute;top:-5px;right:-5px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:50%;background:#b17c24;color:#fffaf0;font:700 10px Arial,sans-serif;box-shadow:0 0 0 3px var(--journal-paper);animation:contract-ready-pulse 2.4s ease-in-out infinite}
+.contract-reward-label{margin-left:auto;color:#876020;font-size:10px;white-space:nowrap}
+@keyframes contract-ready-pulse{0%,100%{box-shadow:0 0 0 3px var(--journal-paper),0 0 0 4px #bc913a55}50%{box-shadow:0 0 0 3px var(--journal-paper),0 0 0 8px #bc913a10}}
+.reduced-game-motion .contract-reward-dot{animation:none}
+@media(prefers-reduced-motion:reduce){.contract-reward-dot{animation:none}}
 </style>

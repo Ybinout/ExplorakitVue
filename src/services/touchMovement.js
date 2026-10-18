@@ -8,3 +8,18 @@ export function touchDirection(dx, dy, previous = null, deadZone = 12) {
   if (previous === vertical && y * 1.2 >= x) return vertical;
   return x > y ? horizontal : vertical;
 }
+
+// Follow a long swipe with a small floating origin. Turning back should not
+// require dragging all the way across the screen to the initial touch point.
+export function moveTouchGesture(gesture, x, y) {
+  const dx = x - gesture.x, dy = y - gesture.y;
+  const direction = touchDirection(dx, dy, gesture.direction, gesture.surface === 'map' ? 8 : 12);
+  if (gesture.surface === 'map') {
+    const distance = Math.hypot(dx, dy), radius = 16;
+    if (distance > radius) {
+      gesture.x = x - dx * radius / distance;
+      gesture.y = y - dy * radius / distance;
+    }
+  }
+  return direction;
+}

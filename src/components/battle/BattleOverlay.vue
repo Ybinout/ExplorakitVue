@@ -20,12 +20,6 @@
       <div class="battle-weather-layer" aria-hidden="true"></div>
       <div class="battle-terrain-layer" aria-hidden="true"></div>
 
-      <div v-if="transitionLabel" class="battle-transition-label" role="status" data-battle-transition>{{ transitionLabel }}</div>
-      <div v-if="driftNotices.length" class="battle-drift-notices" role="status" data-battle-drift-effects><p v-for="notice in driftNotices" :key="notice.side">✧ {{ notice.side==='player' ? 'Tes Drifts' : 'Drifts adverses' }} · {{ notice.text }}</p></div>
-      <div v-if="fieldLabel" class="battle-field-label" aria-live="polite">
-        {{ fieldLabel }}
-      </div>
-
       <div
         v-if="battleMoveFx.visible"
         :key="`move-${battleMoveFx.nonce}`"
@@ -88,7 +82,7 @@
       </div>
 
       <div
-        v-if="opponent"
+        v-if="opponent" ref="opponentStatusCard"
         :class="['battle-status', 'battle-status-wild', { 'battle-status-hit': attackFx.wild.hit }]"
       >
         <div class="battle-status-top">
@@ -111,7 +105,7 @@
       </div>
 
       <div
-        v-if="currentPokemon"
+        v-if="currentPokemon" ref="playerStatusCard"
         :class="['battle-status', 'battle-status-player', { 'battle-status-hit': attackFx.player.hit }]"
       >
         <div class="battle-status-top">
@@ -135,40 +129,15 @@
         </div>
       </div>
 
-      <div
-        v-if="attackFx.wild.visible"
-        :key="`wild-${attackFx.wild.nonce}`"
-        :class="['battle-damage-text', 'battle-damage-wild', `battle-health-${attackFx.wild.kind}`]"
-        :style="getEffectPosition('wild')"
-      >
-        {{ attackFx.wild.kind === 'heal' ? '+' : '-' }}{{ attackFx.wild.amount }}
-      </div>
-
-      <div
-        v-if="attackFx.player.visible"
-        :key="`player-${attackFx.player.nonce}`"
-        :class="['battle-damage-text', 'battle-damage-player', `battle-health-${attackFx.player.kind}`]"
-        :style="getEffectPosition('player')"
-      >
-        {{ attackFx.player.kind === 'heal' ? '+' : '-' }}{{ attackFx.player.amount }}
-      </div>
-
-      <div
-        v-if="resultFx.visible"
-        :key="`result-${resultFx.nonce}`"
-        :class="['battle-result-fx', `battle-result-${resultFx.actor}`]"
-        :style="getResultPosition(resultFx.actor === 'opponent' ? 'wild' : 'player')"
-        role="status"
-        aria-live="assertive"
-      >
-        <span
-          v-for="label in resultFx.labels"
-          :key="label.key"
-          :class="['battle-result-chip', `result-${label.key}`]"
-        >
-          {{ label.text }}
-        </span>
-      </div>
+      <template v-for="side in ['wild', 'player']">
+        <div v-if="attackFx[side].visible || resultSide === side" :key="`feedback-${side}`" :ref="`feedback-${side}`"
+          :class="['battle-result-fx', `battle-result-${side}`]" :style="getResultPosition(side)" role="status" aria-live="polite">
+          <template v-if="resultSide === side"><span v-for="label in resultFx.labels" :key="label.key" :class="['battle-result-chip', `result-${label.key}`]">{{ label.text }}</span></template>
+          <span v-if="attackFx[side].visible" :key="`damage-${attackFx[side].nonce}`" :class="['battle-damage-text', `battle-health-${attackFx[side].kind}`]">
+            {{ attackFx[side].kind === 'heal' ? '+' : '-' }}{{ attackFx[side].amount }}
+          </span>
+        </div>
+      </template>
 
       <div
         v-if="captureFx.visible"
@@ -184,7 +153,6 @@
           class="capture-fx-ball"
           :class="[`ball-${captureFx.ballType}`, `state-${captureFx.state}`]"
         ></div>
-        <div class="capture-fx-text">{{ captureFx.message }}</div>
       </div>
     </div>
 
@@ -205,7 +173,14 @@
         {{ soundEnabled ? '♪' : '×' }}
       </button>
 
-      <div class="battle-action-display">
+      <div class="battle-action-display" :class="{ 'has-battle-notices': hasAnnouncements }">
+        <div v-if="hasAnnouncements" class="battle-announcements" role="status">
+          <p v-if="notice" class="battle-action-notice">{{ notice }}</p>
+          <p v-if="captureFx.visible && captureFx.message" class="battle-capture-notice">{{ captureFx.message }}</p>
+          <p v-if="transitionLabel" class="battle-transition-label" data-battle-transition>{{ transitionLabel }}</p>
+          <div v-if="driftNotices.length" class="battle-drift-notices" data-battle-drift-effects><p v-for="notice in driftNotices" :key="notice.side">✧ {{ notice.side==='player' ? 'Tes Drifts' : 'Drifts adverses' }} · {{ notice.text }}</p></div>
+          <p v-if="fieldLabel" class="battle-field-label">{{ fieldLabel }}</p>
+        </div>
         <div
           v-if="actionState.patient"
           :key="messageNonce"
@@ -309,6 +284,7 @@ export default {
   name: 'BattleOverlay',
   components: { HealthBar, ExperienceBar, PotentialStar },
   props: {
+    notice: { type: String, default: '' },
     active: { type: Boolean, default: false },
     colosseumChallenge: { type: Object, default: null },
     bagItems: { type: Array, default: () => [] },
@@ -325,6 +301,7 @@ export default {
       opponent: null,
       canAct: false,
       presentationBusy: false,
+      feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
       visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', driftNotices:[], driftNoticeTimer:null,
       usableMoveIndexes: null,
       actionState: {
@@ -375,6 +352,8 @@ export default {
     };
   },
   computed: {
+    hasAnnouncements() { return this.notice || this.transitionLabel || this.driftNotices.length || this.fieldLabel || (this.captureFx.visible && this.captureFx.message); },
+    resultSide() { return this.resultFx.visible ? (this.resultFx.actor === 'opponent' ? 'wild' : 'player') : null; },
     currentPokemon() {
       return this.player?.equipe?.pokemons?.[0] || null;
     },
@@ -450,6 +429,7 @@ export default {
     }
   },
   mounted() {
+    this._feedbackObserver = new ResizeObserver(this.measureFeedback);
     this._battleAudio = new BattleAudio();
     this.syncAudio();
     window.addEventListener('pointerdown', this.resumeAudio);
@@ -457,7 +437,9 @@ export default {
     window.addEventListener('keydown', this.resumeAudio);
     document.addEventListener('visibilitychange', this.syncAudio);
   },
+  updated() { this.measureFeedback(); },
   beforeDestroy() {
+    this._feedbackObserver?.disconnect();
     this._presentation?.cancel();
     this.cancelExperience();
     this.stopMusic();
@@ -752,20 +734,36 @@ export default {
         height: visibleHeight
       };
     },
-    getEffectPosition(side) {
-      const geometry = this.getSpriteGeometry(side);
-      return { left: `${geometry.centerX}px`, top: `${geometry.centerY}px` };
+    measureFeedback() {
+      const scene = this.$refs.battleScene;
+      if (scene !== this._feedbackScene) {
+        this._feedbackObserver?.disconnect(); this._feedbackScene = scene;
+        if (scene) this._feedbackObserver?.observe(scene);
+      }
+      if (!scene) return;
+      if (this.feedbackSceneSize.width !== scene.clientWidth || this.feedbackSceneSize.height !== scene.clientHeight)
+        this.feedbackSceneSize = { width: scene.clientWidth, height: scene.clientHeight };
+      for (const side of ['wild', 'player']) {
+        const ref = this.$refs[`feedback-${side}`], element = Array.isArray(ref) ? ref[0] : ref;
+        const height = element?.offsetHeight || 0;
+        if (this.feedbackHeights[side] !== height) this.$set(this.feedbackHeights, side, height);
+      }
     },
     getResultPosition(side) {
-      const geometry = this.getSpriteGeometry(side);
-      const width = this.$refs.battleScene?.clientWidth || 320;
-      const height = this.$refs.battleScene?.clientHeight || 220;
-      const maxWidth = Math.min(180, width - 16);
-      const labelHeight = this.resultFx.labels.length * 34;
+      const geometry = this.getSpriteGeometry(side), scene = this.$refs.battleScene;
+      const width = this.feedbackSceneSize.width || scene?.clientWidth || 320;
+      const height = this.feedbackSceneSize.height || scene?.clientHeight || 220;
+      const sceneRect = scene?.getBoundingClientRect();
+      const card = (side === 'wild' ? this.$refs.opponentStatusCard : this.$refs.playerStatusCard)?.getBoundingClientRect();
+      // Keep each feedback stack in the free column beside its HP card.
+      const low = side === 'wild' && card && sceneRect ? card.right - sceneRect.left + 8 : 8;
+      const high = side === 'player' && card && sceneRect ? card.left - sceneRect.left - 8 : width - 8;
+      const maxWidth = Math.max(64, Math.min(180, high - low));
+      const stackHeight = this.feedbackHeights[side] || 70;
       return {
-        left: `${Math.max(maxWidth / 2 + 8, Math.min(width - maxWidth / 2 - 8, geometry.centerX))}px`,
-        top: `${Math.min(height - 8, Math.max(labelHeight + 8, geometry.bottomY - geometry.height - 8))}px`,
-        width: `${maxWidth}px`
+        left: `${Math.max(low + maxWidth / 2, Math.min(high - maxWidth / 2, geometry.centerX))}px`,
+        top: `${Math.max(8, Math.min(height - stackHeight - 8, geometry.bottomY - geometry.height - stackHeight - 8))}px`,
+        width: `${maxWidth}px`, maxHeight: `${height - 16}px`
       };
     },
     buildMovePath(actor, damageClass) {
@@ -1063,7 +1061,15 @@ export default {
 </script>
 
 <style scoped>
-.battle-transition-label,.battle-drift-notices{position:absolute;z-index:80;top:28%;left:50%;transform:translateX(-50%);width:max-content;max-width:88%;box-sizing:border-box;font-size:clamp(11px,2.8vw,15px);line-height:1.4;text-align:center;pointer-events:none}.battle-transition-label{background:#fffbe9;color:#23483d;border:1px solid #c6d7b7;padding:10px 14px;border-radius:12px;box-shadow:0 5px 16px #102b3640}.battle-drift-notices{top:39%;color:#f8f1ff}.battle-drift-notices p{margin:4px 0;padding:8px 12px;border:1px solid #bfadd9;border-radius:12px;background:#413563ed;box-shadow:0 3px 12px #1117}.battle-fainted{opacity:0}.battle-transition-recall .battle-sprite{animation:combat-recall .55s ease-in forwards!important}.battle-transition-faint .battle-sprite{animation:combat-faint .55s ease-in forwards!important}.battle-transition-enter .battle-sprite{animation:combat-enter .4s ease-out both!important}@keyframes combat-recall{to{filter:brightness(3);transform:scale(.05);opacity:0}}@keyframes combat-faint{to{filter:grayscale(1);transform:translateY(65%);opacity:0}}@keyframes combat-enter{from{filter:brightness(2);transform:scale(.15);opacity:0}to{transform:scale(1);opacity:1}}.battle-reduced-motion .battle-sprite{animation:none!important}@media(prefers-reduced-motion:reduce){.battle-sprite{animation:none!important}}
+/* Announcements share normal document flow; long Drift chains scroll inside the message area. */
+.battle-announcements{display:flex;flex-direction:column;gap:5px;padding:7px 9px;flex:none;overflow-wrap:anywhere}
+.battle-announcements p{position:static;transform:none;max-width:none;width:auto;margin:0;line-height:1.45;font-size:12px;padding:5px 8px;border-radius:7px}
+.battle-transition-label{background:#fffbe9;color:#23483d;border:1px solid #c6d7b7}
+.battle-action-notice{background:#fff1d8;color:#714c1e;border:1px solid #c7a260}
+.battle-capture-notice{background:#e6f4f8;color:#245268;border:1px solid #9bbac8}
+.battle-drift-notices{display:flex;flex-direction:column;gap:5px;color:#f8f1ff}
+.battle-drift-notices p{border:1px solid #bfadd9;background:#413563}
+.battle-fainted{opacity:0}.battle-transition-recall .battle-sprite{animation:combat-recall .55s ease-in forwards!important}.battle-transition-faint .battle-sprite{animation:combat-faint .55s ease-in forwards!important}.battle-transition-enter .battle-sprite{animation:combat-enter .4s ease-out both!important}@keyframes combat-recall{to{filter:brightness(3);transform:scale(.05);opacity:0}}@keyframes combat-faint{to{filter:grayscale(1);transform:translateY(65%);opacity:0}}@keyframes combat-enter{from{filter:brightness(2);transform:scale(.15);opacity:0}to{transform:scale(1);opacity:1}}.battle-reduced-motion .battle-sprite{animation:none!important}@media(prefers-reduced-motion:reduce){.battle-sprite{animation:none!important}}
 
 .battle-scene {
   position: absolute;
@@ -1252,26 +1258,19 @@ export default {
 }
 
 .battle-damage-text {
-  position: absolute;
+  position: static;
+  flex: none;
   z-index: 57;
   color: #ffeded;
   font-size: clamp(14px, 2.2vw, 20px);
   text-shadow: 0 1px 0 #000, 0 0 8px rgba(255, 65, 65, 0.5);
   pointer-events: none;
-  animation: battle-damage-float 0.95s ease-out forwards;
+  animation: battle-feedback-number .95s ease-out forwards;
 }
 
 .battle-health-heal {
   color: #d9ffe2;
   text-shadow: 0 1px 0 #14301a, 0 0 10px rgba(78, 225, 117, 0.72);
-}
-
-.battle-damage-wild {
-  margin-top: -42px;
-}
-
-.battle-damage-player {
-  margin-top: -42px;
 }
 
 .battle-action-shell {
@@ -1787,13 +1786,6 @@ export default {
   100% { transform: scale(1); box-shadow: 0 10px 18px rgba(0, 0, 0, 0.35); }
 }
 
-@keyframes battle-damage-float {
-  0% { opacity: 0; transform: translate(-50%, 8px) scale(0.8); }
-  15% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-  80% { opacity: 1; transform: translate(-50%, -26px) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -36px) scale(1.02); }
-}
-
 @keyframes battle-enter {
   from { opacity: 0; transform: translateY(8px) scale(0.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -2192,7 +2184,11 @@ export default {
   text-align: center;
   line-height: 1.2;
   box-shadow: 0 2px 6px #10232270;
-  animation: battle-result-pop 1.05s ease-out forwards;
+  animation: battle-feedback-label 1.05s ease-out forwards;
+  flex:none;
+  box-sizing:border-box;
+  width:100%;
+  overflow-wrap:anywhere;
 }
 
 .battle-result-fx {
@@ -2203,7 +2199,9 @@ export default {
   align-items: center;
   gap: 0.3rem;
   pointer-events: none;
-  transform: translate(-50%, -100%);
+  transform: translateX(-50%);
+  overflow:auto;
+  overscroll-behavior:contain;
 }
 
 .battle-result-chip.result-critical {
@@ -2265,12 +2263,8 @@ export default {
   to { opacity: 0.58; }
 }
 
-@keyframes battle-result-pop {
-  0% { opacity: 0; transform: translateY(8px) scale(0.78); }
-  18%, 72% { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-10px) scale(0.94); }
-}
-
+@keyframes battle-feedback-number { 0%{opacity:0} 15%,80%{opacity:1} 100%{opacity:0} }
+@keyframes battle-feedback-label { 0%{opacity:0} 15%,85%{opacity:1} 100%{opacity:0} }
 @media (max-width: 720px) {
   .battle-field-label {
     top: 0.4rem;

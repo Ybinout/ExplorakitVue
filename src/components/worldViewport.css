@@ -39,15 +39,15 @@
 .game-root.is-mobile .game-stage .mobile-dpad-center { grid-column:2; grid-row:2; border:0; border-radius:12px; background:var(--journal-soft); box-shadow:none; }
 .game-root.is-mobile .game-stage .mobile-dpad-btn.is-held { background:var(--journal-accent); color:white; box-shadow:none; transform:translateY(1px); }
 .game-root.is-mobile .mobile-action-group { display:flex; flex-direction:column; align-items:center; gap:8px; min-width:82px; color:var(--journal-muted); font:11px var(--journal-font); }
-.game-root.is-mobile .game-stage .mobile-action-a,
-.game-root.is-mobile .mobile-dialogue-action-top {
+.game-root.is-mobile .game-stage .mobile-action-a {
   width:64px; height:64px; padding:0; border:2px solid #d3e1d0; border-radius:50%;
   color:white; background:var(--journal-accent); box-shadow:0 3px 0 #1f574d; text-shadow:none;
   font:700 25px var(--journal-font); pointer-events:auto; touch-action:none; user-select:none;
 }
 .game-root.is-mobile .game-stage .mobile-action-a { position:static; }
-.game-root.is-mobile .mobile-dialogue-action-top { position:fixed; z-index:99999; display:block; right:max(20px,env(safe-area-inset-right)); bottom:calc(16px + env(safe-area-inset-bottom)); }
-.game-root.is-mobile .dialogue-layer .dialogue-shell { padding-bottom:100px; }
+.game-root.is-mobile .game-stage .dialogue-active .mobile-dpad { visibility:hidden; pointer-events:none; }
+.game-root.is-mobile .game-stage .dialogue-active .mobile-action-group { position:relative; z-index:122; }
+.game-root.is-mobile .dialogue-layer .dialogue-shell { padding-bottom:calc(170px + env(safe-area-inset-bottom)); }
 
 @media (orientation:landscape) {
   .game-root.is-mobile .game-shell { display:grid; grid-template-columns:minmax(0,1fr) 168px; grid-template-rows:auto minmax(0,1fr); }
@@ -56,7 +56,7 @@
   .game-root.is-mobile .mobile-control-dock { grid-column:2; grid-row:2; border-top:0; border-left:1px solid var(--journal-border); }
   .game-root.is-mobile .game-stage .mobile-controls-shell { flex-direction:column; justify-content:space-evenly; padding:8px; gap:10px; }
   .game-root.is-mobile .game-stage .mobile-action-a { width:56px; height:56px; }
-  .game-root.is-mobile .dialogue-layer .dialogue-shell { padding:15px 100px 18px 15px; }
+  .game-root.is-mobile .dialogue-layer .dialogue-shell { padding:15px calc(184px + env(safe-area-inset-right)) 18px 15px; }
 }
 @media (orientation:landscape) and (max-height:340px) {
   .game-root.is-mobile .mobile-action-group > span { display:none; }
