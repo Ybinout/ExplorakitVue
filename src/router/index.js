@@ -55,6 +55,7 @@ const router = new Router({
     { path: '/colosseum', name: 'Colosseum', component: () => import(/* webpackChunkName: "colosseum" */ '@/components/drift/ColosseumLobby.vue'), meta: { requiresAuth: true } },
     { path: '/colosseum/game', name: 'ColosseumGame', component: Game, meta: { requiresAuth: true } },
     { path: '/dresseurs', name: 'Trainers', component: () => import(/* webpackChunkName: "community" */ '@/components/social/TrainerCommunity.vue'), meta: { requiresAuth: true } },
+    { path: '/classements', name: 'Rankings', component: () => import(/* webpackChunkName: "community" */ '@/components/social/TrainerCommunity.vue'), meta: { requiresAuth: true } },
     { path: '/profil/:id', name: 'TrainerProfile', component: () => import(/* webpackChunkName: "community" */ '@/components/social/TrainerCommunity.vue'), meta: { requiresAuth: true } },
     {
       path: '/test',
@@ -70,7 +71,7 @@ const router = new Router({
 
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth) && !isAuthenticated()) {
-    return next({ path: '/connexion', query: { redirect: to.path.startsWith('/profil/') || to.path==='/dresseurs' ? loginDestination(to.fullPath) : to.path.startsWith('/colosseum') ? '/colosseum' : to.path.startsWith('/drift') ? '/drift' : '/game' } });
+    return next({ path: '/connexion', query: { redirect: to.path.startsWith('/profil/') || ['/dresseurs','/classements'].includes(to.path) ? loginDestination(to.fullPath) : to.path.startsWith('/colosseum') ? '/colosseum' : to.path.startsWith('/drift') ? '/drift' : '/game' } });
   }
   return next();
 });

@@ -9,6 +9,7 @@
       </router-link>
     </section>
     <p class="save-note"><drift-glyph name="team" /> Ton aventure et tes expéditions ont chacune leur équipe.</p>
+    <router-link class="community-entry ranked-home-entry" to="/classements" data-home-rankings><drift-glyph name="trophy"/><span><strong>Classements Rift &amp; Colosseum</strong><small>Ton rang, tes points de ligue et les meilleurs dresseurs</small></span><b>→</b></router-link>
     <router-link class="community-entry" to="/dresseurs?onglet=amis"><drift-glyph name="players"/><span><strong>Le carnet des dresseurs</strong><small>Amis, profils et rangs Bronze → Diamant</small></span><b>→</b></router-link>
     <pwa-install />
     <footer><span>EXPLORAKIT · RIFTMON</span><span v-if="!session">Nouveau ici ? <router-link to="/inscription">Créer mon dresseur</router-link></span><span v-else>À toi d’écrire la suite.</span></footer>

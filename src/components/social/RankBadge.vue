@@ -1,4 +1,4 @@
-<template><span class="rank-badge" :class="rank.key" data-rank-badge><svg viewBox="0 0 28 32" aria-hidden="true"><path d="M14 2 26 8v13L14 30 2 21V8Z"/><path d="m14 8 6 8-6 8-6-8Z"/></svg><span>{{ rank.name }}<small v-if="detail">{{ detail }}</small></span></span></template>
+<template><span class="rank-badge" :class="rank.key" data-rank-badge><svg viewBox="0 0 28 32" aria-hidden="true"><path d="M14 2 26 8v13L14 30 2 21V8Z"/><path d="m14 8 6 8-6 8-6-8Z"/></svg><span>{{ rank.label || rank.name }}<small v-if="detail">{{ detail }}</small></span></span></template>
 <script>
 export default { name:'RankBadge',props:{rank:{type:Object,required:true},detail:{type:String,default:''}} };
 </script>

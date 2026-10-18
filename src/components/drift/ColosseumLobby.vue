@@ -17,6 +17,7 @@
       <section class="leaderboard" aria-labelledby="ranking-title" data-colosseum-leaderboard><div class="ranking-heading"><div><p class="eyebrow">LES DRESSEURS DU COLOSSEUM</p><h2 id="ranking-title">Le classement</h2></div><button class="retry" :disabled="loading" aria-label="Actualiser le classement" @click="loadRanking">↻</button></div>
         <div class="ranking-formats" aria-label="Format du classement"><button v-for="minutes in [30,60]" :key="minutes" :data-colosseum-ranking-format="minutes" :aria-pressed="rankingMinutes === minutes" @click="rankingMinutes=minutes;loadRanking()">{{ minutes === 30 ? '30 min' : '1 heure' }}</button></div>
         <p class="ranking-note">Un meilleur score par joueur et par format. Première victoire : 300 points.<br />Chaque victoire rapporte 100 × le numéro du défi + 10 × le niveau adverse × le nombre de Pokémon adverses.</p>
+        <div class="colosseum-league"><rank-progress :rank="personal ? personal.league : {key:'unranked',name:'Non classé'}" :value="personal ? personal.score : 0"/><router-link :to="`/classements?mode=${rankingMinutes}`" :target="activeRun ? '_blank' : null" rel="noopener">Voir les ligues et tous les classements →</router-link></div>
         <div v-if="personal" class="personal-best" data-colosseum-personal><span>TON RECORD · #{{ personal.rank }}</span><strong>{{ number(personal.score) }} <small>points</small></strong><span>{{ personal.wins }} victoire{{ personal.wins > 1 ? 's' : '' }}</span></div>
         <p v-if="loading" role="status" class="empty">Chargement du classement…</p><p v-else-if="rankingError" class="error" role="alert">Le classement est indisponible. <button class="retry" @click="loadRanking">Réessayer</button></p>
         <div v-else-if="!entries.length" class="empty"><drift-glyph name="trophy" /><h3>La première place t’attend.</h3><p>Termine une tentative avec au moins une victoire au Colosseum pour inscrire ton nom ici.</p></div>
@@ -30,10 +31,11 @@
 import api from '@/services/api';
 import { getSession } from '@/services/session';
 import { createDriftSocket, getDriftConnectionFailure } from '@/services/realtime';
+import RankProgress from '../social/RankProgress.vue';
 import RankBadge from '../social/RankBadge.vue';
 import DriftGlyph from './DriftGlyph.vue';
 export default {
-  name:'ColosseumLobby', components:{ DriftGlyph, RankBadge },
+  name:'ColosseumLobby', components:{ DriftGlyph, RankBadge, RankProgress },
   data() { return { durationMinutes:60,rankingMinutes:60,rankingRequest:0,socket:null,connected:false,loaded:false,connectionFailed:false,lobby:null,busy:false,error:'',loading:false,rankingError:false,entries:[],personal:null,userId:Number(getSession()?.id) }; },
   computed:{ durationLabel() { return this.durationMinutes === 30 ? '30 minutes' : '1 heure'; }, foreignLobby() { return this.lobby && this.lobby.mode !== 'colosseum'; }, activeRun() { return this.lobby?.mode === 'colosseum' && !['lobby','results'].includes(this.lobby.phase); } },
   mounted() {
@@ -58,6 +60,8 @@ export default {
 };
 </script>
 <style scoped>
+.colosseum-league{padding:18px;background:#edf2e9;border:1px solid #d3ddd2;border-radius:10px;margin:18px 0}.colosseum-league>a{display:inline-flex;align-items:center;min-height:44px;margin-top:8px;font-size:12px;text-decoration:none}
+
 .rank-title a{color:#253b39;font-weight:700;min-height:44px;display:inline-flex;align-items:center;text-decoration:none}.rank-body>.rank-badge{margin:5px 0}.rank-title a:focus-visible{outline:3px solid #9b791f}
 
 .format-choice{padding:0;border:0;margin:0 0 24px}.format-choice legend{font-size:12px;margin-bottom:10px;color:#5c716b}.format-choice>div,.ranking-formats{display:flex;gap:8px}.format-choice button,.ranking-formats button{flex:1;min-height:44px;background:#fcfcf8;border:1px solid #d3ddd2;border-radius:8px;color:#253b39;font:700 12px Arial;cursor:pointer;padding:8px}.format-choice button[aria-pressed="true"],.ranking-formats button[aria-pressed="true"]{background:#e5eddd;border-color:#287366;color:#287366;box-shadow:inset 0 0 0 1px #287366}.format-choice:disabled button{cursor:default;opacity:.6}.format-choice p{font-size:11px;color:#5c716b}.ranking-formats{margin:12px 0}

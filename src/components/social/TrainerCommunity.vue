@@ -2,11 +2,11 @@
   <main class="trainer-community" data-trainer-community>
     <div class="community-shell">
       <nav class="community-top"><router-link to="/">← Les aventures</router-link><span>LE CARNET DES DRESSEURS</span></nav>
-      <header><p class="eyebrow">LES RENCONTRES FONT L’AVENTURE</p><h1>{{ tab==='profil' ? 'Carnet de dresseur' : tab==='amis' ? 'Ton cercle d’amis' : tab==='classement' ? 'Les meilleurs des Rifts' : 'Rencontre les dresseurs' }}</h1><p>Retrouve tes compagnons, découvre tes rivaux et gravis les rangs.</p></header>
+      <header><p class="eyebrow">LES RENCONTRES FONT L’AVENTURE</p><h1>{{ tab==='profil' ? 'Carnet de dresseur' : tab==='amis' ? 'Ton cercle d’amis' : tab==='classement' ? 'Les classements de RiftMon' : 'Rencontre les dresseurs' }}</h1><p>Retrouve tes compagnons, découvre tes rivaux et gravis les rangs.</p></header>
       <nav class="community-tabs" aria-label="Carnet des dresseurs">
         <router-link :to="`/profil/${userId}`" :aria-current="tab==='profil' && targetId===userId ? 'page' : null">Mon profil</router-link>
         <router-link to="/dresseurs?onglet=amis" :aria-current="tab==='amis' ? 'page' : null">Amis <span v-if="friends.incoming.length" class="count">{{ friends.incoming.length }}</span></router-link>
-        <router-link to="/dresseurs?onglet=classement" :aria-current="tab==='classement' ? 'page' : null">Classements</router-link>
+        <router-link to="/classements" :aria-current="tab==='classement' ? 'page' : null">Classements</router-link>
         <router-link to="/dresseurs?onglet=recherche" :aria-current="tab==='recherche' ? 'page' : null">Rechercher</router-link>
       </nav>
       <p v-if="error" class="error" role="alert">{{ error }} <button class="quiet-button" @click="load">Réessayer</button></p>
@@ -19,15 +19,13 @@
           <friend-actions :relationship="profile.relationship" :busy="busy" @action="act(profile.id,$event)" />
         </section>
         <div class="profile-grid">
-          <section class="community-card rift-card"><p class="eyebrow">RIFT MULTIJOUEUR</p><rank-badge :rank="profile.rift.rank" :detail="`${number(profile.rift.rating)} Elo`" />
+          <section class="community-card rift-card"><p class="eyebrow">RIFT MULTIJOUEUR</p><rank-progress :rank="profile.rift.rank" :value="profile.rift.rating" unit="Elo" empty-hint="Termine une expédition Rift pour obtenir ton premier rang."/><p class="muted">{{ number(profile.rift.rating) }} Elo</p>
             <p class="muted">{{ profile.rift.ratedGames ? `${profile.rift.ratedGames} expédition${profile.rift.ratedGames>1 ? 's' : ''} classée${profile.rift.ratedGames>1 ? 's' : ''}` : 'Premier rang après une expédition terminée.' }}</p>
-            <div v-if="profile.rift.ratedGames" class="rank-progress"><progress :value="profile.rift.rank.progress" max="100" :aria-label="`Progression du rang ${profile.rift.rank.name}`"/><span>{{ profile.rift.rank.next ? `${number(profile.rift.rank.next.minimum-profile.rift.rating)} Elo avant ${profile.rift.rank.next.name}` : 'Diamant · Le sommet des rangs' }}</span></div>
             <dl class="trainer-stats"><div><dt>Victoires</dt><dd>{{ number(profile.rift.wins) }}</dd></div><div><dt>Défaites</dt><dd>{{ number(profile.rift.losses) }}</dd></div><div><dt>Départs</dt><dd>{{ number(profile.rift.gamesStarted) }}</dd></div></dl>
-            <router-link class="text-link" to="/dresseurs?onglet=classement">Voir le classement Rift →</router-link>
+            <router-link class="text-link" to="/classements">Voir le classement Rift →</router-link>
           </section>
-          <section v-for="record in profile.colosseum" :key="record.durationMinutes" class="community-card"><p class="eyebrow">COLOSSEUM · {{ record.durationMinutes===30 ? '30 MIN' : '1 HEURE' }}</p><rank-badge :rank="record.rank" :detail="`${number(record.score)} points`" />
+          <section v-for="record in profile.colosseum" :key="record.durationMinutes" class="community-card"><p class="eyebrow">COLOSSEUM · {{ record.durationMinutes===30 ? '30 MIN' : '1 HEURE' }}</p><rank-progress :rank="record.rank" :value="record.score"/><p class="muted">{{ number(record.score) }} points</p>
             <p class="muted">{{ record.wins ? `${record.wins} dresseurs vaincus sur ce record` : 'Aucun record classé dans ce format.' }}</p>
-            <div v-if="record.wins" class="rank-progress"><progress :value="record.rank.progress" max="100" :aria-label="`Progression du rang ${record.rank.name}`"/><span>{{ record.rank.next ? `${number(record.rank.next.minimum-record.score)} points avant ${record.rank.next.name}` : 'Diamant · Le sommet des rangs' }}</span></div>
             <div v-if="record.team.length" class="record-team" aria-label="Équipe du record"><span v-for="(p,index) in record.team" :key="index"><img :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name"/><small>N. {{ p.level }}{{ p.knockedOut ? ' · K.O.' : '' }}</small></span></div>
           </section>
         </div>
@@ -47,15 +45,26 @@
         <ul class="trainer-list"><li v-for="trainer in results" :key="trainer.id" :data-trainer-id="trainer.id"><router-link class="trainer-link" :to="`/profil/${trainer.id}`"><strong>{{ trainer.username }}</strong><rank-badge :rank="trainer.rift.rank" :detail="`${number(trainer.rift.rating)} Elo`"/><span class="text-link">Voir le profil →</span></router-link></li></ul>
         <div v-if="searched" class="pagination"><button v-if="offset>0" class="quiet-button" :disabled="searching" @click="search(offset-20)">← Précédents</button><button v-if="hasMore" class="quiet-button" :disabled="searching" @click="search(offset+20)">Suivants →</button></div>
       </section>
-      <template v-else-if="tab==='classement'">
-        <div class="ranking-modes" aria-label="Mode du classement"><button v-for="mode in rankingModes" :key="mode.key" :aria-pressed="rankingMode===mode.key" :data-ranking-mode="mode.key" @click="rankingMode=mode.key;load()">{{ mode.label }}</button></div>
-        <section class="community-card"><div class="section-title"><h2>{{ rankingMode==='rift' ? 'Le classement Elo' : 'Les records du Colosseum' }}</h2><button class="quiet-button" @click="load">Actualiser</button></div>
-          <p class="muted">Les 50 premiers dresseurs. Ton rang personnel reste visible au-delà du top 50.</p>
-          <p v-if="personal" class="personal-rank" data-personal-rank>Ta position : <strong>#{{ personal.position || personal.rank }}</strong> · {{ number(rankingMode==='rift' ? personal.rift.rating : personal.score) }} {{ rankingMode==='rift' ? 'Elo' : 'points' }}</p>
-          <p v-if="!ranking.length" class="empty">Le classement attend ses premiers dresseurs.</p>
-          <ol class="trainer-list ranking-list"><li v-for="trainer in ranking" :key="trainer.id || trainer.userId" :data-trainer-id="trainer.id || trainer.userId"><span class="position">{{ trainer.position || trainer.rank }}</span><router-link class="trainer-link" :to="`/profil/${trainer.id || trainer.userId}`"><strong>{{ trainer.username }}<small v-if="(trainer.id || trainer.userId)===userId"> · toi</small></strong><rank-badge :rank="rankingMode==='rift' ? trainer.rift.rank : trainer.league" :detail="`${number(rankingMode==='rift' ? trainer.rift.rating : trainer.score)} ${rankingMode==='rift' ? 'Elo' : 'points'}`"/></router-link></li></ol>
+      <template v-else-if="tab==='classement' && !error">
+        <div class="ranking-modes" aria-label="Mode du classement"><button v-for="mode in rankingModes" :key="mode.key" :aria-pressed="rankingMode===mode.key" :data-ranking-mode="mode.key" @click="selectRanking(mode.key)">{{ mode.label }}</button></div>
+        <div class="ranked-overview">
+          <section class="community-card ranked-personal"><p class="eyebrow">TON RANG · {{ rankingMode==='rift' ? 'RIFT MULTIJOUEUR' : `COLOSSEUM ${rankingMode} MIN` }}</p>
+            <rank-progress :rank="personalLeague" :value="personalValue" :unit="rankingMode==='rift' ? 'Elo' : 'points'" :empty-hint="rankingMode==='rift' ? 'Termine une expédition multijoueur pour entrer dans le classement.' : 'Remporte au moins un combat dans l’arène pour inscrire ton record.'"/>
+            <p v-if="personal" class="personal-rank" data-personal-rank>Ta position : <strong>#{{ personal.position || personal.rank }}</strong> · {{ number(personalValue) }} {{ rankingMode==='rift' ? 'Elo' : 'points' }}</p>
+            <router-link class="ranked-play" :to="rankingMode==='rift' ? '/drift' : '/colosseum'">{{ rankingMode==='rift' ? 'Jouer un Rift' : 'Jouer au Colosseum' }} →</router-link>
+          </section>
+          <section class="community-card ranked-road"><p class="eyebrow">LA ROUTE VERS DIAMANT</p><ol aria-label="Les cinq ligues"><li v-for="(name,i) in rankNames" :key="name" :class="{current:personalLeague.key===rankKeys[i]}"><rank-badge :rank="{key:rankKeys[i],name}"/><small>IV → III → II → I</small></li></ol><p class="muted">100 points de ligue pour remplir une division. Les PL indiquent ta progression à partir de ton {{ rankingMode==='rift' ? 'Elo' : 'meilleur score' }}.</p></section>
+        </div>
+        <section class="community-card ranked-board"><div class="section-title"><div><p class="eyebrow">LE TABLEAU DES DRESSEURS</p><h2>{{ rankingMode==='rift' ? 'Rift multijoueur' : `Colosseum · ${rankingMode==='30' ? '30 minutes' : '1 heure'}` }}</h2></div><button class="quiet-button" @click="load">Actualiser</button></div>
+          <p class="muted">Les 50 premiers. Ta position personnelle reste visible au-delà du top 50.</p>
+          <p v-if="!ranking.length" class="empty">Le classement attend ses premiers dresseurs. À toi de prendre la première place !</p>
+          <ol class="trainer-list ranking-list"><li v-for="trainer in ranking" :key="trainer.id || trainer.userId" :data-trainer-id="trainer.id || trainer.userId" :class="{me:(trainer.id || trainer.userId)===userId,podium:(trainer.position || trainer.rank)<=3}">
+            <span class="position">#{{ trainer.position || trainer.rank }}</span><div class="ranked-player"><router-link class="trainer-link" :to="`/profil/${trainer.id || trainer.userId}`"><strong>{{ trainer.username }}<small v-if="(trainer.id || trainer.userId)===userId"> · toi</small></strong><rank-badge :rank="rankingMode==='rift' ? trainer.rift.rank : trainer.league" :detail="`${(rankingMode==='rift' ? trainer.rift.rank : trainer.league).lp} PL`"/></router-link>
+              <div v-if="rankingMode!=='rift' && trainer.team.length" class="ranking-team" aria-label="Équipe du record"><img v-for="(p,index) in trainer.team" :key="index" :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name" :title="`${p.name} · N. ${p.level}${p.knockedOut ? ' · K.O.' : ''}`"/></div>
+            </div><div class="ranked-value"><strong>{{ number(rankingMode==='rift' ? trainer.rift.rating : trainer.score) }}</strong><small>{{ rankingMode==='rift' ? 'Elo' : 'points' }}</small><span>{{ rankingMode==='rift' ? `${trainer.rift.ratedGames} partie${trainer.rift.ratedGames>1 ? 's' : ''}` : `${trainer.wins} victoire${trainer.wins>1 ? 's' : ''}` }}</span></div>
+          </li></ol>
         </section>
-        <details class="ranking-rules"><summary>Comprendre les rangs</summary><p>En Rift, tu démarres à 1 000 Elo. Chaque expédition terminée compare ta place à celle des autres dresseurs et à leur Elo. Battre des joueurs mieux classés rapporte davantage. Les éliminations au même tour partagent la même place ; les abandons restent comptés. Les rangs débutent après ta première partie classée. Les anciennes parties ne sont pas recalculées.</p><ul><li v-for="(name,i) in rankNames" :key="name"><strong>{{ name }}</strong><span>Rift : {{ i===0 ? 'moins de 1 200' : number(rules.eloThresholds[i])+' et plus' }} Elo</span><span>Colosseum : {{ i===0 ? '1 victoire' : number(rules.colosseumThresholds[i])+' points' }}</span></li></ul><p>Le Colosseum utilise ton meilleur score, avec un rang distinct en 30 et 60 minutes. Une tentative moins bonne ne fait pas perdre ce rang.</p></details>
+        <details class="ranking-rules"><summary>Comprendre les rangs et les points</summary><p>Chaque ligue comporte quatre divisions : IV, III, II puis I. Les points de ligue (PL) vont de 0 à 100 ; ils représentent l’avancement dans la division, pas une monnaie. Une promotion repart à 0 PL dans la division suivante. Au sommet de Diamant I, ton score continue de départager le classement.</p><p>En Rift, tu démarres à 1 000 Elo. Chaque expédition terminée compare ta place à celle des autres dresseurs et à leur Elo. Battre des joueurs mieux classés rapporte davantage. Une défaite peut faire perdre des PL ou une division. Les éliminations au même tour partagent la même place ; les abandons restent comptés. Ton premier rang arrive après une partie classée. Les cotes existantes sont conservées.</p><ul><li v-for="(name,i) in rankNames" :key="name"><strong>{{ name }} IV</strong><span>Rift : {{ number(rules.eloThresholds[i]) }} Elo</span><span>Colosseum : {{ i===0 ? '1 victoire pour être classé' : number(rules.colosseumThresholds[i])+' points' }}</span></li></ul><p>Le Colosseum utilise ton meilleur score, avec un rang distinct en 30 et 60 minutes. Une tentative moins bonne ne fait pas perdre ce rang. Argent, Or, Platine et Diamant correspondent aux scores cumulés des défis 5, 10, 15 et 20. À égalité de score et de victoires, le premier record établi garde sa place.</p></details>
       </template>
     </div>
   </main>
@@ -63,17 +72,19 @@
 <script>
 import api from '@/services/api';
 import { getSession } from '@/services/session';
+import RankProgress from './RankProgress.vue';
 import RankBadge from './RankBadge.vue';
 import FriendActions from './FriendActions.vue';
 export default {
-  name:'TrainerCommunity',components:{RankBadge,FriendActions},
-  data(){return {userId:Number(getSession()?.id),profile:null,friends:{accepted:[],incoming:[],outgoing:[]},loading:false,busy:false,error:'',notice:'',request:0,searchRequest:0,query:'',results:[],searched:false,searching:false,offset:0,hasMore:false,rankingMode:'rift',ranking:[],personal:null,rules:{eloThresholds:[0,1200,1400,1600,1800],colosseumThresholds:[]},rankNames:['Bronze','Argent','Or','Platine','Diamant'],rankingModes:[{key:'rift',label:'Rift multijoueur'},{key:'30',label:'Colosseum · 30 min'},{key:'60',label:'Colosseum · 1 h'}]};},
-  computed:{tab(){return this.$route.params.id?'profil':['amis','classement','recherche'].includes(this.$route.query.onglet)?this.$route.query.onglet:'profil';},targetId(){return Number(this.$route.params.id || this.userId);},friendGroups(){return [{key:'incoming',title:'Demandes reçues',entries:this.friends.incoming},{key:'accepted',title:'Tes amis',entries:this.friends.accepted},{key:'outgoing',title:'Demandes envoyées',entries:this.friends.outgoing}];}},
-  watch:{'$route':{immediate:true,handler(){this.notice='';this.searchRequest++;this.searching=false;this.load();}}},
+  name:'TrainerCommunity',components:{RankBadge,RankProgress,FriendActions},
+  data(){return {userId:Number(getSession()?.id),profile:null,friends:{accepted:[],incoming:[],outgoing:[]},loading:false,busy:false,error:'',notice:'',request:0,searchRequest:0,query:'',results:[],searched:false,searching:false,offset:0,hasMore:false,rankingMode:'rift',ranking:[],personal:null,rules:{eloThresholds:[0,1200,1400,1600,1800],colosseumThresholds:[]},rankKeys:['bronze','silver','gold','platinum','diamond'],rankNames:['Bronze','Argent','Or','Platine','Diamant'],rankingModes:[{key:'rift',label:'Rift multijoueur'},{key:'30',label:'Colosseum · 30 min'},{key:'60',label:'Colosseum · 1 h'}]};},
+  computed:{personalLeague(){return (this.rankingMode==='rift'?this.personal?.rift?.rank:this.personal?.league)||{key:'unranked',name:'Non classé'};},personalValue(){return Number(this.rankingMode==='rift'?this.personal?.rift?.rating:this.personal?.score)||0;},tab(){if(this.$route.name==='Rankings')return 'classement';return this.$route.params.id?'profil':['amis','classement','recherche'].includes(this.$route.query.onglet)?this.$route.query.onglet:'profil';},targetId(){return Number(this.$route.params.id || this.userId);},friendGroups(){return [{key:'incoming',title:'Demandes reçues',entries:this.friends.incoming},{key:'accepted',title:'Tes amis',entries:this.friends.accepted},{key:'outgoing',title:'Demandes envoyées',entries:this.friends.outgoing}];}},
+  watch:{'$route':{immediate:true,handler(){this.rankingMode=['rift','30','60'].includes(this.$route.query.mode)?this.$route.query.mode:'rift';this.notice='';this.searchRequest++;this.searching=false;this.load();}}},
   beforeDestroy(){this.request++;this.searchRequest++;},
   methods:{
+    selectRanking(mode){if(this.rankingMode===mode)return;this.$router.push({path:'/classements',query:{mode}});},
     number(n){return Number(n || 0).toLocaleString('fr-FR');},
-    async load(){const request=++this.request;this.loading=true;this.error='';this.profile=null;
+    async load(){const request=++this.request;this.loading=true;this.error='';this.profile=null;if(this.tab==='classement'){this.ranking=[];this.personal=null;}
       try{const {data:friends}=await api.get('/community/friends');if(request!==this.request)return;this.friends=friends;
         if(this.tab==='profil'){const {data}=await api.get(`/community/profiles/${this.targetId}`);if(request!==this.request)return;this.profile=data;}
         if(this.tab==='classement'){const {data:rift}=await api.get('/community/leaderboard');if(request!==this.request)return;this.rules=rift.rules;let data=rift;
