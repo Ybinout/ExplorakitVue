@@ -21,9 +21,10 @@
           <expedition-contracts v-if="tab === 'contracts'" :state="state" :execute="runCommand" />
           <template v-if="tab === 'team'">
             <div class="team-intro"><div><span class="section-caption">TES COMPAGNONS</span><h3>{{ state.team.length }} Pokémon à protéger</h3></div><button v-if="state.alive" class="secondary-button" @click="$emit('team')">Fiches & ordre <span aria-hidden="true">↗</span></button></div>
+            <p class="quiet">Le Pokémon en tête commence le prochain combat. Utilise les flèches pour préparer ton ordre.</p><p role="status">{{ teamNotice }}</p>
             <p class="quiet team-note">Soigne tes compagnons avant de repartir. Un talisman équipé évite une perte définitive une fois ; son porteur reste K.O. jusqu’au prochain soin.</p>
-            <div class="companion-grid"><article v-for="pokemon in state.team" :key="pokemon.uuid" class="companion">
-              <div class="companion-art"><pokemon-portrait :src="`${$assetBase}img/pokemon/front/${pokemon.data.id}.png`" :alt="pokemon.data.name.french || pokemon.name" /></div>
+            <div class="companion-grid"><article v-for="(pokemon,index) in state.team" :key="pokemon.uuid" :data-team-position="index" class="companion">
+              <div class="companion-order"><strong>{{ index===0 ? 'En tête' : index+1 }}</strong><button :disabled="teamBusy||index===0||!state.alive" :aria-label="`Monter ${pokemon.data.name.french || pokemon.name}`" data-team-order="up" @click="reorder(index,-1)">↑</button><button :disabled="teamBusy||index===state.team.length-1||!state.alive" :aria-label="`Descendre ${pokemon.data.name.french || pokemon.name}`" data-team-order="down" @click="reorder(index,1)">↓</button></div><div class="companion-art"><pokemon-portrait :src="`${$assetBase}img/pokemon/front/${pokemon.data.id}.png`" :alt="pokemon.data.name.french || pokemon.name" /></div>
               <div class="companion-info"><div class="companion-name"><h3>{{ pokemon.data.name.french || pokemon.name }}</h3><span>N. {{ pokemon.level }}</span></div><div class="hp-label"><span>PV</span><strong>{{ pokemon.currentHp }} / {{ pokemon.maxHp }}</strong></div><div class="hp-track" :class="{ low: hpPercent(pokemon) < 30 }"><i :style="{ width: hpPercent(pokemon) + '%' }"></i></div><div v-if="state.phase === 'exploration'" class="potion-actions"><button v-for="item in potions" :key="item.key" :disabled="pokemon.currentHp >= pokemon.maxHp" @click="command('drift:heal', { pokemonUuid: pokemon.uuid, itemKey: item.key })">{{ item.name }} <small>×{{ item.quantity }}</small></button><span v-if="!potions.length" class="quiet">Plus de potions dans le sac.</span></div></div>
             </article></div>
           </template>
@@ -48,7 +49,7 @@
           </template>
         </div>
         <footer class="run-footer"><span class="footer-status" role="status">{{ feedback || (inShop && tab === 'drifts' ? 'Boutique · Tu peux revendre tes Drifts non équipés.' : state.alive ? 'Une expédition. Une seule vie.' : 'Une nouvelle expédition t’attend.') }}</span><button v-if="state.alive" class="leave-button" @click="askConfirmation('abandon')">Abandonner</button><button v-else class="secondary-button" data-drift-action="exit" @click="$emit('leave')">{{ isColosseum ? 'Retour au classement' : 'Retour au salon' }} <span aria-hidden="true">→</span></button></footer>
-        <div v-if="confirmation" class="confirmation-backdrop" @click.self="cancelConfirmation"><section ref="confirm" class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="drift-confirm-title" aria-describedby="drift-confirm-copy"><drift-glyph :name="confirmation === 'discard' ? 'drift' : 'compass'" /><h3 id="drift-confirm-title">{{ confirmation === 'discard' ? 'Se séparer de ce Drift ?' : 'Quitter l’expédition ?' }}</h3><p id="drift-confirm-copy">{{ confirmation === 'discard' ? `${definition(discardTarget).name} disparaîtra de ton sac. Tu peux aussi le revendre en boutique pour ${salePrice(discardTarget)} ₽.` : 'Ton équipe, tes Drifts et ton butin seront perdus.' }}</p><div><button class="secondary-button" data-drift-action="cancel" @click="cancelConfirmation">{{ confirmation === 'discard' ? 'Conserver' : 'Continuer' }}</button><button class="danger-button" data-drift-action="confirm" @click="confirmAction">{{ confirmation === 'discard' ? 'Supprimer' : 'Abandonner' }}</button></div></section></div>
+        <div v-if="confirmation" class="confirmation-backdrop" @click.self="cancelConfirmation"><section ref="confirm" class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="drift-confirm-title" aria-describedby="drift-confirm-copy"><drift-glyph :name="confirmation === 'discard' ? 'drift' : 'compass'" /><h3 id="drift-confirm-title">{{ confirmation === 'discard' ? 'Se séparer de ce Drift ?' : 'Quitter l’expédition ?' }}</h3><p id="drift-confirm-copy">{{ confirmation === 'discard' ? `${definition(discardTarget).name} et toutes ses essences disparaîtront de ton sac.${state.equipped.includes(discardTarget.uuid) ? ' Son bonus équipé sera aussi retiré.' : ''} Tu peux aussi le revendre en boutique pour ${salePrice(discardTarget)} ₽.` : 'Ton équipe, tes Drifts et ton butin seront perdus.' }}</p><div><button class="secondary-button" data-drift-action="cancel" @click="cancelConfirmation">{{ confirmation === 'discard' ? 'Conserver' : 'Continuer' }}</button><button class="danger-button" data-drift-action="confirm" @click="confirmAction">{{ confirmation === 'discard' ? 'Supprimer' : 'Abandonner' }}</button></div></section></div>
       </template>
       <p v-else class="loading-state">Ouverture de ton carnet…</p>
     </section>
@@ -71,7 +72,7 @@ export default {
   props: { initialTab: String, runCommand: Function, state: Object, catalogue: Object, inShop: Boolean, feedback: { type: String, default: '' } },
   data() {
     return { tab: this.state?.phase === 'exploration' ? this.initialTab || 'drifts' : 'tournament',
-      confirmation: null, discardTarget: null, previousFocus: null, confirmationFocus: null, userId: Number(getSession()?.id),
+      teamBusy:false, teamNotice:'', confirmation: null, discardTarget: null, previousFocus: null, confirmationFocus: null, userId: Number(getSession()?.id),
       prices: { common: 50, rare: 120, epic: 300, legendary: 800, mythic: 2000 } };
   },
   computed: {
@@ -118,13 +119,14 @@ export default {
     playerName(id) { return this.state.players.find(p => p.id === id)?.username || 'Dresseur'; },
     eliminationLabel(reason) { return { disconnected: 'Déconnexion · forfait', forfeit: 'Abandon', defeated: 'Équipe K.O.', not_ready: 'Non prêt · forfait', finished: 'Terminé' }[reason] || 'Éliminé'; },
     localizedType(type) { return { Normal: 'Normal', Fire: 'Feu', Water: 'Eau', Electric: 'Électrik', Grass: 'Plante', Ice: 'Glace', Fighting: 'Combat', Poison: 'Poison', Ground: 'Sol', Flying: 'Vol', Psychic: 'Psy', Bug: 'Insecte', Rock: 'Roche', Ghost: 'Spectre', Dragon: 'Dragon', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' }[type] || type; },
-    salePrice(drift) { const merchant = this.state.drifts.find(d => d.definitionId === 'DRF-053' && this.state.equipped.includes(d.uuid)); return Math.floor(this.prices[drift.rarity] * (1 + (merchant ? this.definition(merchant).values[merchant.rarity] / 100 : 0))); },
+    salePrice(drift) { const merchant = this.state.drifts.find(d => d.definitionId === 'DRF-053' && this.state.equipped.includes(d.uuid)); return Math.floor((drift.salePrice == null ? this.prices[drift.rarity] : drift.salePrice) * (1 + (merchant ? (merchant.value == null ? this.definition(merchant).values[merchant.rarity] : merchant.value) / 100 : 0))); },
     formatValue(value) { return Number(value || 0).toLocaleString('fr-FR'); },
     hpPercent(pokemon) { return Math.max(0, Math.min(100, pokemon.currentHp / pokemon.maxHp * 100)); },
     roundName(round) { const size = this.state.matches.filter(m => m.round === round).length; return size === 1 ? 'Finale' : size === 2 ? 'Demi-finales' : size === 4 ? 'Quarts de finale' : `Round ${round}`; },
     command(name, data = {}) { this.$emit('command', { name, data }); },
     close() { if (this.confirmation) this.cancelConfirmation(); else this.$emit('close'); },
     escape(event) { event.preventDefault(); if (this.confirmation) this.cancelConfirmation(); else this.close(); },
+    async reorder(index,delta) { if(this.teamBusy)return;const ids=this.state.team.map(p=>p.uuid),target=index+delta;if(target<0||target>=ids.length)return;[ids[index],ids[target]]=[ids[target],ids[index]];this.teamBusy=true;try{const ok=await this.runCommand({name:'drift:reorder',data:{orderedUuids:ids}});this.teamNotice=ok?'Ordre enregistré.':'Ordre non modifié. Réessaie hors combat.';}finally{this.teamBusy=false;} },
     selectTab(key) { this.tab = key; this.$nextTick(() => { if (this.$refs.content) this.$refs.content.scrollTop = 0; }); },
     switchTab(event, key) {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -148,6 +150,7 @@ export default {
 </script>
 
 <style scoped>
+.companion-order{display:flex;flex-direction:column;gap:4px;align-items:center;flex-shrink:0}.companion-order strong{font-size:10px}.companion-order button{width:44px;min-height:44px;border:1px solid #bdcdbc;border-radius:8px;background:#edf2e9;color:#235e50;font-size:20px}.companion-order button:disabled{opacity:.4}
 .bye-notice, .account-reward { padding: 12px 14px; border: 1px solid #b5cbd4; border-radius: 8px; background: #e2ecee; color: #42748a; font-size: 11px; line-height: 1.6; }.watch-match { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 44px; border: 0; border-top: 1px solid #c4d6d8; border-radius: 0 0 7px 7px; background: #e2edef; color: #356e8c; font: inherit; font-size: 11px; }.watch-match svg { width: 17px; height: 17px; }
 @media (max-width: 600px) { .run-tabs button { flex-direction: column; font-size: 10px !important; gap: 2px !important; padding-block: 7px !important; }.run-tabs small { display: none; } }
 .drift-backdrop { position: fixed; inset: 0; z-index: 1400; display: grid; place-items: center; padding: 22px; background: #071420b8; backdrop-filter: blur(4px); font: 13px/1.45 'Trebuchet MS', Arial, sans-serif; color: #263e4d; text-align: left; }

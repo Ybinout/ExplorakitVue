@@ -8,7 +8,9 @@ export function createBattlePresentation({ changed = () => {} } = {}) {
       pending++; changed(true);
       const task = tail.then(async () => {
         if (current !== generation) return;
-        play();
+        const playback=play();
+        if(playback && typeof playback.then==='function')await playback;
+        if(current!==generation)return;
         const ms = typeof delay === 'function' ? delay() : delay;
         if (ms > 0) await new Promise(resolve => {
           const finish = () => { clearTimeout(timer); release = null; resolve(); };

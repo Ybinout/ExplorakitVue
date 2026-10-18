@@ -14,6 +14,8 @@
       <div class="battle-weather-layer" aria-hidden="true"></div>
       <div class="battle-terrain-layer" aria-hidden="true"></div>
 
+      <div v-if="transitionLabel" class="battle-transition-label" role="status" data-battle-transition>{{ transitionLabel }}</div>
+      <div v-if="driftNotices.length" class="battle-drift-notices" role="status" data-battle-drift-effects><p v-for="notice in driftNotices" :key="notice.side">✧ {{ notice.side==='player' ? 'Tes Drifts' : 'Drifts adverses' }} · {{ notice.text }}</p></div>
       <div v-if="fieldLabel" class="battle-field-label" aria-live="polite">
         {{ fieldLabel }}
       </div>
@@ -40,6 +42,8 @@
           'battle-sprite-anchor',
           'battle-sprite-wild',
           {
+            'battle-fainted': Number(opponent.currentHp)<=0,
+            [`battle-transition-${transitionFx.wild}`]: Boolean(transitionFx.wild),
             'battle-attacking-wild': battleMoveFx.visible && battleMoveFx.actor === 'opponent',
             'battle-capture-target': captureFx.visible,
             'capture-target-contained': captureFx.targetContained,
@@ -63,7 +67,7 @@
         :class="[
           'battle-sprite-anchor',
           'battle-sprite-player',
-          { 'battle-attacking-player': battleMoveFx.visible && battleMoveFx.actor === 'player' }
+          { 'battle-fainted': Number(currentPokemon.currentHp)<=0, [`battle-transition-${transitionFx.player}`]: Boolean(transitionFx.player), 'battle-attacking-player': battleMoveFx.visible && battleMoveFx.actor === 'player' }
         ]"
       >
         <img
@@ -313,6 +317,7 @@ export default {
       opponent: null,
       canAct: false,
       presentationBusy: false,
+      visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', driftNotices:[], driftNoticeTimer:null,
       usableMoveIndexes: null,
       actionState: {
         patient: false,
@@ -462,15 +467,17 @@ export default {
       const delay = () => {
         if (!this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
         if (method === 'playMoveAnimation') return payload?.damageClass === 'status' ? 850 : 650;
+        if (method === 'playDriftEffects') return 650;
         if (method === 'playMoveResult') return this.resultFx.visible ? 1150 : 250;
         return 0;
       };
-      return this._presentation.push(() => this[method](payload), delay);
+      return this._presentation.push(() => method==='updateBattleState' ? this.presentState(payload) : this[method](payload), delay);
     },
     startMusic(kind) {
+      if(this.musicKind===kind&&this.music){this.syncMusic();return;}
       this.stopMusic();
       this.musicKind = kind;
-      const tracks = { wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/extended.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
+      const tracks = { wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
       this.music = new Audio(tracks[kind] || tracks.wild);
       this.music.loop = true;
       this.syncMusic();
@@ -624,7 +631,30 @@ export default {
         }, 2200);
       }
     },
+    reducedMotion() { return !this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches; },
+    transitionWait(ms) { return new Promise(resolve=>{const finish=()=>{clearTimeout(this._transitionTimer);this._transitionRelease=null;resolve();};this._transitionRelease=finish;this._transitionTimer=setTimeout(finish,ms);}); },
+    async presentState(payload={}) {
+      const epoch=this.visualEpoch, events=payload.transitions||[], outgoing=events.filter(e=>e.kind==='faint'||e.kind==='recall'), incoming=events.filter(e=>e.kind==='enter');
+      if(outgoing.length){
+        this.transitionLabel=outgoing.map(e=>`${e.name} ${e.kind==='faint'?'est K.O.':'est rappelé.'}`).join(' · ');
+        this.transitionFx={player:'',wild:''};for(const e of outgoing)this.$set(this.transitionFx,e.side==='player'?'player':'wild',e.kind);
+        if(!this.reducedMotion())await this.transitionWait(550);
+      }
+      if(epoch!==this.visualEpoch)return;
+      this.updateBattleState(payload);
+      this.transitionFx={player:'',wild:''};
+      if(incoming.length){this.transitionLabel=incoming.map(e=>`${e.name} entre en combat.`).join(' · ');for(const e of incoming)this.$set(this.transitionFx,e.side==='player'?'player':'wild','enter');if(!this.reducedMotion())await this.transitionWait(400);}
+      if(epoch!==this.visualEpoch)return;
+      this.transitionFx={player:'',wild:''};
+      if(events.length){clearTimeout(this._transitionLabelTimer);this._transitionLabelTimer=setTimeout(()=>{this.transitionLabel='';},900);}
+    },
+    playDriftEffects(payload={}) {
+      clearTimeout(this.driftNoticeTimer);
+      this.driftNotices=['player','opponent'].map(side=>({side,text:(payload.effects||[]).filter(e=>e.side===side).map(e=>e.name+(e.detail?' : '+e.detail:'')).join(' · ')})).filter(e=>e.text);
+      this.driftNoticeTimer=setTimeout(()=>{this.driftNotices=[];},2200);
+    },
     updateBattleState(payload = {}) {
+      if(payload.musicKind)this.startMusic(payload.musicKind);
       this.usableMoveIndexes = Array.isArray(payload.usableMoveIndexes) ? payload.usableMoveIndexes : null;
       if (!this.player) this.challenge = this.colosseumChallenge;
       const nextPlayer = payload.player || null;
@@ -937,6 +967,7 @@ export default {
       });
     },
     clearAllTimers() {
+      this.visualEpoch++;this._transitionRelease?.();clearTimeout(this._transitionLabelTimer);clearTimeout(this.driftNoticeTimer);this.transitionFx={player:'',wild:''};this.transitionLabel='';this.driftNotices=[];
       if (this.messageTimer) clearTimeout(this.messageTimer);
       if (this.resultTimer) clearTimeout(this.resultTimer);
       this.messageTimer = null;
@@ -977,6 +1008,8 @@ export default {
 </script>
 
 <style scoped>
+.battle-transition-label,.battle-drift-notices{position:absolute;z-index:80;top:28%;left:50%;transform:translateX(-50%);width:max-content;max-width:88%;box-sizing:border-box;font-size:clamp(11px,2.8vw,15px);line-height:1.4;text-align:center;pointer-events:none}.battle-transition-label{background:#fffbe9;color:#23483d;border:1px solid #c6d7b7;padding:10px 14px;border-radius:12px;box-shadow:0 5px 16px #102b3640}.battle-drift-notices{top:39%;color:#f8f1ff}.battle-drift-notices p{margin:4px 0;padding:8px 12px;border:1px solid #bfadd9;border-radius:12px;background:#413563ed;box-shadow:0 3px 12px #1117}.battle-fainted{opacity:0}.battle-transition-recall .battle-sprite{animation:combat-recall .55s ease-in forwards!important}.battle-transition-faint .battle-sprite{animation:combat-faint .55s ease-in forwards!important}.battle-transition-enter .battle-sprite{animation:combat-enter .4s ease-out both!important}@keyframes combat-recall{to{filter:brightness(3);transform:scale(.05);opacity:0}}@keyframes combat-faint{to{filter:grayscale(1);transform:translateY(65%);opacity:0}}@keyframes combat-enter{from{filter:brightness(2);transform:scale(.15);opacity:0}to{transform:scale(1);opacity:1}}.battle-reduced-motion .battle-sprite{animation:none!important}@media(prefers-reduced-motion:reduce){.battle-sprite{animation:none!important}}
+
 .battle-scene {
   position: absolute;
   inset: 0 0 155px;

@@ -2318,7 +2318,7 @@ export default {
       this.closeChatSession(true);
       this.$refs.battleOverlay?.resetBattleUi();
       this.battle = true;
-      this.$nextTick(() => this.$refs.battleOverlay?.startMusic(data?.battleType || 'wild'));
+      this.$nextTick(() => this.$refs.battleOverlay?.startMusic(data?.musicKind || data?.battleType || 'wild'));
       if (data?.message) this.$nextTick(() => this.$refs.battleOverlay?.showMessage(data.message));
 
     });
@@ -2353,6 +2353,8 @@ export default {
     this.socket.on('battleMoveAnimation', (data) => {
       this.$refs.battleOverlay?.presentEvent('playMoveAnimation', data);
     });
+
+    this.socket.on('battleDriftEffects', data => this.$refs.battleOverlay?.presentEvent('playDriftEffects', data));
 
     this.socket.on('battleMoveResult', (data) => {
       this.$refs.battleOverlay?.presentEvent('playMoveResult', data);
