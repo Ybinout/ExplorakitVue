@@ -1,0 +1,13 @@
+Generated with the built-in image_gen tool, 18 October 2026.
+Reference: colosseum-mobile-v2.webp (existing environment, style and lighting).
+Final asset: colosseum-platform.webp, 768 px wide, WebP quality 90 with alpha preserved.
+The same decorative platform is composited behind both fighters using their shared position classes, so portrait/landscape cropping cannot detach it from their feet.
+Image contact point: 50% across, 46% down; 72% down for the mobile player's back sprite, on the near edge of the disk. Foreground platform continues below the mobile viewport, preserving the player's bottom-aligned silhouette while keeping the rear rim visible.
+
+Use case: compositing
+Asset type: transparent environment overlay for the existing RiftMon Colosseum battle background.
+Input Image 1 is the exact background style/lighting reference, not a background to reproduce.
+Primary request: create ONE empty low circular stone battle platform, seen in foreshortened perspective as a broad horizontal ellipse, for placing a monster sprite on top. This platform will be composited twice over the referenced sandy arena at runtime, so it must be a clean isolated transparent asset.
+Style: match the reference's polished hand-painted 2D JRPG environment, warm pale limestone and subtle antique-gold incised edge, natural stone joints, softly worn edges, daylight from the upper left. The TOP of the disk is the main readable surface: a quiet warm sandstone center and a single restrained engraved ring around it. No ornate central emblem.
+Composition: the platform is centered and completely visible, wide ellipse about 3.3 times wider than tall, viewed from the same camera elevation as the arena floor. Very low beveled lip, only a few centimeters high, NOT a tall podium; soft restrained contact shadow underneath. Generous transparent margin around all edges. Surface center is the intended foot contact point.
+Constraints: only the single platform and its small soft contact shadow; truly transparent background, no sand rectangle, no environment, no checkerboard baked in, no creatures, no people, no text, no logo, no watermark, no glow or effects. Do not include the arena architecture.

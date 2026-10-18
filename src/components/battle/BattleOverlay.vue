@@ -10,6 +10,12 @@
     >
       <picture v-if="challenge" class="battle-arena-background"><source media="(orientation: landscape)" :srcset="require('@/assets/battle/colosseum-wide-v2.webp')"><img src="../../assets/battle/colosseum-mobile-v2.webp" class="battle-background battle-colosseum-background" alt=""></picture>
       <img v-else src="../../assets/battle/back.webp" class="battle-background" alt="">
+      <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
+      <template v-if="challenge">
+        <div v-for="side in ['wild', 'player']" :key="`platform-${side}`" :class="['battle-platform', `battle-position-${side}`]" :data-battle-platform="side" aria-hidden="true">
+          <img src="../../assets/battle/colosseum-platform.webp" alt="">
+        </div>
+      </template>
       <div class="battle-atmosphere" aria-hidden="true"></div>
       <div class="battle-weather-layer" aria-hidden="true"></div>
       <div class="battle-terrain-layer" aria-hidden="true"></div>
@@ -41,6 +47,7 @@
         :class="[
           'battle-sprite-anchor',
           'battle-sprite-wild',
+          'battle-position-wild',
           {
             'battle-fainted': Number(opponent.currentHp)<=0 && !transitionFx.wild,
             [`battle-transition-${transitionFx.wild}`]: Boolean(transitionFx.wild),
@@ -67,6 +74,7 @@
         :class="[
           'battle-sprite-anchor',
           'battle-sprite-player',
+          'battle-position-player',
           { 'battle-fainted': Number(currentPokemon.currentHp)<=0 && !transitionFx.player, [`battle-transition-${transitionFx.player}`]: Boolean(transitionFx.player), 'battle-attacking-player': battleMoveFx.visible && battleMoveFx.actor === 'player' }
         ]"
       >
@@ -1073,11 +1081,14 @@ export default {
 
 .battle-colosseum .battle-background { filter:none; object-position:50% 44%; }
 .battle-arena-background { position:absolute; inset:0; }
+.battle-platform { position:absolute; z-index:0; width:var(--sprite-visible-size); height:0; pointer-events:none; }
+.battle-platform img { position:absolute; left:0; top:0; width:170%; max-width:none; height:auto; transform:translate(-50%,var(--platform-offset-y,-46%)); }
+.battle-platform.battle-position-player img { width:210%; }
 .battle-challenge { color:#e7d19a; font:10px Arial,sans-serif; }
 .battle-colosseum .battle-sprite { filter:drop-shadow(0 5px 2px #49361645); }
 .battle-colosseum .battle-sprite:not(.battle-sprite-ready) { visibility:hidden; }
 .battle-sprite-wild .battle-sprite { image-rendering:auto; }
-.battle-colosseum .battle-sprite-player { top:88%; }
+.battle-colosseum .battle-position-player { top:88%; }
 
 .battle-atmosphere {
   position: absolute;
@@ -1114,13 +1125,13 @@ export default {
   filter: brightness(1.12) saturate(1.25);
 }
 
-.battle-sprite-wild {
+.battle-position-wild {
   --sprite-visible-size: 120px;
   left: 80%;
   top: 68%;
 }
 
-.battle-sprite-player {
+.battle-position-player {
   --sprite-visible-size: 118px;
   left: 20%;
   top: 100%;
@@ -1973,13 +1984,13 @@ export default {
     inset: 0 0 245px;
   }
 
-  .battle-sprite-wild {
+  .battle-position-wild {
     --sprite-visible-size: 98px;
     left: 76%;
     top: 64%;
   }
 
-  .battle-sprite-player {
+  .battle-position-player {
     --sprite-visible-size: 96px;
     left: 22%;
     top: 100%;

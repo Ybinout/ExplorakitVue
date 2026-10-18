@@ -189,7 +189,7 @@
   .game-root .game-stage .battle-status{width:min(245px,52%);min-height:76px;padding:8px}
   .game-root .game-stage .battle-status-wild{top:10px;left:10px}
   .game-root .game-stage .battle-status-player{right:10px;bottom:10px}
-  .game-root .game-stage .battle-sprite-player{left:20%;top:98%;--sprite-visible-size:90px}
-  .game-root .game-stage .battle-sprite-wild{left:76%;top:59%;--sprite-visible-size:90px}
+  .game-root .game-stage .battle-position-player{left:20%;top:98%;--sprite-visible-size:90px}
+  .game-root .game-stage .battle-position-wild{left:76%;top:59%;--sprite-visible-size:90px}
   .game-root .game-stage .battle-grid-pokemon{max-height:none}
 }
