@@ -6,8 +6,8 @@
     <template v-if="finished">
       <router-link class="ranking-link" :to="`/classements?mode=${state.durationMinutes}`" target="_blank" rel="noopener">Voir mon rang et le classement ↗</router-link>
       <p>{{ reason }}</p><p role="status">{{ state.settlement?.status === 'complete' ? state.colosseum.wins ? 'Résultat enregistré. Ton meilleur score figure au classement.' : 'Tentative enregistrée. Gagne un combat au Colosseum pour rejoindre le classement.' : 'Enregistrement de ton résultat…' }}</p>
-      <div v-if="state.colosseum.lastTeam.length" class="final-team"><div v-for="p in state.colosseum.lastTeam" :key="p.uuid" :class="{ lost: p.currentHp <= 0 }"><pokemon-portrait :src="sprite(p.pokemonId)" :alt="p.name"/><strong>{{ p.name }}</strong><span>N. {{ p.level }}{{ p.currentHp <= 0 ? ' · K.O.' : '' }}</span></div></div>
-      <p v-if="state.colosseum.lastTeam.length" class="hint">Ton équipe au dernier combat. Les Pokémon K.O. restent visibles dans ton record.</p>
+      <div v-if="resultTeam.length" class="final-team" data-colosseum-result-team :aria-label="entryTeam.length ? 'Équipe à l’entrée du Colosseum' : 'Dernière équipe conservée'"><div v-for="p in resultTeam" :key="p.uuid" :class="{ lost: p.currentHp <= 0 }"><pokemon-portrait :src="sprite(p.pokemonId)" :alt="p.name"/><strong>{{ p.name }}</strong><span>N. {{ p.level }}{{ p.currentHp <= 0 ? ' · K.O.' : '' }}</span></div></div>
+      <p v-if="resultTeam.length" class="hint">{{ entryTeam.length ? 'Toute ton équipe à l’entrée du Colosseum, avec ses niveaux d’entrée, y compris les compagnons éliminés ensuite.' : 'La dernière équipe conservée pour cette tentative.' }}</p>
     </template>
     <template v-else>
       <section v-if="reward" class="milestone" data-colosseum-reward aria-labelledby="reward-title">
@@ -42,6 +42,8 @@ export default {
   computed: {
     durationLabel() { return this.state.durationMinutes === 30 ? '30 minutes' : 'Une heure'; },
     finished() { return this.state.phase === 'results'; },
+    entryTeam() { return this.state.report?.players?.[0]?.tournamentTeam || []; },
+    resultTeam() { return (this.entryTeam.length ? this.entryTeam : this.state.colosseum.lastTeam || []).slice(0, 6); },
     exploring() { return this.state.phase === 'exploration'; },
     next() { return this.state.colosseum.next; },
     reward() { return this.state.colosseum.reward; },
