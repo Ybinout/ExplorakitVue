@@ -42,7 +42,7 @@
           'battle-sprite-anchor',
           'battle-sprite-wild',
           {
-            'battle-fainted': Number(opponent.currentHp)<=0,
+            'battle-fainted': Number(opponent.currentHp)<=0 && !transitionFx.wild,
             [`battle-transition-${transitionFx.wild}`]: Boolean(transitionFx.wild),
             'battle-attacking-wild': battleMoveFx.visible && battleMoveFx.actor === 'opponent',
             'battle-capture-target': captureFx.visible,
@@ -67,7 +67,7 @@
         :class="[
           'battle-sprite-anchor',
           'battle-sprite-player',
-          { 'battle-fainted': Number(currentPokemon.currentHp)<=0, [`battle-transition-${transitionFx.player}`]: Boolean(transitionFx.player), 'battle-attacking-player': battleMoveFx.visible && battleMoveFx.actor === 'player' }
+          { 'battle-fainted': Number(currentPokemon.currentHp)<=0 && !transitionFx.player, [`battle-transition-${transitionFx.player}`]: Boolean(transitionFx.player), 'battle-attacking-player': battleMoveFx.visible && battleMoveFx.actor === 'player' }
         ]"
       >
         <img
@@ -489,7 +489,7 @@ export default {
       else if (this.music.paused) this.music.play().catch(() => {});
     },
     syncAudio() {
-      if (document.hidden) this._presentation?.skipWait();
+      if (document.hidden) { this._presentation?.skipWait(); this._transitionRelease?.(); this.clearCaptureTimers(); }
       this._battleAudio?.setVolume(this.soundEnabled && !document.hidden ? this.audioVolume : 0);
       this.syncMusic();
     },
@@ -528,6 +528,7 @@ export default {
         clearTimeout(this.experienceTimer);
         this.experienceTimer = setTimeout(() => { this.experienceNotice = ''; }, 2000);
       });
+      return task;
     },
     async finishPresentation() {
       this.finishing = true;
@@ -633,20 +634,52 @@ export default {
     },
     reducedMotion() { return !this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches; },
     transitionWait(ms) { return new Promise(resolve=>{const finish=()=>{clearTimeout(this._transitionTimer);this._transitionRelease=null;resolve();};this._transitionRelease=finish;this._transitionTimer=setTimeout(finish,ms);}); },
-    async presentState(payload={}) {
-      const epoch=this.visualEpoch, events=payload.transitions||[], outgoing=events.filter(e=>e.kind==='faint'||e.kind==='recall'), incoming=events.filter(e=>e.kind==='enter');
-      if(outgoing.length){
-        this.transitionLabel=outgoing.map(e=>`${e.name} ${e.kind==='faint'?'est K.O.':'est rappelé.'}`).join(' · ');
-        this.transitionFx={player:'',wild:''};for(const e of outgoing)this.$set(this.transitionFx,e.side==='player'?'player':'wild',e.kind);
-        if(!this.reducedMotion())await this.transitionWait(550);
+    async presentState(payload = {}) {
+      const epoch = this.visualEpoch;
+      const events = payload.transitions || [];
+      const outgoing = events.filter(e => e.kind === 'faint' || e.kind === 'recall');
+      const incoming = events.filter(e => e.kind === 'enter');
+      // Settle damage on the Pokémon that received it before removing its sprite.
+      let hpChanged = false;
+      for (const [side, previous, next] of [
+        ['player', this.currentPokemon, payload.player?.equipe?.pokemons?.[0]],
+        ['wild', this.opponent, payload.wildPokemon]
+      ]) {
+        const faint = outgoing.some(e => e.kind === 'faint' && (e.side === 'player' ? 'player' : 'wild') === side);
+        const nextHp = faint ? 0 : previous?.uuid === next?.uuid ? Number(next?.currentHp) : NaN;
+        if (previous && Number.isFinite(nextHp) && nextHp !== Number(previous.currentHp)) {
+          const delta = nextHp - Number(previous.currentHp);
+          if (faint) this.$set(this.transitionFx, side, 'hit');
+          this.$set(previous, 'currentHp', nextHp);
+          this.triggerHealthFx(side, delta, nextHp);
+          hpChanged = true;
+        }
       }
-      if(epoch!==this.visualEpoch)return;
+      if (hpChanged && !this.reducedMotion()) await this.transitionWait(1020);
+      if (epoch !== this.visualEpoch) return;
+      if (outgoing.length) {
+        this.clearMoveFx(); this.resultFx.visible = false; this.driftNotices = [];
+        this.transitionLabel = outgoing.map(e => `${e.name} ${e.kind === 'faint' ? 'est K.O.' : 'est rappelé.'}`).join(' · ');
+        this.transitionFx = { player: '', wild: '' };
+        for (const e of outgoing) this.$set(this.transitionFx, e.side === 'player' ? 'player' : 'wild', e.kind);
+        if (!this.reducedMotion()) await this.transitionWait(550);
+      }
+      if (epoch !== this.visualEpoch) return;
       this.updateBattleState(payload);
-      this.transitionFx={player:'',wild:''};
-      if(incoming.length){this.transitionLabel=incoming.map(e=>`${e.name} entre en combat.`).join(' · ');for(const e of incoming)this.$set(this.transitionFx,e.side==='player'?'player':'wild','enter');if(!this.reducedMotion())await this.transitionWait(400);}
-      if(epoch!==this.visualEpoch)return;
-      this.transitionFx={player:'',wild:''};
-      if(events.length){clearTimeout(this._transitionLabelTimer);this._transitionLabelTimer=setTimeout(()=>{this.transitionLabel='';},900);}
+      this.transitionFx = { player: '', wild: '' };
+      if (incoming.length) {
+        this.transitionLabel = incoming.map(e => `${e.name} entre en combat.`).join(' · ');
+        for (const e of incoming) this.$set(this.transitionFx, e.side === 'player' ? 'player' : 'wild', 'enter');
+        // Commit the new image and its geometry before the next attack computes its path.
+        await this.$nextTick();
+        if (!this.reducedMotion()) await this.transitionWait(400);
+      }
+      if (epoch !== this.visualEpoch) return;
+      this.transitionFx = { player: '', wild: '' };
+      if (events.length) {
+        clearTimeout(this._transitionLabelTimer);
+        this._transitionLabelTimer = setTimeout(() => { this.transitionLabel = ''; }, 900);
+      }
     },
     playDriftEffects(payload={}) {
       clearTimeout(this.driftNoticeTimer);
@@ -665,12 +698,14 @@ export default {
       const previousPlayerHp = Number(this.currentPokemon?.currentHp);
       for (const [side, previous, next] of [['wild', this.opponent, nextOpponent], ['player', this.currentPokemon, nextPlayer?.equipe?.pokemons?.[0]]]) {
         if (this.getPokemonBattleKey(previous) !== this.getPokemonBattleKey(next) || previous?.data?.id !== next?.data?.id) {
+          this.clearHealthTimers(side);
+          Object.assign(this.attackFx[side], {visible:false,hit:false});
           this.$set(this.battleSpriteStyles, side, {});
           this.$set(this.battleSpriteMetrics, side, { widthRatio: 1, heightRatio: 1 });
         }
       }
-      this.player = nextPlayer;
-      this.opponent = nextOpponent;
+      this.player = nextPlayer ? JSON.parse(JSON.stringify(nextPlayer)) : null;
+      this.opponent = nextOpponent ? JSON.parse(JSON.stringify(nextOpponent)) : null;
       const nextOpponentHp = Number(this.opponent?.currentHp);
       const nextPlayerHp = Number(this.currentPokemon?.currentHp);
       if (previousOpponentKey === this.getPokemonBattleKey(this.opponent)
@@ -799,6 +834,7 @@ export default {
         ? payload.damageClass
         : 'status';
       this.clearMoveFx();
+      if (this.reducedMotion()) return;
       this.movePath = this.buildMovePath(actor, damageClass);
       Object.assign(this.battleMoveFx, {
         actor,
@@ -861,6 +897,13 @@ export default {
       const shakes = Math.max(0, Math.min(3, Math.round(Number(payload.shakes) || 0)));
       const pokemonName = payload.wildPokemonName || this.opponent?.truename || 'Pokemon';
       this.clearCaptureTimers();
+      if (this.reducedMotion()) {
+        this.showMessage(success ? this.tr('captured', { pokemon: pokemonName }) : this.tr('escaped', { pokemon: pokemonName }));
+        return;
+      }
+      let complete;
+      const playback = new Promise(resolve => { complete = resolve; });
+      this._captureRelease = complete;
       Object.assign(this.captureFx, {
         visible: true,
         state: 'throw',
@@ -911,8 +954,10 @@ export default {
         this.captureFx.visible = false;
         this.captureFx.state = 'idle';
         this.captureFx.targetContained = false;
+        this._captureRelease = null; complete();
       }, resultDelay + 620));
       this.captureTimers = timers;
+      return playback;
     },
     unlockAudio() {
       this.syncAudio();
@@ -956,6 +1001,8 @@ export default {
       this.battleMoveFx.visible = false;
     },
     clearCaptureTimers() {
+      this._captureRelease?.(); this._captureRelease = null;
+      Object.assign(this.captureFx, {visible:false,state:'idle',targetContained:false});
       this.captureTimers.forEach((timer) => clearTimeout(timer));
       this.captureTimers = [];
     },
