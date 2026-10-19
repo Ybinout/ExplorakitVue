@@ -10,16 +10,18 @@
         <small class="starter-potential" :title="ivDetails(pokemon)"><potential-star :value="pokemon.k"/><span>{{ ['Commun','Prometteur','Rare','Exceptionnel'][pokemon.k-1] }} · IV moy. {{ averageIv(pokemon) }}/31</span></small><b>Partir ensemble →</b>
       </button></div>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
+      <leave-expedition phase="selection" :busy="busy" @confirm="$emit('cancel')" />
       <p class="note">{{ seconds }} s pour choisir. Sans choix, le premier compagnon est sélectionné. Le chrono d’exploration commence après cette préparation.</p>
     </section>
   </div>
 </template>
 <script>
+import LeaveExpedition from './LeaveExpedition.vue';
 import PokemonPortrait from '../PokemonPortrait.vue';
 import PotentialStar from '../PotentialStar.vue';
 import { localizeTypeName } from '@/services/pokemonTypes';
 export default {
-  components:{PokemonPortrait,PotentialStar},props:{choices:{type:Array,default:()=>[]},seconds:Number,busy:Boolean,error:String},
+  components:{LeaveExpedition,PokemonPortrait,PotentialStar},props:{choices:{type:Array,default:()=>[]},seconds:Number,busy:Boolean,error:String},
   mounted(){this.$refs.dialog.focus();},
   methods:{averageIv(p){return Math.round(Object.values(p.iv || {}).reduce((sum,n)=>sum+n,0)/6);},ivDetails(p){return `Moyenne des six IV. PV ${p.iv?.hp}, ATQ ${p.iv?.attack}, DÉF ${p.iv?.defense}, ATQ SPÉ ${p.iv?.specialAttack}, DÉF SPÉ ${p.iv?.specialDefense}, VIT ${p.iv?.speed}.`;},typeName(type){return localizeTypeName(type,'fr');},trap(event){const buttons=[...this.$el.querySelectorAll('button:not(:disabled)')];if(!buttons.length){event.preventDefault();return;}const i=buttons.indexOf(document.activeElement);if(event.shiftKey&&i<=0){event.preventDefault();buttons.at(-1).focus();}else if(!event.shiftKey&&i===buttons.length-1){event.preventDefault();buttons[0].focus();}}}
 };

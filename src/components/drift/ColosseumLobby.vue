@@ -5,12 +5,13 @@
     <div class="colosseum-layout">
       <section class="start-card" aria-labelledby="challenge-title"><p class="eyebrow">LE DÉFI SOLO</p><h2 id="challenge-title">Prépare ton expédition</h2>
         <fieldset class="format-choice" :disabled="busy || Boolean(activeRun)"><legend>Temps d’exploration</legend><div><button v-for="minutes in [30,60]" :key="minutes" type="button" :data-colosseum-format="minutes" :aria-pressed="durationMinutes === minutes" @click="durationMinutes=minutes">{{ minutes === 30 ? '30 min · Express' : '1 h · Classique' }}</button></div><p v-if="activeRun">Le format de ton défi en cours est fixé.</p></fieldset>
-        <ol><li><span>01</span><div><strong>Explore pendant {{ durationLabel }}</strong><p>Pars sur les mêmes cartes avec un compagnon choisi parmi trois Pokémon de base aléatoires, hors légendaires. Capture ton équipe et trouve des Drifts.</p><p>XP du combattant ×3,456 par rapport à l’Aventure, en exploration comme dans l’arène (arrondi inférieur). Les réserves gardent leur gain : 40 % de la base ×4,8, en plus du partage des Drifts.</p></div></li><li><span>02</span><div><strong>Entre au Colosseum</strong><p>À la fin du chrono, ton équipe rejoint l’arène. Prépare-toi grâce à l’aperçu des adversaires. Un gardien thématique t’attend tous les 5 combats : bats-le pour choisir un Drift épique, puis légendaire dès le palier 15.</p></div></li><li><span>03</span><div><strong>Gravis le classement</strong><p>Les survivants sont soignés entre les combats. Le Talisman de sauvegarde protège une fois de la perte définitive : son porteur reste K.O. jusqu’au prochain soin. Une équipe entièrement K.O. perd le défi. Dès le premier défi, l’IA compare les dégâts, la précision et les priorités. Elle progresse tous les 5 combats : changements tactiques dès le défi 6, soutien dès le 11, anticipation experte dès le 16. Chaque adversaire porte un objet adapté, annoncé avant le combat.</p></div></li></ol>
+        <ol><li><span>01</span><div><strong>Explore pendant {{ durationLabel }}</strong><p>Pars sur les mêmes cartes avec un compagnon choisi parmi trois Pokémon de base aléatoires, hors légendaires, avec au moins 10 IV dans chaque statistique. Capture ton équipe et trouve des Drifts.</p><p>XP du combattant ×3,456 par rapport à l’Aventure, en exploration comme dans l’arène (arrondi inférieur). Les réserves gardent leur gain : 40 % de la base ×4,8, en plus du partage des Drifts.</p></div></li><li><span>02</span><div><strong>Entre au Colosseum</strong><p>À la fin du chrono, ton équipe rejoint l’arène. Prépare-toi grâce à l’aperçu des adversaires. Un gardien thématique t’attend tous les 5 combats : bats-le pour choisir un Drift épique, puis légendaire dès le palier 15.</p></div></li><li><span>03</span><div><strong>Gravis le classement</strong><p>Les survivants sont soignés entre les combats. Le Talisman de sauvegarde protège une fois de la perte définitive : son porteur reste K.O. jusqu’au prochain soin. Une équipe entièrement K.O. perd le défi. Dès le premier défi, l’IA compare les dégâts, la précision et les priorités. Elle progresse tous les 5 combats : changements tactiques dès le défi 6, soutien dès le 11, anticipation experte dès le 16. Chaque adversaire porte un objet adapté, annoncé avant le combat.</p></div></li></ol>
         <p class="connection-note">Le chrono continue si tu te déconnectes. Tu as 90 secondes pour revenir.</p>
         <p v-if="error" class="error" role="alert">{{ error }}</p>
         <p v-if="foreignLobby" class="error">Tu as déjà un salon Rift. <router-link to="/drift">Revenir à mon Rift →</router-link></p>
         <router-link v-else-if="activeRun" class="primary" to="/colosseum/game" data-colosseum-resume>Reprendre mon défi <span>→</span></router-link>
         <button v-else class="primary" data-colosseum-start :disabled="busy || !loaded || !connected" @click="start">{{ busy ? 'Préparation…' : !loaded ? 'Connexion…' : `Lancer l’exploration · ${durationMinutes === 30 ? '30 min' : '1 h'}` }} <span>→</span></button>
+        <leave-expedition v-if="lobby" :phase="lobby.phase" :busy="busy" :disabled="!connected" @confirm="leave" />
         <button v-if="!connected && connectionFailed" class="retry" @click="retry">Réessayer la connexion</button>
         <p class="separate-save">L’équipe de ton Aventure reste dans sa propre sauvegarde.</p>
       </section>
@@ -22,12 +23,13 @@
         <p v-if="loading" role="status" class="empty">Chargement du classement…</p><p v-else-if="rankingError" class="error" role="alert">Le classement est indisponible. <button class="retry" @click="loadRanking">Réessayer</button></p>
         <div v-else-if="!entries.length" class="empty"><drift-glyph name="trophy" /><h3>La première place t’attend.</h3><p>Termine une tentative avec au moins une victoire au Colosseum pour inscrire ton nom ici.</p></div>
         <ol v-else class="rank-list"><li v-for="entry in entries" :key="entry.userId" :class="{ me: entry.userId === userId }"><span class="rank">{{ entry.rank }}</span><div class="rank-body"><div class="rank-title"><router-link :to="`/profil/${entry.userId}`" :target="activeRun ? '_blank' : null" rel="noopener">{{ entry.username }}<small v-if="entry.userId === userId"> · toi</small></router-link><b>{{ number(entry.score) }} <small>pts</small></b></div><rank-badge v-if="entry.league" :rank="entry.league"/><span class="wins">{{ entry.wins }} victoire{{ entry.wins > 1 ? 's' : '' }} · {{ date(entry.finishedAt) }}</span><div class="record-team" aria-label="Équipe du record"><span v-for="(p,index) in entry.team" :key="index" :title="`${p.name} · N. ${p.level}${p.knockedOut ? ' · K.O.' : ''}`"><img :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name" /><small>N. {{ p.level }}{{ p.knockedOut ? ' · K.O.' : '' }}</small></span></div></div></li></ol>
-        <p class="ranking-note">Équipes du dernier combat de chaque record. À égalité, le premier record établi conserve sa place. Les 50 meilleurs dresseurs sont affichés.</p>
+        <p class="ranking-note">Équipes à l’entrée du Colosseum pour chaque record. À égalité, le premier record établi conserve sa place. Les 50 meilleurs dresseurs sont affichés.</p>
       </section>
     </div>
   </main>
 </template>
 <script>
+import LeaveExpedition from './LeaveExpedition.vue';
 import api from '@/services/api';
 import { getSession } from '@/services/session';
 import { createDriftSocket, getDriftConnectionFailure } from '@/services/realtime';
@@ -35,8 +37,8 @@ import RankProgress from '../social/RankProgress.vue';
 import RankBadge from '../social/RankBadge.vue';
 import DriftGlyph from './DriftGlyph.vue';
 export default {
-  name:'ColosseumLobby', components:{ DriftGlyph, RankBadge, RankProgress },
-  data() { return { durationMinutes:60,rankingMinutes:60,rankingRequest:0,socket:null,connected:false,loaded:false,connectionFailed:false,lobby:null,busy:false,error:'',loading:false,rankingError:false,entries:[],personal:null,userId:Number(getSession()?.id) }; },
+  name:'ColosseumLobby', components:{ LeaveExpedition, DriftGlyph, RankBadge, RankProgress },
+  data() { return { durationMinutes:30,rankingMinutes:30,rankingRequest:0,socket:null,connected:false,loaded:false,connectionFailed:false,lobby:null,busy:false,error:'',loading:false,rankingError:false,entries:[],personal:null,userId:Number(getSession()?.id) }; },
   computed:{ durationLabel() { return this.durationMinutes === 30 ? '30 minutes' : '1 heure'; }, foreignLobby() { return this.lobby && this.lobby.mode !== 'colosseum'; }, activeRun() { return this.lobby?.mode === 'colosseum' && !['lobby','results'].includes(this.lobby.phase); } },
   mounted() {
     this.loadRanking();this.socket=createDriftSocket(getSession()?.token);
@@ -51,6 +53,11 @@ export default {
     number(n) { return Number(n).toLocaleString('fr-FR'); },
     date(n) { return new Date(n).toLocaleDateString('fr-FR',{timeZone:'Europe/Paris'}); },
     async loadRanking() { const request=++this.rankingRequest;this.loading=true;this.rankingError=false;this.personal=null;try { const {data}=await api.get('/rift/colosseum/leaderboard',{params:{durationMinutes:this.rankingMinutes}});if(request!==this.rankingRequest)return;this.entries=data.entries;this.personal=data.personal; }catch(e){if(request===this.rankingRequest)this.rankingError=true;}finally{if(request===this.rankingRequest)this.loading=false;} },
+    async leave() {
+      if(this.busy || !this.connected)return;this.busy=true;this.error='';
+      try { const result=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('drift:leave',{},(e,r)=>e?reject(e):resolve(r)));if(!result?.ok)throw Error(result?.message || 'Sortie indisponible.');this.durationMinutes=30; }
+      catch(e){this.error=e.message || 'Le serveur ne répond pas.';}finally{this.busy=false;}
+    },
     async start() {
       if(this.busy || !this.connected)return;this.busy=true;this.error='';
       try { const result=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('colosseum:start',{durationMinutes:this.durationMinutes},(e,r)=>e?reject(e):resolve(r)));if(!result?.ok)throw Error(result?.message || 'Lancement indisponible.');this.$router.push('/colosseum/game'); }

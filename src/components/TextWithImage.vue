@@ -2,7 +2,7 @@
   <div class="dialogue-shell">
     <div class="text-with-image">
       
-      <div class="text">{{ displayedText }}</div>
+      <div class="text" role="button" tabindex="0" aria-label="Continuer le dialogue" @click="continueText" @keydown.enter.stop.prevent="continueText" @keydown.space.stop.prevent="continueText">{{ displayedText }}</div>
       <div class="texts">
         <div v-if="portraitFrame" class="portrait-atlas" role="img" aria-label="Portrait du personnage" :style="portraitStyle"></div>
         <img v-else class="imagetoto" :src="currentImageSrc" alt="Illustration" />
@@ -59,10 +59,11 @@ export default {
     },
   },
   methods: {
+    continueText() { this.playSound(); this.advanceText(); },
     handleSpacePress(event) {
       if (event.code === 'Space') {
-        this.playSound();  // Lecture du son
-        this.advanceText();
+        event.preventDefault();
+        if (!event.repeat) this.continueText();
       }
     },
     playSound() {
@@ -188,5 +189,5 @@ export default {
 @media (max-height: 480px) and (orientation: landscape) {
   .dialogue-shell { padding: 10px 118px 10px 10px; }
 }
-.portrait-atlas { width: 100%; max-width: 190px; aspect-ratio: 1; background-repeat: no-repeat; }
+.portrait-atlas { image-rendering:pixelated; width: 100%; max-width: 190px; aspect-ratio: 1; background-repeat: no-repeat; }
 </style>

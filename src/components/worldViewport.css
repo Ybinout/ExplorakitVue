@@ -21,7 +21,7 @@
 .game-root.is-mobile .game-stage .world-toolbar { flex:none; min-height:56px; padding:6px 10px; border-width:0 0 1px; border-radius:0; gap:8px; }
 .game-root.is-mobile .game-stage .world-viewport { flex:1; min-height:0; aspect-ratio:auto; }
 .game-root.is-mobile .game-stage .test { border:0; border-radius:0; }
-.game-root.is-mobile .mobile-control-dock { flex:0 0 160px; min-height:0; background:var(--journal-paper); border-top:1px solid var(--journal-border); }
+.game-root.is-mobile .mobile-control-dock { flex:0 0 160px; min-height:0; background:var(--journal-paper); border-top:1px solid var(--journal-border); touch-action:none; }
 .game-root.is-mobile .game-stage .mobile-controls-shell {
   position:static; display:flex; width:100%; height:100%; padding:10px 24px;
   justify-content:space-between; align-items:center; gap:20px; pointer-events:none;

@@ -8,12 +8,12 @@
         { 'battle-impact-active': attackFx.wild.hit || attackFx.player.hit }
       ]"
     >
-      <picture v-if="challenge" class="battle-arena-background"><source media="(orientation: landscape)" :srcset="require('@/assets/battle/colosseum-wide-v2.webp')"><img src="../../assets/battle/colosseum-mobile-v2.webp" class="battle-background battle-colosseum-background" alt=""></picture>
-      <img v-else src="../../assets/battle/back.webp" class="battle-background" alt="">
+      <picture v-if="challenge" class="battle-arena-background"><source media="(orientation: landscape)" :srcset="require('@/assets/battle/colosseum-wide-v2.webp')"><img src="../../assets/battle/colosseum-mobile-v3.webp" class="battle-background battle-colosseum-background" alt=""></picture>
+      <picture v-else class="battle-arena-background"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/grass-mobile-v3.webp')"><img src="../../assets/battle/back.webp" class="battle-background" alt=""></picture>
       <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
-      <template v-if="challenge">
+      <template v-if="challenge || mobile">
         <div v-for="side in ['wild', 'player']" :key="`platform-${side}`" :class="['battle-platform', `battle-position-${side}`]" :data-battle-platform="side" aria-hidden="true">
-          <img src="../../assets/battle/colosseum-platform.webp" alt="">
+          <span v-if="mobile" :class="['battle-ground-disc', { 'arena-disc': challenge }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
         </div>
       </template>
       <div class="battle-atmosphere" aria-hidden="true"></div>
@@ -156,12 +156,20 @@
       </div>
     </div>
 
-    <div class="bar battle-action-shell">
+    <div class="bar battle-action-shell" :class="{ 'has-battle-notices': hasAnnouncements }">
       <div :class="['battle-turn-indicator', { 'is-ready': canChooseAction }]">
         <span class="battle-turn-dot" aria-hidden="true"></span>
         {{ turnLabel }}
         <span v-if="challenge" class="battle-challenge" data-battle-challenge>{{ challenge.guardian ? 'Gardien' : 'Défi' }} {{ challenge.wave }} · {{ challenge.guardian?.name || challenge.difficulty?.label }}</span>
       </div>
+
+        <div v-if="hasAnnouncements && mobile" class="battle-announcements battle-mobile-announcements" role="status">
+          <p v-if="notice" class="battle-action-notice">{{ notice }}</p>
+          <p v-if="captureFx.visible && captureFx.message" class="battle-capture-notice">{{ captureFx.message }}</p>
+          <p v-if="transitionLabel" class="battle-transition-label" data-battle-transition>{{ transitionLabel }}</p>
+          <div v-if="driftNotices.length" class="battle-drift-notices" data-battle-drift-effects><p v-for="notice in driftNotices" :key="notice.side">✧ {{ notice.side==='player' ? 'Tes Drifts' : 'Drifts adverses' }} · {{ notice.text }}</p></div>
+          <p v-if="fieldLabel" class="battle-field-label">{{ fieldLabel }}</p>
+        </div>
 
       <button
         type="button"
@@ -173,8 +181,8 @@
         {{ soundEnabled ? '♪' : '×' }}
       </button>
 
-      <div class="battle-action-display" :class="{ 'has-battle-notices': hasAnnouncements }">
-        <div v-if="hasAnnouncements" class="battle-announcements" role="status">
+      <div class="battle-action-display" :class="{ 'has-battle-notices': hasAnnouncements && !mobile }">
+        <div v-if="hasAnnouncements && !mobile" class="battle-announcements" role="status">
           <p v-if="notice" class="battle-action-notice">{{ notice }}</p>
           <p v-if="captureFx.visible && captureFx.message" class="battle-capture-notice">{{ captureFx.message }}</p>
           <p v-if="transitionLabel" class="battle-transition-label" data-battle-transition>{{ transitionLabel }}</p>
@@ -284,6 +292,7 @@ export default {
   name: 'BattleOverlay',
   components: { HealthBar, ExperienceBar, PotentialStar },
   props: {
+    mobile: Boolean,
     notice: { type: String, default: '' },
     active: { type: Boolean, default: false },
     colosseumChallenge: { type: Object, default: null },
@@ -760,10 +769,16 @@ export default {
       const high = side === 'player' && card && sceneRect ? card.left - sceneRect.left - 8 : width - 8;
       const maxWidth = Math.max(64, Math.min(180, high - low));
       const stackHeight = this.feedbackHeights[side] || 70;
+      const otherCard = (side === 'wild' ? this.$refs.playerStatusCard : this.$refs.opponentStatusCard)?.getBoundingClientRect();
+      let topLimit = 8, bottomLimit = height - 8;
+      if (otherCard && sceneRect && low < otherCard.right - sceneRect.left && high > otherCard.left - sceneRect.left) {
+        if (side === 'player') topLimit = Math.max(topLimit, otherCard.bottom - sceneRect.top + 8);
+        else bottomLimit = Math.min(bottomLimit, otherCard.top - sceneRect.top - 8);
+      }
       return {
         left: `${Math.max(low + maxWidth / 2, Math.min(high - maxWidth / 2, geometry.centerX))}px`,
-        top: `${Math.max(8, Math.min(height - stackHeight - 8, geometry.bottomY - geometry.height - stackHeight - 8))}px`,
-        width: `${maxWidth}px`, maxHeight: `${height - 16}px`
+        top: `${Math.max(topLimit, Math.min(bottomLimit - stackHeight, geometry.bottomY - geometry.height - stackHeight - 8))}px`,
+        width: `${maxWidth}px`, maxHeight: `${Math.max(1, bottomLimit - topLimit)}px`
       };
     },
     buildMovePath(actor, damageClass) {
@@ -858,6 +873,7 @@ export default {
     },
     playMoveResult(payload = {}) {
       const labels = [];
+      if (Number(payload.hits) > 1) labels.push({ key: 'hits', text: `${payload.hits} ${this.preferences.language === 'en' ? 'hits' : 'coups'}` });
       if (payload.missed) labels.push({ key: 'miss', text: this.tr('missed') });
       if (payload.immune || Number(payload.effectiveness) === 0) labels.push({ key: 'immune', text: this.tr('immune') });
       else if (payload.blocked) labels.push({ key: 'blocked', text: this.tr('blocked') });

@@ -47,6 +47,11 @@
 
           </template>
 
+          <template v-else-if="lobby.phase !== 'lobby' || lobby.mode === 'colosseum'">
+            <p class="quiet">Une expédition {{ lobby.mode === 'colosseum' ? 'Colosseum' : 'Rift' }} existe déjà pour ton compte.</p>
+            <router-link class="gold-button" data-expedition-resume :to="lobby.mode === 'colosseum' ? '/colosseum/game' : '/drift/game'">Reprendre l’expédition →</router-link>
+            <leave-expedition :phase="lobby.phase" :busy="busy" :disabled="!connected" @confirm="leaveLobby" />
+          </template>
           <template v-else>
             <div class="invite"><div><small>{{ lobby.visibility === 'public' ? 'RIFT PUBLIC · INVITE TES RIVAUX' : 'RIFT PRIVÉ · INVITE TES RIVAUX' }}</small><strong>{{ lobby.code }}</strong></div><button class="subtle-button" @click="copyCode">{{ copied ? 'Copié !' : 'Copier le code' }}</button></div>
             <div class="lobby-rules"><label><span><drift-glyph name="players" /> Dresseurs</span><select :value="lobby.capacity" :disabled="!isHost || busy || !connected" @change="configure('capacity', Number($event.target.value))"><option v-for="size in capacities" :key="size" :value="size" :disabled="size < lobby.players.length">{{ size }} joueurs</option></select></label>
@@ -145,6 +150,7 @@
 
 <script>
 import { clearSession, getSession } from '@/services/session';
+import LeaveExpedition from './LeaveExpedition.vue';
 import api from '@/services/api';
 import { createDriftSocket, getDriftConnectionFailure } from '@/services/realtime';
 import RiftRankSummary from '../social/RiftRankSummary.vue';
@@ -155,7 +161,7 @@ import { readDriftReports } from '@/services/driftReportHistory';
 
 export default {
   name: 'DriftLobby',
-  components: { RiftRankSummary, RiftCollection, DriftGlyph, DriftRunReport },
+  components: { LeaveExpedition, RiftRankSummary, RiftCollection, DriftGlyph, DriftRunReport },
   data() {
     const user = getSession() || {};
     return { userId: Number(user.id), username: user.username || 'Dresseur', socket: null, connected: false,
@@ -203,7 +209,7 @@ export default {
       this.refreshLobbies();
     });
     this.socket.on('drift:lobbies', rooms => { this.publicLobbies = Array.isArray(rooms) ? rooms : []; this.listLoaded = true; this.listError = ''; });
-    this.socket.on('drift:lobby', lobby => { this.lobby = lobby; if (lobby?.mode === 'colosseum') this.$router.replace(lobby.phase === 'lobby' || lobby.phase === 'results' ? '/colosseum' : '/colosseum/game'); else if (lobby && lobby.phase !== 'lobby') this.$router.replace('/drift/game'); });
+    this.socket.on('drift:lobby', lobby => { const previous=this.lobby; this.lobby=lobby; if(previous?.phase==='lobby' && lobby && lobby.phase!=='lobby') this.$router.replace(lobby.mode==='colosseum'?'/colosseum/game':'/drift/game'); });
     this.socket.connect();
   },
   beforeDestroy() { this.socket?.removeAllListeners(); this.socket?.disconnect(); },

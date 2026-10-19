@@ -49,8 +49,9 @@
 .game-root.is-mobile .game-stage .battle-challenge { flex-basis:100%; font-size:9px; }
 
 @media (orientation:portrait) and (max-height:600px) {
-  .game-root.is-mobile .game-stage .battle-action-shell { grid-template-rows:44px 48px 92px; }
-  .game-root.is-mobile .game-stage .battle-action-shell:has(.battle-grid) { grid-template-rows:44px 92px 92px; }
+  .game-root.is-mobile .game-stage .battle-action-shell { grid-template-rows:44px 92px 92px; }
+  .game-root.is-mobile .game-stage .battle-result-fx { gap:3px; }
+  .game-root.is-mobile .game-stage .battle-result-chip { padding:3px 4px; font-size:10px; line-height:1.15; }
   .game-root.is-mobile .game-stage .battle-position-wild { top:min(64%,calc(100% - 120px)); }
   .game-root.is-mobile .game-stage .battle-colosseum .battle-position-wild { top:min(64%,calc(100% - 120px)); }
 }
@@ -65,3 +66,17 @@
   .game-root.is-mobile .game-stage .battle-colosseum .battle-position-player { --sprite-visible-size:106px; top:100%; }
   .game-root.is-mobile .game-stage .battle-colosseum .battle-position-wild { --sprite-visible-size:90px; top:min(64%,calc(100% - 140px)); }
 }
+
+/* A fixed header slot receives transient text; choice buttons never move. */
+.game-root.is-mobile .game-stage .battle-mobile-announcements { grid-column:1; grid-row:1; min-height:0; max-height:44px; overflow:auto; overscroll-behavior:contain; padding:0; gap:4px; align-self:stretch; }
+.game-root.is-mobile .game-stage .battle-mobile-announcements p { padding:4px 7px; font-size:11px; line-height:1.4; flex:none; }
+.game-root.is-mobile .game-stage .battle-action-shell.has-battle-notices .battle-turn-indicator { visibility:hidden; }
+
+/* Mobile art uses a continuous floor. Discs share the sprites' exact ground anchors. */
+@media (orientation:portrait) {
+  .game-root.is-mobile .game-stage .battle-background { object-fit:fill; filter:none; image-rendering:pixelated; }
+  .game-root.is-mobile .game-stage .battle-colosseum .battle-background { object-fit:fill; }
+}
+.game-root.is-mobile .game-stage .battle-ground-disc { position:absolute; left:0; top:0; width:calc(var(--sprite-visible-size) * 1.55); height:calc(var(--sprite-visible-size) * .4); transform:translate(-50%,-58%); border:3px solid #6c8740; border-bottom:5px solid #516431; border-radius:50%; background:#a2bc6c; box-shadow:0 3px 0 #344b3838,inset 0 3px 0 #c7d795; }
+.game-root.is-mobile .game-stage .battle-position-player .battle-ground-disc { width:calc(var(--sprite-visible-size) * 1.8); height:calc(var(--sprite-visible-size) * .46); transform:translate(-50%,-84%); }
+.game-root.is-mobile .game-stage .battle-ground-disc.arena-disc { background:#d9c18b; border-color:#a88c56; border-bottom-color:#89703f; box-shadow:0 3px 0 #49361645,inset 0 3px 0 #f5e5b6; }

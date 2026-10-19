@@ -5,7 +5,7 @@
       <div class="game-stage">
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
       <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
-      <starter-choice v-if="isDrift && driftState?.phase==='selection'" :choices="driftState.starterChoices" :seconds="Math.max(0,Math.ceil((driftState.selectionEndsAt-driftClock-driftOffset)/1000))" :busy="starterBusy" :error="starterError" @choose="chooseStarter" />
+      <starter-choice v-if="isDrift && driftState?.phase==='selection'" :choices="driftState.starterChoices" :seconds="Math.max(0,Math.ceil((driftState.selectionEndsAt-driftClock-driftOffset)/1000))" :busy="starterBusy" :error="starterError" @choose="chooseStarter" @cancel="cancelStarter" />
       <move-learning-panel v-if="learningVisible" :key="learningPokemon.pendingMoves[0].id" :pokemon="learningPokemon" :busy="learningBusy" :error="learningError" @choose="chooseLearnedMove" @later="learningDeferred = true" />
       <battle-result-panel v-if="battleResult" :result="battleResult" @continue="dismissBattleResult" />
       <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
@@ -13,7 +13,7 @@
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
       <battle-overlay
         ref="battleOverlay"
-        :active="battle"
+        :active="battle" :mobile="showMobileControls"
         :bag-items="bagItems"
         :bag-loading="bagLoading"
         :preferences="preferences"
@@ -47,6 +47,7 @@
               <journal-icon :name="item.key==='contracts'?'progress':item.key" /><span>{{ menuItemLabel(item) }}</span>
               <small v-if="item.key==='contracts' && readyContractCount" class="contract-reward-label">{{ readyContractCount }} à récupérer</small>
             </button>
+            <leave-expedition v-if="isDrift" :phase="driftState?.phase" :busy="starterBusy" :disabled="!socket?.connected" @confirm="cancelStarter" />
           </nav>
         </div>
         <div v-if="!battle" class="location-banner">
@@ -210,13 +211,15 @@
             <button v-if="mapLoadError" @click="loadMapImage">{{ preferences.language === 'en' ? 'Retry' : 'Réessayer' }}</button>
           </div>
         </div>
-        <div v-if="showMobileControls" class="mobile-control-dock">
+        <div v-if="showMobileControls" class="mobile-control-dock"
+          @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
+          @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture">
         <div
           v-if="showMobileControls && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
           <div class="mobile-dpad" :inert="textImageSequence.length ? '' : null" :aria-hidden="textImageSequence.length ? 'true' : null" aria-label="Pad directionnel"
-            @pointerdown.prevent="startMobileGesture($event, 'pad')" @pointermove.prevent="moveMobileGesture"
+            @pointerdown.stop.prevent="startMobileGesture($event, 'pad')" @pointermove.stop.prevent="moveMobileGesture"
             @pointerup.prevent="endMobileGesture" @pointercancel.prevent="endMobileGesture" @lostpointercapture="endMobileGesture">
             <button
               class="mobile-dpad-btn mobile-dpad-up"
@@ -252,7 +255,7 @@
           <button
             class="mobile-action-a"
             :aria-label="textImageSequence.length ? (preferences.language === 'en' ? 'Continue dialogue' : 'Continuer le dialogue') : (preferences.language === 'en' ? 'Interact' : 'Parler ou agir')"
-            @pointerdown.prevent="triggerMobileActionA"
+            @pointerdown.stop.prevent="triggerMobileActionA"
             @click="activateMobileActionA"
           >
             A
@@ -369,6 +372,7 @@ import {
   normalizeTeamPokemon
 } from "@/services/gameView";
 import PokemonPortrait from './PokemonPortrait.vue';
+import LeaveExpedition from './drift/LeaveExpedition.vue';
 import StarterChoice from './drift/StarterChoice.vue';
 import heldItemDefinitions from '@/data/heldItems.json';
 import PokemonDetails from './menu/PokemonDetails.vue';
@@ -393,7 +397,7 @@ const MOVEMENT_INTERPOLATION_MS = 175;
 
 export default {
   components: {
-    StarterChoice,
+    StarterChoice, LeaveExpedition,
     JournalIcon,
     BattleResultPanel,
     MoveLearningPanel,
@@ -716,6 +720,10 @@ export default {
       const ok=await this.driftCommand(command);this.shop.loading=false;
       if(!ok)this.shop.error=this.interactionNotice || 'Transaction indisponible.';
       else this.showInteractionNotice('Transaction sauvegardée.');
+    },
+    async cancelStarter() {
+      if(this.starterBusy)return;this.starterBusy=true;this.starterError='';
+      try { await this.leaveDrift();this.starterError=this.interactionNotice; } finally {this.starterBusy=false;}
     },
     async leaveDrift() { if (await this.driftCommand({ name: 'drift:exit' })) this.$router.replace(this.driftLobbyPath); },
     async watchDriftMatch(matchId) {
@@ -1153,6 +1161,7 @@ export default {
       });
       registerSources(pnjContext);
       registerSources(playerSpriteContext);
+      sources['townspeople.png'] = sources['townspeople-pixel-v2.png'];
       this.pnjSpriteSources = sources;
     },
     normalizePnjSpriteName(spriteName) {
