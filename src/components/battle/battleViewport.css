@@ -18,7 +18,7 @@
 .game-root.is-mobile .game-stage .battle-status-name { min-width:0; overflow-wrap:anywhere; font-size:12px; }
 .game-root.is-mobile .game-stage .battle-status-top { gap:5px; margin-bottom:6px; }
 .game-root.is-mobile .game-stage .battle-status-details { font-size:9px; }
-.game-root.is-mobile .game-stage .battle-status-details span:last-child { display:none; }
+.game-root.is-mobile .game-stage .battle-status-details .battle-status-ability { display:none; }
 .game-root.is-mobile .game-stage .battle-action-shell {
   position:relative; inset:auto; width:100%; height:auto; min-height:0; margin:0;
   display:grid; grid-template-columns:minmax(0,1fr) 44px; grid-template-rows:44px 92px 92px;

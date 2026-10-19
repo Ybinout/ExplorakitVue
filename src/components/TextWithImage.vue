@@ -4,7 +4,7 @@
       
       <div class="text" role="button" tabindex="0" aria-label="Continuer le dialogue" @click="continueText" @keydown.enter.stop.prevent="continueText" @keydown.space.stop.prevent="continueText">{{ displayedText }}</div>
       <div class="texts">
-        <div v-if="portraitFrame" class="portrait-atlas" role="img" aria-label="Portrait du personnage" :style="portraitStyle"></div>
+        <atlas-portrait v-if="portraitFrame" :src="currentImageSrc" :frame="portraitFrame" />
         <img v-else class="imagetoto" :src="currentImageSrc" alt="Illustration" />
       </div>
       
@@ -13,7 +13,9 @@
 </template>
 
 <script>
+import AtlasPortrait from './AtlasPortrait.vue';
 export default {
+  components:{AtlasPortrait},
   props: {
     sequence: {
       type: Array,
@@ -42,10 +44,6 @@ export default {
   },
   computed: {
     portraitFrame() { return this.sequence[this.currentIndex]?.portraitFrame; },
-    portraitStyle() {
-      const f = this.portraitFrame;
-      return { backgroundImage: `url(${this.currentImageSrc})`, backgroundSize: `${f.columns * 100}% ${f.rows * 100}%`, backgroundPosition: `${(f.index % f.columns) / (f.columns - 1) * 100}% ${Math.floor(f.index / f.columns) / (f.rows - 1) * 100}%` };
-    },
     currentText() {
       return this.sequence[this.currentIndex]?.text || '';
     },

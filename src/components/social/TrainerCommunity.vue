@@ -26,7 +26,7 @@
           </section>
           <section v-for="record in profile.colosseum" :key="record.durationMinutes" class="community-card"><p class="eyebrow">COLOSSEUM · {{ record.durationMinutes===30 ? '30 MIN' : '1 HEURE' }}</p><rank-progress :rank="record.rank" :value="record.score"/><p class="muted">{{ number(record.score) }} points</p>
             <p class="muted">{{ record.wins ? `${record.wins} dresseurs vaincus sur ce record` : 'Aucun record classé dans ce format.' }}</p>
-            <div v-if="record.team.length" class="record-team" aria-label="Équipe du record"><span v-for="(p,index) in record.team" :key="index"><img :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name"/><small>N. {{ p.level }}{{ p.knockedOut ? ' · K.O.' : '' }}</small></span></div>
+            <div v-if="record.team.length" class="record-team" aria-label="Équipe du record"><span v-for="(p,index) in record.team" :key="index"><img :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name"/><small>N. {{ p.level }}{{ p.knockedOut ? ' · K.O.' : '' }}</small></span></div><colosseum-defeat :defeat="record.defeat"/>
           </section>
         </div>
         <p class="privacy-note">Les profils montrent les rangs, résultats et équipes des records Colosseum. Les objets, pièces et Pokémon de l’Aventure restent privés.</p>
@@ -60,7 +60,7 @@
           <p v-if="!ranking.length" class="empty">Le classement attend ses premiers dresseurs. À toi de prendre la première place !</p>
           <ol class="trainer-list ranking-list"><li v-for="trainer in ranking" :key="trainer.id || trainer.userId" :data-trainer-id="trainer.id || trainer.userId" :class="{me:(trainer.id || trainer.userId)===userId,podium:(trainer.position || trainer.rank)<=3}">
             <span class="position">#{{ trainer.position || trainer.rank }}</span><div class="ranked-player"><router-link class="trainer-link" :to="`/profil/${trainer.id || trainer.userId}`"><strong>{{ trainer.username }}<small v-if="(trainer.id || trainer.userId)===userId"> · toi</small></strong><rank-badge :rank="rankingMode==='rift' ? trainer.rift.rank : trainer.league" :detail="`${(rankingMode==='rift' ? trainer.rift.rank : trainer.league).lp} PL`"/></router-link>
-              <div v-if="rankingMode!=='rift' && trainer.team.length" class="ranking-team" aria-label="Équipe du record"><img v-for="(p,index) in trainer.team" :key="index" :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name" :title="`${p.name} · N. ${p.level}${p.knockedOut ? ' · K.O.' : ''}`"/></div>
+              <div v-if="rankingMode!=='rift' && trainer.team.length" class="ranking-team" aria-label="Équipe du record"><img v-for="(p,index) in trainer.team" :key="index" :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name" :title="`${p.name} · N. ${p.level}${p.knockedOut ? ' · K.O.' : ''}`"/></div><colosseum-defeat v-if="rankingMode!=='rift'" :defeat="trainer.defeat"/>
             </div><div class="ranked-value"><strong>{{ number(rankingMode==='rift' ? trainer.rift.rating : trainer.score) }}</strong><small>{{ rankingMode==='rift' ? 'Elo' : 'points' }}</small><span>{{ rankingMode==='rift' ? `${trainer.rift.ratedGames} partie${trainer.rift.ratedGames>1 ? 's' : ''}` : `${trainer.wins} victoire${trainer.wins>1 ? 's' : ''}` }}</span></div>
           </li></ol>
         </section>
@@ -70,13 +70,14 @@
   </main>
 </template>
 <script>
+import ColosseumDefeat from '../drift/ColosseumDefeat.vue';
 import api from '@/services/api';
 import { getSession } from '@/services/session';
 import RankProgress from './RankProgress.vue';
 import RankBadge from './RankBadge.vue';
 import FriendActions from './FriendActions.vue';
 export default {
-  name:'TrainerCommunity',components:{RankBadge,RankProgress,FriendActions},
+  name:'TrainerCommunity',components:{ColosseumDefeat,RankBadge,RankProgress,FriendActions},
   data(){return {userId:Number(getSession()?.id),profile:null,friends:{accepted:[],incoming:[],outgoing:[]},loading:false,busy:false,error:'',notice:'',request:0,searchRequest:0,query:'',results:[],searched:false,searching:false,offset:0,hasMore:false,rankingMode:'rift',ranking:[],personal:null,rules:{eloThresholds:[0,1200,1400,1600,1800],colosseumThresholds:[]},rankKeys:['bronze','silver','gold','platinum','diamond'],rankNames:['Bronze','Argent','Or','Platine','Diamant'],rankingModes:[{key:'rift',label:'Rift multijoueur'},{key:'30',label:'Colosseum · 30 min'},{key:'60',label:'Colosseum · 1 h'}]};},
   computed:{personalLeague(){return (this.rankingMode==='rift'?this.personal?.rift?.rank:this.personal?.league)||{key:'unranked',name:'Non classé'};},personalValue(){return Number(this.rankingMode==='rift'?this.personal?.rift?.rating:this.personal?.score)||0;},tab(){if(this.$route.name==='Rankings')return 'classement';return this.$route.params.id?'profil':['amis','classement','recherche'].includes(this.$route.query.onglet)?this.$route.query.onglet:'profil';},targetId(){return Number(this.$route.params.id || this.userId);},friendGroups(){return [{key:'incoming',title:'Demandes reçues',entries:this.friends.incoming},{key:'accepted',title:'Tes amis',entries:this.friends.accepted},{key:'outgoing',title:'Demandes envoyées',entries:this.friends.outgoing}];}},
   watch:{'$route':{immediate:true,handler(){this.rankingMode=['rift','30','60'].includes(this.$route.query.mode)?this.$route.query.mode:'rift';this.notice='';this.searchRequest++;this.searching=false;this.load();}}},

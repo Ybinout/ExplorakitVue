@@ -22,13 +22,14 @@
         <div v-if="personal" class="personal-best" data-colosseum-personal><span>TON RECORD · #{{ personal.rank }}</span><strong>{{ number(personal.score) }} <small>points</small></strong><span>{{ personal.wins }} victoire{{ personal.wins > 1 ? 's' : '' }}</span></div>
         <p v-if="loading" role="status" class="empty">Chargement du classement…</p><p v-else-if="rankingError" class="error" role="alert">Le classement est indisponible. <button class="retry" @click="loadRanking">Réessayer</button></p>
         <div v-else-if="!entries.length" class="empty"><drift-glyph name="trophy" /><h3>La première place t’attend.</h3><p>Termine une tentative avec au moins une victoire au Colosseum pour inscrire ton nom ici.</p></div>
-        <ol v-else class="rank-list"><li v-for="entry in entries" :key="entry.userId" :class="{ me: entry.userId === userId }"><span class="rank">{{ entry.rank }}</span><div class="rank-body"><div class="rank-title"><router-link :to="`/profil/${entry.userId}`" :target="activeRun ? '_blank' : null" rel="noopener">{{ entry.username }}<small v-if="entry.userId === userId"> · toi</small></router-link><b>{{ number(entry.score) }} <small>pts</small></b></div><rank-badge v-if="entry.league" :rank="entry.league"/><span class="wins">{{ entry.wins }} victoire{{ entry.wins > 1 ? 's' : '' }} · {{ date(entry.finishedAt) }}</span><div class="record-team" aria-label="Équipe du record"><span v-for="(p,index) in entry.team" :key="index" :title="`${p.name} · N. ${p.level}${p.knockedOut ? ' · K.O.' : ''}`"><img :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name" /><small>N. {{ p.level }}{{ p.knockedOut ? ' · K.O.' : '' }}</small></span></div></div></li></ol>
-        <p class="ranking-note">Équipes à l’entrée du Colosseum pour chaque record. À égalité, le premier record établi conserve sa place. Les 50 meilleurs dresseurs sont affichés.</p>
+        <ol v-else class="rank-list"><li v-for="entry in entries" :key="entry.userId" :class="{ me: entry.userId === userId }"><span class="rank">{{ entry.rank }}</span><div class="rank-body"><div class="rank-title"><router-link :to="`/profil/${entry.userId}`" :target="activeRun ? '_blank' : null" rel="noopener">{{ entry.username }}<small v-if="entry.userId === userId"> · toi</small></router-link><b>{{ number(entry.score) }} <small>pts</small></b></div><rank-badge v-if="entry.league" :rank="entry.league"/><span class="wins">{{ entry.wins }} victoire{{ entry.wins > 1 ? 's' : '' }} · {{ date(entry.finishedAt) }}</span><div class="record-team" aria-label="Équipe du record"><span v-for="(p,index) in entry.team" :key="index" :title="`${p.name} · N. ${p.level}${p.knockedOut ? ' · K.O.' : ''}`"><img :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name" /><small>N. {{ p.level }}{{ p.knockedOut ? ' · K.O.' : '' }}</small></span></div><colosseum-defeat :defeat="entry.defeat"/></div></li></ol>
+        <p class="ranking-note">Équipes complètes au meilleur niveau atteint pour chaque record. À égalité, le premier record établi conserve sa place. Les 50 meilleurs dresseurs sont affichés.</p>
       </section>
     </div>
   </main>
 </template>
 <script>
+import ColosseumDefeat from './ColosseumDefeat.vue';
 import LeaveExpedition from './LeaveExpedition.vue';
 import api from '@/services/api';
 import { getSession } from '@/services/session';
@@ -37,7 +38,7 @@ import RankProgress from '../social/RankProgress.vue';
 import RankBadge from '../social/RankBadge.vue';
 import DriftGlyph from './DriftGlyph.vue';
 export default {
-  name:'ColosseumLobby', components:{ LeaveExpedition, DriftGlyph, RankBadge, RankProgress },
+  name:'ColosseumLobby', components:{ColosseumDefeat, LeaveExpedition, DriftGlyph, RankBadge, RankProgress },
   data() { return { durationMinutes:30,rankingMinutes:30,rankingRequest:0,socket:null,connected:false,loaded:false,connectionFailed:false,lobby:null,busy:false,error:'',loading:false,rankingError:false,entries:[],personal:null,userId:Number(getSession()?.id) }; },
   computed:{ durationLabel() { return this.durationMinutes === 30 ? '30 minutes' : '1 heure'; }, foreignLobby() { return this.lobby && this.lobby.mode !== 'colosseum'; }, activeRun() { return this.lobby?.mode === 'colosseum' && !['lobby','results'].includes(this.lobby.phase); } },
   mounted() {

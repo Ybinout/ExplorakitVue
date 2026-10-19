@@ -99,8 +99,9 @@
         </div>
         <health-bar :current-hp="opponent.currentHp" :hp-max="opponent.maxHp" />
         <div class="battle-status-details">
-          <span>{{ formatBattleHp(opponent) }}</span>
-          <span v-if="opponent.passiveAbility">{{ tr('ability') }} : {{ localizedAbility(opponent.passiveAbility) }}</span>
+          <span class="battle-hp-value">{{ formatBattleHp(opponent) }}</span>
+          <battle-conditions :pokemon="opponent"/>
+          <span v-if="opponent.passiveAbility" class="battle-status-ability">{{ tr('ability') }} : {{ localizedAbility(opponent.passiveAbility) }}</span>
         </div>
       </div>
 
@@ -124,9 +125,14 @@
         <experience-bar :pokemon="currentPokemon" :playback-percent="experienceVisual?.uuid === currentPokemon.uuid ? experienceVisual.percent : null" />
         <span v-if="experienceNotice" class="experience-notice" role="status">{{ experienceNotice }}</span>
         <div class="battle-status-details">
-          <span>{{ formatBattleHp(currentPokemon) }}</span>
-          <span v-if="currentPokemon.passiveAbility">{{ tr('ability') }} : {{ localizedAbility(currentPokemon.passiveAbility) }}</span>
+          <span class="battle-hp-value">{{ formatBattleHp(currentPokemon) }}</span>
+          <battle-conditions :pokemon="currentPokemon"/>
+          <span v-if="currentPokemon.passiveAbility" class="battle-status-ability">{{ tr('ability') }} : {{ localizedAbility(currentPokemon.passiveAbility) }}</span>
         </div>
+      </div>
+
+      <div v-for="side in ['wild','player']" :key="`conditions-${side}`" class="battle-condition-fx" :data-condition-side="side" :style="conditionPosition(side)" aria-hidden="true">
+        <i v-for="(effect,index) in conditionFx[side]" :key="effect.key" :class="`condition-${effect.kind}`" :style="{'--effect-index':index,'--effect-count':conditionFx[side].length}">{{ effect.symbol }}</i>
       </div>
 
       <template v-for="side in ['wild', 'player']">
@@ -166,6 +172,7 @@
         <div v-if="hasAnnouncements && mobile" class="battle-announcements battle-mobile-announcements" role="status">
           <p v-if="notice" class="battle-action-notice">{{ notice }}</p>
           <p v-if="captureFx.visible && captureFx.message" class="battle-capture-notice">{{ captureFx.message }}</p>
+          <p v-if="conditionNotice" class="battle-condition-notice" data-battle-condition-notice>{{ conditionNotice }}</p>
           <p v-if="transitionLabel" class="battle-transition-label" data-battle-transition>{{ transitionLabel }}</p>
           <div v-if="driftNotices.length" class="battle-drift-notices" data-battle-drift-effects><p v-for="notice in driftNotices" :key="notice.side">✧ {{ notice.side==='player' ? 'Tes Drifts' : 'Drifts adverses' }} · {{ notice.text }}</p></div>
           <p v-if="fieldLabel" class="battle-field-label">{{ fieldLabel }}</p>
@@ -185,6 +192,7 @@
         <div v-if="hasAnnouncements && !mobile" class="battle-announcements" role="status">
           <p v-if="notice" class="battle-action-notice">{{ notice }}</p>
           <p v-if="captureFx.visible && captureFx.message" class="battle-capture-notice">{{ captureFx.message }}</p>
+          <p v-if="conditionNotice" class="battle-condition-notice" data-battle-condition-notice>{{ conditionNotice }}</p>
           <p v-if="transitionLabel" class="battle-transition-label" data-battle-transition>{{ transitionLabel }}</p>
           <div v-if="driftNotices.length" class="battle-drift-notices" data-battle-drift-effects><p v-for="notice in driftNotices" :key="notice.side">✧ {{ notice.side==='player' ? 'Tes Drifts' : 'Drifts adverses' }} · {{ notice.text }}</p></div>
           <p v-if="fieldLabel" class="battle-field-label">{{ fieldLabel }}</p>
@@ -261,6 +269,8 @@ import { createBattlePresentation } from '@/services/battlePresentation';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
 import PotentialStar from '../PotentialStar.vue';
+import BattleConditions from './BattleConditions.vue';
+import { battleConditionChanges } from '@/services/battleConditions';
 import ExperienceBar from '../ExperienceBar.vue';
 import './battleViewport.css';
 import HealthBar from '../HealthBar.vue';
@@ -290,7 +300,7 @@ const FIELD_LABELS = {
 
 export default {
   name: 'BattleOverlay',
-  components: { HealthBar, ExperienceBar, PotentialStar },
+  components: { HealthBar, ExperienceBar, PotentialStar, BattleConditions },
   props: {
     mobile: Boolean,
     notice: { type: String, default: '' },
@@ -311,7 +321,7 @@ export default {
       canAct: false,
       presentationBusy: false,
       feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
-      visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', driftNotices:[], driftNoticeTimer:null,
+      visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
       usableMoveIndexes: null,
       actionState: {
         patient: false,
@@ -361,7 +371,7 @@ export default {
     };
   },
   computed: {
-    hasAnnouncements() { return this.notice || this.transitionLabel || this.driftNotices.length || this.fieldLabel || (this.captureFx.visible && this.captureFx.message); },
+    hasAnnouncements() { return this.notice || this.transitionLabel || this.conditionNotice || this.driftNotices.length || this.fieldLabel || (this.captureFx.visible && this.captureFx.message); },
     resultSide() { return this.resultFx.visible ? (this.resultFx.actor === 'opponent' ? 'wild' : 'player') : null; },
     currentPokemon() {
       return this.player?.equipe?.pokemons?.[0] || null;
@@ -636,6 +646,7 @@ export default {
     async presentState(payload = {}) {
       const epoch = this.visualEpoch;
       const events = payload.transitions || [];
+      const changes = { player:battleConditionChanges(this.currentPokemon,payload.player?.equipe?.pokemons?.[0]), wild:battleConditionChanges(this.opponent,payload.wildPokemon) };
       const outgoing = events.filter(e => e.kind === 'faint' || e.kind === 'recall');
       const incoming = events.filter(e => e.kind === 'enter');
       // Settle damage on the Pokémon that received it before removing its sprite.
@@ -675,10 +686,26 @@ export default {
       }
       if (epoch !== this.visualEpoch) return;
       this.transitionFx = { player: '', wild: '' };
+      if (changes.player.length || changes.wild.length) {
+        this.playConditionChanges(changes);
+        if (!this.reducedMotion()) await this.transitionWait(680);
+        if (epoch !== this.visualEpoch) return;
+        this.conditionFx={player:[],wild:[]};
+      }
       if (events.length) {
         clearTimeout(this._transitionLabelTimer);
         this._transitionLabelTimer = setTimeout(() => { this.transitionLabel = ''; }, 900);
       }
+    },
+    conditionPosition(side) {
+      const geometry = this.getSpriteGeometry(side);
+      return {left:`${geometry.centerX}px`,top:`${geometry.centerY}px`,width:`${Math.max(52,geometry.width)}px`,height:`${Math.max(52,geometry.height)}px`};
+    },
+    playConditionChanges(changes) {
+      clearTimeout(this.conditionTimer);
+      this.conditionNotice = ['player','wild'].filter(side=>changes[side].length).map(side=>`${side==='player'?'Allié':'Adversaire'} · ${changes[side].map(e=>e.text).join(' · ')}`).join(' / ');
+      this.conditionFx = this.reducedMotion() ? {player:[],wild:[]} : changes;
+      this.conditionTimer = setTimeout(()=>{this.conditionFx={player:[],wild:[]};this.conditionNotice='';},1200);
     },
     playDriftEffects(payload={}) {
       clearTimeout(this.driftNoticeTimer);
@@ -781,11 +808,12 @@ export default {
         width: `${maxWidth}px`, maxHeight: `${Math.max(1, bottomLimit - topLimit)}px`
       };
     },
-    buildMovePath(actor, damageClass) {
+    buildMovePath(actor, damageClass, moveTarget) {
       const sourceSide = actor === 'opponent' ? 'wild' : 'player';
       const targetSide = actor === 'opponent' ? 'player' : 'wild';
       const source = this.getSpriteGeometry(sourceSide);
-      const target = damageClass === 'status' ? source : this.getSpriteGeometry(targetSide);
+      const target = damageClass === 'status' && moveTarget !== 'opponent' ? source : this.getSpriteGeometry(targetSide);
+      if (damageClass === 'status') return {startX:target.centerX,startY:target.centerY,targetX:target.centerX,targetY:target.centerY};
       return {
         startX: source.centerX,
         startY: source.centerY,
@@ -856,7 +884,7 @@ export default {
         : 'status';
       this.clearMoveFx();
       if (this.reducedMotion()) return;
-      this.movePath = this.buildMovePath(actor, damageClass);
+      this.movePath = this.buildMovePath(actor, damageClass, payload.moveTarget);
       Object.assign(this.battleMoveFx, {
         actor,
         moveName: payload.moveName || '',
@@ -873,6 +901,13 @@ export default {
     },
     playMoveResult(payload = {}) {
       const labels = [];
+      if (Number(payload.hits)>1 && !payload.missed && !payload.blocked && !payload.immune) {
+        const side=payload.actor==='opponent'?'player':'wild';
+        const hits=Math.min(10,Math.floor(Number(payload.hits)));
+        this.playConditionChanges({player:[],wild:[],[side]:Array.from({length:hits},(_,i)=>({key:`hit-${i}`,kind:'hit',symbol:'✦',text:i===0?`${hits} coups`:''})).filter(Boolean)});
+        // The count stays in result labels; don't duplicate it in the header.
+        this.conditionNotice='';
+      }
       if (Number(payload.hits) > 1) labels.push({ key: 'hits', text: `${payload.hits} ${this.preferences.language === 'en' ? 'hits' : 'coups'}` });
       if (payload.missed) labels.push({ key: 'miss', text: this.tr('missed') });
       if (payload.immune || Number(payload.effectiveness) === 0) labels.push({ key: 'immune', text: this.tr('immune') });
@@ -906,7 +941,10 @@ export default {
       fxState.hit = numericDelta < 0;
       fxState.visible = true;
       fxState.nonce += 1;
-      if (numericDelta > 0) this.playSound('heal');
+      if (numericDelta > 0) {
+        this.playSound('heal');
+        this.playConditionChanges({player:[],wild:[],[target]:[{key:'heal',kind:'heal',symbol:'+',text:'Soin'}]});
+      }
       if (numericDelta < 0 && Number(nextHp) <= 0) this.playSound('ko');
       const hitTimer = setTimeout(() => { fxState.hit = false; }, 300);
       const visibleTimer = setTimeout(() => { fxState.visible = false; }, 980);
@@ -1036,7 +1074,7 @@ export default {
       });
     },
     clearAllTimers() {
-      this.visualEpoch++;this._transitionRelease?.();clearTimeout(this._transitionLabelTimer);clearTimeout(this.driftNoticeTimer);this.transitionFx={player:'',wild:''};this.transitionLabel='';this.driftNotices=[];
+      this.visualEpoch++;this._transitionRelease?.();clearTimeout(this._transitionLabelTimer);clearTimeout(this.driftNoticeTimer);this.transitionFx={player:'',wild:''};this.transitionLabel='';this.driftNotices=[];clearTimeout(this.conditionTimer);this.conditionFx={player:[],wild:[]};this.conditionNotice='';
       if (this.messageTimer) clearTimeout(this.messageTimer);
       if (this.resultTimer) clearTimeout(this.resultTimer);
       this.messageTimer = null;
@@ -1077,6 +1115,29 @@ export default {
 </script>
 
 <style scoped>
+.battle-status-details {align-items:center;height:16px;min-height:16px}
+.battle-status-details .battle-hp-value {flex:none;white-space:nowrap}
+.battle-status-details .battle-conditions {flex:1}
+.battle-status-details:has(.battle-conditions)>.battle-status-ability {display:none}
+.battle-condition-notice{background:#ecf1e2;color:#325441;border:1px solid #abbc8e}
+.battle-condition-fx{position:absolute;z-index:55;transform:translate(-50%,-50%);pointer-events:none;display:grid;place-items:center}
+.battle-condition-fx i{position:absolute;inset:-10%;display:grid;place-items:center;font:bold 30px Arial,sans-serif;font-style:normal;color:#9ef5b6;text-shadow:0 1px 3px #112c28;border:2px solid currentColor;border-radius:50%;animation:condition-bloom .65s ease-out both;animation-delay:calc(min(var(--effect-index),3) * 10ms)}
+.battle-condition-fx .condition-up{border:0;animation-name:condition-rise}
+.battle-condition-fx .condition-down{border:0;color:#ffae92;animation-name:condition-fall}
+.battle-condition-fx .condition-status{color:#dfaeff;animation-name:condition-orbit}
+.battle-condition-fx .condition-shield{color:#a4e7ff;border-radius:25%;box-shadow:inset 0 0 16px #8fcfff70}
+.battle-condition-fx .condition-break{color:#b3e0ff;border-style:dashed;animation-name:condition-break}
+.battle-condition-fx .condition-charge{color:#ffe6a1}
+.battle-condition-fx .condition-hit{border:0;color:#fff1b5;animation:condition-strike .16s ease-out both;animation-delay:calc(var(--effect-index) * 850ms / var(--effect-count));font-size:45px}
+@keyframes condition-bloom{from{opacity:0;transform:scale(.45)}40%{opacity:1}to{opacity:0;transform:scale(1.25)}}
+@keyframes condition-rise{from{opacity:0;transform:translateY(20px)}40%{opacity:1}to{opacity:0;transform:translateY(-30px)}}
+@keyframes condition-fall{from{opacity:0;transform:translateY(-30px)}40%{opacity:1}to{opacity:0;transform:translateY(20px)}}
+@keyframes condition-orbit{from{opacity:0;transform:scale(.7) rotate(-20deg)}40%{opacity:1}to{opacity:0;transform:scale(1.1) rotate(20deg)}}
+@keyframes condition-break{from{opacity:1;transform:scale(.8)}to{opacity:0;transform:scale(1.5) rotate(20deg)}}
+@keyframes condition-strike{from{opacity:0;transform:scale(.4) rotate(-30deg)}40%{opacity:1}to{opacity:0;transform:scale(1.25) rotate(20deg)}}
+@media(prefers-reduced-motion:reduce){.battle-condition-fx{display:none}}
+.battle-reduced-motion .battle-condition-fx{display:none}
+
 /* Announcements share normal document flow; long Drift chains scroll inside the message area. */
 .battle-announcements{display:flex;flex-direction:column;gap:5px;padding:7px 9px;flex:none;overflow-wrap:anywhere}
 .battle-announcements p{position:static;transform:none;max-width:none;width:auto;margin:0;line-height:1.45;font-size:12px;padding:5px 8px;border-radius:7px}
@@ -1212,7 +1273,7 @@ export default {
   line-height: 1.35;
 }
 
-.battle-status-details span:last-child {
+.battle-status-details .battle-status-ability {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2034,7 +2095,7 @@ export default {
     font-size: 6px;
   }
 
-  .battle-status-details span:last-child {
+  .battle-status-details .battle-status-ability {
     display: none;
   }
 

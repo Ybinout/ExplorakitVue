@@ -24,7 +24,7 @@
     <div class="player-collection" aria-label="Dresseurs de l’expédition">
       <button v-for="player in players" :key="player.id" :data-report-player="player.id" class="player-card" :class="{ selected: selected?.id === player.id, champion: player.id === report.winnerId }" :aria-pressed="selected?.id === player.id" @click="selectPlayer(player.id)">
         <span class="player-heading"><span><strong>{{ player.username }}</strong><small v-if="player.id === Number(userId)">TOI</small></span><drift-glyph v-if="player.id === report.winnerId" name="trophy" /></span>
-        <span class="roster-mini"><pokemon-portrait v-for="pokemon in (player.team || []).slice(0, 6)" :key="pokemon.uuid" :src="portrait(pokemon)" :alt="pokemon.name" /><span v-if="!(player.team || []).length" class="hint">Équipe non disponible</span></span>
+        <span class="roster-mini"><pokemon-portrait v-for="pokemon in finalTeam(player)" :key="pokemon.uuid" :src="portrait(pokemon)" :alt="pokemon.name" /><span v-if="!finalTeam(player).length" class="hint">Équipe non disponible</span></span>
         <span class="player-caption">{{ resultLabel(player) }}<span>{{ duration(player.survivedMs) }}</span></span>
       </button>
     </div>
@@ -34,8 +34,8 @@
       <div class="key-figures"><div><strong>{{ number(stat('battles')) }}</strong><span>combats</span></div><div><strong>{{ number(stat('captures')) }}</strong><span>captures</span></div><div><strong>{{ number(stat('driftsFound')) }}</strong><span>Drifts trouvés</span></div><div><strong>{{ number(stat('xpGained')) }}</strong><span>XP gagnée</span></div></div>
 
       <div v-if="selected.starter" class="starter-memory"><pokemon-portrait :src="portrait(selected.starter)" :alt="selected.starter.name" /><div><span>Tout a commencé avec</span><strong>{{ selected.starter.name }} <small>niveau {{ selected.starter.level }}</small></strong></div><potential-star :value="selected.starter.potential || 1" /></div>
-      <div class="team-caption"><h5>{{ teamView === 'tournament' ? 'L’équipe à l’entrée du tournoi' : 'La dernière équipe' }}</h5><div v-if="selected.tournamentTeam?.length" class="team-switch" aria-label="Moment de l’équipe"><button data-report-team-view="final" :aria-pressed="teamView === 'final'" @click="teamView = 'final'">Fin du parcours</button><button data-report-team-view="tournament" :aria-pressed="teamView === 'tournament'" @click="teamView = 'tournament'">Entrée au tournoi</button></div></div>
-      <p class="hint team-hint">{{ teamView === 'tournament' ? 'Le groupe réuni avant le premier round.' : 'La dernière équipe conservée pour ce dresseur. Les compagnons perdus en chemin restent dans le carnet.' }} Ouvre une fiche pour voir ses capacités et son potentiel.</p>
+      <div class="team-caption"><h5>{{ teamView === 'tournament' ? 'L’équipe à l’entrée du tournoi' : report.mode==='colosseum' ? 'L’équipe au meilleur niveau atteint' : 'La dernière équipe' }}</h5><div v-if="selected.tournamentTeam?.length" class="team-switch" aria-label="Moment de l’équipe"><button data-report-team-view="final" :aria-pressed="teamView === 'final'" @click="teamView = 'final'">Fin du parcours</button><button data-report-team-view="tournament" :aria-pressed="teamView === 'tournament'" @click="teamView = 'tournament'">Entrée au tournoi</button></div></div>
+      <p class="hint team-hint">{{ teamView === 'tournament' ? 'Le groupe réuni avant le premier round.' : report.mode==='colosseum' ? 'Tous les compagnons entrés au Colosseum, avec leurs dernières évolutions et leurs meilleurs niveaux, même après leur K.O.' : 'La dernière équipe conservée pour ce dresseur. Les compagnons perdus en chemin restent dans le carnet.' }} Ouvre une fiche pour voir ses capacités et son potentiel.</p>
       <div class="report-team" data-report-team>
         <details v-for="pokemon in visibleTeam" :key="`${teamView}-${selected.id}-${pokemon.uuid}`" class="pokemon-card" :class="{ fallen: pokemon.lostAt != null }">
           <summary><span class="pokemon-art"><pokemon-portrait :src="portrait(pokemon)" :alt="pokemon.name" /></span><span class="pokemon-copy"><span class="pokemon-name">{{ pokemon.name }}<potential-star :value="pokemon.potential || 1" /></span><span class="pokemon-level">N. {{ pokemon.level }}<small v-if="pokemon.initialLevel && pokemon.level > pokemon.initialLevel"> +{{ pokemon.level - pokemon.initialLevel }} niveaux</small></span><span class="pokemon-status">{{ pokemon.lostAt != null ? `Tombé à ${elapsed(pokemon.lostAt)}` : 'Dernier état conservé' }}</span></span><span class="expand-mark" aria-hidden="true">+</span></summary>
@@ -50,6 +50,7 @@
 
       <details class="story-fold" data-report-statistics><summary><span><drift-glyph name="progress" />Tous les chiffres du voyage</span><span class="expand-mark" aria-hidden="true">+</span></summary><div class="statistics-groups"><section v-for="group in statisticGroups" :key="group.title"><h5>{{ group.title }}</h5><dl><div v-for="item in group.items" :key="item.key"><dt>{{ item.label }}</dt><dd>{{ number(stat(item.key)) }}{{ item.suffix || '' }}</dd></div></dl></section></div></details>
 
+      <colosseum-defeat :defeat="defeatDetails"/>
       <details class="story-fold" data-report-companions><summary><span><drift-glyph name="team" />Tous ses compagnons <small>{{ allPokemon.length }}</small></span><span class="expand-mark" aria-hidden="true">+</span></summary><p class="hint fold-hint">Du tout premier partenaire aux Pokémon perdus en chemin.</p><div class="companions-list"><article v-for="pokemon in allPokemon" :key="pokemon.uuid"><pokemon-portrait :src="portrait(pokemon)" :alt="pokemon.name" /><div><strong>{{ pokemon.name }} <small>N. {{ pokemon.level }}</small></strong><span>{{ pokemon.source === 'starter' ? 'Compagnon de départ' : 'Rencontré en chemin' }} · {{ elapsed(pokemon.obtainedAt) }}</span><small :class="{ 'loss-text': pokemon.lostAt != null }">{{ pokemon.lostAt != null ? `Tombé à ${elapsed(pokemon.lostAt)}` : 'A survécu à son parcours' }}</small></div><potential-star :value="pokemon.potential || 1" /></article></div><p v-if="selected.pokemonOmitted" class="hint fold-hint">{{ number(selected.pokemonOmitted) }} compagnons supplémentaires ne sont pas détaillés. Les totaux sont conservés.</p></details>
 
       <details class="story-fold" data-report-loot><summary><span><drift-glyph name="drift" />Le butin de l’expédition <small>{{ (selected.drifts || []).length }}</small></span><span class="expand-mark" aria-hidden="true">+</span></summary><div class="loot-list"><article v-for="(drift,index) in selected.drifts || []" :key="drift.uuid || index"><drift-glyph :category="drift.category" :rarity="drift.rarity" /><div><strong>{{ drift.name }}</strong><small>{{ rarityLabel(drift.rarity) }}<span v-if="drift.element"> · {{ typeLabel(drift.element) }}</span></small></div><span>{{ driftStatus(drift.status) }}</span></article><p v-if="!selected.drifts?.length" class="hint">Aucun Drift trouvé pendant ce voyage.</p></div><p v-if="selected.driftsOmitted" class="hint fold-hint">{{ number(selected.driftsOmitted) }} Drifts supplémentaires ne sont pas détaillés. Les totaux sont conservés.</p><p v-if="selected.finalMoney != null" class="hint fold-hint">À la fin du parcours : {{ number(selected.finalMoney) }} ₽<span v-for="item in selected.finalItems || []" :key="item.key"> · {{ item.name }} ×{{ number(item.quantity) }}</span></p></details>
@@ -63,6 +64,7 @@
 </template>
 
 <script>
+import ColosseumDefeat from './ColosseumDefeat.vue';
 import DriftGlyph from './DriftGlyph.vue';
 import PokemonPortrait from '../PokemonPortrait.vue';
 import PotentialStar from '../PotentialStar.vue';
@@ -79,7 +81,7 @@ const STATISTIC_GROUPS = [
 
 export default {
   name: 'DriftRunReport',
-  components: { DriftGlyph, PokemonPortrait, PotentialStar },
+  components: { DriftGlyph, PokemonPortrait, PotentialStar, ColosseumDefeat },
   props: { report: { type: Object, required: true }, userId: { type: [Number, String], default: null } },
   data() { return { selectedId: null, teamView: 'final', eventLimit: 40, downloadFeedback: '', statisticGroups: STATISTIC_GROUPS, attributes: [{ key: 'hp', label: 'PV' }, { key: 'attack', label: 'Attaque' }, { key: 'defense', label: 'Défense' }, { key: 'specialAttack', label: 'Atq. Spé.' }, { key: 'specialDefense', label: 'Déf. Spé.' }, { key: 'speed', label: 'Vitesse' }] }; },
   computed: {
@@ -91,7 +93,8 @@ export default {
     players() { return this.report.players || []; },
     winner() { return this.players.find(player => player.id === this.report.winnerId); },
     selected() { return this.players.find(player => player.id === this.selectedId) || this.players.find(player => player.id === Number(this.userId)) || this.winner || this.players[0]; },
-    visibleTeam() { return this.selected?.[this.teamView === 'tournament' ? 'tournamentTeam' : 'team'] || []; },
+    visibleTeam() { return this.teamView === 'tournament' ? this.selected?.tournamentTeam || [] : this.finalTeam(this.selected); },
+    defeatDetails() { const p=this.selected,b=p?.lastBattle;return p?.reason==='defeated'&&['defeat','draw'].includes(b?.outcome) ? {...b,team:b.team.map(p=>({...p,knockedOut:p.currentHp<=0}))} : null; },
     allPokemon() { return this.selected?.pokemon || []; },
     equippedSlots() { return Array.from({ length: 5 }, (_, index) => this.selected?.equippedDrifts?.[index] || null); },
     visibleEvents() { return (this.selected?.events || []).slice(0, this.eventLimit); },
@@ -105,6 +108,12 @@ export default {
   },
   watch: { 'report.runId'() { this.selectedId = null; this.teamView = 'final'; this.eventLimit = 40; this.downloadFeedback = ''; } },
   methods: {
+    finalTeam(player) {
+      if (this.report.mode!=='colosseum') return (player?.team || []).slice(0,6);
+      const roster=player?.tournamentTeam?.length ? player.tournamentTeam : player?.team || [];
+      const latest=new Map((player?.pokemon || []).map(p=>[p.uuid,p]));
+      return roster.slice(0,6).map(p=>{const final=p.uuid&&latest.get(p.uuid);return final&&final.level>=p.level?final:p;});
+    },
     rewardDuration(ms) { const seconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000)); return `${Math.floor(seconds / 60)} min ${String(seconds % 60).padStart(2, '0')} s`; },
     selectPlayer(id) { this.selectedId = id; this.teamView = 'final'; this.eventLimit = 40; },
     number(value) { return (Number(value) || 0).toLocaleString('fr-FR'); },

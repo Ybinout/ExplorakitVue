@@ -349,6 +349,7 @@
 </template>
 
 <script>
+import { drawNpcFrame } from '@/services/npcFrames';
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
 import { createMapSceneLoader } from '@/services/mapScene';
@@ -1227,10 +1228,7 @@ export default {
           context.fillText(`Défi · N. ${pnj.challengeLevel}`,drawX+32,drawY-10); context.restore();
         }
         if (pnj.spriteFrame) {
-          const frame = pnj.spriteFrame;
-          const width = spriteSheet.naturalWidth / frame.columns;
-          const height = spriteSheet.naturalHeight / frame.rows;
-          context.drawImage(spriteSheet, (frame.index % frame.columns) * width, Math.floor(frame.index / frame.columns) * height, width, height, drawX + 8, drawY + 4, 48, 48);
+          drawNpcFrame(context, spriteSheet, pnj.spriteFrame, drawX + 8, drawY + 4, 48);
           continue;
         }
         const treatAsSpriteSheet =
@@ -1669,7 +1667,7 @@ export default {
 
       // Mettre Ã  jour `textImageSequence` avec les sentences reÃ§ues du serveur
       this.textImageSequence = sentences.map(sentence => {
-        return { text: sentence.text, image: images[sentence.imageName], portraitFrame: sentence.portraitFrame };
+        return { text: sentence.text, image: sentence.imageName === 'townspeople.png' ? this.pnjSpriteSources['townspeople.png'] : images[sentence.imageName], portraitFrame: sentence.portraitFrame };
       });
     },
     clearSequence() {
