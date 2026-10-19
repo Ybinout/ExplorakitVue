@@ -135,11 +135,12 @@
         <i v-for="(effect,index) in conditionFx[side]" :key="effect.key" :class="`condition-${effect.kind}`" :style="{'--effect-index':index,'--effect-count':conditionFx[side].length}">{{ effect.symbol }}</i>
       </div>
 
+      <div v-if="criticalFx.side" :key="`critical-${criticalFx.nonce}`" class="battle-critical-burst" :data-critical-side="criticalFx.side" :style="conditionPosition(criticalFx.side)" aria-hidden="true"><i v-for="ray in 8" :key="ray" :style="{'--ray':ray}"></i><b>✦</b></div>
       <template v-for="side in ['wild', 'player']">
         <div v-if="attackFx[side].visible || resultSide === side" :key="`feedback-${side}`" :ref="`feedback-${side}`"
           :class="['battle-result-fx', `battle-result-${side}`]" :style="getResultPosition(side)" role="status" aria-live="polite">
           <template v-if="resultSide === side"><span v-for="label in resultFx.labels" :key="label.key" :class="['battle-result-chip', `result-${label.key}`]">{{ label.text }}</span></template>
-          <span v-if="attackFx[side].visible" :key="`damage-${attackFx[side].nonce}`" :class="['battle-damage-text', `battle-health-${attackFx[side].kind}`]">
+          <span v-if="attackFx[side].visible" :key="`damage-${attackFx[side].nonce}`" :class="['battle-damage-text', `battle-health-${attackFx[side].kind}`, { 'is-critical': attackFx[side].critical }]">
             {{ attackFx[side].kind === 'heal' ? '+' : '-' }}{{ attackFx[side].amount }}
           </span>
         </div>
@@ -212,11 +213,14 @@
             v-for="index in 4"
             :key="index"
             type="button"
-            class="battle-choice-btn"
+            class="battle-choice-btn battle-move-choice"
+            :style="moveButtonStyle(index - 1)"
+            :data-move-type="moveButtonType(index - 1)"
             :disabled="isMoveUnavailable(index - 1)"
             @click="submitAction({ action: 'attack', number: index - 1 }, tr('attackRunning'))"
           >
-            {{ moveButtonLabel(index - 1) }}
+            <span>{{ moveButtonLabel(index - 1) }}</span>
+            <small v-if="moveButtonType(index - 1)" class="move-type-label">{{ preferences.language === 'en' ? moveButtonType(index - 1) : typeLabel(moveButtonType(index - 1)) }}</small>
           </button>
         </div>
 
@@ -268,6 +272,8 @@
 import { createBattlePresentation } from '@/services/battlePresentation';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
+import moveLearning from '@/data/moveLearning.json';
+import { localizeTypeName } from '@/services/pokemonTypes';
 import PotentialStar from '../PotentialStar.vue';
 import BattleConditions from './BattleConditions.vue';
 import { battleConditionChanges } from '@/services/battleConditions';
@@ -334,6 +340,7 @@ export default {
       messageTimer: null,
       moveTimer: null,
       resultTimer: null,
+      criticalFx: { side: null, nonce: 0 }, criticalTimer: null, pendingCritical: null,
       battleMoveFx: {
         visible: false, actor: 'player', moveName: '', moveType: 'Normal', damageClass: 'status', nonce: 0
       },
@@ -356,8 +363,8 @@ export default {
       },
       healthTimers: { wild: [], player: [] },
       attackFx: {
-        wild: { visible: false, hit: false, amount: 0, kind: 'damage', nonce: 0 },
-        player: { visible: false, hit: false, amount: 0, kind: 'damage', nonce: 0 }
+        wild: { visible: false, hit: false, amount: 0, kind: 'damage', nonce: 0, critical: false },
+        player: { visible: false, hit: false, amount: 0, kind: 'damage', nonce: 0, critical: false }
       },
       fieldState: { weather: null, terrain: null },
       soundEnabled: localStorage.getItem('battleSoundEnabled') !== 'false',
@@ -572,6 +579,14 @@ export default {
       const maxHp = Math.max(1, Math.round(Number(pokemon?.maxHp) || 1));
       return `${currentHp}/${maxHp} PV`;
     },
+    typeLabel: localizeTypeName,
+    moveButtonType(index) {
+      if (Array.isArray(this.usableMoveIndexes) && !this.usableMoveIndexes.length && index === 0) return 'Normal';
+      return moveLearning[this.currentPokemon?.abilities?.[index]]?.type || '';
+    },
+    moveButtonStyle(index) {
+      return {'--move-choice-color':MOVE_COLORS[this.moveButtonType(index).toLowerCase()] || MOVE_COLORS.normal};
+    },
     moveButtonLabel(index) {
       if (Array.isArray(this.usableMoveIndexes) && !this.usableMoveIndexes.length && index === 0) return 'Lutte';
       const moveName = this.currentPokemon?.abilities?.[index];
@@ -665,6 +680,7 @@ export default {
           hpChanged = true;
         }
       }
+      this.pendingCritical = null;
       if (hpChanged && !this.reducedMotion()) await this.transitionWait(1020);
       if (epoch !== this.visualEpoch) return;
       if (outgoing.length) {
@@ -725,6 +741,8 @@ export default {
       for (const [side, previous, next] of [['wild', this.opponent, nextOpponent], ['player', this.currentPokemon, nextPlayer?.equipe?.pokemons?.[0]]]) {
         if (this.getPokemonBattleKey(previous) !== this.getPokemonBattleKey(next) || previous?.data?.id !== next?.data?.id) {
           this.clearHealthTimers(side);
+          if (this.pendingCritical?.side === side) this.pendingCritical = null;
+          if (this.criticalFx.side === side) { clearTimeout(this.criticalTimer); this.criticalFx.side = null; }
           Object.assign(this.attackFx[side], {visible:false,hit:false});
           this.$set(this.battleSpriteStyles, side, {});
           this.$set(this.battleSpriteMetrics, side, { widthRatio: 1, heightRatio: 1 });
@@ -901,6 +919,15 @@ export default {
     },
     playMoveResult(payload = {}) {
       const labels = [];
+      const side = payload.actor === 'opponent' ? 'player' : 'wild';
+      const critical = payload.critical && Number(payload.damage) > 0 && !payload.missed && !payload.blocked && !payload.immune;
+      clearTimeout(this.criticalTimer);
+      this.criticalFx.side = null;
+      this.pendingCritical = critical ? {side, key:this.getPokemonBattleKey(side === 'player' ? this.currentPokemon : this.opponent)} : null;
+      if (critical && !this.reducedMotion()) {
+        this.criticalFx = {side, nonce:this.criticalFx.nonce+1};
+        this.criticalTimer = setTimeout(()=>{this.criticalFx.side=null;},700);
+      }
       if (Number(payload.hits)>1 && !payload.missed && !payload.blocked && !payload.immune) {
         const side=payload.actor==='opponent'?'player':'wild';
         const hits=Math.min(10,Math.floor(Number(payload.hits)));
@@ -912,11 +939,12 @@ export default {
       if (payload.missed) labels.push({ key: 'miss', text: this.tr('missed') });
       if (payload.immune || Number(payload.effectiveness) === 0) labels.push({ key: 'immune', text: this.tr('immune') });
       else if (payload.blocked) labels.push({ key: 'blocked', text: this.tr('blocked') });
-      if (payload.critical) labels.push({ key: 'critical', text: this.tr('critical') });
+      if (critical) labels.push({ key: 'critical', text: this.tr('critical') });
       if (Number(payload.effectiveness) > 1) labels.push({ key: 'super', text: this.tr('superEffective') });
       if (Number(payload.effectiveness) > 0 && Number(payload.effectiveness) < 1) {
         labels.push({ key: 'resisted', text: this.tr('resisted') });
       }
+      this.resultFx.visible = false;
       if (!labels.length) return;
       if (this.resultTimer) clearTimeout(this.resultTimer);
       this.resultFx.actor = payload.actor === 'player' ? 'opponent' : 'player';
@@ -924,7 +952,7 @@ export default {
       this.resultFx.nonce += 1;
       this.resultFx.visible = true;
       if (payload.missed) this.playSound('miss');
-      else if (payload.critical) this.playSound('critical');
+      else if (critical) this.playSound('critical');
       this.resultTimer = setTimeout(() => {
         this.resultFx.visible = false;
         this.resultTimer = null;
@@ -936,6 +964,8 @@ export default {
       if (!Number.isFinite(numericDelta) || numericDelta === 0) return;
       this.clearHealthTimers(target);
       const fxState = this.attackFx[target];
+      fxState.critical = numericDelta < 0 && this.pendingCritical?.side === target && this.pendingCritical.key === this.getPokemonBattleKey(target === 'player' ? this.currentPokemon : this.opponent);
+      if (this.pendingCritical?.side === target) this.pendingCritical = null;
       fxState.amount = Math.max(1, Math.round(Math.abs(numericDelta)));
       fxState.kind = numericDelta > 0 ? 'heal' : 'damage';
       fxState.hit = numericDelta < 0;
@@ -1074,6 +1104,7 @@ export default {
       });
     },
     clearAllTimers() {
+      clearTimeout(this.criticalTimer); this.criticalFx.side=null; this.pendingCritical=null;
       this.visualEpoch++;this._transitionRelease?.();clearTimeout(this._transitionLabelTimer);clearTimeout(this.driftNoticeTimer);this.transitionFx={player:'',wild:''};this.transitionLabel='';this.driftNotices=[];clearTimeout(this.conditionTimer);this.conditionFx={player:[],wild:[]};this.conditionNotice='';
       if (this.messageTimer) clearTimeout(this.messageTimer);
       if (this.resultTimer) clearTimeout(this.resultTimer);
@@ -1115,6 +1146,13 @@ export default {
 </script>
 
 <style scoped>
+.battle-critical-burst{position:absolute;transform:translate(-50%,-50%);z-index:55;pointer-events:none;color:#ffe390;filter:drop-shadow(0 2px 1px #633425);animation:critical-burst .7s ease-out both}
+.battle-critical-burst i{position:absolute;left:50%;top:50%;height:5px;width:45%;background:linear-gradient(90deg,#fff7ce,#ffab45);border-radius:100%;transform-origin:0 50%;transform:rotate(calc(var(--ray)*45deg)) translateX(28%)}
+.battle-critical-burst b{position:absolute;left:50%;top:50%;font:900 60px/1 Arial;transform:translate(-50%,-50%)}
+@keyframes critical-burst{0%{opacity:0;scale:.45}22%{opacity:1;scale:1}75%{opacity:.8}100%{opacity:0;scale:1.3}}
+@media(prefers-reduced-motion:reduce){.battle-critical-burst{display:none}}
+.battle-reduced-motion .battle-critical-burst{display:none}
+
 .battle-status-details {align-items:center;height:16px;min-height:16px}
 .battle-status-details .battle-hp-value {flex:none;white-space:nowrap}
 .battle-status-details .battle-conditions {flex:1}
@@ -1339,13 +1377,22 @@ export default {
   flex: none;
   z-index: 57;
   color: #ffeded;
-  font-size: clamp(14px, 2.2vw, 20px);
+  font: 900 clamp(22px, 3vw, 30px)/1.1 Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 9px;
+  border: 2px solid #f1aaa1;
+  border-radius: 10px;
+  background: #3f1724f2;
+  max-width: 100%;
+  box-sizing: border-box;
   text-shadow: 0 1px 0 #000, 0 0 8px rgba(255, 65, 65, 0.5);
   pointer-events: none;
   animation: battle-feedback-number .95s ease-out forwards;
 }
 
+.battle-damage-text.is-critical { color:#ffe87b; border-color:#ffce50; background:#4a2912f5; }
 .battle-health-heal {
+  background:#143d2af2; border-color:#83dba4;
   color: #d9ffe2;
   text-shadow: 0 1px 0 #14301a, 0 0 10px rgba(78, 225, 117, 0.72);
 }

@@ -50,8 +50,9 @@
 
 @media (orientation:portrait) and (max-height:600px) {
   .game-root.is-mobile .game-stage .battle-action-shell { grid-template-rows:44px 92px 92px; }
-  .game-root.is-mobile .game-stage .battle-result-fx { gap:3px; }
-  .game-root.is-mobile .game-stage .battle-result-chip { padding:3px 4px; font-size:10px; line-height:1.15; }
+  .game-root.is-mobile .game-stage .battle-result-fx { gap:2px; }
+  .game-root.is-mobile .game-stage .battle-damage-text { font-size:22px; line-height:1; padding:1px 6px; border-width:1px; }
+  .game-root.is-mobile .game-stage .battle-result-chip { padding:1px 4px; font-size:10px; line-height:1.15; }
   .game-root.is-mobile .game-stage .battle-position-wild { top:min(64%,calc(100% - 120px)); }
   .game-root.is-mobile .game-stage .battle-colosseum .battle-position-wild { top:min(64%,calc(100% - 120px)); }
 }
@@ -80,3 +81,10 @@
 .game-root.is-mobile .game-stage .battle-ground-disc { position:absolute; left:0; top:0; width:calc(var(--sprite-visible-size) * 1.55); height:calc(var(--sprite-visible-size) * .4); transform:translate(-50%,-58%); border:3px solid #6c8740; border-bottom:5px solid #516431; border-radius:50%; background:#a2bc6c; box-shadow:0 3px 0 #344b3838,inset 0 3px 0 #c7d795; }
 .game-root.is-mobile .game-stage .battle-position-player .battle-ground-disc { width:calc(var(--sprite-visible-size) * 1.8); height:calc(var(--sprite-visible-size) * .46); transform:translate(-50%,-84%); }
 .game-root.is-mobile .game-stage .battle-ground-disc.arena-disc { background:#d9c18b; border-color:#a88c56; border-bottom-color:#89703f; box-shadow:0 3px 0 #49361645,inset 0 3px 0 #f5e5b6; }
+
+/* Type is stated in text as well as colour; keep the fixed two-row action grid. */
+.game-root .game-stage .battle-grid-attacks .battle-move-choice { display:flex; flex-direction:column; justify-content:center; align-items:stretch; gap:2px; text-align:left; border-color:var(--move-choice-color); border-left-width:5px; background:linear-gradient(#ffffffd9,#ffffffb3),var(--move-choice-color); color:#192d36; line-height:1.15; }
+.game-root .game-stage .battle-move-choice>span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.game-root .game-stage .battle-move-choice .move-type-label { font:700 9px/1 Arial,sans-serif; color:#344652; letter-spacing:.04em; }
+.game-root .game-stage .battle-move-choice:disabled { opacity:.5; filter:grayscale(.4); }
+@media (max-width:360px) { .battle-damage-text { font-size:22px; padding:3px 6px; } }

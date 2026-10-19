@@ -23,10 +23,12 @@
           <p v-if="next.guardian" class="specialty">{{ next.guardian.specialty }}</p>
           <div class="opponent-team"><div v-for="(p,index) in next.preview" :key="index"><pokemon-portrait :src="sprite(p.id)" :alt="p.name"/><span>{{ p.name }}</span><small v-if="p.itemName" class="held-item" data-colosseum-item :title="p.itemDescription">{{ p.itemName }}</small></div></div>
           <details v-if="next.preview.some(p => p.itemName)" class="loadouts"><summary>Comprendre leurs objets</summary><ul><li v-for="(p,index) in next.preview" :key="index"><strong>{{ p.name }} · {{ p.role }}</strong><span>{{ p.itemName }} : {{ p.itemReason }}</span></li></ul></details>
+          <drift-passives v-if="next.drifts && next.drifts.length" :drifts="next.drifts" :limit="3" title="Passifs du gardien" />
           <p v-if="next.guardian" class="tactical-hint">{{ next.guardian.hint }}</p>
           <div class="challenge-meta"><span>{{ next.size }} Pokémon<span v-if="next.potential > 2"> · potentiel {{ next.potential }}</span></span><strong>+{{ number(next.points) }} pts</strong></div>
         </article>
         <p v-if="state.colosseum.lastReward" class="claimed" role="status">{{ state.colosseum.lastReward.name }} a rejoint tes Drifts au palier {{ state.colosseum.lastReward.wave }}.</p>
+        <details class="passives-toggle"><summary>Mes bonus équipés · {{ state.equipped.length }}/5</summary><drift-passives :drifts="equippedDrifts" :catalogue="catalogue" /></details>
         <div class="prepare-actions"><button @click="$emit('prepare','team')">Préparer mon équipe <span>→</span></button><button @click="$emit('prepare','drifts')">Équiper mes Drifts <span>{{ state.equipped.length }}/5 →</span></button></div>
         <button v-if="!exploring" class="start-wave" data-colosseum-ready :disabled="busy || state.phase !== 'colosseum_ready'" @click="ready">{{ busy ? 'Entrée dans l’arène…' : next.guardian ? 'Défier le gardien' : 'Affronter ce dresseur' }} <span>→</span></button>
       </template>
@@ -36,13 +38,15 @@
   </section>
 </template>
 <script>
+import DriftPassives from './DriftPassives.vue';
 import ColosseumDefeat from './ColosseumDefeat.vue';
 import heldItems from '@/data/heldItems.json';
 import PokemonPortrait from '../PokemonPortrait.vue';
 export default {
-  name: 'ColosseumRun', components: { PokemonPortrait, ColosseumDefeat }, props: { state: Object },
+  name: 'ColosseumRun', components: { PokemonPortrait, ColosseumDefeat, DriftPassives }, props: { state: Object, catalogue: Object },
   data() { return { busy: false, busyTimer: null }; },
   computed: {
+    equippedDrifts() { return this.state.drifts.filter(d=>this.state.equipped.includes(d.uuid)); },
     durationLabel() { return this.state.durationMinutes === 30 ? '30 minutes' : 'Une heure'; },
     finished() { return this.state.phase === 'results'; },
     entryTeam() { return this.state.report?.players?.[0]?.tournamentTeam || []; },
@@ -69,6 +73,7 @@ export default {
 };
 </script>
 <style scoped>
+.passives-toggle{margin-top:14px}.passives-toggle>summary{min-height:44px;padding:12px 0;box-sizing:border-box;font-size:12px;color:#287366;cursor:pointer}
 .ranking-link{display:inline-flex;align-items:center;min-height:44px;color:#287366;font-size:12px;font-weight:700}
 
 .held-item{display:block;font:10px/1.4 Arial;color:#287366;margin-top:5px;overflow-wrap:anywhere}.loadouts{border-top:1px solid #d3ddd2;font-size:11px;margin-bottom:12px}.loadouts summary{min-height:44px;box-sizing:border-box;padding:14px 0;cursor:pointer;color:#287366}.loadouts ul{list-style:none;padding:0;margin:0;display:grid;gap:12px}.loadouts li{display:grid;gap:5px}.loadouts li span{color:#5c716b;line-height:1.6}

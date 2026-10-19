@@ -3,7 +3,7 @@
     <header class="loadout-summary"><div><h3>Mes Drifts</h3><p>Équipe jusqu’à cinq bonus. Chaque changement est enregistré immédiatement.</p></div><strong>{{ state.equipped.length }} / {{ state.slotLimit }} équipés</strong></header>
     <p class="fusion-help">Les Drifts de même famille et élément se regroupent, même de raretés différentes. Leur puissance augmente jusqu’au maximum Mythique ; le surplus conserve sa valeur de revente.</p>
     <p v-if="state.lastDriftFusion" class="fusion-notice" data-drift-fusion>Dernière fusion : {{ state.lastDriftFusion.name }} · {{ rarity(state.lastDriftFusion) }}<span v-if="state.lastDriftFusion.count>1"> ({{ state.lastDriftFusion.count }} fusions en chaîne)</span>.</p>
-    <div class="equipped-list" aria-label="Drifts équipés"><span v-for="drift in equipped" :key="drift.uuid">✓ {{ definition(drift).name }}</span><span v-if="!equipped.length">Aucun bonus équipé pour le moment.</span></div>
+    <drift-passives :drifts="equipped" :catalogue="catalogue" :limit="state.slotLimit" :pvp="state.mode !== 'colosseum' && ['preparation','tournament'].includes(state.phase)" />
     <label class="search-label">Chercher un Drift<input v-model="search" class="drift-search" type="search" placeholder="Nom ou catégorie…" /></label>
     <p role="status" class="inventory-notice">{{ notice }}</p>
     <div class="drift-cards">
@@ -21,9 +21,10 @@
   </section>
 </template>
 <script>
+import DriftPassives from './DriftPassives.vue';
 import DriftGlyph from './DriftGlyph.vue';
 export default {
-  components:{DriftGlyph},props:{state:Object,catalogue:Object,inShop:Boolean,execute:Function},
+  components:{DriftGlyph,DriftPassives},props:{state:Object,catalogue:Object,inShop:Boolean,execute:Function},
   data(){return {search:'',busy:false,notice:'',replacing:null};},
   computed:{
     equipped(){return this.state.drifts.filter(d=>this.isEquipped(d));},
