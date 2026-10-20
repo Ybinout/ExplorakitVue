@@ -1,5 +1,5 @@
 <template>
-  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-colosseum': challenge }]" role="region" :aria-label="tr('battle')">
+  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-colosseum': challenge, 'battle-cave': environment === 'cave' }]" role="region" :aria-label="tr('battle')">
     <div
       ref="battleScene"
       :class="[
@@ -9,11 +9,12 @@
       ]"
     >
       <picture v-if="challenge" class="battle-arena-background"><source media="(orientation: landscape)" :srcset="require('@/assets/battle/colosseum-wide-v2.webp')"><img src="../../assets/battle/colosseum-mobile-v3.webp" class="battle-background battle-colosseum-background" alt=""></picture>
+      <picture v-else-if="environment === 'cave'" class="battle-arena-background" data-battle-environment="cave"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/cave-mobile-v1.webp')"><img src="../../assets/battle/cave-wide-v1.webp" class="battle-background battle-cave-background" alt=""></picture>
       <picture v-else class="battle-arena-background"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/grass-mobile-v3.webp')"><img src="../../assets/battle/back.webp" class="battle-background" alt=""></picture>
       <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
-      <template v-if="challenge || mobile">
+      <template v-if="challenge || mobile || environment === 'cave'">
         <div v-for="side in ['wild', 'player']" :key="`platform-${side}`" :class="['battle-platform', `battle-position-${side}`]" :data-battle-platform="side" aria-hidden="true">
-          <span v-if="mobile" :class="['battle-ground-disc', { 'arena-disc': challenge }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
+          <span v-if="mobile || environment === 'cave'" :class="['battle-ground-disc', { 'arena-disc': challenge, 'cave-disc': environment === 'cave' }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
         </div>
       </template>
       <div class="battle-atmosphere" aria-hidden="true"></div>
@@ -304,11 +305,14 @@ const FIELD_LABELS = {
   }
 };
 
+import { battleEnvironment } from '@/services/battleEnvironment';
+
 export default {
   name: 'BattleOverlay',
   components: { HealthBar, ExperienceBar, PotentialStar, BattleConditions },
   props: {
     mobile: Boolean,
+    mapName: { type: String, default: '' },
     notice: { type: String, default: '' },
     active: { type: Boolean, default: false },
     colosseumChallenge: { type: Object, default: null },
@@ -336,6 +340,7 @@ export default {
         bagPanel: false,
         text: "pas d'information"
       },
+      battleMapName: this.mapName,
       messageNonce: 0,
       messageTimer: null,
       moveTimer: null,
@@ -378,6 +383,7 @@ export default {
     };
   },
   computed: {
+    environment() { return battleEnvironment(this.battleMapName, Boolean(this.challenge)); },
     hasAnnouncements() { return this.notice || this.transitionLabel || this.conditionNotice || this.driftNotices.length || this.fieldLabel || (this.captureFx.visible && this.captureFx.message); },
     resultSide() { return this.resultFx.visible ? (this.resultFx.actor === 'opponent' ? 'wild' : 'player') : null; },
     currentPokemon() {
@@ -451,6 +457,7 @@ export default {
     audioVolume() { this.syncAudio(); },
     soundEnabled() { this.syncAudio(); },
     active(isActive) {
+      if (isActive) this.battleMapName = this.mapName;
       if (!isActive) { this._battleAudio?.stop(); this.stopMusic(); this.resetBattleUi(); }
     }
   },
@@ -1200,6 +1207,10 @@ export default {
   filter: saturate(1.2) contrast(1.05);
 }
 
+.battle-cave .battle-background { filter:none; image-rendering:pixelated; object-position:50% 50%; }
+.battle-cave .battle-atmosphere { background:linear-gradient(180deg,#211c4315,transparent 60%); }
+.battle-cave .battle-ground-disc.cave-disc { position:absolute; left:0; top:0; width:calc(var(--sprite-visible-size) * 1.65); height:calc(var(--sprite-visible-size) * .4); transform:translate(-50%,-58%); border:3px solid #776b83; border-bottom:5px solid #51485f; border-radius:50%; background:#a19295; box-shadow:0 3px 0 #251d4140,inset 0 3px 0 #c8b4a6; }
+.battle-cave .battle-position-player .cave-disc { width:calc(var(--sprite-visible-size) * 1.9); height:calc(var(--sprite-visible-size) * .46); transform:translate(-50%,-84%); }
 .battle-colosseum .battle-background { filter:none; object-position:50% 44%; }
 .battle-arena-background { position:absolute; inset:0; }
 .battle-platform { position:absolute; z-index:0; width:var(--sprite-visible-size); height:0; pointer-events:none; }

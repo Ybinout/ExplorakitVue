@@ -88,3 +88,6 @@
 .game-root .game-stage .battle-move-choice .move-type-label { font:700 9px/1 Arial,sans-serif; color:#344652; letter-spacing:.04em; }
 .game-root .game-stage .battle-move-choice:disabled { opacity:.5; filter:grayscale(.4); }
 @media (max-width:360px) { .battle-damage-text { font-size:22px; padding:3px 6px; } }
+
+/* Keep cave rocks anchored to the same sprite bases, above generic grass styling. */
+.game-root.is-mobile .game-stage .battle-cave .battle-ground-disc.cave-disc { background:#a19295; border-color:#776b83; border-bottom-color:#51485f; box-shadow:0 3px 0 #251d4140,inset 0 3px 0 #c8b4a6; }

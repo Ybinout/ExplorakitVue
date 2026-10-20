@@ -13,7 +13,7 @@
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
       <battle-overlay
         ref="battleOverlay"
-        :active="battle" :mobile="showMobileControls"
+        :active="battle" :mobile="showMobileControls" :map-name="map"
         :bag-items="bagItems"
         :bag-loading="bagLoading"
         :preferences="preferences"
@@ -590,7 +590,7 @@ export default {
       return getMapLocationLabel(this.map, this.preferences.language);
     },
     isShopMap() {
-      return ['ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1'].includes(this.map);
+      return ['ville_safe1_shop', 'ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1'].includes(this.map);
     },
     heldBagItems() {
       if (!Array.isArray(this.bagItems)) return [];
@@ -2301,7 +2301,7 @@ export default {
       }
 
       this.map = mapname;
-      if (!['ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1'].includes(mapname)) {
+      if (!['ville_safe1_shop', 'ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1'].includes(mapname)) {
         this.closeShop();
       }
       this.loadMapImage();

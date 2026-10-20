@@ -1,5 +1,6 @@
 const labels = {
   fr: {
+    ville_safe1: 'Valpierre', ville_safe1_arene: 'Arène du passage · Valpierre', ville_safe1_shop: 'Boutique de Valpierre',
     start: 'Village de départ', maison: 'Maison', maison2: 'Maison', etage: 'Étage', etage2: 'Étage',
     ville1: 'Ville du Lac', ville1_arene: 'Arène de la Ville du Lac', ville1_shop: 'Boutique de la Ville du Lac',
     centre: 'Centre Pokémon', cave1: 'Grotte', cave2: 'Profondeurs de la grotte',
@@ -9,6 +10,7 @@ const labels = {
     gen_arene5: 'Arène Dune · Hoze'
   },
   en: {
+    ville_safe1: 'Valpierre', ville_safe1_arene: 'Valpierre Passage Gym', ville_safe1_shop: 'Valpierre Shop',
     start: 'Starting Village', maison: 'Home', maison2: 'Home', etage: 'Upstairs', etage2: 'Upstairs',
     ville1: 'Lake Town', ville1_arene: 'Lake Town Gym', ville1_shop: 'Lake Town Shop',
     centre: 'Pokémon Center', cave1: 'Cave', cave2: 'Cave Depths',
@@ -40,6 +42,8 @@ export function getMapLocationLabel(mapName, language = 'fr') {
 
   const shopMatch = String(mapName || '').match(/^gen_shop/);
   if (shopMatch) return locale === 'fr' ? 'Boutique Pokémon' : 'Pokémon Shop';
+
+  if (String(mapName || '').startsWith('ville_safe1_maison')) return locale === 'fr' ? 'Maison de Valpierre' : 'Valpierre House';
 
   const homeMatch = String(mapName || '').match(/^gen_maison/);
   if (homeMatch) return locale === 'fr' ? 'Maison' : 'House';
