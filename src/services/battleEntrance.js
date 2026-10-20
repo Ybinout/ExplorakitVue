@@ -41,7 +41,7 @@ export async function waitForBattleAssets(images, { signal, timeoutMs = 2400 } =
       if (pending.signal.aborted) break;
       const next = images();
       // Rotation or a field update can select a different picture while decoding.
-      if (next.length === current.length && next.every((image, i) => image === current[i] && (image.currentSrc || image.src) === sources[i])) break;
+      if (next.length === current.length && next.every((image, i) => image === current[i] && image.complete && (image.currentSrc || image.src) === sources[i])) break;
     }
     return { timedOut, cancelled: Boolean(signal?.aborted) };
   } finally {
