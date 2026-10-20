@@ -1,4 +1,5 @@
-// Local ambient preview. Does not send commands or modify battle/world rules.
+import rainGround from '../data/worldRainGround.js';
+// Display settings never send commands or modify authoritative battle/world rules.
 // This preview revision starts at maximum once, then remembers further choices.
 export const WORLD_WEATHER_KEY = 'riftmon.worldWeatherPreview.v2';
 export const DEFAULT_WORLD_WEATHER = Object.freeze({ wind: 3, rain: 3 });
@@ -19,11 +20,16 @@ export function saveWorldWeather(value, storage) {
   return settings;
 }
 export function worldWeatherEnabled(map, { hidden = false, battle = false, loading = false } = {}) {
-  return map === 'start' && !hidden && !battle && !loading;
+  return Object.prototype.hasOwnProperty.call(rainGround, map) && !hidden && !battle && !loading;
+}
+export function mapWorldWeather(map, villageSettings, climate) {
+  if (map === 'start') return normalizeWorldWeather(villageSettings);
+  return worldWeatherEnabled(map) && climate?.map === map && climate.kind === 'rain'
+    ? normalizeWorldWeather(climate.ambience) : { wind: 0, rain: 0 };
 }
 export function worldWeatherBudget(value) {
   const { wind, rain } = normalizeWorldWeather(value);
-  return { rain: RAIN_COUNTS[rain], leaves: WIND_COUNTS[wind], gusts: wind ? wind + 1 : 0, splashes: rain * 6 };
+  return { rain: RAIN_COUNTS[rain], leaves: WIND_COUNTS[wind], gusts: wind ? wind + 1 : 0, splashes: rain * 16 };
 }
 function seed(index) {
   // Stable particles keep the same world positions while the camera pans.
@@ -31,23 +37,38 @@ function seed(index) {
   x ^= x >>> 16; x = Math.imul(x, 2246822519); x ^= x >>> 13;
   return (x >>> 0) / 4294967296;
 }
+const groundCells = Object.fromEntries(Object.entries(rainGround).map(([map, rows]) => [map, rows.flatMap((row, y) => [...row].flatMap((cell, x) => cell === '1' ? [{ x, y }] : []))]));
+export function worldRainImpacts(timestamp, rain, map = 'start') {
+  const cells = groundCells[map], impacts = [], count = level(rain) * 16;
+  if (!Array.isArray(cells) || !cells.length || !Number.isFinite(timestamp)) return impacts;
+  const time = Math.max(0, timestamp) / 1000;
+  for (let i = 0; i < count; i++) {
+    const clock = time * .85 + seed(i * 5 + 1), age = mod(clock, 1);
+    if (age >= .28) continue;
+    const cycle = Math.floor(clock), cell = cells[Math.floor(seed(i * 7 + cycle * 719) * cells.length)];
+    const progress = age / .28;
+    impacts.push({ x: cell.x * 32 + 8 + seed(i * 5 + 2) * 16, y: cell.y * 32 + 8 + seed(i * 5 + 3) * 16,
+      radius: 1.2 + progress * 3.2, alpha: (1 - progress) * .68 });
+  }
+  return impacts;
+}
 export class WorldWeatherRenderer {
   constructor(createCanvas = () => document.createElement('canvas')) {
     this.createCanvas = createCanvas;
     this.canvas = null; this.context = null; this.lastTime = -Infinity; this.signature = ''; this.destroyed = false;
-    this.frames = 0; this.budget = worldWeatherBudget({});
+    this.frames = 0; this.budget = worldWeatherBudget({}); this.impacts = [];
     this.particles = Array.from({ length: 200 }, (_, i) => ({ x: seed(i * 4), y: seed(i * 4 + 1), depth: seed(i * 4 + 2), phase: seed(i * 4 + 3) * Math.PI * 2 }));
   }
   suspend() {
     if (this.canvas) { this.canvas.width = 0; this.canvas.height = 0; }
-    this.canvas = null; this.context = null; this.signature = ''; this.lastTime = -Infinity;
+    this.canvas = null; this.context = null; this.signature = ''; this.lastTime = -Infinity; this.impacts = [];
   }
   destroy() { this.suspend(); this.destroyed = true; this.particles = []; }
-  draw(target, timestamp, value, motion = true) {
+  prepare(timestamp, value, motion = true, map = 'start') {
     if (this.destroyed) return;
     const settings = normalizeWorldWeather(value);
     if (!settings.wind && !settings.rain) { this.suspend(); this.budget = worldWeatherBudget(settings); return; }
-    const signature = `${settings.wind}:${settings.rain}:${Boolean(motion)}`;
+    const signature = `${map}:${settings.wind}:${settings.rain}:${Boolean(motion)}`;
     const time = Number.isFinite(timestamp) ? Math.max(0, timestamp) : 0;
     const changed = signature !== this.signature;
     if (!this.canvas) {
@@ -57,12 +78,30 @@ export class WorldWeatherRenderer {
     if (!this.context) { this.suspend(); return; }
     if (changed || motion && (time - this.lastTime >= FRAME_MS || time < this.lastTime)) {
       this.signature = signature; this.lastTime = time; this.budget = worldWeatherBudget(settings);
-      this.paint(motion ? time / 1000 : 0, settings); this.frames++;
+      this.paint(motion ? time / 1000 : 0, settings, motion, map); this.frames++;
     }
-    target.drawImage(this.canvas, 0, 0, WIDTH, HEIGHT);
   }
-  paint(time, { wind, rain }) {
+  drawGround(target, timestamp, value, motion = true, map = 'start') {
+    this.prepare(timestamp, value, motion, map);
+    if (!this.impacts.length) return;
+    target.save(); target.lineWidth = .9;
+    for (const impact of this.impacts) {
+      target.strokeStyle = `rgba(213,235,242,${impact.alpha})`;
+      target.beginPath(); target.ellipse(impact.x, impact.y, impact.radius, impact.radius * .34, 0, 0, Math.PI * 2); target.stroke();
+      if (impact.alpha > .35) {
+        target.beginPath(); target.moveTo(impact.x - .7, impact.y - .8); target.lineTo(impact.x - 1.2, impact.y - 1.8);
+        target.moveTo(impact.x + .7, impact.y - .8); target.lineTo(impact.x + 1.2, impact.y - 1.8); target.stroke();
+      }
+    }
+    target.restore();
+  }
+  draw(target, timestamp, value, motion = true, map = 'start') {
+    this.prepare(timestamp, value, motion, map);
+    if (this.canvas) target.drawImage(this.canvas, 0, 0, WIDTH, HEIGHT);
+  }
+  paint(time, { wind, rain }, motion, map) {
     const c = this.context;
+    this.impacts = motion ? worldRainImpacts(time * 1000, rain, map) : [];
     c.clearRect(0, 0, WIDTH, HEIGHT);
     if (rain) {
       c.fillStyle = `rgba(29,47,70,${rain * .045})`; c.fillRect(0, 0, WIDTH, HEIGHT);
@@ -78,12 +117,6 @@ export class WorldWeatherRenderer {
         c.moveTo(x, y); c.lineTo(x + .8 * lean * 3 * length / speed, y + length);
       }
       c.stroke();
-      for (let i = 0; i < this.budget.splashes; i++) {
-        const p = this.particles[170 + i], age = mod(time * 1.8 + p.phase, 1);
-        if (age > .46) continue;
-        c.strokeStyle = `rgba(199,224,234,${(.46 - age) * .42})`; c.lineWidth = .7;
-        c.beginPath();c.ellipse(p.x * WIDTH, p.y * HEIGHT, 1 + age * 7, .5 + age * 2.6, 0, 0, Math.PI * 2);c.stroke();
-      }
     }
     if (!wind) return;
     const speed = [0, 34, 76, 132][wind];

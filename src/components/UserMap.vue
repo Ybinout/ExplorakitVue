@@ -390,7 +390,7 @@ import EvolutionPresentation from './menu/EvolutionPresentation.vue';
 import WorldWeatherPanel from './menu/WorldWeatherPanel.vue';
 import { VillageWaterRenderer } from '@/services/villageWater';
 import { ForegroundWindRenderer } from '@/services/foregroundWind';
-import { WorldWeatherRenderer, loadWorldWeather, saveWorldWeather, DEFAULT_WORLD_WEATHER, worldWeatherEnabled } from '@/services/worldWeather';
+import { WorldWeatherRenderer, loadWorldWeather, saveWorldWeather, DEFAULT_WORLD_WEATHER, worldWeatherEnabled, mapWorldWeather } from '@/services/worldWeather';
 import { createEvolutionTracker } from '@/services/evolutionPresentation';
 import evolutionGraph from '@/data/evolutionGraph.json';
 import { buildBattleResult } from '@/services/battleResult';
@@ -574,8 +574,9 @@ export default {
   },
   computed: {
     defaultWorldWeather() { return DEFAULT_WORLD_WEATHER; },
-    villageWaterActive() { return worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
-    worldWeatherActive() { return Boolean(this.worldWeather.wind || this.worldWeather.rain) && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
+    villageWaterActive() { return this.map === 'start' && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
+    effectiveWorldWeather() { return mapWorldWeather(this.map, this.worldWeather, this.mapWeather); },
+    worldWeatherActive() { return Boolean(this.effectiveWorldWeather.wind || this.effectiveWorldWeather.rain) && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
     learningPokemon() {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
       return this.teamPokemons.find(p => p.currentHp > 0 && p.pendingMoves?.length);
@@ -621,7 +622,7 @@ export default {
   watch: {
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
-    map(value) { if (value !== 'start') { this.worldWeatherPanelOpen = false; this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._villageWater?.suspend(); } },
+    map(value) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); if (value !== 'start') { this.worldWeatherPanelOpen = false; this._villageWater?.suspend(); } },
     evolutionVisible(value) { if (value) this.worldWeatherPanelOpen = false; },
     mapLoadError(error) { if (error) this.releaseAllMovementKeys(); },
     evolutionLookupKey() { this.loadEvolutionOptions(); },
@@ -1936,6 +1937,11 @@ export default {
         } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
 
+      if (this.worldWeatherActive && !document.hidden) {
+        if (!this._worldWeather) this._worldWeather = new WorldWeatherRenderer();
+        this._worldWeather.drawGround(c, performance.now(), this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
+      } else this._worldWeather?.suspend();
+
       this.drawPnjs(c);
 
       // Loop through all the players and draw them
@@ -1984,14 +1990,14 @@ export default {
 
       // Dessiner les Ã©lÃ©ments de premier plan si nÃ©cessaire
       if (this.foregroundImage?.complete && this.foregroundImage.naturalWidth) {
-        if (this.worldWeatherActive && this.worldWeather.wind && !document.hidden) {
+        if (this.map === 'start' && this.worldWeatherActive && this.worldWeather.wind && !document.hidden) {
           if (!this._foregroundWind) this._foregroundWind = new ForegroundWindRenderer();
           this._foregroundWind.draw(c, this.foregroundImage, performance.now(), this.worldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
         } else { this._foregroundWind?.suspend(); c.drawImage(this.foregroundImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
       if (this.worldWeatherActive && !document.hidden) {
         if (!this._worldWeather) this._worldWeather = new WorldWeatherRenderer();
-        this._worldWeather.draw(c, performance.now(), this.worldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
+        this._worldWeather.draw(c, performance.now(), this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
       } else this._worldWeather?.suspend();
       c.restore();
     },
