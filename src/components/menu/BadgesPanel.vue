@@ -31,7 +31,7 @@
 <script>
 import BadgeEmblem from './BadgeEmblem.vue';
 import JournalIcon from './JournalIcon.vue';
-const places = { dune_badge:'Valpierre · Hoze', bloom_badge:'Floraville', ore_badge:'Rochebourg', tide_badge:'Rivazur', forest_badge:'Clairbois', crystal_badge:'Valpierre' };
+const places = { dune_badge:'Valpierre · Hoze', bloom_badge:'Ocreville · Raphael', ore_badge:'Rochebourg', tide_badge:'Rivazur', forest_badge:'Clairbois', crystal_badge:'Valpierre' };
 export default {
   name:'BadgesPanel', components:{BadgeEmblem,JournalIcon},
   props:{badges:{type:Array,default:()=>[]},loading:Boolean,language:{type:String,default:'fr'}},

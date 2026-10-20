@@ -6,8 +6,8 @@ const labels = {
     centre: 'Centre Pokémon', cave1: 'Grotte', cave2: 'Profondeurs de la grotte',
     pk1: 'Zone sauvage', pk2: 'Zone sauvage',
     gen_arene1: 'Archives de Clairbois', gen_arene2: 'Arène Marée · Wanda',
-    gen_arene3: 'Arène Minerai · Ana', gen_arene4: 'Arène Floraison · Raphael',
-    gen_arene5: 'Ancienne arène d’Ocreville'
+    gen_arene3: 'Arène Minerai · Ana', gen_arene4: 'Ancienne arène de Floraville',
+    gen_arene5: 'Arène d’Ocreville · Raphael'
   },
   en: {
     ville_safe1: 'Valpierre', ville_safe1_arene: 'Valpierre Gym · Hoze', ville_safe1_shop: 'Valpierre Shop',
@@ -16,8 +16,8 @@ const labels = {
     centre: 'Pokémon Center', cave1: 'Cave', cave2: 'Cave Depths',
     pk1: 'Wild Area', pk2: 'Wild Area',
     gen_arene1: 'Clairwood Archives', gen_arene2: 'Tide Gym · Wanda',
-    gen_arene3: 'Ore Gym · Ana', gen_arene4: 'Bloom Gym · Raphael',
-    gen_arene5: 'Old Ochre Gym'
+    gen_arene3: 'Ore Gym · Ana', gen_arene4: 'Old Bloomtown Gym',
+    gen_arene5: 'Ochre Gym · Raphael'
   }
 };
 
