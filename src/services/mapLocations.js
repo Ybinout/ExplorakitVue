@@ -1,23 +1,23 @@
 const labels = {
   fr: {
-    ville_safe1: 'Valpierre', ville_safe1_arene: 'Arène du passage · Valpierre', ville_safe1_shop: 'Boutique de Valpierre',
+    ville_safe1: 'Valpierre', ville_safe1_arene: 'Arène de Valpierre · Hoze', ville_safe1_shop: 'Boutique de Valpierre',
     start: 'Village de départ', maison: 'Maison', maison2: 'Maison', etage: 'Étage', etage2: 'Étage',
     ville1: 'Ville du Lac', ville1_arene: 'Arène de la Ville du Lac', ville1_shop: 'Boutique de la Ville du Lac',
     centre: 'Centre Pokémon', cave1: 'Grotte', cave2: 'Profondeurs de la grotte',
     pk1: 'Zone sauvage', pk2: 'Zone sauvage',
     gen_arene1: 'Archives de Clairbois', gen_arene2: 'Arène Marée · Wanda',
     gen_arene3: 'Arène Minerai · Ana', gen_arene4: 'Arène Floraison · Raphael',
-    gen_arene5: 'Arène Dune · Hoze'
+    gen_arene5: 'Ancienne arène d’Ocreville'
   },
   en: {
-    ville_safe1: 'Valpierre', ville_safe1_arene: 'Valpierre Passage Gym', ville_safe1_shop: 'Valpierre Shop',
+    ville_safe1: 'Valpierre', ville_safe1_arene: 'Valpierre Gym · Hoze', ville_safe1_shop: 'Valpierre Shop',
     start: 'Starting Village', maison: 'Home', maison2: 'Home', etage: 'Upstairs', etage2: 'Upstairs',
     ville1: 'Lake Town', ville1_arene: 'Lake Town Gym', ville1_shop: 'Lake Town Shop',
     centre: 'Pokémon Center', cave1: 'Cave', cave2: 'Cave Depths',
     pk1: 'Wild Area', pk2: 'Wild Area',
     gen_arene1: 'Clairwood Archives', gen_arene2: 'Tide Gym · Wanda',
     gen_arene3: 'Ore Gym · Ana', gen_arene4: 'Bloom Gym · Raphael',
-    gen_arene5: 'Dune Gym · Hoze'
+    gen_arene5: 'Old Ochre Gym'
   }
 };
 
