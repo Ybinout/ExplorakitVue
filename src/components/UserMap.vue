@@ -388,6 +388,7 @@ import BattleResultPanel from './battle/BattleResultPanel.vue';
 import MoveLearningPanel from './menu/MoveLearningPanel.vue';
 import EvolutionPresentation from './menu/EvolutionPresentation.vue';
 import WorldWeatherPanel from './menu/WorldWeatherPanel.vue';
+import { ForegroundWindRenderer } from '@/services/foregroundWind';
 import { WorldWeatherRenderer, loadWorldWeather, saveWorldWeather, DEFAULT_WORLD_WEATHER, worldWeatherEnabled } from '@/services/worldWeather';
 import { createEvolutionTracker } from '@/services/evolutionPresentation';
 import evolutionGraph from '@/data/evolutionGraph.json';
@@ -616,8 +617,8 @@ export default {
     }
   },
   watch: {
-    worldWeatherActive(active) { if (!active) this._worldWeather?.suspend(); },
-    map(value) { if (value !== 'start') { this.worldWeatherPanelOpen = false; this._worldWeather?.suspend(); } },
+    worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
+    map(value) { if (value !== 'start') { this.worldWeatherPanelOpen = false; this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
     evolutionVisible(value) { if (value) this.worldWeatherPanelOpen = false; },
     mapLoadError(error) { if (error) this.releaseAllMovementKeys(); },
     evolutionLookupKey() { this.loadEvolutionOptions(); },
@@ -1102,7 +1103,7 @@ export default {
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (document.hidden) { this.releaseAllMovementKeys(); this._worldWeather?.suspend(); } },
+    onWorldVisibility() { if (document.hidden) { this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       this.releaseAllMovementKeys();
@@ -1976,7 +1977,10 @@ export default {
 
       // Dessiner les Ã©lÃ©ments de premier plan si nÃ©cessaire
       if (this.foregroundImage?.complete && this.foregroundImage.naturalWidth) {
-        c.drawImage(this.foregroundImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        if (this.worldWeatherActive && this.worldWeather.wind && !document.hidden) {
+          if (!this._foregroundWind) this._foregroundWind = new ForegroundWindRenderer();
+          this._foregroundWind.draw(c, this.foregroundImage, performance.now(), this.worldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
+        } else { this._foregroundWind?.suspend(); c.drawImage(this.foregroundImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
       if (this.worldWeatherActive && !document.hidden) {
         if (!this._worldWeather) this._worldWeather = new WorldWeatherRenderer();
@@ -2475,6 +2479,7 @@ export default {
   ,
   beforeDestroy() {
     this._worldWeather?.destroy();
+    this._foregroundWind?.destroy();
     this._weatherMotionQuery?.removeEventListener?.('change', this._weatherMotionChange);
     this._mapLoadVersion = (this._mapLoadVersion || 0) + 1;
     this._mapScenes?.clear();
