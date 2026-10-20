@@ -1,5 +1,7 @@
 /* Shared with the Pokédex: very pale blue surfaces, soft blue accents and quiet borders. */
 #app {
+  --journal-on-accent: #ffffff;
+  --journal-scheme: light;
   --journal-font: Arial, Helvetica, sans-serif;
   --journal-paper: #edf5fc;
   --journal-card: #f4f9fe;
@@ -15,3 +17,100 @@
   --journal-shadow: 0 18px 60px #1a35522e;
   --journal-backdrop: rgba(12, 25, 40, .7);
 }
+
+html[data-game-theme-color="sage"] #app {
+  --journal-paper: #eff6f1;
+  --journal-card: #f6faf7;
+  --journal-soft: #e3eee6;
+  --journal-selected: #d4e6db;
+  --journal-ink: #293f38;
+  --journal-heading: #253f32;
+  --journal-muted: #4b6455;
+  --journal-border: #cbded1;
+  --journal-accent: #326b55;
+  --journal-progress: #739e83;
+}
+
+html[data-game-theme-color="lavender"] #app {
+  --journal-paper: #f2effa;
+  --journal-card: #f8f6fd;
+  --journal-soft: #e9e3f4;
+  --journal-selected: #dfd5ef;
+  --journal-ink: #413851;
+  --journal-heading: #3b3050;
+  --journal-muted: #605570;
+  --journal-border: #dcd2e9;
+  --journal-accent: #6a4f87;
+  --journal-progress: #a38bb8;
+}
+
+html[data-game-theme-color="sand"] #app {
+  --journal-paper: #f8f2e8;
+  --journal-card: #fdf9f1;
+  --journal-soft: #f0e5d4;
+  --journal-selected: #e9d9bd;
+  --journal-ink: #4a4034;
+  --journal-heading: #493b28;
+  --journal-muted: #685a46;
+  --journal-border: #e0d3bd;
+  --journal-accent: #77552b;
+  --journal-progress: #b89a6a;
+}
+
+html[data-game-theme-mode="dark"] { color-scheme:dark; }
+html[data-game-theme-mode="dark"] #app { --journal-scheme:dark; --journal-on-accent:#14232e; --journal-danger:#ffb2a8; --journal-shadow:0 18px 60px #0006; --journal-backdrop:rgba(3,9,15,.8); }
+
+html[data-game-theme-mode="dark"][data-game-theme-color="blue"] #app {
+  --journal-paper: #172b39;
+  --journal-card: #1d3444;
+  --journal-soft: #223e50;
+  --journal-selected: #2d4e63;
+  --journal-ink: #e0edf7;
+  --journal-heading: #f1f7fc;
+  --journal-muted: #b3c8d8;
+  --journal-border: #3c586c;
+  --journal-accent: #a0d3eb;
+  --journal-progress: #83b5ce;
+}
+
+html[data-game-theme-mode="dark"][data-game-theme-color="sage"] #app {
+  --journal-paper: #1b2e25;
+  --journal-card: #21392e;
+  --journal-soft: #284436;
+  --journal-selected: #355640;
+  --journal-ink: #e2f0e5;
+  --journal-heading: #f2faf3;
+  --journal-muted: #b9cebd;
+  --journal-border: #425f4b;
+  --journal-accent: #aad9b7;
+  --journal-progress: #85b396;
+}
+
+html[data-game-theme-mode="dark"][data-game-theme-color="lavender"] #app {
+  --journal-paper: #282235;
+  --journal-card: #322b42;
+  --journal-soft: #3b334e;
+  --journal-selected: #4b4062;
+  --journal-ink: #ece7f7;
+  --journal-heading: #f8f4ff;
+  --journal-muted: #c9bedc;
+  --journal-border: #5e5077;
+  --journal-accent: #d4b9f1;
+  --journal-progress: #b49bd1;
+}
+
+html[data-game-theme-mode="dark"][data-game-theme-color="sand"] #app {
+  --journal-paper: #30291f;
+  --journal-card: #3b3226;
+  --journal-soft: #463c2d;
+  --journal-selected: #594a34;
+  --journal-ink: #f2eadc;
+  --journal-heading: #fff8ec;
+  --journal-muted: #d5c7ac;
+  --journal-border: #6d5c43;
+  --journal-accent: #e7c58c;
+  --journal-progress: #c9ab7b;
+}
+
+html[data-game-theme-mode="dark"] .game-root .game-stage .battle-status { background:var(--journal-card);color:var(--journal-ink);border-color:var(--journal-border);box-shadow:0 3px 0 var(--journal-border),0 7px 16px #0003; }
+html[data-game-theme-mode="dark"] .game-root .game-stage :is(.battle-status-name,.battle-status-lvl,.battle-status-details) { color:var(--journal-ink); }

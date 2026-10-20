@@ -161,7 +161,7 @@ article p {
 button {
   min-height: 44px;
   background: var(--journal-accent);
-  color: #ffffff;
+  color:var(--journal-on-accent);
   border: 1px solid var(--journal-accent);
   border-radius: 6px;
   cursor: pointer;

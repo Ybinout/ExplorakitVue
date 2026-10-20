@@ -4,6 +4,9 @@ export const SUPPORTED_LANGUAGES = Object.freeze(['fr', 'en']);
 
 const messages = {
   fr: {
+    interfaceColor: 'Couleur de l’interface', displayMode: 'Affichage', lightMode: 'Clair', nightMode: 'Nocturne',
+    themeBlue: 'Bleu', themeSage: 'Sauge', themeLavender: 'Lavande', themeSand: 'Sable',
+    orderAutoSave: 'L’ordre est enregistré automatiquement.', orderSaved: 'Ordre enregistré.', orderFailed: 'Ordre non modifié. Réessaie dans un instant.',
     dexJournal: "Carnet d'exploration", dexCollection: 'Votre collection', dexSearch: 'Nom ou numéro…',
     dexRegion: 'Région', dexAllRegions: 'Toutes régions', dexFilter: 'État de découverte', dexNumberOrder: 'N° national',
     dexUndiscovered: 'À découvrir', dexEmptyHelp: 'Essayez un autre nom, numéro ou filtre.', dexReset: 'Effacer les filtres',
@@ -36,6 +39,9 @@ const messages = {
     ballDrops: 'La Ball retombe…', captured: '{pokemon} est capturé !', escaped: "{pokemon} s'est échappé !"
   },
   en: {
+    interfaceColor: 'Interface colour', displayMode: 'Display', lightMode: 'Light', nightMode: 'Night',
+    themeBlue: 'Blue', themeSage: 'Sage', themeLavender: 'Lavender', themeSand: 'Sand',
+    orderAutoSave: 'Team order saves automatically.', orderSaved: 'Order saved.', orderFailed: 'Order unchanged. Please try again.',
     dexJournal: 'Field journal', dexCollection: 'Your collection', dexSearch: 'Name or number…',
     dexRegion: 'Region', dexAllRegions: 'All regions', dexFilter: 'Discovery status', dexNumberOrder: 'National no.',
     dexUndiscovered: 'Undiscovered', dexEmptyHelp: 'Try another name, number or filter.', dexReset: 'Clear filters',

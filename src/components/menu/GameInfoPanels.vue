@@ -47,6 +47,25 @@
 
       <template v-else-if="active === 'options'">
         <div class="option-list">
+          <fieldset class="theme-options">
+            <legend>{{ tr('interfaceColor') }}</legend>
+            <div class="theme-colors">
+              <label v-for="color in themeColors" :key="color.key" class="theme-choice" :class="{ selected: preferences.themeColor === color.key }">
+                <input type="radio" name="interface-color" :value="color.key" :checked="preferences.themeColor === color.key" :data-theme-color="color.key" @change="updatePreference('themeColor', color.key)">
+                <span class="theme-swatch" :style="{ background: color.swatch }" aria-hidden="true"></span>
+                <span>{{ tr(color.label) }}</span>
+              </label>
+            </div>
+          </fieldset>
+          <fieldset class="theme-options">
+            <legend>{{ tr('displayMode') }}</legend>
+            <div class="theme-modes">
+              <label v-for="mode in ['light', 'dark']" :key="mode" class="theme-choice" :class="{ selected: preferences.themeMode === mode }">
+                <input type="radio" name="interface-mode" :value="mode" :checked="preferences.themeMode === mode" :data-theme-mode="mode" @change="updatePreference('themeMode', mode)">
+                <span>{{ tr(mode === 'dark' ? 'nightMode' : 'lightMode') }}</span>
+              </label>
+            </div>
+          </fieldset>
           <label class="option-row">
             <span><strong>{{ tr('masterVolume') }}</strong><small>{{ tr('volumeHelp') }}</small></span>
             <div class="option-control volume-control">
@@ -97,6 +116,12 @@ export default {
     saveState: { type: Object, default: () => ({ status: 'idle' }) },
     preferences: { type: Object, required: true }
   },
+  data: () => ({ themeColors: [
+    { key: 'blue', label: 'themeBlue', swatch: '#6699b2' },
+    { key: 'sage', label: 'themeSage', swatch: '#739e83' },
+    { key: 'lavender', label: 'themeLavender', swatch: '#a38bb8' },
+    { key: 'sand', label: 'themeSand', swatch: '#b89a6a' }
+  ] }),
   computed: {
     panelTitle() {
       const titleKey = { pokedex: 'pokedex', progress: 'progress', save: 'save', options: 'options' }[this.active] || 'menu';
@@ -143,4 +168,13 @@ export default {
 .panel-state,.empty-copy{padding:28px;text-align:center;color:#9eb0c8}.option-row select{padding:11px 12px;color:#eaf3ff;background:#0c1628;border:1px solid #425e84;border-radius:9px}.progress-columns{display:grid;grid-template-columns:1fr 1fr;gap:18px}.progress-columns h3,.info-panel>h3{margin:8px 0 12px;color:#b9d5ff}.quest-card{position:relative;margin-bottom:10px;padding:14px;background:#1b2c45;border:1px solid #3e5a7f;border-radius:11px}.quest-card.completed{display:flex;align-items:center;justify-content:space-between;border-color:#367963}.quest-heading{display:flex;justify-content:space-between;gap:12px}.quest-card p{margin:7px 0 11px;color:#b0bfd1;font-size:13px;line-height:1.45}.quest-track{height:6px;overflow:hidden;background:#08111f;border-radius:4px}.quest-track span{display:block;height:100%;background:linear-gradient(90deg,#4ba7e8,#58d6a5)}.completed-label{color:#66d8a7;font-size:12px}.badge-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.badge-card{display:flex;flex-direction:column;align-items:center;gap:7px;padding:15px 8px;text-align:center;color:#75859a;background:#111d30;border:1px solid #293d5a;border-radius:12px}.badge-card.earned{color:#ffe7a1;border-color:#c69637;background:#3a2d16}.badge-medal{font-size:30px}.badge-card small{font-size:10px}.save-orb{display:grid;place-items:center;width:92px;height:92px;margin:38px auto 16px;border-radius:50%;color:#08151b;background:#63d7ae;font-size:46px;box-shadow:0 0 36px rgba(99,215,174,.32)}.save-orb.syncing{animation:spin 1s linear infinite}.save-orb.error{color:white;background:#d74f67}.save-title,.save-copy,.save-date{text-align:center}.save-copy,.save-date{color:#aebdd0}.save-date{font-size:12px}.primary-button{display:block;margin:24px auto 10px;padding:12px 20px;color:#07131b;background:#65dcb5;border:0;border-radius:9px;font-weight:800;cursor:pointer}.primary-button:disabled{opacity:.55}.option-list{display:flex;flex-direction:column;gap:12px}.option-row{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:18px;background:#192b44;border:1px solid #3c587c;border-radius:12px}.option-row>span{display:flex;flex-direction:column;gap:5px}.option-row small{color:#9fb0c6}.option-control{display:flex;align-items:center;gap:12px}.volume-control input{width:190px}.switch{width:24px;height:24px;accent-color:#59d4aa}.options-note{text-align:center;color:#8fa2bb;font-size:12px}@keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:700px){.info-backdrop{padding:0}.info-panel{height:100vh;max-height:none;border-radius:0;padding:16px}.info-header{top:-16px;margin:-16px -16px 16px;padding:15px 16px}.progress-columns{grid-template-columns:1fr}.badge-grid{grid-template-columns:repeat(3,1fr)}.option-row{align-items:flex-start;flex-direction:column}.option-control,.volume-control input{width:100%}}
 
+.theme-options{min-width:0;margin:0;padding:14px 16px 16px;border:1px solid var(--journal-border);border-radius:12px;background:var(--journal-card);color:var(--journal-ink)}
+.theme-options legend{padding:0 6px;font-size:13px;font-weight:bold;color:var(--journal-heading)}
+.theme-colors,.theme-modes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.theme-modes{grid-template-columns:1fr 1fr}
+.theme-choice{position:relative;display:flex;align-items:center;justify-content:center;gap:7px;min-height:46px;padding:9px 8px;border:1px solid var(--journal-border);border-radius:9px;background:var(--journal-paper);font-size:13px;cursor:pointer}
+.theme-choice.selected{border-color:var(--journal-accent);background:var(--journal-selected);color:var(--journal-heading)}
+.theme-choice:focus-within{outline:2px solid var(--journal-accent);outline-offset:2px}
+.theme-choice input{position:absolute;opacity:0;width:100%;height:100%;inset:0;margin:0;cursor:pointer}
+.theme-swatch{width:16px;height:16px;flex:none;border-radius:50%;border:1px solid #0002}
+@media(max-width:480px){.theme-colors{grid-template-columns:1fr 1fr}}
 </style>

@@ -102,13 +102,13 @@
         <div v-if="isTeamPanelOpen" class="team-panel" ref="teamPanel">
           <div class="team-title"><span><small>COMPAGNONS DE VOYAGE</small>{{ tr('team') }}</span><button class="team-close" aria-label="Fermer l’équipe" @click="isTeamPanelOpen = false">×</button></div>
           <div v-if="teamLoading" class="team-state">{{ tr('loading') }}</div>
-          <div v-else-if="teamError" class="team-state team-error">{{ teamError }}</div>
-          <div v-else-if="teamPokemons.length === 0" class="team-state">{{ tr('noPokemon') }}</div>
-          <div v-else class="team-list">
+          <p v-if="teamError" class="team-state team-error" role="alert">{{ teamError }}</p>
+          <div v-if="!teamLoading && teamPokemons.length === 0" class="team-state">{{ tr('noPokemon') }}</div>
+          <div v-if="!teamLoading && teamPokemons.length" class="team-list">
             <div
               v-for="(pokemon, index) in teamPokemons"
               :key="pokemon.uuid || `slot-${index}`"
-              class="team-row"
+              class="team-row" :data-team-uuid="pokemon.uuid"
             >
               <button class="team-row-visual" :aria-label="`Voir la fiche de ${pokemon.name}`" @click="openPokemonDetails(pokemon)">
                 <pokemon-portrait
@@ -171,13 +171,7 @@
               </div>
             </div>
           </div>
-          <button
-            class="team-save-btn"
-            :disabled="!teamDirty || teamSaving"
-            @click="saveTeamOrder"
-          >
-            {{ teamSaving ? tr('saving') : tr('saveOrder') }}
-          </button>
+          <p class="team-order-status" role="status">{{ teamSaving ? tr('saving') : teamOrderNotice || tr('orderAutoSave') }}</p>
         </div>
         <game-info-panels
           :active="activeInfoPanel"
@@ -491,6 +485,7 @@ export default {
       teamId: null,
       teamPokemons: [],
       teamDirty: false,
+      teamOrderNotice: '',
       currentUserId: null,
       currentUsername: '',
       showMobileControls: false,
@@ -1445,47 +1440,49 @@ export default {
         this.teamLoading = false;
       }
     },
-    moveTeamPokemon(index, direction) {
-      if (this.teamSaving) return;
+    async moveTeamPokemon(index, direction) {
+      if (this.teamSaving || this.teamLoading) return;
       if (!Array.isArray(this.teamPokemons)) return;
       if (index < 0 || index >= this.teamPokemons.length) return;
 
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
       if (targetIndex < 0 || targetIndex >= this.teamPokemons.length) return;
 
-      const reordered = [...this.teamPokemons];
+      const previous = [...this.teamPokemons];
+      const reordered = [...previous];
       [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
       this.teamPokemons = reordered;
       this.teamDirty = true;
+      if (!await this.saveTeamOrder()) {
+        const message = this.teamError;
+        await this.loadTeamPokemons();
+        if (!this.isDrift && this.teamError) this.teamPokemons = previous;
+        this.teamError = message;
+        this.teamDirty = false;
+      }
     },
     async saveTeamOrder() {
-      if (this.isDrift) { const ok = await this.driftCommand({ name: "drift:reorder", data: { orderedUuids: this.teamPokemons.map(p => p.uuid) } }); if (ok) { this.teamDirty = false; await this.loadTeamPokemons(); } return; }
-      if (this.teamSaving || !this.teamDirty) return;
-      if (!this.teamId) {
-        this.teamError = "Equipe introuvable.";
-        return;
-      }
-
-      const orderedUuids = this.teamPokemons.map((pokemon) => pokemon.uuid).filter(Boolean);
-      if (!orderedUuids.length || orderedUuids.length !== this.teamPokemons.length) {
-        this.teamError = "Impossible de sauvegarder l'ordre.";
-        return;
-      }
-
+      if (this.teamSaving || !this.teamDirty) return false;
       this.teamSaving = true;
       this.teamError = '';
-
+      this.teamOrderNotice = '';
       try {
-        await api.put(
-          `/teams/${this.teamId}/pokemons/reorder`,
-          { orderedUuids }
-        );
-
-        await this.loadTeamPokemons();
+        if (this.isDrift) {
+          if (!await this.driftCommand({ name: 'drift:reorder', data: { orderedUuids: this.teamPokemons.map(p => p.uuid) } })) throw new Error('rejected');
+          await this.loadTeamPokemons();
+        } else {
+          if (!this.socket?.connected) throw new Error('offline');
+          const response = await new Promise((resolve, reject) => this.socket.timeout(6000).emit('reorderTeam',
+            { orderedUuids: this.teamPokemons.map(p => p.uuid) }, (error, result) => error ? reject(error) : resolve(result)));
+          if (!response?.success) throw new Error('rejected');
+          this.applyTeamPokemons(response.equipe.pokemons);
+        }
         this.teamDirty = false;
+        this.teamOrderNotice = this.tr('orderSaved');
+        return true;
       } catch (error) {
-        console.error("Erreur pendant la sauvegarde de l'ordre d'equipe:", error);
-        this.teamError = "Sauvegarde impossible.";
+        this.teamError = this.tr('orderFailed');
+        return false;
       } finally {
         this.teamSaving = false;
       }
@@ -2237,7 +2234,7 @@ export default {
         this.applyTeamPokemons(teamFromPayload);
       }
 
-      if (this.isTeamPanelOpen) {
+      if (this.isTeamPanelOpen && payload.reason !== 'reorder') {
         await this.loadTeamPokemons();
       }
     });

@@ -215,7 +215,7 @@ export default {
 .result-footer { flex-shrink:0; padding:0 20px 20px; }
 .result-content + .result-footer { padding-top:12px; border-top:1px solid var(--journal-border); }
 .result-timer { margin:0 0 10px; color:var(--journal-muted); font-size:12px; }
-.result-continue { display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; min-height:46px; padding:10px 14px; border:1px solid var(--journal-accent); border-radius:10px; background:var(--journal-accent); color:#fff; font:700 14px var(--journal-font); cursor:pointer; }
+.result-continue { display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; min-height:46px; padding:10px 14px; border:1px solid var(--journal-accent); border-radius:10px; background:var(--journal-accent); color:var(--journal-on-accent); font:700 14px var(--journal-font); cursor:pointer; }
 .result-continue > span { font-size:22px; font-weight:400; line-height:1; }
 .result-continue:hover { filter:brightness(.94); }
 .result-continue:active { filter:brightness(.88); }

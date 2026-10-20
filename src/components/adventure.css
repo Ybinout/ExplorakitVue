@@ -1,5 +1,5 @@
 /* World UI shares the Pokédex tokens in styles/field-journal.css. */
-.game-root { font-family:var(--journal-font); color-scheme:light; }
+.game-root { font-family:var(--journal-font); color-scheme:var(--journal-scheme); }
 .game-root .game-stage button { cursor:pointer; }
 .game-root .game-stage button:disabled { cursor:default; }
 .game-root .game-stage :is(button, input, select, summary):focus-visible { outline:2px solid var(--journal-accent); outline-offset:3px; }
@@ -86,7 +86,7 @@
 .game-root .game-stage .badge-card:not(.earned) .badge-medal { color:#a5afa0; }
 .game-root .game-stage .save-orb { color:var(--journal-accent); background:var(--journal-selected); box-shadow:none; }
 .game-root .game-stage .save-orb.error { color:var(--journal-danger); background:#f7e6df; }
-.game-root .game-stage :is(.primary-button, .team-save-btn, .shop-buy-controls button) { background:var(--journal-accent); border:1px solid var(--journal-accent); border-radius:9px; color:#fff; min-height:44px; font:600 13px var(--journal-font); }
+.game-root .game-stage :is(.primary-button, .team-save-btn, .shop-buy-controls button) { background:var(--journal-accent); border:1px solid var(--journal-accent); border-radius:9px; color:var(--journal-on-accent); min-height:44px; font:600 13px var(--journal-font); }
 .game-root .game-stage :is(.option-row select, .shop-buy-controls select) { min-height:44px; max-width:100%; background:var(--journal-paper); color:var(--journal-ink); border:1px solid var(--journal-border); border-radius:8px; font:13px var(--journal-font); }
 .game-root .game-stage .option-row input { accent-color:var(--journal-accent); }
 .game-root .game-stage .shop-card { display:flex; flex-direction:column; }
@@ -106,7 +106,7 @@
 .game-root .dialogue-layer .portrait-atlas { width:155px; height:155px; flex-shrink:0; clip-path:inset(1% 5% 0 5%); }
 .game-root .game-stage :is(.interaction-card, .chat-panel, .interaction-notice) { background:var(--journal-paper); color:var(--journal-ink); border:1px solid var(--journal-border); border-radius:14px; box-shadow:var(--journal-shadow); font:13px/1.5 var(--journal-font); }
 .game-root .game-stage :is(.interaction-text, .interaction-note) { color:var(--journal-muted); font-size:13px; }
-.game-root .game-stage :is(.interaction-btn, .chat-close-btn, .chat-send-btn) { min-height:44px; padding:8px 12px; background:var(--journal-accent); color:white; border:1px solid var(--journal-accent); border-radius:8px; font:12px var(--journal-font); }
+.game-root .game-stage :is(.interaction-btn, .chat-close-btn, .chat-send-btn) { min-height:44px; padding:8px 12px; background:var(--journal-accent); color:var(--journal-on-accent); border:1px solid var(--journal-accent); border-radius:8px; font:12px var(--journal-font); }
 .game-root .game-stage .interaction-btn-muted { background:var(--journal-soft); color:var(--journal-ink); border-color:var(--journal-border); }
 .game-root .game-stage .chat-header { background:var(--journal-soft); border-color:var(--journal-border); }
 .game-root .game-stage .chat-title { color:var(--journal-heading); font:700 13px var(--journal-font); }
@@ -119,7 +119,7 @@
 @media(max-width:920px) {
   .game-root .game-stage .mobile-dpad-btn { background:var(--journal-paper); border:1px solid var(--journal-border); color:var(--journal-accent); border-radius:16px; box-shadow:0 4px 14px #152b2426; font:24px var(--journal-font); }
   .game-root .game-stage .mobile-dpad-center { background:var(--journal-soft); border:1px solid var(--journal-border); border-radius:16px; box-shadow:none; }
-  .game-root :is(.mobile-action-a, .mobile-dialogue-action-top) { background:var(--journal-accent); border:2px solid var(--journal-border); color:#fff; box-shadow:0 5px 18px #152b2440; text-shadow:none; font-family:var(--journal-font); }
+  .game-root :is(.mobile-action-a, .mobile-dialogue-action-top) { background:var(--journal-accent); border:2px solid var(--journal-border); color:var(--journal-on-accent); box-shadow:0 5px 18px #152b2440; text-shadow:none; font-family:var(--journal-font); }
 }
 @media(max-width:600px) {
   .game-root .game-stage .world-toolbar { padding:9px 10px; gap:8px; border-radius:0; }
@@ -193,3 +193,5 @@
   .game-root .game-stage .battle-position-wild{left:76%;top:59%;--sprite-visible-size:90px}
   .game-root .game-stage .battle-grid-pokemon{max-height:none}
 }
+
+.game-root .team-order-status { margin:12px 0 0; color:var(--journal-muted); font-size:12px; min-height:18px; }

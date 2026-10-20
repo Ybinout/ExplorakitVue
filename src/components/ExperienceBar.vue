@@ -21,10 +21,10 @@ export default {
 </script>
 <style scoped>
 .experience-strip { display:flex; align-items:center; gap:7px; min-width:0; margin-top:7px; }
-.experience-label { color:#3774a4; font:bold 9px Arial,sans-serif; letter-spacing:1px; }
+.experience-label { color:var(--journal-accent, #3774a4); font:bold 9px Arial,sans-serif; letter-spacing:1px; }
 .experience-track { flex:1; height:5px; overflow:hidden; border-radius:4px; background:#cbd6dc; box-shadow:inset 0 1px 2px #172d4940; }
 .experience-fill { height:100%; background:linear-gradient(90deg,#2784df,#71d3ff); transition:width .8s ease; }
-.experience-count { font:10px Arial,sans-serif; color:#526279; }
+.experience-count { font:10px Arial,sans-serif; color:var(--journal-muted, #526279); }
 @media(prefers-reduced-motion:reduce) { .experience-fill { transition:none; } }
 .reduced-game-motion .experience-fill { transition:none; }
 </style>

@@ -276,18 +276,18 @@ export default {
   display:flex;
   align-items:center;
   gap:9px;
-  color:#51664f;
+  color:var(--journal-muted);
   font-size:12px;
 }
 .dex-totals {
   display:flex;
   align-items:baseline;
   gap:7px;
-  color:#566851;
+  color:var(--journal-muted);
   font-size:11px;
 }
 .dex-totals strong {
-  color:#2c5343;
+  color:var(--journal-heading);
   font-size:20px;
   font-weight:700;
   font-variant-numeric:tabular-nums;
@@ -296,7 +296,7 @@ export default {
 .dex-totals strong span {
   font-weight:400;
   font-size:13px;
-  color:#6a7c62;
+  color:var(--journal-muted);
   letter-spacing:0;
 }
 .dex-ball {
@@ -367,7 +367,7 @@ export default {
   width:17px;
   height:17px;
   flex:none;
-  color:#7f9083;
+  color:var(--journal-muted);
 }
 .dex-search input {
   min-width:0;
@@ -375,11 +375,11 @@ export default {
   height:42px;
   border:0;
   background:transparent;
-  color:#29463b;
+  color:var(--journal-heading);
   font-size:13px;
 }
 .dex-search input::placeholder {
-  color:#7d897b;
+  color:var(--journal-muted);
 }
 .dex-region {
   max-width:150px;
@@ -414,7 +414,7 @@ export default {
   border:1px solid transparent;
   border-radius:8px;
   background:transparent;
-  color:#68786b;
+  color:var(--journal-muted);
   font-size:12px;
   text-transform:capitalize;
 }
@@ -429,11 +429,11 @@ export default {
 }
 .dex-filters button span {
   font-size:10px;
-  color:#6b7e61;
+  color:var(--journal-muted);
   font-variant-numeric:tabular-nums;
 }
 .dex-order {
-  color:#899382;
+  color:var(--journal-muted);
   font-size:10px;
   white-space:nowrap;
 }
@@ -446,7 +446,7 @@ export default {
   overflow:auto;
   overscroll-behavior:contain;
   scrollbar-width:thin;
-  scrollbar-color:#c1cebb transparent;
+  scrollbar-color:var(--journal-muted) transparent;
   padding:16px 26px 20px;
   outline-offset:-3px!important;
 }
@@ -474,7 +474,7 @@ export default {
   height:15px;
 }
 .dex-number {
-  color:#829078;
+  color:var(--journal-muted);
   font-size:10px;
   font-variant-numeric:tabular-nums;
   letter-spacing:.04em;
@@ -568,7 +568,7 @@ export default {
   border-color:var(--journal-border);
 }
 .is-unknown .dex-number {
-  color:#8c9885;
+  color:var(--journal-muted);
 }
 .dex-unregistered {
   display:grid;
@@ -577,7 +577,7 @@ export default {
   height:50px;
   border:1px dashed var(--journal-border);
   border-radius:50%;
-  color:#c8d2bf;
+  color:var(--journal-muted);
 }
 .dex-unregistered .dex-ball {
   width:28px;
@@ -589,14 +589,14 @@ export default {
   height:9px;
 }
 .is-unknown h3 {
-  color:#a5ae9c;
+  color:var(--journal-muted);
   font-size:10px;
   letter-spacing:2px;
   margin-bottom:9px;
 }
 .dex-unknown-label {
   margin:0;
-  color:#87927f;
+  color:var(--journal-muted);
   text-align:center;
   font-size:10px;
   line-height:17px;
@@ -609,7 +609,7 @@ export default {
   min-height:230px;
   height:100%;
   gap:10px;
-  color:#798674;
+  color:var(--journal-muted);
   text-align:center;
 }
 .dex-empty>.dex-ball {
@@ -622,7 +622,7 @@ export default {
 }
 .dex-empty h3 {
   font-size:16px;
-  color:#405b48;
+  color:var(--journal-heading);
 }
 .dex-empty button {
   min-height:44px;
@@ -649,7 +649,7 @@ export default {
 }
 .dex-footer b {
   margin-left:6px;
-  color:#64745c;
+  color:var(--journal-muted);
   font-size:10px;
   font-weight:500;
 }
