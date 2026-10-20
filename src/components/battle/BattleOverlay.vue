@@ -228,7 +228,7 @@
           </button>
         </div>
 
-        <div v-else-if="actionState.pokemonPanel" class="battle-grid battle-grid-pokemon">
+        <div v-else-if="actionState.pokemonPanel" class="battle-grid battle-grid-pokemon" :data-replacement-choice="replacementChoice ? 'true' : null" aria-label="Pokémon disponibles">
           <button
             v-for="(pokemon, index) in battleTeam"
             :key="getPokemonBattleKey(pokemon) || index"
@@ -263,10 +263,10 @@
       </div>
 
       <div class="battle-main-actions">
-        <button class="battle-main-btn action-attack" :disabled="!canChooseAction" @click="setPanel('attack')">{{ tr('attack') }}</button>
-        <button class="battle-main-btn action-bag" :disabled="!canChooseAction" @click="openBag">{{ tr('bag') }}</button>
+        <button class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
+        <button class="battle-main-btn action-bag" :disabled="!canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
         <button class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
-        <button class="battle-main-btn action-flee" :disabled="!canChooseAction" @click="submitAction({ action: 'flee' }, tr('fleeing'))">{{ tr('flee') }}</button>
+        <button class="battle-main-btn action-flee" :disabled="!canChooseAction || replacementChoice" @click="submitAction({ action: 'flee' }, tr('fleeing'))">{{ tr('flee') }}</button>
       </div>
     </div>
   </div>
@@ -343,6 +343,10 @@ export default {
       challenge: null,
       opponent: null,
       canAct: false,
+      replacementChoice: false,
+      replacementIndexes: null,
+      replacementId: null,
+      actionTurnId: null,
       presentationBusy: false,
       entrancePhase: 'ready',
       feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
@@ -402,7 +406,7 @@ export default {
     raining() { return this.fieldState.weather === 'rain'; },
     rainBackgrounds() { return RAIN_BACKGROUNDS; },
     environment() { return battleEnvironment(this.battleMapName, Boolean(this.challenge)); },
-    hasAnnouncements() { return this.notice || this.transitionLabel || this.conditionNotice || this.driftNotices.length || this.fieldLabel || (this.captureFx.visible && this.captureFx.message); },
+    hasAnnouncements() { if (this.replacementChoice) return false; return this.notice || this.transitionLabel || this.conditionNotice || this.driftNotices.length || this.fieldLabel || (this.captureFx.visible && this.captureFx.message); },
     resultSide() { return this.resultFx.visible ? (this.resultFx.actor === 'opponent' ? 'wild' : 'player') : null; },
     currentPokemon() {
       return this.player?.equipe?.pokemons?.[0] || null;
@@ -415,6 +419,7 @@ export default {
     },
     turnLabel() {
       if (this.captureFx.visible) return this.tr('captureRunning');
+      if (this.replacementChoice) return this.preferences.language === 'en' ? 'Choose your next Pokémon' : 'Choisis ton prochain Pokémon';
       return this.canChooseAction ? this.tr('yourTurn') : this.tr('resolvingTurn');
     },
     battleMoveStyle() {
@@ -677,10 +682,11 @@ export default {
       return !allEmpty && Number(pp[index]) <= 0;
     },
     isSwitchUnavailable(pokemon, index) {
-      return !this.canChooseAction || index === 0 || Number(pokemon?.currentHp || 0) <= 0;
+      return !this.canChooseAction || index === 0 || Number(pokemon?.currentHp || 0) <= 0
+        || (this.replacementChoice && !this.replacementIndexes?.includes(index));
     },
     setPanel(panel) {
-      if (!this.canChooseAction) return;
+      if (!this.canChooseAction || (this.replacementChoice && panel !== 'pokemon')) return;
       this.actionState.patient = false;
       this.actionState.attackPanel = panel === 'attack';
       this.actionState.pokemonPanel = panel === 'pokemon';
@@ -701,15 +707,25 @@ export default {
     },
     submitAction(payload, message) {
       if (!this.canChooseAction) return;
+      if (this.replacementChoice && (payload.action !== 'change' || this.isSwitchUnavailable(this.battleTeam[payload.number],payload.number))) return;
       this.unlockAudio();
       this.canAct = false;
-      this.$emit('action', payload);
+      this.$emit('action', { ...payload, ...(this.replacementId ? { replacementId:this.replacementId } : {}), ...(this.actionTurnId ? { turnId:this.actionTurnId } : {}) });
+      this.replacementChoice = false;
       this.showMessage(message, true);
     },
-    requestAction(message) {
+    requestAction(request) {
+      const data = typeof request === 'string' ? { message:request } : request || {};
+      this.replacementChoice = Boolean(data.replacement);
+      this.replacementIndexes = Array.isArray(data.allowedPokemonIndexes) ? data.allowedPokemonIndexes : null;
+      this.replacementId = data.replacementId || null;
+      this.actionTurnId = data.turnId || null;
       this.canAct = true;
-      this.showMessage(message || this.tr('chooseAction'), true);
-      this.$emit('request-bag');
+      this.showMessage(data.message || this.tr('chooseAction'), true);
+      if (this.replacementChoice) {
+        this.actionState.patient = false;
+        this.actionState.pokemonPanel = true;
+      } else this.$emit('request-bag');
     },
     showMessage(message, hold = false) {
       if (!message) return;
@@ -1204,6 +1220,10 @@ export default {
       this.player = null;
       this.opponent = null;
       this.canAct = false;
+      this.replacementChoice = false;
+      this.replacementIndexes = null;
+      this.replacementId = null;
+      this.actionTurnId = null;
       Object.assign(this.actionState, {
         patient: false,
         attackPanel: false,

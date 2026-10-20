@@ -1492,7 +1492,7 @@ export default {
       if (!this.socket || !this.socket.connected) return;
       const action = typeof payload.action === 'string' ? payload.action : '';
       if (!['attack', 'flee', 'change', 'bag'].includes(action)) return;
-      this.socket.emit('actionResponse', this.isDrift ? { ...payload, turnId: this.driftTurnId } : payload);
+      this.socket.emit('actionResponse', this.isDrift ? { ...payload, turnId: payload.turnId || this.driftTurnId } : payload);
     },
     menuItemLabel(item) {
       if(item.key==='contracts')return 'Contrats facultatifs';
@@ -2403,7 +2403,7 @@ export default {
 
     this.socket.on('requestAction', (data) => {
       if (this.isDrift) this.driftTurnId = data?.turnId;
-      this.$refs.battleOverlay?.presentEvent('requestAction', data?.message || 'Choisis une action.');
+      this.$refs.battleOverlay?.presentEvent('requestAction', data || { message:'Choisis une action.' });
     });
 
     this.socket.on('battleText', (data) => {
