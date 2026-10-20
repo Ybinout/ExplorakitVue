@@ -8,9 +8,9 @@
         { 'battle-impact-active': attackFx.wild.hit || attackFx.player.hit }
       ]"
     >
-      <picture v-if="challenge" class="battle-arena-background"><source media="(orientation: landscape)" :srcset="require('@/assets/battle/colosseum-wide-v2.webp')"><img src="../../assets/battle/colosseum-mobile-v3.webp" class="battle-background battle-colosseum-background" alt=""></picture>
+      <picture v-if="challenge" class="battle-arena-background"><source media="(orientation: landscape)" :srcset="raining ? rainBackgrounds.arenaWide : require('@/assets/battle/colosseum-wide-v2.webp')"><img :src="raining ? rainBackgrounds.arenaMobile : require('@/assets/battle/colosseum-mobile-v3.webp')" class="battle-background battle-colosseum-background" alt=""></picture>
       <picture v-else-if="environment === 'cave'" class="battle-arena-background" data-battle-environment="cave"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/cave-mobile-v1.webp')"><img src="../../assets/battle/cave-wide-v1.webp" class="battle-background battle-cave-background" alt=""></picture>
-      <picture v-else class="battle-arena-background"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/grass-mobile-v3.webp')"><img src="../../assets/battle/back.webp" class="battle-background" alt=""></picture>
+      <picture v-else class="battle-arena-background"><source v-if="mobile" media="(orientation: portrait)" :srcset="raining ? rainBackgrounds.grassMobile : require('@/assets/battle/grass-mobile-v3.webp')"><img :src="raining ? rainBackgrounds.grassWide : require('@/assets/battle/back.webp')" class="battle-background" alt=""></picture>
       <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
       <template v-if="challenge || mobile || environment === 'cave'">
         <div v-for="side in ['wild', 'player']" :key="`platform-${side}`" :class="['battle-platform', `battle-position-${side}`]" :data-battle-platform="side" aria-hidden="true">
@@ -286,6 +286,14 @@ import HealthBar from '../HealthBar.vue';
 import { getBattleStatus } from '@/services/gameView';
 import { localizeAbilityName, localizeMoveName, translate } from '@/services/i18n';
 
+const RAIN_BACKGROUNDS = Object.freeze({
+  grassMobile: require('@/assets/battle/grass-rain-mobile-v1.webp'),
+  grassWide: require('@/assets/battle/grass-rain-wide-v1.webp'),
+  arenaMobile: require('@/assets/battle/colosseum-rain-mobile-v1.webp'),
+  arenaWide: require('@/assets/battle/colosseum-rain-wide-v1.webp')
+});
+const preloadedBackgrounds = new Set();
+
 const MOVE_COLORS = {
   bug: '#9fca3b', dark: '#71605a', dragon: '#7864e8', electric: '#f6cf3f',
   fairy: '#f39dcc', fighting: '#dc594d', fire: '#f27b38', flying: '#78a7e8',
@@ -385,6 +393,8 @@ export default {
     };
   },
   computed: {
+    raining() { return this.fieldState.weather === 'rain'; },
+    rainBackgrounds() { return RAIN_BACKGROUNDS; },
     environment() { return battleEnvironment(this.battleMapName, Boolean(this.challenge)); },
     hasAnnouncements() { return this.notice || this.transitionLabel || this.conditionNotice || this.driftNotices.length || this.fieldLabel || (this.captureFx.visible && this.captureFx.message); },
     resultSide() { return this.resultFx.visible ? (this.resultFx.actor === 'opponent' ? 'wild' : 'player') : null; },
@@ -464,6 +474,16 @@ export default {
     }
   },
   mounted() {
+    // Warm the two matching weather variants before a battle, sharing the browser cache.
+    const format = this.mobile && window.matchMedia('(orientation: portrait)').matches ? 'Mobile' : 'Wide';
+    for (const scene of ['grass', 'arena']) {
+      const src = RAIN_BACKGROUNDS[scene + format];
+      if (!preloadedBackgrounds.has(src)) {
+        preloadedBackgrounds.add(src);
+        const image = new Image();
+        image.src = src;
+      }
+    }
     this._feedbackObserver = new ResizeObserver(this.measureFeedback);
     this._battleAudio = new BattleAudio();
     this.syncAudio();
