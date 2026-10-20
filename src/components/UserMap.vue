@@ -379,7 +379,7 @@ import BattleOverlay from './battle/BattleOverlay.vue';
 import BattleResultPanel from './battle/BattleResultPanel.vue';
 import MoveLearningPanel from './menu/MoveLearningPanel.vue';
 import EvolutionPresentation from './menu/EvolutionPresentation.vue';
-import { VillageWaterRenderer } from '@/services/villageWater';
+import { VillageWaterRenderer, hasVillageWater } from '@/services/villageWater';
 import { ForegroundWindRenderer } from '@/services/foregroundWind';
 import { WorldWeatherRenderer, worldWeatherEnabled, mapWorldWeather } from '@/services/worldWeather';
 import { createEvolutionTracker } from '@/services/evolutionPresentation';
@@ -566,7 +566,7 @@ export default {
     };
   },
   computed: {
-    villageWaterActive() { return this.map === 'start' && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
+    villageWaterActive() { return hasVillageWater(this.map) && !(this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible || this.mapLoading || this.mapLoadError || this.renderedMap !== this.map); },
     effectiveWorldWeather() { return mapWorldWeather(this.map, this.mapWeather); },
     worldWeatherActive() { return Boolean(this.effectiveWorldWeather.wind || this.effectiveWorldWeather.rain) && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
     learningPokemon() {
@@ -614,7 +614,7 @@ export default {
   watch: {
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
-    map(value) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); if (value !== 'start') { this._villageWater?.suspend(); } },
+    map() { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._villageWater?.suspend(); },
     mapLoadError(error) { if (error) this.releaseAllMovementKeys(); },
     evolutionLookupKey() { this.loadEvolutionOptions(); },
     selectedPokemonUuid() { this.evolutionNotice = ''; },
@@ -1924,7 +1924,7 @@ export default {
       if (this.mapImage) {
         if (this.villageWaterActive && !document.hidden) {
           if (!this._villageWater) this._villageWater = new VillageWaterRenderer();
-          this._villageWater.draw(c, this.mapImage, performance.now(), this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
+          this._villageWater.draw(c, this.mapImage, performance.now(), this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
         } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
 

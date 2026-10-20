@@ -1,8 +1,14 @@
-// A one-pixel current inside the start village's pond, never across its shoreline.
+// A one-pixel current inside each mapped lake, never across its shoreline.
 const WIDTH = 448, HEIGHT = 320, FRAME_MS = 1000 / 15;
-const POND = { left: 54, right: 149, top: 245, bottom: 320 };
-const WATER = new Set(['81,145,177', '56,109,139', '53,87,100', '95,164,201']);
-export function villageWaterMask(data) {
+const LAKES = {
+  start: { bounds: { left: 54, right: 149, top: 245, bottom: 320 }, colors: ['81,145,177', '56,109,139', '53,87,100', '95,164,201'] },
+  ville1: { bounds: { left: 245, right: 412, top: 24, bottom: 144 }, colors: ['48,176,240', '64,184,240', '48,144,232', '48,160,232', '72,200,240'] },
+};
+export function hasVillageWater(map) { return Object.prototype.hasOwnProperty.call(LAKES, map); }
+export function villageWaterMask(data, map = 'start') {
+  const profile = hasVillageWater(map) ? LAKES[map] : null;
+  if (!profile) return { interior: new Uint8Array(WIDTH * HEIGHT), pixels: new Uint32Array(0) };
+  const POND = profile.bounds, WATER = new Set(profile.colors);
   const water = new Uint8Array(WIDTH * HEIGHT), interior = new Uint8Array(WIDTH * HEIGHT), pixels = [];
   for (let y = POND.top; y < POND.bottom; y++) for (let x = POND.left; x < POND.right; x++) {
     const index = y * WIDTH + x, i = index * 4;
@@ -22,7 +28,7 @@ export class VillageWaterRenderer {
     this.createCanvas = createCanvas; this.frames = 0; this.destroyed = false;
     this.canvas = null; this.source = null; this.lastTime = -Infinity;
   }
-  prepare(image) {
+  prepare(image, map) {
     this.suspend();
     try {
       this.canvas = this.createCanvas(); this.canvas.width = WIDTH; this.canvas.height = HEIGHT;
@@ -32,13 +38,13 @@ export class VillageWaterRenderer {
       this.original = new Uint32Array(original.data.buffer);
       this.colors = original.data;
       this.frame = this.context.createImageData(WIDTH, HEIGHT); this.output = new Uint32Array(this.frame.data.buffer); this.output.set(this.original);
-      this.mask = villageWaterMask(original.data); this.source = image;
+      this.mask = villageWaterMask(original.data, map); this.source = image; this.map = map;
     } catch (_) { this.suspend(); }
   }
-  draw(target, image, timestamp, motion = true) {
+  draw(target, image, timestamp, motion = true, map = 'start') {
     if (this.destroyed) return;
-    if (!motion) { this.suspend(); target.drawImage(image, 0, 0, WIDTH * 2, HEIGHT * 2); return; }
-    if (this.source !== image || !this.canvas) this.prepare(image);
+    if (!motion || !hasVillageWater(map)) { this.suspend(); target.drawImage(image, 0, 0, WIDTH * 2, HEIGHT * 2); return; }
+    if (this.source !== image || this.map !== map || !this.canvas) this.prepare(image, map);
     if (!this.canvas) { target.drawImage(image, 0, 0, WIDTH * 2, HEIGHT * 2); return; }
     const time = Number.isFinite(timestamp) ? Math.max(0, timestamp) : 0;
     if (time < this.lastTime || time - this.lastTime >= FRAME_MS) {
@@ -56,6 +62,7 @@ export class VillageWaterRenderer {
           this.frame.data[index * 4 + channel] = Math.round(value + (220 - value) * glint);
         }
       }
+      const POND = LAKES[map].bounds;
       this.context.putImageData(this.frame, 0, 0, POND.left, POND.top, POND.right - POND.left, POND.bottom - POND.top);
       this.frames++;
     }
@@ -63,7 +70,7 @@ export class VillageWaterRenderer {
   }
   suspend() {
     if (this.canvas) { this.canvas.width = 0; this.canvas.height = 0; }
-    this.canvas = null; this.context = null; this.source = null; this.colors = null;
+    this.canvas = null; this.context = null; this.source = null; this.map = null; this.colors = null;
     this.original = null; this.frame = null; this.output = null; this.mask = null; this.lastTime = -Infinity;
   }
   destroy() { this.suspend(); this.destroyed = true; }
