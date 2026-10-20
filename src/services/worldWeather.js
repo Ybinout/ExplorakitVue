@@ -1,6 +1,7 @@
 // Local ambient preview. Does not send commands or modify battle/world rules.
-export const WORLD_WEATHER_KEY = 'riftmon.worldWeatherPreview';
-export const DEFAULT_WORLD_WEATHER = Object.freeze({ wind: 1, rain: 1 });
+// This preview revision starts at maximum once, then remembers further choices.
+export const WORLD_WEATHER_KEY = 'riftmon.worldWeatherPreview.v2';
+export const DEFAULT_WORLD_WEATHER = Object.freeze({ wind: 3, rain: 3 });
 const WIDTH = 896, HEIGHT = 640, FRAME_MS = 1000 / 30;
 const RAIN_COUNTS = [0, 44, 94, 160], WIND_COUNTS = [0, 8, 17, 28];
 const mod = (value, size) => ((value % size) + size) % size;
