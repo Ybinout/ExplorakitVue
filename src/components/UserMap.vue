@@ -58,18 +58,8 @@
           </button>
         </div>
         </div>
-        <div v-if="isBagOpen" class="bag-panel" ref="bagPanel">
-          <div class="bag-title"><span><small>Explorakit</small>{{ tr('bag') }}</span><button class="panel-close" :aria-label="tr('close')" @click="isBagOpen = false">×</button></div>
-          <p v-if="isDrift" class="bag-mode-note">Objets de cette expédition</p>
-          <p v-if="bagError" class="bag-state bag-error" role="alert">{{ bagError }}</p>
-          <p v-if="medicineNotice" class="bag-state" role="status">{{ medicineNotice }}</p>
-          <div v-if="bagLoading" class="bag-state">{{ tr('loading') }}</div>
-          <div v-else-if="bagItems.length === 0" class="bag-state">{{ emptyBagLabel }}</div>
-          <div v-else class="bag-items">
-            <div v-for="item in bagItems" :key="item.key" :data-item-key="item.key" class="bag-item-row">
-              <span class="bag-item-name">{{ item.name }}</span>
-              <span class="bag-item-qty">x{{ item.quantity }}</span>
-              <p class="bag-item-description">{{ item.description }}</p>
+        <bag-panel v-if="isBagOpen" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
+          <template #actions="{item}">
               <template v-if="isBagConsumable(item)">
                 <select :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
                   <option value="">Choisir un Pokémon…</option>
@@ -80,9 +70,8 @@
                 <small v-else-if="!teamPokemons.some(p => canReceiveMedicine(item, p))" class="bag-use-hint">Aucun Pokémon n’a besoin de cet objet.</small>
               </template>
               <small v-else-if="isDrift && item.revive" class="bag-use-hint">Les K.O. sont définitifs dans ce mode.</small>
-            </div>
-          </div>
-        </div>
+          </template>
+        </bag-panel>
         <div v-if="isAppearancePanelOpen" class="appearance-panel" ref="appearancePanel">
           <div class="appearance-title"><span><small>Explorakit</small>{{ tr('appearance') }}</span><button class="panel-close" :aria-label="tr('close')" @click="isAppearancePanelOpen = false">×</button></div>
           <div class="appearance-grid">
@@ -350,6 +339,7 @@ import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamer
 import { createMapSceneLoader } from '@/services/mapScene';
 import { moveTouchGesture } from '@/services/touchMovement';
 import JournalIcon from './menu/JournalIcon.vue';
+import BagPanel from './menu/BagPanel.vue';
 import api from "@/services/api";
 import { getSession } from "@/services/session";
 import { saveDriftReport } from "@/services/driftReportHistory";
@@ -400,7 +390,7 @@ const MOVEMENT_INTERPOLATION_MS = 175;
 export default {
   components: {
     StarterChoice, LeaveExpedition,
-    JournalIcon,
+    JournalIcon, BagPanel,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -1642,7 +1632,7 @@ export default {
     handleOutsideMenuClick(event) {
       if (this.evolutionVisible || this.selectedPokemonUuid) return;
       const header = this.$refs.gameHeader;
-      const bagPanel = this.$refs.bagPanel;
+      const bagPanel = this.$refs.bagPanel?.$el;
       const appearancePanel = this.$refs.appearancePanel;
       const teamPanel = this.$refs.teamPanel;
 
