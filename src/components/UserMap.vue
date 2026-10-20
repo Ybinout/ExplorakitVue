@@ -1230,9 +1230,8 @@ export default {
           context.fillText(`Défi · N. ${pnj.challengeLevel}`,drawX+32,drawY-10); context.restore();
         }
         if (pnj.spriteFrame) {
-          // A 2× integer scale keeps each source pixel square. Match the player's
-          // opaque foot baseline (60 px inside its 64 px frame), not the frame edge.
-          drawNpcFrame(context, spriteSheet, pnj.spriteFrame, drawX, drawY - 4, 64);
+          // Keep the smaller world size preferred by the creator; exact atlas crops stay unchanged.
+          drawNpcFrame(context, spriteSheet, pnj.spriteFrame, drawX + 8, drawY + 4, 48);
           continue;
         }
         const treatAsSpriteSheet =
