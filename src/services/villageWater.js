@@ -2,6 +2,7 @@
 const WIDTH = 448, HEIGHT = 320, FRAME_MS = 1000 / 15;
 const LAKES = {
   start: { bounds: { left: 54, right: 149, top: 245, bottom: 320 }, colors: ['81,145,177', '56,109,139', '53,87,100', '95,164,201'] },
+  route3: { bounds: { left: 248, right: 360, top: 244, bottom: 320 }, colors: ['81,145,177', '56,109,139', '53,87,100', '95,164,201'] },
   ville1: { bounds: { left: 245, right: 412, top: 24, bottom: 144 }, colors: ['48,176,240', '64,184,240', '48,144,232', '48,160,232', '72,200,240'] },
 };
 export function hasVillageWater(map) { return Object.prototype.hasOwnProperty.call(LAKES, map); }
