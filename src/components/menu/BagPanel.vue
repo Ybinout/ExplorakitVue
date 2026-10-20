@@ -73,7 +73,7 @@ export default {
   },
   watch:{visibleItems(){this.reconcile();}},
   mounted(){this.previousFocus=document.activeElement;if(!this.visibleItems.length&&this.owned.length)this.activePocket=bagPocket(this.owned[0]);this.reconcile();this.$refs.close.focus({preventScroll:true});},
-  beforeDestroy(){if(this.previousFocus?.isConnected)this.previousFocus.focus({preventScroll:true});else document.querySelector('.menu-toggle-btn')?.focus({preventScroll:true});},
+  beforeDestroy(){const previous=this.previousFocus;this.$nextTick(()=>{const target=previous?.isConnected&&previous!==document.body&&previous!==document.documentElement?previous:document.querySelector('.menu-toggle-btn');target?.focus({preventScroll:true});});},
   methods:{
     description(item){const balls={pokeball:'Une Ball pour capturer un Pokémon sauvage.',superball:'Une Ball offrant de meilleures chances de capture.',hyperball:'Une Ball très performante pour les captures difficiles.'};return !this.english&&balls[item.key]?balls[item.key]:item.description;},
     reconcile(){if(!this.pockets.some(p=>p.key===this.activePocket))this.activePocket='medicine';if(!this.visibleItems.some(i=>i.key===this.selectedKey))this.selectedKey=this.visibleItems[0]?.key||null;},
