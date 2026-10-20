@@ -10,6 +10,7 @@ export const BAG_POCKETS = Object.freeze([
 ]);
 export function bagPocket(item) {
   if(item.category==='ball')return 'balls';
+  if(item.category==='heal')return 'medicine';
   if(item.category==='held' && /_berry$/.test(item.key || ''))return 'berries';
   return ['medicine','held','evolution','key'].includes(item.category)?item.category:'other';
 }
