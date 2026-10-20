@@ -9,7 +9,7 @@
       <move-learning-panel v-if="learningVisible" :key="learningPokemon.pendingMoves[0].id" :pokemon="learningPokemon" :busy="learningBusy" :error="learningError" @choose="chooseLearnedMove" @later="learningDeferred = true" />
       <battle-result-panel v-if="battleResult" :result="battleResult" @continue="dismissBattleResult" />
       <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
-      <drift-run-panel v-show="!learningVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
+      <drift-run-panel v-show="!learningVisible && !evolutionVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
       <battle-overlay
         ref="battleOverlay"
@@ -22,7 +22,7 @@
         @action="handleBattleAction"
         @request-bag="loadBagItems"
       />
-      <div class="game-shell" :inert="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible ? '' : null" :aria-hidden="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible ? 'true' : null">
+      <div class="game-shell" :inert="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? '' : null" :aria-hidden="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? 'true' : null">
         <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
           <button ref="menuToggle" class="menu-toggle-btn" :class="{ 'has-contract-reward': readyContractCount > 0 }" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
@@ -344,7 +344,8 @@
       </div>
     </div>
 
-    <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
+    <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" @continue="evolutionQueue.shift()" />
+    <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
 
@@ -383,6 +384,9 @@ import './worldViewport.css';
 import BattleOverlay from './battle/BattleOverlay.vue';
 import BattleResultPanel from './battle/BattleResultPanel.vue';
 import MoveLearningPanel from './menu/MoveLearningPanel.vue';
+import EvolutionPresentation from './menu/EvolutionPresentation.vue';
+import { createEvolutionTracker } from '@/services/evolutionPresentation';
+import evolutionGraph from '@/data/evolutionGraph.json';
 import { buildBattleResult } from '@/services/battleResult';
 import GameInfoPanels from './menu/GameInfoPanels.vue';
 import ShopPanel from './shop/ShopPanel.vue';
@@ -401,7 +405,7 @@ export default {
     StarterChoice, LeaveExpedition,
     JournalIcon,
     BattleResultPanel,
-    MoveLearningPanel,
+    MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
     RiftSpectatorPanel,
     DriftGlyph,
@@ -429,6 +433,7 @@ export default {
       battleResult: null,
       pendingBattleResult: null,
       learningDeferred: false, learningBusy: false, learningError: '',
+      evolutionQueue: [], evolutionTracker: createEvolutionTracker(evolutionGraph),
       evolutionOptions: [], evolutionLoading: false, evolutionBusy: false, evolutionError: '', evolutionNotice: '',
       user: {
         nom: '',
@@ -565,7 +570,8 @@ export default {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
       return this.teamPokemons.find(p => p.currentHp > 0 && p.pendingMoves?.length);
     },
-    learningVisible() { return Boolean(this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
+    evolutionVisible() { return Boolean(this.evolutionQueue.length && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.trainerOffer && !this.textImageSequence.length && !this.evolutionBusy && !this.medicineBusy && !this.learningBusy && this.driftState?.phase !== 'selection'); },
+    learningVisible() { return Boolean(!this.evolutionQueue.length && this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
     isColosseum() { return this.$route.name === 'ColosseumGame' || this.driftState?.mode === 'colosseum'; },
     driftLobbyPath() { return this.isColosseum ? '/colosseum' : '/drift'; },
     isDrift() { return ['DriftGame','ColosseumGame'].includes(this.$route.name); },
@@ -593,7 +599,7 @@ export default {
     movementBlocked() { return this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
     movementSuspended() {
       return this.lock || this.battle || this.battleResult || this.driftSpectator
-        || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
+        || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
@@ -1087,7 +1093,7 @@ export default {
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       this.releaseAllMovementKeys();
-      if (this.battle || this.battleResult || this.driftSpectator || this.learningVisible) return;
+      if (this.battle || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       if (this.textImageSequence.length > 0) {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
         return;
@@ -1307,6 +1313,7 @@ export default {
         .map((pokemon, index) => this.normalizeTeamPokemon(pokemon, index))
         .sort((a, b) => (a.position || 0) - (b.position || 0));
 
+      this.evolutionQueue.push(...this.evolutionTracker.observe(normalizedTeam));
       this.teamPokemons = normalizedTeam;
       this.teamDirty = false;
     },
@@ -1473,7 +1480,7 @@ export default {
       }
     },
     handleBattleAction(payload = {}) {
-      if (this.battleResult || this.driftSpectator || this.learningVisible) return;
+      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       if (!this.socket || !this.socket.connected) return;
       const action = typeof payload.action === 'string' ? payload.action : '';
       if (!['attack', 'flee', 'change', 'bag'].includes(action)) return;
@@ -1621,7 +1628,7 @@ export default {
       this.closeLegacyPanels();
     },
     handleOutsideMenuClick(event) {
-      if (this.selectedPokemonUuid) return;
+      if (this.evolutionVisible || this.selectedPokemonUuid) return;
       const header = this.$refs.gameHeader;
       const bagPanel = this.$refs.bagPanel;
       const appearancePanel = this.$refs.appearancePanel;
@@ -1678,7 +1685,7 @@ export default {
 
 
     espace() {
-      if (this.battleResult || this.driftSpectator || this.learningVisible) return;
+      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       console.log('espace');
       if (this.interactionChoice.visible || this.incomingRequest.visible) {
         return;
@@ -1731,7 +1738,7 @@ export default {
       context.restore();
     },
     handleKeydown(e) {
-      if (this.battleResult || this.driftSpectator || this.learningVisible) { this.releaseAllMovementKeys(); return; }
+      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) { this.releaseAllMovementKeys(); return; }
       if (this.isDriftPanelOpen) { if (e.key === "Escape") this.isDriftPanelOpen = false; return; }
       if (this.selectedPokemonUuid) return;
       if (e.key === 'Escape') {
