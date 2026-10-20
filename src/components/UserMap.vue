@@ -22,7 +22,7 @@
         @action="handleBattleAction"
         @request-bag="loadBagItems"
       />
-      <div class="game-shell" :inert="worldWeatherPanelOpen || trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? '' : null" :aria-hidden="worldWeatherPanelOpen || trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? 'true' : null">
+      <div class="game-shell" :inert="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? '' : null" :aria-hidden="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? 'true' : null">
         <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
           <button ref="menuToggle" class="menu-toggle-btn" :class="{ 'has-contract-reward': readyContractCount > 0 }" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
@@ -47,7 +47,6 @@
               <journal-icon :name="item.key==='contracts'?'progress':item.key" /><span>{{ menuItemLabel(item) }}</span>
               <small v-if="item.key==='contracts' && readyContractCount" class="contract-reward-label">{{ readyContractCount }} à récupérer</small>
             </button>
-            <button v-if="map === 'start'" class="menu-dropdown-item" data-menu-action="weather" @click="handleMenuAction('weather')"><journal-icon name="location" /><span>{{ preferences.language === 'en' ? 'Village weather' : 'Météo du village' }}</span></button>
             <leave-expedition v-if="isDrift" :phase="driftState?.phase" :busy="starterBusy" :disabled="!socket?.connected" @confirm="cancelStarter" />
           </nav>
         </div>
@@ -345,7 +344,6 @@
       </div>
     </div>
 
-    <world-weather-panel v-if="worldWeatherPanelOpen" :value="worldWeather" :climate="mapWeather?.map === map ? mapWeather.kind : null" :language="preferences.language" :reduced-motion="worldWeatherReducedMotion || !preferences.animationsEnabled" @change="updateWorldWeather" @reset="updateWorldWeather({ ...defaultWorldWeather })" @close="closeWorldWeather" />
     <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" @continue="evolutionQueue.shift()" />
     <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
@@ -387,10 +385,9 @@ import BattleOverlay from './battle/BattleOverlay.vue';
 import BattleResultPanel from './battle/BattleResultPanel.vue';
 import MoveLearningPanel from './menu/MoveLearningPanel.vue';
 import EvolutionPresentation from './menu/EvolutionPresentation.vue';
-import WorldWeatherPanel from './menu/WorldWeatherPanel.vue';
 import { VillageWaterRenderer } from '@/services/villageWater';
 import { ForegroundWindRenderer } from '@/services/foregroundWind';
-import { WorldWeatherRenderer, loadWorldWeather, saveWorldWeather, DEFAULT_WORLD_WEATHER, worldWeatherEnabled, mapWorldWeather } from '@/services/worldWeather';
+import { WorldWeatherRenderer, worldWeatherEnabled, mapWorldWeather } from '@/services/worldWeather';
 import { createEvolutionTracker } from '@/services/evolutionPresentation';
 import evolutionGraph from '@/data/evolutionGraph.json';
 import { buildBattleResult } from '@/services/battleResult';
@@ -411,7 +408,7 @@ export default {
     StarterChoice, LeaveExpedition,
     JournalIcon,
     BattleResultPanel,
-    MoveLearningPanel, EvolutionPresentation, WorldWeatherPanel,
+    MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
     RiftSpectatorPanel,
     DriftGlyph,
@@ -425,7 +422,7 @@ export default {
   },
   data() {
     return {
-      mapWeather: null, worldWeather: loadWorldWeather(), worldWeatherPanelOpen: false, worldWeatherReducedMotion: false,
+      mapWeather: null, worldWeatherReducedMotion: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
       medicineBusy:false, medicineNotice:'', medicineTargets: {},
@@ -524,6 +521,7 @@ export default {
       menuItems: [
         { key: 'pokedex' },
         { key: 'progress' },
+        { key: 'badges' },
         { key: 'pokemon' },
         { key: 'appearance' },
         { key: 'bag' },
@@ -573,9 +571,8 @@ export default {
     };
   },
   computed: {
-    defaultWorldWeather() { return DEFAULT_WORLD_WEATHER; },
     villageWaterActive() { return this.map === 'start' && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
-    effectiveWorldWeather() { return mapWorldWeather(this.map, this.worldWeather, this.mapWeather); },
+    effectiveWorldWeather() { return mapWorldWeather(this.map, this.mapWeather); },
     worldWeatherActive() { return Boolean(this.effectiveWorldWeather.wind || this.effectiveWorldWeather.rain) && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
     learningPokemon() {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
@@ -590,7 +587,7 @@ export default {
       if (this.isDrift && this.driftState && !this.driftState.alive) return 'Ton expédition est terminée : ses objets ont disparu.';
       return this.tr('emptyBag');
     },
-    visibleMenuItems() { return this.isDrift ? [...this.menuItems.filter(i => !['pokedex', 'progress', 'save', 'appearance'].includes(i.key)), { key: 'drifts' }, ...(this.driftState?.contracts?.length?[{key:'contracts'}]:[])] : this.menuItems; },
+    visibleMenuItems() { return this.isDrift ? [...this.menuItems.filter(i => !['pokedex', 'progress', 'badges', 'save', 'appearance'].includes(i.key)), { key: 'drifts' }, ...(this.driftState?.contracts?.length?[{key:'contracts'}]:[])] : this.menuItems; },
     readyContractCount() { return this.isDrift && this.driftState?.alive && this.driftState.phase === 'exploration' ? (this.driftState.contracts || []).filter(c => c.complete && !c.claimed).length : 0; },
     driftPhaseLabel() { return { selection:'Choix du compagnon', exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', colosseum_ready: 'Colosseum · prêt ?', colosseum_battle: 'Colosseum', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
     driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return this.isColosseum && this.driftState?.colosseum ? `${this.driftState.colosseum.score} pts` : ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
@@ -610,7 +607,7 @@ export default {
     movementBlocked() { return this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
     movementSuspended() {
       return this.lock || this.battle || this.battleResult || this.driftSpectator
-        || this.worldWeatherPanelOpen || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
+        || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
@@ -622,8 +619,7 @@ export default {
   watch: {
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
-    map(value) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); if (value !== 'start') { this.worldWeatherPanelOpen = false; this._villageWater?.suspend(); } },
-    evolutionVisible(value) { if (value) this.worldWeatherPanelOpen = false; },
+    map(value) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); if (value !== 'start') { this._villageWater?.suspend(); } },
     mapLoadError(error) { if (error) this.releaseAllMovementKeys(); },
     evolutionLookupKey() { this.loadEvolutionOptions(); },
     selectedPokemonUuid() { this.evolutionNotice = ''; },
@@ -634,18 +630,15 @@ export default {
         else this.releaseAllMovementKeys();
       } else this.resumeMobileGesture();
     },
-    learningVisible(visible) { if (visible) { this.worldWeatherPanelOpen = false; this.releaseAllMovementKeys(); this.learningError = ''; } },
+    learningVisible(visible) { if (visible) { this.releaseAllMovementKeys(); this.learningError = ''; } },
     battle(isInBattle) {
       if (isInBattle) {
-        this.worldWeatherPanelOpen = false;
         this.releaseAllMovementKeys();
       }
     }
   },
 
   methods: {
-    closeWorldWeather() { this.worldWeatherPanelOpen = false; this.$nextTick(() => this.$refs.menuToggle?.focus()); },
-    updateWorldWeather(value) { this.worldWeather = saveWorldWeather(value); },
     async loadEvolutionOptions() {
       const pokemon = this.selectedPokemon, key = this.evolutionLookupKey;
       this.evolutionOptions = []; this.evolutionError = '';
@@ -1111,7 +1104,7 @@ export default {
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       this.releaseAllMovementKeys();
-      if (this.battle || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible || this.worldWeatherPanelOpen) return;
+      if (this.battle || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       if (this.textImageSequence.length > 0) {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
         return;
@@ -1498,7 +1491,7 @@ export default {
       }
     },
     handleBattleAction(payload = {}) {
-      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible || this.worldWeatherPanelOpen) return;
+      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       if (!this.socket || !this.socket.connected) return;
       const action = typeof payload.action === 'string' ? payload.action : '';
       if (!['attack', 'flee', 'change', 'bag'].includes(action)) return;
@@ -1519,7 +1512,9 @@ export default {
       this.isTeamPanelOpen = false;
     },
     closeInfoPanel() {
+      const restoreFocus = this.activeInfoPanel === 'badges';
       this.activeInfoPanel = '';
+      if (restoreFocus) this.$nextTick(() => this.$refs.menuToggle?.focus());
     },
     async loadPokedexState() {
       if (this.isDrift) return;
@@ -1547,7 +1542,7 @@ export default {
       this.menuDataLoading = true;
       try {
         if (panel === 'pokedex') await this.loadPokedexState();
-        if (panel === 'progress') await this.loadProgressionState();
+        if (panel === 'progress' || panel === 'badges') await this.loadProgressionState();
       } catch (error) {
         console.error(`Erreur chargement panneau ${panel}:`, error);
         this.showInteractionNotice('Impossible de synchroniser ces données.');
@@ -1588,10 +1583,9 @@ export default {
     },
     async handleMenuAction(actionKey) {
       this.isMenuOpen = false;
-      if (actionKey === 'weather') { if (this.map !== 'start' || this.battle) return; this.closeLegacyPanels(); this.closeInfoPanel(); this.closeShop(); this.selectedPokemonUuid = null; this.isDriftPanelOpen = false; this.releaseAllMovementKeys(); this.worldWeatherPanelOpen = true; return; }
       if (["drifts","contracts"].includes(actionKey)) { this.closeLegacyPanels(); this.driftPanelTab=actionKey; this.releaseAllMovementKeys(); this.isDriftPanelOpen = true; return; }
 
-      if (actionKey === 'pokedex' || actionKey === 'progress') {
+      if (['pokedex', 'progress', 'badges'].includes(actionKey)) {
         await this.openServerPanel(actionKey);
         return;
       }
@@ -1647,7 +1641,7 @@ export default {
       this.closeLegacyPanels();
     },
     handleOutsideMenuClick(event) {
-      if (this.worldWeatherPanelOpen || this.evolutionVisible || this.selectedPokemonUuid) return;
+      if (this.evolutionVisible || this.selectedPokemonUuid) return;
       const header = this.$refs.gameHeader;
       const bagPanel = this.$refs.bagPanel;
       const appearancePanel = this.$refs.appearancePanel;
@@ -1704,7 +1698,7 @@ export default {
 
 
     espace() {
-      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible || this.worldWeatherPanelOpen) return;
+      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       console.log('espace');
       if (this.interactionChoice.visible || this.incomingRequest.visible) {
         return;
@@ -1757,7 +1751,7 @@ export default {
       context.restore();
     },
     handleKeydown(e) {
-      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible || this.worldWeatherPanelOpen) { this.releaseAllMovementKeys(); return; }
+      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) { this.releaseAllMovementKeys(); return; }
       if (this.isDriftPanelOpen) { if (e.key === "Escape") this.isDriftPanelOpen = false; return; }
       if (this.selectedPokemonUuid) return;
       if (e.key === 'Escape') {
@@ -1990,9 +1984,9 @@ export default {
 
       // Dessiner les Ã©lÃ©ments de premier plan si nÃ©cessaire
       if (this.foregroundImage?.complete && this.foregroundImage.naturalWidth) {
-        if (this.map === 'start' && this.worldWeatherActive && this.worldWeather.wind && !document.hidden) {
+        if (this.map === 'start' && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
           if (!this._foregroundWind) this._foregroundWind = new ForegroundWindRenderer();
-          this._foregroundWind.draw(c, this.foregroundImage, performance.now(), this.worldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
+          this._foregroundWind.draw(c, this.foregroundImage, performance.now(), this.effectiveWorldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
         } else { this._foregroundWind?.suspend(); c.drawImage(this.foregroundImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
       if (this.worldWeatherActive && !document.hidden) {

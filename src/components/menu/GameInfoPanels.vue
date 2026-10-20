@@ -1,5 +1,6 @@
 <template>
   <pokedex-panel v-if="active === 'pokedex'" :pokedex="pokedex" :loading="loading" :language="preferences.language" @close="$emit('close')" />
+  <badges-panel v-else-if="active === 'badges'" :badges="progress.badges || []" :loading="loading" :language="preferences.language" @close="$emit('close')" />
   <div v-else-if="active" class="info-backdrop" @mousedown.self="$emit('close')">
     <section class="info-panel" role="dialog" aria-modal="true" :aria-label="panelTitle">
       <header class="info-header">
@@ -31,14 +32,6 @@
             </article>
             <p v-if="completedQuests.length === 0" class="empty-copy">{{ tr('noCompletedQuest') }}</p>
           </section>
-        </div>
-        <h3>{{ tr('badges') }}</h3>
-        <div class="badge-grid">
-          <div v-for="badge in progress.badges || []" :key="badge.key" :class="['badge-card', { earned: badge.earned }]">
-            <span class="badge-medal">◆</span>
-            <strong>{{ badge.earned ? badge.name : tr('unknownBadge') }}</strong>
-            <small>{{ badge.earned ? tr('earned') : tr('toConquer') }}</small>
-          </div>
         </div>
       </template>
 
@@ -91,10 +84,11 @@
 import { translate } from '@/services/i18n';
 import PokedexPanel from './PokedexPanel.vue';
 import AdventureGuide from './AdventureGuide.vue';
+import BadgesPanel from './BadgesPanel.vue';
 
 export default {
   name: 'GameInfoPanels',
-  components: { PokedexPanel, AdventureGuide },
+  components: { PokedexPanel, AdventureGuide, BadgesPanel },
   props: {
     active: { type: String, default: '' },
     loading: { type: Boolean, default: false },

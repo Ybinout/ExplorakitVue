@@ -1,0 +1,25 @@
+<template>
+  <svg class="badge-emblem" :style="{ '--badge-color': design.color }" viewBox="0 0 80 80" fill="none" aria-hidden="true" focusable="false">
+    <path class="badge-setting" d="M40 5 66 20v34L40 75 14 54V20Z" />
+    <path class="badge-face" d="M40 11 61 23v28L40 68 19 51V23Z" />
+    <path class="badge-motif" :d="design.path" />
+    <path class="badge-shine" d="m23 24 13-8M21 30v12" />
+  </svg>
+</template>
+<script>
+const designs = {
+  dune_badge: { color: '#c69b4e', path: 'm25 47 9-17 8 12 6-8 9 16H25Zm4 8h22M48 24h1' },
+  bloom_badge: { color: '#c27b96', path: 'M40 32c-13-18-24 3-9 10-15 7-1 24 9 10 10 14 24-3 9-10 15-7 4-28-9-10Zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z' },
+  ore_badge: { color: '#a38966', path: 'm29 28 18-2 9 18-17 15-15-15Zm0 0 10 15 8-17M24 44l15-1 17 1M39 43v16' },
+  tide_badge: { color: '#609fae', path: 'M25 39c10 0 7-16 19-16 10 0 13 14 4 17 4-9-10-8-8 1 2 9 10 11 17 8-7 13-28 11-32-1m3 7h24' },
+  forest_badge: { color: '#769a63', path: 'M28 48C20 31 39 23 55 24c0 18-7 33-24 26m-4 9 22-27m-15 8 1 10m6-17 1 9' },
+  crystal_badge: { color: '#9d8ec0', path: 'm40 20 9 12-9 30-9-30Zm-9 12h18m-18 2-8 4 9 18m17-22 8 4-9 18M40 20v42' }
+};
+export default {
+  name: 'BadgeEmblem', props: { badgeKey: String },
+  computed: { design() { return designs[this.badgeKey] || designs.ore_badge; } }
+};
+</script>
+<style scoped>
+.badge-emblem{display:block;width:76px;height:76px;flex:none;filter:drop-shadow(0 5px 3px #263a3020)}.badge-setting{fill:#bca879;stroke:#8f805d;stroke-width:2;stroke-linejoin:round}.badge-face{fill:var(--badge-color);stroke:#fff9;stroke-width:1.5}.badge-motif{stroke:#fff8dc;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.badge-shine{stroke:#fff8;stroke-width:2;stroke-linecap:round}
+</style>

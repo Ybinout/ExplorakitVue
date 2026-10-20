@@ -1,8 +1,5 @@
 import rainGround from '../data/worldRainGround.js';
-// Display settings never send commands or modify authoritative battle/world rules.
-// This preview revision starts at maximum once, then remembers further choices.
-export const WORLD_WEATHER_KEY = 'riftmon.worldWeatherPreview.v2';
-export const DEFAULT_WORLD_WEATHER = Object.freeze({ wind: 3, rain: 3 });
+// Climate and intensity come from the server, identically for every player.
 const WIDTH = 896, HEIGHT = 640, FRAME_MS = 1000 / 30;
 const RAIN_COUNTS = [0, 36, 76, 128], WIND_COUNTS = [0, 8, 17, 28];
 const mod = (value, size) => ((value % size) + size) % size;
@@ -10,20 +7,10 @@ const level = value => Number.isInteger(Number(value)) ? Math.max(0, Math.min(3,
 export function normalizeWorldWeather(value = {}) {
   return { wind: level(value?.wind), rain: level(value?.rain) };
 }
-export function loadWorldWeather(storage) {
-  try { const saved = (storage || window.localStorage).getItem(WORLD_WEATHER_KEY); return saved ? normalizeWorldWeather(JSON.parse(saved)) : { ...DEFAULT_WORLD_WEATHER }; }
-  catch (_) { return { ...DEFAULT_WORLD_WEATHER }; }
-}
-export function saveWorldWeather(value, storage) {
-  const settings = normalizeWorldWeather(value);
-  try { (storage || window.localStorage).setItem(WORLD_WEATHER_KEY, JSON.stringify(settings)); } catch (_) { /* Private browsing: keep the in-memory choice. */ }
-  return settings;
-}
 export function worldWeatherEnabled(map, { hidden = false, battle = false, loading = false } = {}) {
   return Object.prototype.hasOwnProperty.call(rainGround, map) && !hidden && !battle && !loading;
 }
-export function mapWorldWeather(map, villageSettings, climate) {
-  if (map === 'start') return normalizeWorldWeather(villageSettings);
+export function mapWorldWeather(map, climate) {
   return worldWeatherEnabled(map) && climate?.map === map && climate.kind === 'rain'
     ? normalizeWorldWeather(climate.ambience) : { wind: 0, rain: 0 };
 }

@@ -1,0 +1,50 @@
+<template>
+  <div class="badge-case-backdrop" @pointerdown.self="$emit('close')">
+    <section class="badge-case" role="dialog" aria-modal="true" aria-labelledby="badge-case-title" @keydown.stop="handleKeydown" @keyup.stop>
+      <header class="badge-case-header">
+        <div class="badge-case-brand"><journal-icon name="badges"/><div><p>{{ english ? 'TRAINER JOURNAL' : 'LE CARNET DU DRESSEUR' }}</p><h2 id="badge-case-title">{{ english ? 'Badges & seals' : 'Badges et sceaux' }}</h2></div></div>
+        <button ref="close" class="badge-case-close" :aria-label="english ? 'Close' : 'Fermer'" @click="$emit('close')">×</button>
+      </header>
+      <div ref="scroll" class="badge-case-scroll" tabindex="0" role="region" :aria-label="english ? 'Badge collection' : 'Collection de badges'">
+        <div v-if="loading" class="badge-case-state" role="status">{{ english ? 'Opening your collection…' : 'Ouverture de ton étui…' }}</div>
+        <template v-else>
+          <div class="badge-case-summary">
+            <div><p class="badge-case-eyebrow">{{ english ? 'YOUR JOURNEY, ONE VICTORY AT A TIME' : 'LES SOUVENIRS DE TES VICTOIRES' }}</p><h3>{{ complete ? (english ? 'A complete collection' : 'Un étui au complet') : (english ? 'Every badge tells a story' : 'Chaque badge raconte une étape') }}</h3><p>{{ english ? 'Discover the towns and progress through the story to complete your collection.' : 'Explore les villes et avance dans l’histoire pour compléter ta collection.' }}</p></div>
+            <div class="badge-case-count" :aria-label="`${earned} / ${badges.length}`"><strong>{{ earned }}<span> / {{ badges.length }}</span></strong><small>{{ english ? 'collected' : 'obtenus' }}</small></div>
+          </div>
+          <div class="badge-case-track" role="progressbar" :aria-label="english ? 'Badge collection' : 'Collection de badges'" :aria-valuenow="earned" aria-valuemin="0" :aria-valuemax="Math.max(1,badges.length)"><span :style="{width: percent + '%'}"></span></div>
+          <div v-if="badges.length" class="badge-case-grid" role="list">
+            <article v-for="(badge,index) in badges" :key="badge.key" :class="['badge-case-slot',{ 'is-earned': badge.earned }]" :data-badge-key="badge.key" :data-badge-earned="Boolean(badge.earned)" role="listitem">
+              <div class="badge-case-slot-top"><span>{{ String(index+1).padStart(2,'0') }}</span><span class="badge-case-status"><span aria-hidden="true">{{ badge.earned ? '✓' : '◇' }}</span> {{ badge.earned ? (english ? 'Collected' : 'Obtenu') : (english ? 'To discover' : 'À obtenir') }}</span></div>
+              <div class="badge-case-display"><badge-emblem :badge-key="badge.key" /></div>
+              <h4>{{ badge.name }}</h4><p class="badge-case-place">{{ places[badge.key] || (english ? 'Adventure' : 'Aventure') }}</p>
+              <p class="badge-case-caption">{{ badge.key === 'forest_badge' ? (english ? 'A milestone in your story.' : 'Une étape de ton histoire.') : (english ? 'A reminder of an arena challenge.' : 'Le souvenir d’un défi d’arène.') }}</p>
+            </article>
+          </div>
+          <p v-else class="badge-case-state">{{ english ? 'No badges to display yet.' : 'Aucun badge à afficher pour le moment.' }}</p>
+        </template>
+      </div>
+      <footer class="badge-case-footer"><journal-icon name="progress"/><span>{{ english ? 'Your badges stay with your Adventure save.' : 'Tes badges restent dans ta sauvegarde Aventure.' }}</span></footer>
+    </section>
+  </div>
+</template>
+<script>
+import BadgeEmblem from './BadgeEmblem.vue';
+import JournalIcon from './JournalIcon.vue';
+const places = { dune_badge:'Ocreville', bloom_badge:'Floraville', ore_badge:'Rochebourg', tide_badge:'Rivazur', forest_badge:'Clairbois', crystal_badge:'Valpierre' };
+export default {
+  name:'BadgesPanel', components:{BadgeEmblem,JournalIcon},
+  props:{badges:{type:Array,default:()=>[]},loading:Boolean,language:{type:String,default:'fr'}},
+  computed:{english(){return this.language==='en';},places(){return places;},earned(){return this.badges.filter(b=>b.earned).length;},percent(){return this.badges.length?this.earned/this.badges.length*100:0;},complete(){return this.badges.length>0&&this.earned===this.badges.length;}},
+  mounted(){this.$refs.close.focus({preventScroll:true});},
+  methods:{handleKeydown(event){
+    if(event.key==='Escape'){event.preventDefault();this.$emit('close');}
+    if(event.key==='Tab'){const first=this.$refs.close,last=this.$refs.scroll;if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}
+  }}
+};
+</script>
+<style scoped>
+.badge-case-backdrop{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px;background:var(--journal-backdrop);backdrop-filter:blur(7px)}.badge-case,.badge-case *{box-sizing:border-box;font-family:var(--journal-font)}.badge-case{display:flex;flex-direction:column;width:min(820px,100%);max-height:min(820px,calc(100dvh - 48px));min-height:0;overflow:hidden;background:var(--journal-paper);color:var(--journal-ink);border:1px solid var(--journal-border);border-radius:20px;box-shadow:var(--journal-shadow);font-size:13px}.badge-case-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:21px 24px;border-bottom:1px solid var(--journal-border)}.badge-case-brand{display:flex;align-items:center;gap:14px}.badge-case-brand>.journal-icon{width:38px;height:38px;color:#8e7950}.badge-case-brand p{margin:0 0 6px;color:var(--journal-muted);font-size:9px;letter-spacing:.16em;font-weight:700}.badge-case-brand h2{margin:0;font-size:25px;font-weight:600;color:var(--journal-heading)}.badge-case-close{flex:none;width:44px;height:44px;min-height:44px;border:1px solid var(--journal-border);border-radius:12px;background:var(--journal-card);color:var(--journal-ink);font-size:26px;cursor:pointer}.badge-case-close:focus-visible{outline:3px solid var(--journal-accent);outline-offset:3px}.badge-case-scroll{overflow:auto;overscroll-behavior:contain;padding:24px;min-height:0}.badge-case-summary{display:flex;align-items:center;justify-content:space-between;gap:24px}.badge-case-eyebrow{margin:0 0 8px;font-size:9px;letter-spacing:.12em;color:var(--journal-muted);font-weight:700}.badge-case-summary h3{margin:0 0 8px;font-size:21px;font-weight:500;color:var(--journal-heading)}.badge-case-summary p:not(.badge-case-eyebrow){max-width:430px;margin:0;color:var(--journal-muted);font-size:12px;line-height:1.6}.badge-case-count{flex:none;text-align:right}.badge-case-count strong{display:block;font-size:40px;font-weight:500;color:var(--journal-accent);white-space:nowrap}.badge-case-count strong span{font-size:22px;color:#89968b}.badge-case-count small{display:block;font-size:11px;color:var(--journal-muted)}.badge-case-track{height:5px;background:#e1e8dc;margin:22px 0 24px;border-radius:8px;overflow:hidden}.badge-case-track span{display:block;height:100%;background:var(--journal-progress);border-radius:inherit}.badge-case-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.badge-case-slot{position:relative;min-width:0;padding:14px;background:var(--journal-soft);border:1px solid var(--journal-border);border-radius:14px;text-align:center}.badge-case-slot.is-earned{background:var(--journal-card);border-color:#a7bda0;box-shadow:inset 0 3px 0 #a8bb94}.badge-case-slot-top{display:flex;align-items:center;justify-content:space-between;gap:4px;text-align:left;font-size:9px;color:var(--journal-muted)}.badge-case-slot-top>span:first-child{font-variant-numeric:tabular-nums;letter-spacing:.1em}.badge-case-status{white-space:nowrap}.is-earned .badge-case-status{color:var(--journal-accent)}.badge-case-display{display:flex;justify-content:center;padding:15px 0 12px}.badge-case-slot:not(.is-earned) .badge-case-display{filter:grayscale(1);opacity:.37}.badge-case-slot h4{margin:0;color:var(--journal-heading);font-size:14px;font-weight:600;overflow-wrap:anywhere}.badge-case-place{margin:6px 0 0;font-size:11px;color:var(--journal-muted)}.badge-case-caption{margin:11px 0 0;font-size:10px;line-height:1.5;color:var(--journal-muted)}.badge-case-footer{flex:none;display:flex;align-items:center;gap:9px;padding:15px 24px;border-top:1px solid var(--journal-border);background:var(--journal-soft);color:var(--journal-muted);font-size:10px;line-height:1.5}.badge-case-footer>.journal-icon{width:16px;height:16px}.badge-case-state{padding:40px 12px;text-align:center;color:var(--journal-muted)}
+@media(max-width:700px){.badge-case-backdrop{padding:8px}.badge-case{max-height:calc(100dvh - 16px);border-radius:16px}.badge-case-header{padding:16px;gap:8px}.badge-case-brand{gap:10px}.badge-case-brand>.journal-icon{width:30px;height:30px}.badge-case-brand h2{font-size:21px}.badge-case-brand p{font-size:8px}.badge-case-scroll{padding:18px 14px}.badge-case-summary{gap:12px;align-items:flex-start}.badge-case-summary h3{font-size:18px}.badge-case-eyebrow{font-size:8px;line-height:1.5}.badge-case-count strong{font-size:32px}.badge-case-count strong span{font-size:17px}.badge-case-summary p:not(.badge-case-eyebrow){font-size:11px}.badge-case-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.badge-case-slot{padding:11px 8px}.badge-case-slot-top{font-size:8px}.badge-case-display{padding:12px 0 10px}.badge-case-slot h4{font-size:12px}.badge-case-caption{font-size:9px}.badge-case-footer{padding:12px 16px}}
+@media(max-height:500px) and (min-width:701px){.badge-case-backdrop{padding:8px}.badge-case{max-height:calc(100dvh - 16px)}.badge-case-header{padding:12px 20px}.badge-case-scroll{padding:16px 20px}.badge-case-summary h3{font-size:18px}.badge-case-summary p:not(.badge-case-eyebrow){font-size:11px}.badge-case-footer{padding:9px 20px}}
+</style>

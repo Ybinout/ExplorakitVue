@@ -8,6 +8,7 @@
 const paths = {
   menu: 'M4 6h16M4 12h16M4 18h16',
   pokedex: 'M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM8 7h8v6H8ZM8 17h3m3 0h2',
+  badges: 'm12 2 7 4v8l-7 8-7-8V6Zm0 4 3 5-3 5-3-5ZM5 14l7 2 7-2',
   progress: 'M6 4h12v17H6ZM9 4V2h6v2M9 9h6m-6 4h6m-6 4h3',
   pokemon: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h6m6 0h6m-6 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
   appearance: 'm8 3-5 3 3 5 2-1v11h8V10l2 1 3-5-5-3a4 4 0 0 1-8 0Z',
