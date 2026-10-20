@@ -2390,6 +2390,7 @@ export default {
       this.clearIncomingRequest();
       this.closeChatSession(true);
       this.$refs.battleOverlay?.resetBattleUi();
+      this.$refs.battleOverlay?.prepareEntrance();
       this.$refs.battleOverlay?.updateFieldState(data?.field || {});
       this.battle = true;
       this.$nextTick(() => this.$refs.battleOverlay?.startMusic(data?.musicKind || data?.battleType || 'wild'));

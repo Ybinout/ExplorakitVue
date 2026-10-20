@@ -1,7 +1,9 @@
 <template>
-  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-colosseum': challenge, 'battle-cave': environment === 'cave' }]" role="region" :aria-label="tr('battle')">
+  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave' }]" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
+    <battle-entrance v-if="entranceActive" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
+      :inert="entranceActive ? '' : null" :aria-hidden="entranceActive ? 'true' : null"
       :class="[
         'battle-scene',
         fieldClasses,
@@ -165,7 +167,7 @@
       </div>
     </div>
 
-    <div class="bar battle-action-shell" :class="{ 'has-battle-notices': hasAnnouncements }">
+    <div class="bar battle-action-shell" :inert="entranceActive ? '' : null" :aria-hidden="entranceActive ? 'true' : null" :class="{ 'has-battle-notices': hasAnnouncements }">
       <div :class="['battle-turn-indicator', { 'is-ready': canChooseAction }]">
         <span class="battle-turn-dot" aria-hidden="true"></span>
         {{ turnLabel }}
@@ -271,6 +273,8 @@
 </template>
 
 <script>
+import BattleEntrance from './BattleEntrance.vue';
+import { waitForBattleAssets, entranceDelay } from '@/services/battleEntrance';
 import { createBattlePresentation } from '@/services/battlePresentation';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
@@ -319,7 +323,7 @@ import { battleEnvironment } from '@/services/battleEnvironment';
 
 export default {
   name: 'BattleOverlay',
-  components: { HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain },
+  components: { BattleEntrance, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain },
   props: {
     mobile: Boolean,
     mapName: { type: String, default: '' },
@@ -340,6 +344,7 @@ export default {
       opponent: null,
       canAct: false,
       presentationBusy: false,
+      entrancePhase: 'ready',
       feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
       visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
       usableMoveIndexes: null,
@@ -393,6 +398,7 @@ export default {
     };
   },
   computed: {
+    entranceActive() { return this.entrancePhase !== 'ready'; },
     raining() { return this.fieldState.weather === 'rain'; },
     rainBackgrounds() { return RAIN_BACKGROUNDS; },
     environment() { return battleEnvironment(this.battleMapName, Boolean(this.challenge)); },
@@ -405,7 +411,7 @@ export default {
       return Array.isArray(this.player?.equipe?.pokemons) ? this.player.equipe.pokemons : [];
     },
     canChooseAction() {
-      return this.canAct && !this.presentationBusy && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
+      return this.canAct && !this.entranceActive && !this.presentationBusy && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
     },
     turnLabel() {
       if (this.captureFx.visible) return this.tr('captureRunning');
@@ -507,6 +513,43 @@ export default {
     this._battleAudio?.dispose();
   },
   methods: {
+    prepareEntrance() {
+      this.cancelEntrance();
+      this.battleMapName = this.mapName;
+      this._entranceController = new AbortController();
+      this._entranceStartedAt = performance.now();
+      this.entrancePhase = 'holding';
+    },
+    cancelEntrance() {
+      this._entranceController?.abort();
+      this._entranceController = null;
+      this.entrancePhase = 'ready';
+    },
+    async revealEntrance(epoch) {
+      const controller = this._entranceController;
+      if (!controller) return;
+      const { signal } = controller;
+      const obsolete = () => signal.aborted || epoch !== this.visualEpoch;
+      await this.$nextTick();
+      if (obsolete()) return;
+      await waitForBattleAssets(() => [...(this.$el.querySelectorAll?.('.battle-background, .battle-sprite, .battle-platform img') || [])], { signal });
+      if (obsolete()) return;
+      // Cached images may have loaded before their Vue load handler was attached.
+      for (const [side, anchor] of [['wild', this.$refs.opponentAnchor], ['player', this.$refs.playerAnchor]]) {
+        const image = anchor?.querySelector('.battle-sprite');
+        if (image) this.calibrateBattleSprite({ currentTarget: image }, side);
+      }
+      await this.$nextTick();
+      if (!this.reducedMotion()) await entranceDelay(520 - (performance.now() - this._entranceStartedAt), signal);
+      if (obsolete()) return;
+      if (!this.reducedMotion()) {
+        this.entrancePhase = 'revealing';
+        await entranceDelay(420, signal);
+      }
+      if (obsolete()) return;
+      this.entrancePhase = 'ready';
+      this._entranceController = null;
+    },
     presentEvent(method, payload) {
       this._presentation ||= createBattlePresentation({ changed: busy => { this.presentationBusy = busy; } });
       const delay = () => {
@@ -534,7 +577,7 @@ export default {
       else if (this.music.paused) this.music.play().catch(() => {});
     },
     syncAudio() {
-      if (document.hidden) { this._presentation?.skipWait(); this._transitionRelease?.(); this.clearCaptureTimers(); }
+      if (document.hidden) { this.cancelEntrance(); this._presentation?.skipWait(); this._transitionRelease?.(); this.clearCaptureTimers(); }
       this._battleAudio?.setVolume(this.soundEnabled && !document.hidden ? this.audioVolume : 0);
       this.syncMusic();
     },
@@ -689,6 +732,7 @@ export default {
     transitionWait(ms) { return new Promise(resolve=>{const finish=()=>{clearTimeout(this._transitionTimer);this._transitionRelease=null;resolve();};this._transitionRelease=finish;this._transitionTimer=setTimeout(finish,ms);}); },
     async presentState(payload = {}) {
       const epoch = this.visualEpoch;
+      const opening = !this.player && this.entrancePhase === 'holding';
       const events = payload.transitions || [];
       const changes = { player:battleConditionChanges(this.currentPokemon,payload.player?.equipe?.pokemons?.[0]), wild:battleConditionChanges(this.opponent,payload.wildPokemon) };
       const outgoing = events.filter(e => e.kind === 'faint' || e.kind === 'recall');
@@ -721,6 +765,10 @@ export default {
       }
       if (epoch !== this.visualEpoch) return;
       this.updateBattleState(payload);
+      if (opening) {
+        await this.revealEntrance(epoch);
+        if (epoch !== this.visualEpoch) return;
+      }
       this.transitionFx = { player: '', wild: '' };
       if (incoming.length) {
         this.transitionLabel = incoming.map(e => `${e.name} entre en combat.`).join(' · ');
@@ -1133,6 +1181,7 @@ export default {
       });
     },
     clearAllTimers() {
+      this.cancelEntrance();
       clearTimeout(this.criticalTimer); this.criticalFx.side=null; this.pendingCritical=null;
       this.visualEpoch++;this._transitionRelease?.();clearTimeout(this._transitionLabelTimer);clearTimeout(this.driftNoticeTimer);this.transitionFx={player:'',wild:''};this.transitionLabel='';this.driftNotices=[];clearTimeout(this.conditionTimer);this.conditionFx={player:[],wild:[]};this.conditionNotice='';
       if (this.messageTimer) clearTimeout(this.messageTimer);
@@ -1214,6 +1263,9 @@ export default {
 .battle-drift-notices{display:flex;flex-direction:column;gap:5px;color:#f8f1ff}
 .battle-drift-notices p{border:1px solid #bfadd9;background:#413563}
 .battle-fainted{opacity:0}.battle-transition-recall .battle-sprite{animation:combat-recall .55s ease-in forwards!important}.battle-transition-faint .battle-sprite{animation:combat-faint .55s ease-in forwards!important}.battle-transition-enter .battle-sprite{animation:combat-enter .4s ease-out both!important}@keyframes combat-recall{to{filter:brightness(3);transform:scale(.05);opacity:0}}@keyframes combat-faint{to{filter:grayscale(1);transform:translateY(65%);opacity:0}}@keyframes combat-enter{from{filter:brightness(2);transform:scale(.15);opacity:0}to{transform:scale(1);opacity:1}}.battle-reduced-motion .battle-sprite{animation:none!important}@media(prefers-reduced-motion:reduce){.battle-sprite{animation:none!important}}
+
+.battle-entry-holding > .battle-scene, .battle-entry-holding > .battle-action-shell { visibility:hidden; }
+.battle-entry-holding .battle-sprite { animation:none; }
 
 .battle-scene {
   position: absolute;
@@ -1849,7 +1901,7 @@ export default {
   z-index: 50;
   margin-top: 0;
   transform: none;
-  animation: battle-enter 0.48s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+  animation: none;
 }
 
 
