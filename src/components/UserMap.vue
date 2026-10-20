@@ -388,6 +388,7 @@ import BattleResultPanel from './battle/BattleResultPanel.vue';
 import MoveLearningPanel from './menu/MoveLearningPanel.vue';
 import EvolutionPresentation from './menu/EvolutionPresentation.vue';
 import WorldWeatherPanel from './menu/WorldWeatherPanel.vue';
+import { VillageWaterRenderer } from '@/services/villageWater';
 import { ForegroundWindRenderer } from '@/services/foregroundWind';
 import { WorldWeatherRenderer, loadWorldWeather, saveWorldWeather, DEFAULT_WORLD_WEATHER, worldWeatherEnabled } from '@/services/worldWeather';
 import { createEvolutionTracker } from '@/services/evolutionPresentation';
@@ -573,6 +574,7 @@ export default {
   },
   computed: {
     defaultWorldWeather() { return DEFAULT_WORLD_WEATHER; },
+    villageWaterActive() { return worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
     worldWeatherActive() { return Boolean(this.worldWeather.wind || this.worldWeather.rain) && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
     learningPokemon() {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
@@ -617,8 +619,9 @@ export default {
     }
   },
   watch: {
+    villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
-    map(value) { if (value !== 'start') { this.worldWeatherPanelOpen = false; this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
+    map(value) { if (value !== 'start') { this.worldWeatherPanelOpen = false; this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._villageWater?.suspend(); } },
     evolutionVisible(value) { if (value) this.worldWeatherPanelOpen = false; },
     mapLoadError(error) { if (error) this.releaseAllMovementKeys(); },
     evolutionLookupKey() { this.loadEvolutionOptions(); },
@@ -1103,7 +1106,7 @@ export default {
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (document.hidden) { this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
+    onWorldVisibility() { if (document.hidden) { this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._villageWater?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       this.releaseAllMovementKeys();
@@ -1912,6 +1915,7 @@ export default {
       // placeholder while the authoritative player snapshot is still arriving.
       if (this.mapLoading || this.mapLoadError || this.renderedMap !== this.map
         || !me || me.currentmap !== this.map || !this.mapImage?.complete || !this.mapImage.naturalWidth) {
+        this._villageWater?.suspend();
         this.drawHeldWorldFrame(c, canvas);
         return;
       }
@@ -1926,7 +1930,10 @@ export default {
 
       // Fill the canvas with the map image
       if (this.mapImage) {
-        c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        if (this.villageWaterActive && !document.hidden) {
+          if (!this._villageWater) this._villageWater = new VillageWaterRenderer();
+          this._villageWater.draw(c, this.mapImage, performance.now(), this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
+        } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
 
       this.drawPnjs(c);
@@ -2481,6 +2488,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    this._villageWater?.destroy();
     this._worldWeather?.destroy();
     this._foregroundWind?.destroy();
     this._weatherMotionQuery?.removeEventListener?.('change', this._weatherMotionChange);
