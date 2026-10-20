@@ -107,6 +107,7 @@
           <battle-conditions :pokemon="opponent"/>
           <span v-if="opponent.passiveAbility" class="battle-status-ability">{{ tr('ability') }} : {{ localizedAbility(opponent.passiveAbility) }}</span>
         </div>
+        <p v-if="opponentEffortLabel" class="battle-effort-yield" data-battle-effort-yield :title="effortYieldHint">{{ opponentEffortLabel }}</p>
       </div>
 
       <div
@@ -342,6 +343,7 @@ export default {
       player: null,
       challenge: null,
       opponent: null,
+      opponentEffortYield: null,
       canAct: false,
       replacementChoice: false,
       replacementIndexes: null,
@@ -450,6 +452,19 @@ export default {
         '--capture-near-y': `${deltaY * 0.88 - 38}px`,
         '--capture-drop-y': `${path.groundY - path.targetY}px`
       };
+    },
+    effortYieldHint() {
+      return this.preferences.language === 'en'
+        ? 'Base EV yield on defeat or capture, up to 252 per stat and 510 total.'
+        : 'EV de base à la victoire ou à la capture, dans la limite de 252 par stat et 510 au total.';
+    },
+    opponentEffortLabel() {
+      const labels = this.preferences.language === 'en'
+        ? {hp:'HP',attack:'Atk',defense:'Def',specialAttack:'Sp. Atk',specialDefense:'Sp. Def',speed:'Speed'}
+        : {hp:'PV',attack:'Atq.',defense:'Déf.',specialAttack:'Atq. Spé.',specialDefense:'Déf. Spé.',speed:'Vit.'};
+      const gains = Object.entries(labels).filter(([key])=>Number(this.opponentEffortYield?.[key])>0)
+        .map(([key,label])=>`+${this.opponentEffortYield[key]} ${label}`);
+      return gains.length ? `EV : ${gains.join(' · ')}` : '';
     },
     opponentStatus() {
       return getBattleStatus(this.opponent?.status);
@@ -822,6 +837,7 @@ export default {
       this.driftNoticeTimer=setTimeout(()=>{this.driftNotices=[];},2200);
     },
     updateBattleState(payload = {}) {
+      this.opponentEffortYield = payload.effortYield || null;
       if(payload.musicKind)this.startMusic(payload.musicKind);
       this.usableMoveIndexes = Array.isArray(payload.usableMoveIndexes) ? payload.usableMoveIndexes : null;
       if (!this.player) this.challenge = this.colosseumChallenge;
@@ -1219,6 +1235,7 @@ export default {
       this.clearAllTimers();
       this.player = null;
       this.opponent = null;
+      this.opponentEffortYield = null;
       this.canAct = false;
       this.replacementChoice = false;
       this.replacementIndexes = null;
@@ -1404,6 +1421,13 @@ export default {
 
 .battle-status-lvl {
   font-size: 10px;
+}
+
+.battle-effort-yield {
+  margin: 5px 0 0;
+  color: var(--journal-muted, #58717e);
+  font: 10px/1.35 Arial, sans-serif;
+  overflow-wrap: anywhere;
 }
 
 .battle-status-details {

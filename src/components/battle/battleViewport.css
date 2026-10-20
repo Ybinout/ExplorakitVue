@@ -91,3 +91,13 @@
 
 /* Keep cave rocks anchored to the same sprite bases, above generic grass styling. */
 .game-root.is-mobile .game-stage .battle-cave .battle-ground-disc.cave-disc { background:#a19295; border-color:#776b83; border-bottom-color:#51485f; box-shadow:0 3px 0 #251d4140,inset 0 3px 0 #c8b4a6; }
+
+/* Keep the EV footer clear of the player's card on short portrait screens. */
+@media (orientation:portrait) and (max-height:600px) {
+  .game-root.is-mobile .game-stage .battle-status-wild:has(.battle-effort-yield) { padding:4px 8px; }
+  .game-root.is-mobile .game-stage .battle-status-wild:has(.battle-effort-yield) .battle-status-top { margin-bottom:2px; }
+  .game-root.is-mobile .game-stage .battle-status-wild:has(.battle-effort-yield) .potential-star { height:18px; }
+  .game-root.is-mobile .game-stage .battle-status-wild:has(.battle-effort-yield) .potential-star svg { max-width:18px; max-height:18px; }
+  .game-root.is-mobile .game-stage .battle-status-wild:has(.battle-effort-yield) .battle-status-details { margin-top:2px; }
+  .game-root.is-mobile .game-stage .battle-status-wild .battle-effort-yield { margin-top:2px; }
+}
