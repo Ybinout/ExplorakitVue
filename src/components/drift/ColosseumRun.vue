@@ -20,9 +20,10 @@
         <p v-if="exploring">Capture une équipe variée, trouve des Drifts et protège tes compagnons. À la fin du chrono, les survivants rejoignent automatiquement l’arène.</p>
         <article class="challenger" :class="{ guardian: next.guardian }" data-colosseum-preview>
           <div class="challenger-heading"><div><p class="kicker">{{ exploring ? 'TON PREMIER ADVERSAIRE' : next.guardian ? 'LE GARDIEN DU PALIER' : 'PROCHAIN ADVERSAIRE' }}</p><h4>{{ next.title.split(' · ')[0] }}</h4></div><span class="level">N. {{ next.level }}</span></div>
+          <div v-if="next.strategy" class="opponent-strategy" data-colosseum-strategy><strong>{{ next.strategy.name }}</strong><p>{{ next.strategy.description }}</p><details><summary>Conseil de préparation</summary><p>{{ next.strategy.hint }}</p></details></div>
           <p v-if="next.guardian" class="specialty">{{ next.guardian.specialty }}</p>
           <div class="opponent-team"><div v-for="(p,index) in next.preview" :key="index"><pokemon-portrait :src="sprite(p.id)" :alt="p.name"/><span>{{ p.name }}</span><small v-if="p.itemName" class="held-item" data-colosseum-item :title="p.itemDescription">{{ p.itemName }}</small></div></div>
-          <details v-if="next.preview.some(p => p.itemName)" class="loadouts"><summary>Comprendre leurs objets</summary><ul><li v-for="(p,index) in next.preview" :key="index"><strong>{{ p.name }} · {{ p.role }}</strong><span>{{ p.itemName }} : {{ p.itemReason }}</span></li></ul></details>
+          <details v-if="next.preview.some(p => p.itemName)" class="loadouts"><summary>{{ next.strategy ? 'Voir leurs rôles et capacités' : 'Comprendre leurs objets' }}</summary><ul><li v-for="(p,index) in next.preview" :key="index"><strong>{{ p.name }} · {{ p.tacticalRole || p.role }}</strong><span v-if="p.moves" class="opponent-moves" data-colosseum-moves>{{ p.moves.map(moveName).join(' · ') }}</span><span>{{ p.itemName }} : {{ p.itemReason }}</span></li></ul></details>
           <drift-passives v-if="next.drifts && next.drifts.length" :drifts="next.drifts" :limit="3" title="Passifs du gardien" />
           <p v-if="next.guardian" class="tactical-hint">{{ next.guardian.hint }}</p>
           <div class="challenge-meta"><span>{{ next.size }} Pokémon<span v-if="next.potential > 2"> · potentiel {{ next.potential }}</span></span><strong>+{{ number(next.points) }} pts</strong></div>
@@ -38,6 +39,7 @@
   </section>
 </template>
 <script>
+import { localizeMoveName } from '@/services/i18n';
 import DriftPassives from './DriftPassives.vue';
 import ColosseumDefeat from './ColosseumDefeat.vue';
 import heldItems from '@/data/heldItems.json';
@@ -62,6 +64,7 @@ export default {
   watch: { 'state.phase'() { this.clearBusy(); }, reward() { this.clearBusy(); } },
   beforeDestroy() { this.clearBusy(); },
   methods: {
+    moveName(name) { return localizeMoveName(name,'fr'); },
     itemName(key) { return heldItems[key]?.name || key; },
     number(n) { return Number(n).toLocaleString('fr-FR'); },
     sprite(id) { return `${this.$assetBase}img/pokemon/front/${id}.png`; },
@@ -73,6 +76,8 @@ export default {
 };
 </script>
 <style scoped>
+.opponent-strategy{border-left:3px solid #608579;padding:9px 12px;margin:14px 0;background:#e7eee1;border-radius:0 8px 8px 0;font-size:12px}.opponent-strategy>strong{color:#286e61}.opponent-strategy p{font:12px/1.6 Arial!important;margin:6px 0 0!important}.opponent-strategy summary{cursor:pointer;min-height:44px;box-sizing:border-box;padding:12px 0;font-size:11px;color:#286e61}.opponent-strategy details p{margin-top:0!important}.opponent-moves{color:#253b39!important}
+
 .passives-toggle{margin-top:14px}.passives-toggle>summary{min-height:44px;padding:12px 0;box-sizing:border-box;font-size:12px;color:#287366;cursor:pointer}
 .ranking-link{display:inline-flex;align-items:center;min-height:44px;color:#287366;font-size:12px;font-weight:700}
 
