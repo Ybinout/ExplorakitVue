@@ -34,6 +34,10 @@ export function battleConditionChanges(previous,next) {
   // Switching/reconnecting must not replay another Pokémon's effects or claim a cure.
   if (!previous?.uuid || previous.uuid !== next?.uuid || Number(next.currentHp)<=0) return [];
   const changes=[];
+  if ((previous.__battle?.formSpriteId || previous.data?.id) !== (next.__battle?.formSpriteId || next.data?.id)
+      && (previous.data?.id===351 || next.data?.id===351)) {
+    changes.push({key:'weatherForm',kind:'charge',symbol:'✦',text:next.__battle?.formLabel || 'Forme Normale'});
+  }
   for (const [key,[short]] of Object.entries(STATS)) {
     const delta=stage(next,key)-stage(previous,key);
     if(delta) changes.push({key,kind:delta>0?'up':'down',symbol:delta>0?'↑':'↓',text:`${short} ${delta>0?'+':''}${delta}`});

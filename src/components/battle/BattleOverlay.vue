@@ -354,6 +354,7 @@ export default {
       feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
       visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
       usableMoveIndexes: null,
+      resolvedMoveTypes: null,
       actionState: {
         patient: false,
         attackPanel: false,
@@ -674,7 +675,7 @@ export default {
     typeLabel: localizeTypeName,
     moveButtonType(index) {
       if (Array.isArray(this.usableMoveIndexes) && !this.usableMoveIndexes.length && index === 0) return 'Normal';
-      return moveLearning[this.currentPokemon?.abilities?.[index]]?.type || '';
+      return this.resolvedMoveTypes?.[index] || moveLearning[this.currentPokemon?.abilities?.[index]]?.type || '';
     },
     moveButtonStyle(index) {
       return {'--move-choice-color':MOVE_COLORS[this.moveButtonType(index).toLowerCase()] || MOVE_COLORS.normal};
@@ -840,6 +841,7 @@ export default {
       this.opponentEffortYield = payload.effortYield || null;
       if(payload.musicKind)this.startMusic(payload.musicKind);
       this.usableMoveIndexes = Array.isArray(payload.usableMoveIndexes) ? payload.usableMoveIndexes : null;
+      this.resolvedMoveTypes = Array.isArray(payload.moveTypes) ? payload.moveTypes : null;
       if (!this.player) this.challenge = this.colosseumChallenge;
       const nextPlayer = payload.player || null;
       const nextOpponent = payload.wildPokemon || null;
@@ -1227,6 +1229,7 @@ export default {
     resetBattleUi() {
       this._presentation?.cancel();
       this.usableMoveIndexes = null;
+      this.resolvedMoveTypes = null;
       this.challenge = null;
       this.cancelExperience();
       this.finishing = false;
