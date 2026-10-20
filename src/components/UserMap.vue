@@ -345,7 +345,7 @@
       </div>
     </div>
 
-    <world-weather-panel v-if="worldWeatherPanelOpen" :value="worldWeather" :language="preferences.language" :reduced-motion="worldWeatherReducedMotion || !preferences.animationsEnabled" @change="updateWorldWeather" @reset="updateWorldWeather({ ...defaultWorldWeather })" @close="closeWorldWeather" />
+    <world-weather-panel v-if="worldWeatherPanelOpen" :value="worldWeather" :climate="mapWeather?.map === map ? mapWeather.kind : null" :language="preferences.language" :reduced-motion="worldWeatherReducedMotion || !preferences.animationsEnabled" @change="updateWorldWeather" @reset="updateWorldWeather({ ...defaultWorldWeather })" @close="closeWorldWeather" />
     <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" @continue="evolutionQueue.shift()" />
     <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
@@ -424,7 +424,7 @@ export default {
   },
   data() {
     return {
-      worldWeather: loadWorldWeather(), worldWeatherPanelOpen: false, worldWeatherReducedMotion: false,
+      mapWeather: null, worldWeather: loadWorldWeather(), worldWeatherPanelOpen: false, worldWeatherReducedMotion: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
       medicineBusy:false, medicineNotice:'', medicineTargets: {},
@@ -2372,6 +2372,8 @@ export default {
     });
 
 
+    this.socket.on('mapWeatherState', state => { this.mapWeather = state; });
+
     this.socket.on('battletrigger', (data) => {
       this.pendingBattleResult = null;
       this.battleResult = null;
@@ -2381,6 +2383,7 @@ export default {
       this.clearIncomingRequest();
       this.closeChatSession(true);
       this.$refs.battleOverlay?.resetBattleUi();
+      this.$refs.battleOverlay?.updateFieldState(data?.field || {});
       this.battle = true;
       this.$nextTick(() => this.$refs.battleOverlay?.startMusic(data?.musicKind || data?.battleType || 'wild'));
       if (data?.message) this.$nextTick(() => this.$refs.battleOverlay?.showMessage(data.message));

@@ -2,7 +2,7 @@
   <div class="weather-preview-backdrop" @mousedown.stop @pointerdown.stop @click.stop @keydown.stop @keyup.stop @keydown.esc.prevent="$emit('close')" @keydown.tab="trapFocus">
     <section ref="dialog" class="weather-preview-sheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="weather-preview-title">
       <header><div><small>{{ text.eyebrow }}</small><h2 id="weather-preview-title">{{ text.title }}</h2></div><button type="button" :aria-label="text.close" @click="$emit('close')">×</button></header>
-      <p class="weather-preview-intro">{{ text.intro }}</p>
+      <p class="weather-preview-intro">{{ climate === 'rain' ? text.rainIntro : text.intro }}</p>
       <fieldset v-for="kind in ['wind', 'rain']" :key="kind">
         <legend>{{ text[kind] }}</legend>
         <div class="weather-preview-levels">
@@ -19,11 +19,11 @@
 </template>
 <script>
 const labels = {
-  fr: { eyebrow: 'ESSAI · VILLAGE DE DÉPART', title: 'Météo du village', intro: 'Ajuste l’ambiance et observe le village derrière ce panneau.', wind: 'Vent', rain: 'Pluie', levels: { wind: ['Arrêt','Léger','Soutenu','Fort'], rain: ['Arrêt','Fine','Modérée','Averse'] }, close: 'Fermer la météo', reset: 'Réinitialiser', observe: 'Observer', still: 'Mouvement réduit : l’ambiance reste fixe.' },
-  en: { eyebrow: 'PREVIEW · STARTING VILLAGE', title: 'Village weather', intro: 'Adjust the atmosphere and watch the village behind this panel.', wind: 'Wind', rain: 'Rain', levels: { wind: ['Off','Light','Steady','Strong'], rain: ['Off','Drizzle','Moderate','Downpour'] }, close: 'Close weather', reset: 'Reset', observe: 'Watch', still: 'Reduced motion: the atmosphere stays still.' }
+  fr: { eyebrow: 'ESSAI · VILLAGE DE DÉPART', title: 'Météo du village', rainIntro: 'La pluie du village accompagne les combats. Ajuste ici son affichage.', intro: 'Ajuste l’ambiance et observe le village derrière ce panneau.', wind: 'Vent', rain: 'Pluie', levels: { wind: ['Arrêt','Léger','Soutenu','Fort'], rain: ['Masquée','Fine','Modérée','Averse'] }, close: 'Fermer la météo', reset: 'Réinitialiser', observe: 'Observer', still: 'Mouvement réduit : l’ambiance reste fixe.' },
+  en: { eyebrow: 'PREVIEW · STARTING VILLAGE', title: 'Village weather', rainIntro: 'The village rain carries into battles. Adjust its display here.', intro: 'Adjust the atmosphere and watch the village behind this panel.', wind: 'Wind', rain: 'Rain', levels: { wind: ['Off','Light','Steady','Strong'], rain: ['Hidden','Drizzle','Moderate','Downpour'] }, close: 'Close weather', reset: 'Reset', observe: 'Watch', still: 'Reduced motion: the atmosphere stays still.' }
 };
 export default {
-  props: { value: { type: Object, required: true }, language: { type: String, default: 'fr' }, reducedMotion: Boolean },
+  props: { climate: { type: String, default: null }, value: { type: Object, required: true }, language: { type: String, default: 'fr' }, reducedMotion: Boolean },
   computed: { text() { return labels[this.language] || labels.fr; }, summary() { return `${this.text.wind} · ${this.text.levels.wind[this.value.wind]} — ${this.text.rain} · ${this.text.levels.rain[this.value.rain]}`; } },
   mounted() { this.previousFocus = document.activeElement; this.$refs.dialog.focus(); },
   beforeDestroy() { this.previousFocus?.focus?.(); },

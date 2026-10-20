@@ -769,8 +769,8 @@ export default {
       }
     },
     updateFieldState(payload = {}) {
-      this.fieldState.weather = payload.weather?.kind || payload.weather || null;
-      this.fieldState.terrain = payload.terrain?.kind || payload.terrain || null;
+      this.fieldState.weather = typeof payload.weather === 'string' ? payload.weather : payload.weather?.kind || null;
+      this.fieldState.terrain = typeof payload.terrain === 'string' ? payload.terrain : payload.terrain?.kind || null;
     },
     getSpriteGeometry(side) {
       const scene = this.$refs.battleScene;
