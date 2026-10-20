@@ -1231,8 +1231,8 @@ export default {
         const moving = progress < 1 && (pnj.fromX !== pnj.x || pnj.fromY !== pnj.y);
         const px = (pnj.fromX ?? pnj.x) + (pnj.x - (pnj.fromX ?? pnj.x)) * progress;
         const py = (pnj.fromY ?? pnj.y) + (pnj.y - (pnj.fromY ?? pnj.y)) * progress;
-        const drawX = px * 32 + 16 - 32;
-        const drawY = py * 32 + 16 - 42 - (moving ? Math.abs(Math.sin(progress * Math.PI * 3)) * 2 : 0);
+        const drawX = Math.round(px * 32 + 16 - 32);
+        const drawY = Math.round(py * 32 + 16 - 42 - (moving ? Math.abs(Math.sin(progress * Math.PI * 3)) * 2 : 0));
         if (pnj.challengeLevel) {
           context.save(); context.fillStyle='#173e48'; context.strokeStyle='#c5ac6d';
           context.fillRect(drawX-10,drawY-24,84,20); context.strokeRect(drawX-10,drawY-24,84,20);
@@ -1240,7 +1240,9 @@ export default {
           context.fillText(`Défi · N. ${pnj.challengeLevel}`,drawX+32,drawY-10); context.restore();
         }
         if (pnj.spriteFrame) {
-          drawNpcFrame(context, spriteSheet, pnj.spriteFrame, drawX + 8, drawY + 4, 48);
+          // A 2× integer scale keeps each source pixel square. Match the player's
+          // opaque foot baseline (60 px inside its 64 px frame), not the frame edge.
+          drawNpcFrame(context, spriteSheet, pnj.spriteFrame, drawX, drawY - 4, 64);
           continue;
         }
         const treatAsSpriteSheet =
