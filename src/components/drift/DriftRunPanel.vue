@@ -187,4 +187,5 @@ button, input { font: inherit; }button { min-height: 44px; cursor: pointer; }but
 .journal-panel .run-heading{background:var(--journal-card);color:var(--journal-heading)}.journal-panel .heading-copy small{color:var(--journal-muted)}
 .journal-panel :is(.heading-mark,.icon-button,.run-tabs,.run-footer){background:var(--journal-soft);border-color:var(--journal-border);color:var(--journal-ink)}
 .journal-panel .run-tabs button{color:var(--journal-muted)}.journal-panel .run-tabs button[aria-selected=true]{color:var(--journal-accent)}.journal-panel .run-tabs button[aria-selected=true]::after{background:var(--journal-accent)}
+.journal-panel :is(.footer-status,.leave-button,.confirm p){color:var(--journal-muted)}
 </style>
