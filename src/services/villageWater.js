@@ -1,5 +1,5 @@
-// A one-pixel current inside each mapped lake, never across its shoreline.
-const WIDTH = 448, HEIGHT = 320, FRAME_MS = 1000 / 15;
+// Pixel currents stay inside each mapped lake, never across its shoreline.
+const WIDTH = 448, HEIGHT = 320, FRAME_MS = 1000 / 15, CREST_COLOR = [190,235,255];
 const LAKES = {
   start: { bounds: { left: 54, right: 149, top: 245, bottom: 320 }, colors: ['81,145,177', '56,109,139', '53,87,100', '95,164,201'] },
   route3: { bounds: { left: 248, right: 360, top: 244, bottom: 320 }, colors: ['81,145,177', '56,109,139', '53,87,100', '95,164,201'] },
@@ -50,13 +50,28 @@ export class VillageWaterRenderer {
     const time = Number.isFinite(timestamp) ? Math.max(0, timestamp) : 0;
     if (time < this.lastTime || time - this.lastTime >= FRAME_MS) {
       this.lastTime = time;
-      const seconds = time / 1000;
+      const seconds = time / 1000, visibleRipples = map === 'ville1';
       for (const index of this.mask.pixels) {
         const x = index % WIDTH, y = Math.floor(index / WIDTH);
-        const offset = Math.round(Math.sin(y * .24 + seconds * .8) * .75 + Math.sin(x * .13 + seconds * .5) * .2);
+        const offset = visibleRipples
+          ? Math.round(Math.sin(y * .24 + seconds * 1.1) * 1.6 + Math.sin(x * .13 + seconds * .7) * .4)
+            + Math.round(Math.sin(x * .09 - seconds * .9) * .8) * WIDTH
+          : Math.round(Math.sin(y * .24 + seconds * .8) * .75 + Math.sin(x * .13 + seconds * .5) * .2);
         const sample = this.mask.interior[index + offset] ? index + offset : index;
         this.output[index] = this.original[sample];
-        // Faint travelling glints, retaining the original water palette and alpha.
+        if (visibleRipples) {
+          // Moving crests read even on flat blue water; troughs stay gentle.
+          // Compose only masked RGB pixels, preserving rocks, shore and alpha.
+          const wave = Math.sin(y * .56 + x * .12 - seconds * 1.8 + Math.sin(x * .09 + seconds * .5) * .4);
+          const crest = Math.max(0, (wave - .7) / .3) * .18;
+          const trough = Math.max(0, (-wave - .85) / .15) * .035;
+          for (let channel = 0; channel < 3; channel++) {
+            const value = this.colors[sample * 4 + channel];
+            this.frame.data[index * 4 + channel] = Math.round(value * (1 - trough) + (CREST_COLOR[channel] - value) * crest);
+          }
+          continue;
+        }
+        // Faint travelling glints on the other lakes keep their existing rhythm.
         const glint = Math.max(0, Math.sin(x * .22 + y * .7 - seconds * .9) - .94) * .9;
         if (glint) for (let channel = 0; channel < 3; channel++) {
           const value = this.colors[sample * 4 + channel];
