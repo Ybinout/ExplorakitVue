@@ -244,13 +244,13 @@ export default {
   width:44px;
   height:44px;
   padding:11px;
-  border:1px solid #dde3d9;
+  border:1px solid var(--journal-border);
   border-radius:50%;
   background:transparent;
-  color:#526b62;
+  color:var(--journal-muted);
 }
 .dex-close:hover {
-  background:#e8eee5;
+  background:var(--journal-soft);
 }
 .dex svg {
   display:block;
@@ -269,8 +269,8 @@ export default {
   gap:10px 20px;
   padding:13px 26px 16px;
   background:var(--journal-soft);
-  border-top:1px solid #e2e8de;
-  border-bottom:1px solid #dfe6d9;
+  border-top:1px solid var(--journal-border);
+  border-bottom:1px solid var(--journal-border);
 }
 .dex-summary-copy {
   display:flex;
@@ -333,7 +333,7 @@ export default {
   grid-column:1/-1;
   height:3px;
   overflow:hidden;
-  background:#d9e2d2;
+  background:var(--journal-border);
   border-radius:3px;
 }
 .dex-progress>span {
@@ -359,9 +359,9 @@ export default {
   min-width:0;
   min-height:44px;
   padding:0 13px;
-  border:1px solid #dce2d8;
+  border:1px solid var(--journal-border);
   border-radius:9px;
-  background:#fffefa;
+  background:var(--journal-card);
 }
 .dex-search svg {
   width:17px;
@@ -386,10 +386,10 @@ export default {
   min-width:0;
   min-height:44px;
   padding:0 10px;
-  border:1px solid #dce2d8;
+  border:1px solid var(--journal-border);
   border-radius:9px;
-  background:#fffefa;
-  color:#46614f;
+  background:var(--journal-card);
+  color:var(--journal-ink);
   font-size:12px;
 }
 .dex-filter-row {
@@ -399,7 +399,7 @@ export default {
   gap:8px;
   margin-top:12px;
   padding-bottom:12px;
-  border-bottom:1px solid #e0e5dc;
+  border-bottom:1px solid var(--journal-border);
 }
 .dex-filters {
   display:flex;
@@ -419,11 +419,11 @@ export default {
   text-transform:capitalize;
 }
 .dex-filters button:hover {
-  background:#e8ede4;
+  background:var(--journal-soft);
 }
 .dex-filters button.selected {
-  border-color:#d9e1d2;
-  color:#2e513f;
+  border-color:var(--journal-border);
+  color:var(--journal-accent);
   background:var(--journal-selected);
   font-weight:700;
 }
@@ -459,13 +459,13 @@ export default {
   position:relative;
   min-width:0;
   padding:10px 9px 12px;
-  border:1px solid #dde5d8;
+  border:1px solid var(--journal-border);
   border-radius:10px;
-  background:#fffefa;
+  background:var(--journal-card);
 }
 .dex-entry.is-caught {
-  border-color:#b9cdb2;
-  background:#f5f8ed;
+  border-color:#9bb8cf;
+  background:var(--journal-selected);
 }
 .dex-entry-top {
   display:flex;
@@ -564,8 +564,8 @@ export default {
   background:#e9ebf1;
 }
 .dex-entry.is-unknown {
-  background:#f0f2eb;
-  border-color:#e2e7dd;
+  background:var(--journal-soft);
+  border-color:var(--journal-border);
 }
 .is-unknown .dex-number {
   color:#8c9885;
@@ -575,7 +575,7 @@ export default {
   place-items:center;
   width:50px;
   height:50px;
-  border:1px dashed #d6dece;
+  border:1px dashed var(--journal-border);
   border-radius:50%;
   color:#c8d2bf;
 }
@@ -584,7 +584,7 @@ export default {
   height:28px;
 }
 .dex-unregistered .dex-ball::after {
-  background:#f0f2eb;
+  background:var(--journal-soft);
   width:9px;
   height:9px;
 }
@@ -628,10 +628,10 @@ export default {
   min-height:44px;
   margin-top:8px;
   padding:0 16px;
-  border:1px solid #c9d6c3;
+  border:1px solid var(--journal-border);
   border-radius:8px;
-  background:#e6eddf;
-  color:#3c6048;
+  background:var(--journal-selected);
+  color:var(--journal-accent);
   font-size:12px;
 }
 .dex-footer {
@@ -641,9 +641,9 @@ export default {
   justify-content:space-between;
   gap:12px;
   padding:12px 26px;
-  border-top:1px solid #e0e6da;
-  background:#f1f4ec;
-  color:#7b8972;
+  border-top:1px solid var(--journal-border);
+  background:var(--journal-soft);
+  color:var(--journal-muted);
   font-size:10px;
   letter-spacing:.02em;
 }

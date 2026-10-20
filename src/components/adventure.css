@@ -14,7 +14,7 @@
   color:var(--journal-heading); font:600 13px var(--journal-font); box-shadow:none;
 }
 .game-root .game-stage .menu-toggle-btn:hover,
-.game-root .game-stage .menu-toggle-btn[aria-expanded=true] { background:var(--journal-selected); border-color:#99b39e; }
+.game-root .game-stage .menu-toggle-btn[aria-expanded=true] { background:var(--journal-selected); border-color:var(--journal-border); }
 .game-root .game-stage .menu-dropdown {
   top:calc(100% + 16px); left:0; width:250px; min-width:0; max-width:calc(100vw - 28px);
   max-height:calc(100dvh - 100px); overflow:auto; overscroll-behavior:contain; padding:10px;
@@ -119,7 +119,7 @@
 @media(max-width:920px) {
   .game-root .game-stage .mobile-dpad-btn { background:var(--journal-paper); border:1px solid var(--journal-border); color:var(--journal-accent); border-radius:16px; box-shadow:0 4px 14px #152b2426; font:24px var(--journal-font); }
   .game-root .game-stage .mobile-dpad-center { background:var(--journal-soft); border:1px solid var(--journal-border); border-radius:16px; box-shadow:none; }
-  .game-root :is(.mobile-action-a, .mobile-dialogue-action-top) { background:var(--journal-accent); border:2px solid #d3e1d0; color:#fff; box-shadow:0 5px 18px #152b2440; text-shadow:none; font-family:var(--journal-font); }
+  .game-root :is(.mobile-action-a, .mobile-dialogue-action-top) { background:var(--journal-accent); border:2px solid var(--journal-border); color:#fff; box-shadow:0 5px 18px #152b2440; text-shadow:none; font-family:var(--journal-font); }
 }
 @media(max-width:600px) {
   .game-root .game-stage .world-toolbar { padding:9px 10px; gap:8px; border-radius:0; }
