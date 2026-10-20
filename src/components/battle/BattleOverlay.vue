@@ -18,7 +18,8 @@
         </div>
       </template>
       <div class="battle-atmosphere" aria-hidden="true"></div>
-      <div class="battle-weather-layer" aria-hidden="true"></div>
+      <battle-rain v-if="fieldState.weather === 'rain'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
+      <div v-else class="battle-weather-layer" aria-hidden="true"></div>
       <div class="battle-terrain-layer" aria-hidden="true"></div>
 
       <div
@@ -277,6 +278,7 @@ import moveLearning from '@/data/moveLearning.json';
 import { localizeTypeName } from '@/services/pokemonTypes';
 import PotentialStar from '../PotentialStar.vue';
 import BattleConditions from './BattleConditions.vue';
+import BattleRain from './BattleRain.vue';
 import { battleConditionChanges } from '@/services/battleConditions';
 import ExperienceBar from '../ExperienceBar.vue';
 import './battleViewport.css';
@@ -309,7 +311,7 @@ import { battleEnvironment } from '@/services/battleEnvironment';
 
 export default {
   name: 'BattleOverlay',
-  components: { HealthBar, ExperienceBar, PotentialStar, BattleConditions },
+  components: { HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain },
   props: {
     mobile: Boolean,
     mapName: { type: String, default: '' },
@@ -2236,16 +2238,6 @@ export default {
   overflow: hidden;
 }
 
-.weather-rain .battle-weather-layer {
-  background: repeating-linear-gradient(
-    105deg,
-    transparent 0 34px,
-    rgba(193, 225, 255, 0.32) 35px 37px,
-    transparent 38px 69px
-  );
-  animation: battle-rain 0.7s linear infinite;
-}
-
 .weather-sun .battle-weather-layer {
   background: radial-gradient(circle at 82% 8%, rgba(255, 244, 143, 0.7), transparent 27%);
   mix-blend-mode: screen;
@@ -2371,11 +2363,6 @@ export default {
   color: #fff;
   background: rgba(7, 16, 29, 0.72);
   cursor: pointer;
-}
-
-@keyframes battle-rain {
-  from { transform: translate3d(-20px, -45px, 0); }
-  to { transform: translate3d(20px, 45px, 0); }
 }
 
 @keyframes battle-sun {
