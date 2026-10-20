@@ -1,6 +1,6 @@
 import atlas from '../data/townspeopleFrames.json';
 // The generated atlas has unequal row gutters. Grid division included neighbours'
-// feet. Explicit source rectangles are shared by world sprites and dialogue portraits.
+// feet. These source rectangles are for world pixel sprites only.
 export function npcFrame(image, frame) {
   if (String(image.src).includes('townspeople-pixel-v2') && frame.columns === 8 && frame.rows === 4) {
     const box = atlas.frames[frame.index];

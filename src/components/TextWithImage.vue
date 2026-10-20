@@ -170,6 +170,7 @@ export default {
   height: 100%;
   min-height: 0;
   object-fit: contain;
+  image-rendering: auto;
 }
 
 @media (max-width: 920px) {
@@ -187,5 +188,5 @@ export default {
 @media (max-height: 480px) and (orientation: landscape) {
   .dialogue-shell { padding: 10px 118px 10px 10px; }
 }
-.portrait-atlas { image-rendering:pixelated; width: 100%; max-width: 190px; aspect-ratio: 1; background-repeat: no-repeat; }
+.portrait-atlas { image-rendering:auto; width: 100%; max-width: 190px; aspect-ratio: 1; background-repeat: no-repeat; }
 </style>

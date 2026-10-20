@@ -1684,7 +1684,7 @@ export default {
 
       // Mettre Ã  jour `textImageSequence` avec les sentences reÃ§ues du serveur
       this.textImageSequence = sentences.map(sentence => {
-        return { text: sentence.text, image: sentence.imageName === 'townspeople.png' ? this.pnjSpriteSources['townspeople.png'] : images[sentence.imageName], portraitFrame: sentence.portraitFrame };
+        return { text: sentence.text, image: images[sentence.imageName], portraitFrame: sentence.portraitFrame };
       });
     },
     clearSequence() {
