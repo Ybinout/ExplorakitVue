@@ -3,7 +3,7 @@
 export const WORLD_WEATHER_KEY = 'riftmon.worldWeatherPreview.v2';
 export const DEFAULT_WORLD_WEATHER = Object.freeze({ wind: 3, rain: 3 });
 const WIDTH = 896, HEIGHT = 640, FRAME_MS = 1000 / 30;
-const RAIN_COUNTS = [0, 44, 94, 160], WIND_COUNTS = [0, 8, 17, 28];
+const RAIN_COUNTS = [0, 36, 76, 128], WIND_COUNTS = [0, 8, 17, 28];
 const mod = (value, size) => ((value % size) + size) % size;
 const level = value => Number.isInteger(Number(value)) ? Math.max(0, Math.min(3, Number(value))) : 0;
 export function normalizeWorldWeather(value = {}) {
@@ -65,17 +65,17 @@ export class WorldWeatherRenderer {
     const c = this.context;
     c.clearRect(0, 0, WIDTH, HEIGHT);
     if (rain) {
-      c.fillStyle = `rgba(29,47,70,${rain * .025})`; c.fillRect(0, 0, WIDTH, HEIGHT);
+      c.fillStyle = `rgba(29,47,70,${rain * .045})`; c.fillRect(0, 0, WIDTH, HEIGHT);
       c.lineCap = 'round'; c.strokeStyle = `rgba(191,221,241,${.24 + rain * .065})`; c.lineWidth = .65 + rain * .2;
       const gust = .82 + Math.sin(time * .8) * .18, lean = 8 + wind * 18 * gust;
-      const drift = 3 * ((8 + wind * 18 * .82) * time - wind * 18 * .18 / .8 * Math.cos(time * .8));
+      const drift = .8 * 3 * ((8 + wind * 18 * .82) * time - wind * 18 * .18 / .8 * Math.cos(time * .8));
       c.beginPath();
       for (let i = 0; i < this.budget.rain; i++) {
-        const p = this.particles[i], speed = 210 + rain * 90 + p.depth * 120;
+        const p = this.particles[i], speed = .8 * (210 + rain * 90 + p.depth * 120);
         const x = mod(p.x * (WIDTH + 120) + drift, WIDTH + 120) - 60;
         const y = mod(p.y * (HEIGHT + 40) + time * speed, HEIGHT + 40) - 20;
         const length = 4 + rain * 3 + p.depth * 4;
-        c.moveTo(x, y); c.lineTo(x + lean * 3 * length / speed, y + length);
+        c.moveTo(x, y); c.lineTo(x + .8 * lean * 3 * length / speed, y + length);
       }
       c.stroke();
       for (let i = 0; i < this.budget.splashes; i++) {
