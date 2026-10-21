@@ -23,6 +23,7 @@
       <battle-rain v-if="fieldState.weather === 'rain'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
       <div v-else class="battle-weather-layer" aria-hidden="true"></div>
       <div class="battle-terrain-layer" aria-hidden="true"></div>
+      <battle-send-out v-for="entry in sendOuts" :key="entry.uuid" :side="entry.side" :style="sendOutPosition(entry.side)" />
 
       <div
         v-if="battleMoveFx.visible"
@@ -179,7 +180,7 @@
           <p v-if="notice" class="battle-action-notice">{{ notice }}</p>
           <p v-if="captureFx.visible && captureFx.message" class="battle-capture-notice">{{ captureFx.message }}</p>
           <p v-if="conditionNotice" class="battle-condition-notice" data-battle-condition-notice>{{ conditionNotice }}</p>
-          <p v-if="transitionLabel" class="battle-transition-label" data-battle-transition>{{ transitionLabel }}</p>
+          <p v-if="transitionLabel && !trainerSpeech" class="battle-transition-label" data-battle-transition>{{ transitionLabel }}</p>
           <div v-if="driftNotices.length" class="battle-drift-notices" data-battle-drift-effects><p v-for="notice in driftNotices" :key="notice.side">✧ {{ notice.side==='player' ? 'Tes Drifts' : 'Drifts adverses' }} · {{ notice.text }}</p></div>
           <p v-if="fieldLabel" class="battle-field-label">{{ fieldLabel }}</p>
         </div>
@@ -199,12 +200,15 @@
           <p v-if="notice" class="battle-action-notice">{{ notice }}</p>
           <p v-if="captureFx.visible && captureFx.message" class="battle-capture-notice">{{ captureFx.message }}</p>
           <p v-if="conditionNotice" class="battle-condition-notice" data-battle-condition-notice>{{ conditionNotice }}</p>
-          <p v-if="transitionLabel" class="battle-transition-label" data-battle-transition>{{ transitionLabel }}</p>
+          <p v-if="transitionLabel && !trainerSpeech" class="battle-transition-label" data-battle-transition>{{ transitionLabel }}</p>
           <div v-if="driftNotices.length" class="battle-drift-notices" data-battle-drift-effects><p v-for="notice in driftNotices" :key="notice.side">✧ {{ notice.side==='player' ? 'Tes Drifts' : 'Drifts adverses' }} · {{ notice.text }}</p></div>
           <p v-if="fieldLabel" class="battle-field-label">{{ fieldLabel }}</p>
         </div>
+        <div v-if="trainerSpeech" class="battle-text-box battle-trainer-speech" data-trainer-speech role="status" aria-live="polite">
+          <strong>{{ trainerSpeech.name }}</strong><p>{{ trainerSpeech.text }}</p>
+        </div>
         <div
-          v-if="actionState.patient"
+          v-else-if="actionState.patient"
           :key="messageNonce"
           class="battle-text-box"
           role="status"
@@ -275,6 +279,7 @@
 
 <script>
 import BattleEntrance from './BattleEntrance.vue';
+import BattleSendOut from './BattleSendOut.vue';
 import { waitForBattleAssets, entranceDelay } from '@/services/battleEntrance';
 import { createBattlePresentation } from '@/services/battlePresentation';
 import { playExperienceGain } from '@/services/experiencePlayback';
@@ -324,7 +329,7 @@ import { battleEnvironment } from '@/services/battleEnvironment';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleEntrance, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain },
+  components: { BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain },
   props: {
     mobile: Boolean,
     mapName: { type: String, default: '' },
@@ -353,6 +358,7 @@ export default {
       entrancePhase: 'ready',
       feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
       visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
+      sendOuts: [], trainerSpeech: null,
       usableMoveIndexes: null,
       resolvedMoveTypes: null,
       actionState: {
@@ -796,21 +802,37 @@ export default {
         if (!this.reducedMotion()) await this.transitionWait(550);
       }
       if (epoch !== this.visualEpoch) return;
+      this.transitionFx = { player: '', wild: '' };
+      for (const e of incoming) this.$set(this.transitionFx,e.side === 'player' ? 'player' : 'wild','waiting');
       this.updateBattleState(payload);
       if (opening) {
         await this.revealEntrance(epoch);
         if (epoch !== this.visualEpoch) return;
       }
-      this.transitionFx = { player: '', wild: '' };
       if (incoming.length) {
         this.transitionLabel = incoming.map(e => `${e.name} entre en combat.`).join(' · ');
-        for (const e of incoming) this.$set(this.transitionFx, e.side === 'player' ? 'player' : 'wild', 'enter');
-        // Commit the new image and its geometry before the next attack computes its path.
         await this.$nextTick();
-        if (!this.reducedMotion()) await this.transitionWait(400);
+        this._sendOutController = new AbortController();
+        await waitForBattleAssets(() => [...this.$el.querySelectorAll('.battle-sprite')], {signal:this._sendOutController.signal,timeoutMs:1800});
+        if (epoch !== this.visualEpoch) return;
+        for (const [side, anchor] of [['wild',this.$refs.opponentAnchor],['player',this.$refs.playerAnchor]]) {
+          const image=anchor?.querySelector('.battle-sprite');
+          if(image)this.calibrateBattleSprite({currentTarget:image},side);
+        }
+        for (const e of incoming) this.$set(this.transitionFx, e.side === 'player' ? 'player' : 'wild', 'enter');
+        this.trainerSpeech = incoming.find(e => e.trainerSpeech)?.trainerSpeech || null;
+        this.sendOuts = this.reducedMotion() ? [] : incoming.map(e=>({side:e.side==='player'?'player':'wild',uuid:e.uuid}));
+        if (!this.reducedMotion()) await this.transitionWait(800);
       }
       if (epoch !== this.visualEpoch) return;
+      this.sendOuts = [];
       this.transitionFx = { player: '', wild: '' };
+      if (this.trainerSpeech) {
+        // Keep the line readable with reduced motion too, without moving controls.
+        await this.transitionWait(document.hidden ? 0 : 2300);
+        if (epoch !== this.visualEpoch) return;
+        this.trainerSpeech = null;
+      }
       if (changes.player.length || changes.wild.length) {
         this.playConditionChanges(changes);
         if (!this.reducedMotion()) await this.transitionWait(680);
@@ -825,6 +847,10 @@ export default {
     conditionPosition(side) {
       const geometry = this.getSpriteGeometry(side);
       return {left:`${geometry.centerX}px`,top:`${geometry.centerY}px`,width:`${Math.max(52,geometry.width)}px`,height:`${Math.max(52,geometry.height)}px`};
+    },
+    sendOutPosition(side) {
+      const geometry=this.getSpriteGeometry(side);
+      return {left:`${geometry.centerX}px`,top:`${geometry.centerY}px`};
     },
     playConditionChanges(changes) {
       clearTimeout(this.conditionTimer);
@@ -1217,7 +1243,7 @@ export default {
     clearAllTimers() {
       this.cancelEntrance();
       clearTimeout(this.criticalTimer); this.criticalFx.side=null; this.pendingCritical=null;
-      this.visualEpoch++;this._transitionRelease?.();clearTimeout(this._transitionLabelTimer);clearTimeout(this.driftNoticeTimer);this.transitionFx={player:'',wild:''};this.transitionLabel='';this.driftNotices=[];clearTimeout(this.conditionTimer);this.conditionFx={player:[],wild:[]};this.conditionNotice='';
+      this.visualEpoch++;this._sendOutController?.abort();this.sendOuts=[];this.trainerSpeech=null;this._transitionRelease?.();clearTimeout(this._transitionLabelTimer);clearTimeout(this.driftNoticeTimer);this.transitionFx={player:'',wild:''};this.transitionLabel='';this.driftNotices=[];clearTimeout(this.conditionTimer);this.conditionFx={player:[],wild:[]};this.conditionNotice='';
       if (this.messageTimer) clearTimeout(this.messageTimer);
       if (this.resultTimer) clearTimeout(this.resultTimer);
       this.messageTimer = null;
@@ -1302,7 +1328,7 @@ export default {
 .battle-capture-notice{background:#e6f4f8;color:#245268;border:1px solid #9bbac8}
 .battle-drift-notices{display:flex;flex-direction:column;gap:5px;color:#f8f1ff}
 .battle-drift-notices p{border:1px solid #bfadd9;background:#413563}
-.battle-fainted{opacity:0}.battle-transition-recall .battle-sprite{animation:combat-recall .55s ease-in forwards!important}.battle-transition-faint .battle-sprite{animation:combat-faint .55s ease-in forwards!important}.battle-transition-enter .battle-sprite{animation:combat-enter .4s ease-out both!important}@keyframes combat-recall{to{filter:brightness(3);transform:scale(.05);opacity:0}}@keyframes combat-faint{to{filter:grayscale(1);transform:translateY(65%);opacity:0}}@keyframes combat-enter{from{filter:brightness(2);transform:scale(.15);opacity:0}to{transform:scale(1);opacity:1}}.battle-reduced-motion .battle-sprite{animation:none!important}@media(prefers-reduced-motion:reduce){.battle-sprite{animation:none!important}}
+.battle-fainted{opacity:0}.battle-transition-recall .battle-sprite{animation:combat-recall .55s ease-in forwards!important}.battle-transition-faint .battle-sprite{animation:combat-faint .55s ease-in forwards!important}.battle-transition-waiting .battle-sprite{opacity:0;animation:none!important}.battle-transition-enter .battle-sprite{animation:combat-enter .42s .34s ease-out both!important}@keyframes combat-recall{to{filter:brightness(3);transform:scale(.05);opacity:0}}@keyframes combat-faint{to{filter:grayscale(1);transform:translateY(65%);opacity:0}}@keyframes combat-enter{from{filter:brightness(2);transform:scale(.15);opacity:0}to{transform:scale(1);opacity:1}}.battle-reduced-motion .battle-sprite{animation:none!important}@media(prefers-reduced-motion:reduce){.battle-sprite{animation:none!important}}
 
 .battle-entry-holding > .battle-scene, .battle-entry-holding > .battle-action-shell { visibility:hidden; }
 .battle-entry-holding .battle-sprite { animation:none; }

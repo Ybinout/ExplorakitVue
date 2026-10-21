@@ -101,3 +101,9 @@
   .game-root.is-mobile .game-stage .battle-status-wild:has(.battle-effort-yield) .battle-status-details { margin-top:2px; }
   .game-root.is-mobile .game-stage .battle-status-wild .battle-effort-yield { margin-top:2px; }
 }
+
+/* Trainer lines share the existing text slot, including its fixed mobile height. */
+.game-root .game-stage .battle-text-box.battle-trainer-speech { display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:8px 12px; background:var(--journal-paper,#edf5fc); color:var(--journal-ink,#19394b); font:13px/1.35 Arial,sans-serif; }
+.game-root .game-stage .battle-action-display.has-battle-notices .battle-trainer-speech { flex:1 1 0; min-height:0; overflow:auto; }
+.game-root .game-stage .battle-trainer-speech strong { display:block; color:var(--journal-accent,#316b84); font-size:11px; margin-bottom:4px; }
+.game-root .game-stage .battle-trainer-speech p { margin:0; }
