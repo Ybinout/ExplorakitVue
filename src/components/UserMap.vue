@@ -77,6 +77,7 @@
               <small v-else-if="isDrift && item.revive" class="bag-use-hint">Les K.O. sont définitifs dans ce mode.</small>
           </template>
         </bag-panel>
+        <pokemon-computer v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" @close="pc.visible=false" @command="useComputer"/>
         <div v-if="isAppearancePanelOpen" class="appearance-panel" ref="appearancePanel">
           <div class="appearance-title"><span><small>Explorakit</small>{{ tr('appearance') }}</span><button class="panel-close" :aria-label="tr('close')" @click="isAppearancePanelOpen = false">×</button></div>
           <div class="appearance-grid">
@@ -203,7 +204,7 @@
           @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
           @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture">
         <div
-          v-if="showMobileControls && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
+          v-if="showMobileControls && !pc.visible && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
           <div class="mobile-dpad" :inert="textImageSequence.length ? '' : null" :aria-hidden="textImageSequence.length ? 'true' : null" aria-label="Pad directionnel"
@@ -345,6 +346,8 @@ import { createMapSceneLoader } from '@/services/mapScene';
 import { moveTouchGesture } from '@/services/touchMovement';
 import JournalIcon from './menu/JournalIcon.vue';
 import BagPanel from './menu/BagPanel.vue';
+import PokemonComputer from './menu/PokemonComputer.vue';
+import {drawPokemonComputers} from '@/services/pokemonComputer';
 import api from "@/services/api";
 import { getSession } from "@/services/session";
 import { saveDriftReport } from "@/services/driftReportHistory";
@@ -395,7 +398,7 @@ const MOVEMENT_INTERPOLATION_MS = 175;
 export default {
   components: {
     StarterChoice, LeaveExpedition,
-    JournalIcon, BagPanel,
+    JournalIcon, BagPanel, PokemonComputer,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -414,6 +417,7 @@ export default {
       mapWeather: null, worldWeatherReducedMotion: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
+      worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
       repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {},
       endSentences: null,
       textImageSequence: [],
@@ -568,8 +572,8 @@ export default {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
       return this.teamPokemons.find(p => p.currentHp > 0 && p.pendingMoves?.length);
     },
-    evolutionVisible() { return Boolean(this.evolutionQueue.length && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.trainerOffer && !this.textImageSequence.length && !this.evolutionBusy && !this.medicineBusy && !this.learningBusy && this.driftState?.phase !== 'selection'); },
-    learningVisible() { return Boolean(!this.evolutionQueue.length && this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
+    evolutionVisible() { return Boolean(this.evolutionQueue.length && !this.pc.visible && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.trainerOffer && !this.textImageSequence.length && !this.evolutionBusy && !this.medicineBusy && !this.learningBusy && this.driftState?.phase !== 'selection'); },
+    learningVisible() { return Boolean(!this.evolutionQueue.length && !this.pc.visible && this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
     isColosseum() { return this.$route.name === 'ColosseumGame' || this.driftState?.mode === 'colosseum'; },
     driftLobbyPath() { return this.isColosseum ? '/colosseum' : '/drift'; },
     isDrift() { return ['DriftGame','ColosseumGame'].includes(this.$route.name); },
@@ -598,7 +602,7 @@ export default {
     movementSuspended() {
       return this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
-        || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
+        || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
     },
@@ -695,6 +699,19 @@ export default {
     medicineStatus(pokemon) {
       const statuses = { poison: 'empoisonné', badly_poison: 'empoisonné', burn: 'brûlé', paralyze: 'paralysé', sleep: 'endormi', freeze: 'gelé' };
       return pokemon.currentHp <= 0 ? pokemon.riftFainted ? ' · K.O. protégé' : ' · K.O.' : statuses[pokemon.status] ? ` · ${statuses[pokemon.status]}` : '';
+    },
+    async useComputer(payload){
+      if(this.pc.busy || !this.pc.visible)return;
+      this.pc.busy=true;this.pc.error='';this.pc.notice='';
+      try{
+        const result=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('pc:action',payload,(error,response)=>error?reject(new Error('Le serveur ne répond pas. Rouvre le PC pour vérifier ton équipe.')):resolve(response)));
+        if(!result?.success)throw new Error(result?.message || 'Transfert impossible.');
+        this.pc.state=result.state;
+        if(result.equipe)this.applyTeamPokemons(result.equipe.pokemons);
+        if(result.items)this.applyBagItems(result.items);
+        this.pc.notice={deposit:'Compagnon déposé dans le PC.',withdraw:'Compagnon ajouté à ton équipe.',swap:'Les deux Pokémon ont échangé leur place.',release:'Pokémon relâché. Son éventuel objet tenu est dans ton sac.'}[payload.action];
+      }catch(error){this.pc.error=error.message;}
+      finally{this.pc.busy=false;}
     },
     async useBagRepel(item) {
       if(this.medicineBusy || !this.canUseBagConsumables || this.repelSteps>0)return;
@@ -1498,7 +1515,7 @@ export default {
       }
     },
     handleBattleAction(payload = {}) {
-      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
+      if (this.pc.visible || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       if (!this.socket || !this.socket.connected) return;
       const action = typeof payload.action === 'string' ? payload.action : '';
       if (!['attack', 'flee', 'change', 'bag'].includes(action)) return;
@@ -1514,6 +1531,7 @@ export default {
       return this.tr('save');
     },
     closeLegacyPanels() {
+      this.pc.visible=false;
       this.isBagOpen = false;
       this.isAppearancePanelOpen = false;
       this.isTeamPanelOpen = false;
@@ -1705,7 +1723,7 @@ export default {
 
 
     espace() {
-      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
+      if (this.pc.visible || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       console.log('espace');
       if (this.interactionChoice.visible || this.incomingRequest.visible) {
         return;
@@ -1782,7 +1800,7 @@ export default {
       }
       if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey
         || e.target?.closest?.('input, textarea, select, [contenteditable="true"]')
-        || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) return;
+        || this.pc.visible || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) return;
       const directionKey = this.getMovementKey(e);
       if (directionKey) {
         e.preventDefault();
@@ -1943,6 +1961,7 @@ export default {
         this._worldWeather.drawGround(c, performance.now(), this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
       } else this._worldWeather?.suspend();
 
+      drawPokemonComputers(c,this.worldDevices,this.map);
       this.drawPnjs(c);
 
       // Loop through all the players and draw them
@@ -2059,7 +2078,7 @@ export default {
       });
       this.socket.on('expedition:trainerOffer', offer=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.isDriftPanelOpen=false;this.isMenuOpen=false;this.trainerError='';this.trainerOffer=offer;});
       this.socket.on('drift:state', state => {
-        if(state.phase!=='exploration')this.trainerOffer=null;
+        if(state.phase!=='exploration'){this.trainerOffer=null;this.pc.visible=false;}
         const previousPhase = this.driftState?.phase; const previousAlive = this.driftState?.alive;
         if (previousPhase==='selection' && state.phase==='exploration') this.isDriftPanelOpen=false;
         this.repelSteps=Number(state.repelSteps)||0;
@@ -2326,6 +2345,7 @@ export default {
     });
 
     this.socket.on('newmap', ({ mapname, playersList }) => {
+      this.pc.visible=false;
       this.pauseMovementForMap();
       this.clearAllPlayers();
       this.players = playersList
@@ -2378,6 +2398,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.pc.visible=false;
       this.releaseAllMovementKeys();
       this.pendingBattleResult = null;
       this.$refs.battleOverlay?.cancelExperience();
@@ -2389,8 +2410,12 @@ export default {
 
 
     this.socket.on('mapWeatherState', state => { this.mapWeather = state; });
+    this.socket.on('worldDevicesState', state=>{this.worldDevices=state;});
+    this.socket.on('pcOpened', state=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;this.pc={visible:true,busy:false,state,error:'',notice:''};});
+    this.socket.on('pcUpdated',state=>{if(this.pc.visible)this.pc.state=state;});
 
     this.socket.on('battletrigger', (data) => {
+      this.pc.visible=false;
       this.pendingBattleResult = null;
       this.battleResult = null;
       this.driftSpectator = null;
