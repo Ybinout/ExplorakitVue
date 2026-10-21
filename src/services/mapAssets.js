@@ -1,4 +1,6 @@
 const MAP_ASSET_ALIASES = Object.freeze({
+    ville3_arene: 'gen_arene1', ville3_shop: 'gen_shop1',
+    ville3_maison1: 'gen_maison1', ville3_maison2: 'gen_maison2',
     gen_shop_route10: 'gen_shop1',
     gen_maison_ville5_2: 'gen_maison2',
     gen_maison_ville5_3: 'gen_maison3',
@@ -14,7 +16,7 @@ const MAP_ASSET_ALIASES = Object.freeze({
 const mapAssetContext = require.context(
     '@/assets',
     false,
-    /^\.\/(?:start|etage2?|maison2?|pk[12]|route[1-6]|ville1|ville_safe1|centre|cave[12]|gen_(?:route[1-8]|ville[1-5]|arene[1-5]|maison(?:[1-3]|_ville[1-5]_[12])|shop(?:1|_ville[25]_1)))(?:_f)?\.png$/
+    /^\.\/(?:start|etage2?|maison2?|pk[12]|route[1-6]|ville[13]|ville_safe1|centre|cave[12]|gen_(?:route[1-8]|ville[1-5]|arene[1-5]|maison(?:[1-3]|_ville[1-5]_[12])|shop(?:1|_ville[25]_1)))(?:_f)?\.png$/
 );
 
 export function resolveMapAsset(mapName, foreground = false) {

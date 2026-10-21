@@ -1,5 +1,7 @@
 const labels = {
   fr: {
+    ville3: 'Clairfontaine', ville3_arene: 'Arène de Clairfontaine', ville3_shop: 'Boutique de Clairfontaine',
+    ville3_maison1: 'Maison de Clairfontaine', ville3_maison2: 'Maison de Clairfontaine',
     gen_route7: 'Route 9', gen_route6: 'Route 10', gen_shop_route10: 'Boutique de la Route 10',
     ville_safe1: 'Valpierre', ville_safe1_arene: 'Arène de Valpierre · Hoze', ville_safe1_shop: 'Boutique de Valpierre',
     start: 'Village de départ', maison: 'Maison', maison2: 'Maison', etage: 'Étage', etage2: 'Étage',
@@ -11,6 +13,8 @@ const labels = {
     gen_arene5: 'Arène d’Ocreville · Raphael'
   },
   en: {
+    ville3: 'Clearfountain', ville3_arene: 'Clearfountain Gym', ville3_shop: 'Clearfountain Shop',
+    ville3_maison1: 'Clearfountain House', ville3_maison2: 'Clearfountain House',
     gen_route7: 'Route 9', gen_route6: 'Route 10', gen_shop_route10: 'Route 10 Shop',
     ville_safe1: 'Valpierre', ville_safe1_arene: 'Valpierre Gym · Hoze', ville_safe1_shop: 'Valpierre Shop',
     start: 'Starting Village', maison: 'Home', maison2: 'Home', etage: 'Upstairs', etage2: 'Upstairs',

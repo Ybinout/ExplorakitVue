@@ -592,7 +592,7 @@ export default {
       return getMapLocationLabel(this.map, this.preferences.language);
     },
     isShopMap() {
-      return ['ville_safe1_shop', 'ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1', 'gen_shop_route10'].includes(this.map);
+      return ['ville_safe1_shop', 'ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1', 'gen_shop_route10', 'ville3_shop'].includes(this.map);
     },
     heldBagItems() {
       if (!Array.isArray(this.bagItems)) return [];
@@ -2363,7 +2363,7 @@ export default {
       }
 
       this.map = mapname;
-      if (!['ville_safe1_shop', 'ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1', 'gen_shop_route10'].includes(mapname)) {
+      if (!['ville_safe1_shop', 'ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1', 'gen_shop_route10', 'ville3_shop'].includes(mapname)) {
         this.closeShop();
       }
       this.loadMapImage();
