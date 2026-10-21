@@ -1,4 +1,7 @@
 import frenchGameNames from '@/data/gameNames.fr.json';
+import { createBattleTextLocalizer } from './battleText';
+
+export const localizeBattleText = createBattleTextLocalizer(frenchGameNames.moves);
 
 export const SUPPORTED_LANGUAGES = Object.freeze(['fr', 'en']);
 

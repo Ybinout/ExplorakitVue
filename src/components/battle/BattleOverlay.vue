@@ -51,6 +51,7 @@
             'battle-fainted': Number(opponent.currentHp)<=0 && !transitionFx.wild,
             [`battle-transition-${transitionFx.wild}`]: Boolean(transitionFx.wild),
             'battle-attacking-wild': battleMoveFx.visible && battleMoveFx.actor === 'opponent',
+            'battle-phased': phasedState('wild'),
             'battle-capture-target': captureFx.visible,
             'capture-target-contained': captureFx.targetContained,
             [`capture-state-${captureFx.state}`]: captureFx.visible
@@ -64,6 +65,7 @@
           :alt="opponent.truename || opponent.name || 'Pokemon adverse'"
           @load="calibrateBattleSprite($event, 'wild')"
         >
+        <span v-if="phasedState('wild')" class="battle-phase-marker" data-battle-phase="opponent">{{ phaseLabel(opponent) }}</span>
       </div>
 
       <div
@@ -74,7 +76,7 @@
           'battle-sprite-anchor',
           'battle-sprite-player',
           'battle-position-player',
-          { 'battle-fainted': Number(currentPokemon.currentHp)<=0 && !transitionFx.player, [`battle-transition-${transitionFx.player}`]: Boolean(transitionFx.player), 'battle-attacking-player': battleMoveFx.visible && battleMoveFx.actor === 'player' }
+          { 'battle-fainted': Number(currentPokemon.currentHp)<=0 && !transitionFx.player, [`battle-transition-${transitionFx.player}`]: Boolean(transitionFx.player), 'battle-attacking-player': battleMoveFx.visible && battleMoveFx.actor === 'player', 'battle-phased': phasedState('player') }
         ]"
       >
         <img
@@ -84,6 +86,7 @@
           :alt="currentPokemon.name || 'Ton Pokemon'"
           @load="calibrateBattleSprite($event, 'player')"
         >
+        <span v-if="phasedState('player')" class="battle-phase-marker" data-battle-phase="player">{{ phaseLabel(currentPokemon) }}</span>
       </div>
 
       <div
@@ -294,7 +297,8 @@ import ExperienceBar from '../ExperienceBar.vue';
 import './battleViewport.css';
 import HealthBar from '../HealthBar.vue';
 import { getBattleStatus } from '@/services/gameView';
-import { localizeAbilityName, localizeMoveName, translate } from '@/services/i18n';
+import { localizeAbilityName, localizeMoveName, localizeBattleText, translate } from '@/services/i18n';
+import { trainerSpeechDuration } from '@/services/battleText';
 
 const RAIN_BACKGROUNDS = Object.freeze({
   grassMobile: require('@/assets/battle/grass-rain-mobile-v1.webp'),
@@ -359,6 +363,7 @@ export default {
       feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
       visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
       sendOuts: [], trainerSpeech: null,
+      phaseReturning: { player:false, wild:false },
       usableMoveIndexes: null,
       resolvedMoveTypes: null,
       actionState: {
@@ -540,6 +545,17 @@ export default {
     this._battleAudio?.dispose();
   },
   methods: {
+    phasedState(side) {
+      const pokemon = side === 'player' ? this.currentPokemon : this.opponent;
+      return Number(pokemon?.currentHp) > 0 && Boolean(pokemon?.__battle?.semiInvulnerable) && !this.phaseReturning[side];
+    },
+    phaseLabel(pokemon) {
+      const state = pokemon?.__battle?.semiInvulnerable;
+      const labels = this.preferences.language === 'en'
+        ? {airborne:'In the air',underground:'Underground',submerged:'Underwater',vanished:'Vanished'}
+        : {airborne:'En vol',underground:'Sous terre',submerged:'Sous l’eau',vanished:'Disparu'};
+      return labels[state] || '';
+    },
     prepareEntrance() {
       this.cancelEntrance();
       this.battleMapName = this.mapName;
@@ -581,7 +597,7 @@ export default {
       this._presentation ||= createBattlePresentation({ changed: busy => { this.presentationBusy = busy; } });
       const delay = () => {
         if (!this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
-        if (method === 'playMoveAnimation') return payload?.damageClass === 'status' ? 850 : 650;
+        if (method === 'playMoveAnimation') return payload?.phase === 'prepare' || payload?.damageClass === 'status' ? 850 : 650;
         if (method === 'playDriftEffects') return 650;
         if (method === 'playMoveResult') return this.resultFx.visible ? 1150 : 250;
         return 0;
@@ -753,7 +769,7 @@ export default {
       if (!message) return;
       if (this.messageTimer) clearTimeout(this.messageTimer);
       this.messageTimer = null;
-      this.actionState.text = message;
+      this.actionState.text = localizeBattleText(message, this.preferences.language);
       this.messageNonce += 1;
       this.actionState.patient = true;
       this.actionState.attackPanel = false;
@@ -829,7 +845,7 @@ export default {
       this.transitionFx = { player: '', wild: '' };
       if (this.trainerSpeech) {
         // Keep the line readable with reduced motion too, without moving controls.
-        await this.transitionWait(document.hidden ? 0 : 2300);
+        await this.transitionWait(document.hidden ? 0 : trainerSpeechDuration(this.trainerSpeech.text));
         if (epoch !== this.visualEpoch) return;
         this.trainerSpeech = null;
       }
@@ -864,6 +880,7 @@ export default {
       this.driftNoticeTimer=setTimeout(()=>{this.driftNotices=[];},2200);
     },
     updateBattleState(payload = {}) {
+      this.phaseReturning = { player:false, wild:false };
       this.opponentEffortYield = payload.effortYield || null;
       if(payload.musicKind)this.startMusic(payload.musicKind);
       this.usableMoveIndexes = Array.isArray(payload.usableMoveIndexes) ? payload.usableMoveIndexes : null;
@@ -1034,12 +1051,13 @@ export default {
     },
     playMoveAnimation(payload = {}) {
       const actor = payload.actor === 'opponent' ? 'opponent' : 'player';
-      const damageClass = ['physical', 'special', 'status'].includes(payload.damageClass)
-        ? payload.damageClass
-        : 'status';
+      const side = actor === 'opponent' ? 'wild' : 'player';
+      if (payload.phase === 'strike') this.$set(this.phaseReturning,side,true);
+      const damageClass = payload.phase === 'prepare' ? 'status' : (['physical', 'special', 'status'].includes(payload.damageClass)
+        ? payload.damageClass : 'status');
       this.clearMoveFx();
       if (this.reducedMotion()) return;
-      this.movePath = this.buildMovePath(actor, damageClass, payload.moveTarget);
+      this.movePath = this.buildMovePath(actor, damageClass, payload.phase === 'prepare' ? 'self' : payload.moveTarget);
       Object.assign(this.battleMoveFx, {
         actor,
         moveName: payload.moveName || '',

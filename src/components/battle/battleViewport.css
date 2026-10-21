@@ -103,7 +103,9 @@
 }
 
 /* Trainer lines share the existing text slot, including its fixed mobile height. */
-.game-root .game-stage .battle-text-box.battle-trainer-speech { display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:8px 12px; background:var(--journal-paper,#edf5fc); color:var(--journal-ink,#19394b); font:13px/1.35 Arial,sans-serif; }
+.game-root .game-stage .battle-text-box.battle-trainer-speech { display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:8px 12px; background:#17394e; color:#fff3c4; border-color:#d8bc72; font:600 13px/1.4 Arial,sans-serif; }
 .game-root .game-stage .battle-action-display.has-battle-notices .battle-trainer-speech { flex:1 1 0; min-height:0; overflow:auto; }
-.game-root .game-stage .battle-trainer-speech strong { display:block; color:var(--journal-accent,#316b84); font-size:11px; margin-bottom:4px; }
+.game-root .game-stage .battle-trainer-speech strong { display:block; color:#97d9f2; font-size:11px; margin-bottom:4px; }
 .game-root .game-stage .battle-trainer-speech p { margin:0; }
+.game-root .game-stage .battle-phased .battle-sprite { opacity:0; visibility:hidden; animation:none; }
+.game-root .game-stage .battle-phase-marker { position:absolute; z-index:8; left:0; bottom:calc(100% + 8px); transform:translateX(-50%); white-space:nowrap; border:1px dashed #e6d795; border-radius:50%; padding:8px 12px; background:#17394ee8; color:#fff3c4; font:700 11px/1.3 Arial,sans-serif; }
