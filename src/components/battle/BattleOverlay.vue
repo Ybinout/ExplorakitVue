@@ -133,7 +133,7 @@
         </div>
         <health-bar :current-hp="currentPokemon.currentHp" :hp-max="currentPokemon.maxHp" />
         <experience-bar :pokemon="currentPokemon" :playback-percent="experienceVisual?.uuid === currentPokemon.uuid ? experienceVisual.percent : null" />
-        <span v-if="experienceNotice" class="experience-notice" role="status">{{ experienceNotice }}</span>
+        <span v-if="experienceNotice" class="experience-notice" :title="experienceNotice" role="status">{{ experienceNotice }}</span>
         <div class="battle-status-details">
           <span class="battle-hp-value">{{ formatBattleHp(currentPokemon) }}</span>
           <battle-conditions :pokemon="currentPokemon"/>
@@ -640,11 +640,12 @@ export default {
       const signal = this._experienceAbort.signal;
       const play = async () => {
         if (signal.aborted) return;
-        this.experienceNotice = `+${payload.xpGained} XP`;
+        const label = this.currentPokemon?.uuid === pokemon.uuid ? '' : `${pokemon.truename || pokemon.name} : `;
+        this.experienceNotice = `${label}+${payload.xpGained} XP`;
         const reduced = !this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         await playExperienceGain(payload, frame => {
           this.experienceVisual = { ...frame, uuid: pokemon.uuid };
-          if (frame.level > payload.previousLevel) this.experienceNotice = `Niveau ${frame.level} ! +${payload.xpGained} XP`;
+          if (frame.level > payload.previousLevel) this.experienceNotice = `${label}Niveau ${frame.level} ! +${payload.xpGained} XP`;
         }, signal, reduced);
       };
       const previous = this._experiencePlayback;
@@ -2579,5 +2580,5 @@ export default {
     animation: none !important;
   }
 }
-.experience-notice { color:#297eb5; font-size:11px; font-weight:800; }
+.experience-notice { display:block; max-width:100%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:#297eb5; font-size:11px; font-weight:800; }
 </style>
