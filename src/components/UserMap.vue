@@ -58,7 +58,7 @@
           </button>
         </div>
         </div>
-        <bag-panel v-if="isBagOpen" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
+        <bag-panel v-if="isBagOpen" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
               <template v-if="isBagConsumable(item)">
                 <select :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
@@ -68,6 +68,11 @@
                 <button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagItem(item) || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key]))" @click="useBagMedicine(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button>
                 <small v-if="!canUseBagItem(item)" class="bag-use-hint">{{ isDrift && driftState?.phase !== 'exploration' ? 'Soins automatiques entre les combats du tournoi.' : 'Disponible hors combat.' }}</small>
                 <small v-else-if="!teamPokemons.some(p => canReceiveMedicine(item, p))" class="bag-use-hint">Aucun Pokémon n’a besoin de cet objet.</small>
+              </template>
+              <template v-else-if="item.category==='field' && item.repelSteps">
+                <button class="bag-use-button" data-use-repel :disabled="medicineBusy || !canUseBagConsumables || repelSteps>0 || !teamPokemons.some(p=>p.currentHp>0)" @click="useBagRepel(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button>
+                <small v-if="repelSteps>0" class="bag-use-hint">Attends la fin du Repousse actif pour en utiliser un autre.</small>
+                <small v-else-if="!canUseBagConsumables" class="bag-use-hint">Disponible pendant l’exploration, hors combat.</small>
               </template>
               <small v-else-if="isDrift && item.revive" class="bag-use-hint">Les K.O. sont définitifs dans ce mode.</small>
           </template>
@@ -409,7 +414,7 @@ export default {
       mapWeather: null, worldWeatherReducedMotion: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
-      medicineBusy:false, medicineNotice:'', medicineTargets: {},
+      repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {},
       endSentences: null,
       textImageSequence: [],
       socket: null,
@@ -690,6 +695,20 @@ export default {
     medicineStatus(pokemon) {
       const statuses = { poison: 'empoisonné', badly_poison: 'empoisonné', burn: 'brûlé', paralyze: 'paralysé', sleep: 'endormi', freeze: 'gelé' };
       return pokemon.currentHp <= 0 ? pokemon.riftFainted ? ' · K.O. protégé' : ' · K.O.' : statuses[pokemon.status] ? ` · ${statuses[pokemon.status]}` : '';
+    },
+    async useBagRepel(item) {
+      if(this.medicineBusy || !this.canUseBagConsumables || this.repelSteps>0)return;
+      this.medicineNotice='';this.bagError='';
+      if(!this.socket?.connected){this.bagError='Reconnecte-toi pour utiliser un objet.';return;}
+      this.medicineBusy=true;
+      try{
+        const response=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit(this.isDrift?'drift:repel':'useRepel',{itemKey:item.key},(error,result)=>error?reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')):resolve(result)));
+        if(!response?.success)throw new Error(response?.message || 'Repousse inutilisable.');
+        this.repelSteps=Number(response.repelSteps)||0;
+        if(response.items)this.applyBagItems(response.items);
+        this.medicineNotice=`${item.name} utilisé.`;
+      }catch(error){this.bagError=error.message;}
+      finally{this.medicineBusy=false;}
     },
     async useBagMedicine(item) {
       const pokemonUuid = this.medicineTargets[item.key];
@@ -2043,6 +2062,7 @@ export default {
         if(state.phase!=='exploration')this.trainerOffer=null;
         const previousPhase = this.driftState?.phase; const previousAlive = this.driftState?.alive;
         if (previousPhase==='selection' && state.phase==='exploration') this.isDriftPanelOpen=false;
+        this.repelSteps=Number(state.repelSteps)||0;
         this.driftState = state; this.driftOffset = state.serverNow - Date.now(); this.teamId = 'drift';
         if (state.mode !== 'colosseum' && state.phase === 'results' && state.report && this.archivedDriftRunId !== state.report.runId) {
           this.archivedDriftRunId = state.report.runId;
@@ -2081,6 +2101,7 @@ export default {
       this.loadPokedexState().catch((error) => console.error('Erreur actualisation Pokédex:', error));
     });
 
+    this.socket.on('fieldEffectState', (payload={})=>{this.repelSteps=Number(payload.repelSteps)||0;});
     this.socket.on('progressionNotice', (payload = {}) => {
       this.showInteractionNotice(payload.message || 'Progression mise à jour.', 3800);
     });
