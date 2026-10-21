@@ -3,7 +3,7 @@ const FRAME_MS = 1000 / 30, LIMIT = 128, IMPACT_SECONDS = .22;
 const fract = value => value - Math.floor(value);
 function seed(index) { return fract(Math.sin((index + 1) * 127.1) * 43758.5453); }
 export function rainGroundTop(width, height, environment = 'grass') {
-  return height * (environment === 'cave' ? .36 : environment === 'colosseum' ? .43 : width < height ? .36 : .44);
+  return height * (environment === 'lake-gym' ? .4 : environment === 'cave' ? .36 : environment === 'colosseum' ? .43 : width < height ? .36 : .44);
 }
 export function rainParticleCount(width, height) { return Math.min(LIMIT, Math.max(40, Math.round(width * height / 3600))); }
 export class BattleRainRenderer {

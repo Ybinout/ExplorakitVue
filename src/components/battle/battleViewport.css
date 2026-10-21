@@ -107,5 +107,11 @@
 .game-root .game-stage .battle-action-display.has-battle-notices .battle-trainer-speech { flex:1 1 0; min-height:0; overflow:auto; }
 .game-root .game-stage .battle-trainer-speech strong { display:block; color:#97d9f2; font-size:11px; margin-bottom:4px; }
 .game-root .game-stage .battle-trainer-speech p { margin:0; }
+
+/* Mounir's paving stays continuous; the two stone pedestals use fighter anchors. */
+.game-root .game-stage .battle-lake-gym .battle-background { object-fit:fill; filter:none; image-rendering:pixelated; }
+.game-root .game-stage .battle-lake-gym .battle-atmosphere { background:linear-gradient(180deg,#15364b18,transparent 65%); }
+.game-root .game-stage .battle-lake-gym .battle-platform img { image-rendering:pixelated; }
+.game-root .game-stage .battle-lake-gym .battle-platform.battle-position-player { --platform-offset-y:-72%; }
 .game-root .game-stage .battle-phased .battle-sprite { opacity:0; visibility:hidden; animation:none; }
 .game-root .game-stage .battle-phase-marker { position:absolute; z-index:8; left:0; bottom:calc(100% + 8px); transform:translateX(-50%); white-space:nowrap; border:1px dashed #e6d795; border-radius:50%; padding:8px 12px; background:#17394ee8; color:#fff3c4; font:700 11px/1.3 Arial,sans-serif; }
