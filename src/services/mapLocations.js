@@ -1,5 +1,6 @@
 const labels = {
   fr: {
+    gen_route7: 'Route 9', gen_route6: 'Route 10', gen_shop_route10: 'Boutique de la Route 10',
     ville_safe1: 'Valpierre', ville_safe1_arene: 'Arène de Valpierre · Hoze', ville_safe1_shop: 'Boutique de Valpierre',
     start: 'Village de départ', maison: 'Maison', maison2: 'Maison', etage: 'Étage', etage2: 'Étage',
     ville1: 'Ville du Lac', ville1_arene: 'Arène de la Ville du Lac', ville1_shop: 'Boutique de la Ville du Lac',
@@ -10,6 +11,7 @@ const labels = {
     gen_arene5: 'Arène d’Ocreville · Raphael'
   },
   en: {
+    gen_route7: 'Route 9', gen_route6: 'Route 10', gen_shop_route10: 'Route 10 Shop',
     ville_safe1: 'Valpierre', ville_safe1_arene: 'Valpierre Gym · Hoze', ville_safe1_shop: 'Valpierre Shop',
     start: 'Starting Village', maison: 'Home', maison2: 'Home', etage: 'Upstairs', etage2: 'Upstairs',
     ville1: 'Lake Town', ville1_arene: 'Lake Town Gym', ville1_shop: 'Lake Town Shop',
