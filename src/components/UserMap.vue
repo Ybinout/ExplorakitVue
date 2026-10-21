@@ -379,6 +379,7 @@ import MoveLearningPanel from './menu/MoveLearningPanel.vue';
 import EvolutionPresentation from './menu/EvolutionPresentation.vue';
 import { VillageWaterRenderer, hasVillageWater } from '@/services/villageWater';
 import { ForegroundWindRenderer } from '@/services/foregroundWind';
+import { GrassRustleRenderer, hasRustlingGrass } from '@/services/grassRustle';
 import { WorldWeatherRenderer, worldWeatherEnabled, mapWorldWeather } from '@/services/worldWeather';
 import { createEvolutionTracker } from '@/services/evolutionPresentation';
 import evolutionGraph from '@/data/evolutionGraph.json';
@@ -568,6 +569,7 @@ export default {
     villageWaterActive() { return hasVillageWater(this.map) && !(this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible || this.mapLoading || this.mapLoadError || this.renderedMap !== this.map); },
     effectiveWorldWeather() { return mapWorldWeather(this.map, this.mapWeather); },
     worldWeatherActive() { return Boolean(this.effectiveWorldWeather.wind || this.effectiveWorldWeather.rain) && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
+    grassRustleActive() { return hasRustlingGrass(this.map) && this.preferences.animationsEnabled && !this.worldWeatherReducedMotion && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
     learningPokemon() {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
       return this.teamPokemons.find(p => p.currentHp > 0 && p.pendingMoves?.length);
@@ -613,7 +615,8 @@ export default {
   watch: {
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
-    map() { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._villageWater?.suspend(); },
+    map() { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); },
+    grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
     mapLoadError(error) { if (error) this.releaseAllMovementKeys(); },
     evolutionLookupKey() { this.loadEvolutionOptions(); },
     selectedPokemonUuid() { this.evolutionNotice = ''; },
@@ -1121,7 +1124,7 @@ export default {
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (document.hidden) { this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._villageWater?.suspend(); } },
+    onWorldVisibility() { if (document.hidden) { this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       this.releaseAllMovementKeys();
@@ -1245,7 +1248,26 @@ export default {
 
       this.drawPlayers();
     },
-    drawPnjs(context) {
+    pnjWorldPosition(pnj, now) {
+      const progress = this.preferences.animationsEnabled && Number.isFinite(pnj.movedAt) ? Math.min(1, Math.max(0, (now - pnj.movedAt) / 380)) : 1;
+      return { x: ((pnj.fromX ?? pnj.x) + (pnj.x - (pnj.fromX ?? pnj.x)) * progress) * 32 + 16,
+        y: ((pnj.fromY ?? pnj.y) + (pnj.y - (pnj.fromY ?? pnj.y)) * progress) * 32 + 16,
+        progress, moving: progress < 1 && (pnj.fromX !== pnj.x || pnj.fromY !== pnj.y) };
+    },
+    grassActors(now) {
+      const actors = [];
+      for (const [id, player] of Object.entries(this.players)) {
+        if (player.currentmap !== this.map || player.inbattle || !this.getSpriteSheetForPlayer(player)?.complete) continue;
+        actors.push({ id: `player:${id}`, x: player.x, y: player.y });
+      }
+      for (const pnj of this.pnjs) {
+        if (!this.ensurePnjSpriteSheet(pnj.sprite)?.complete) continue;
+        const { x, y } = this.pnjWorldPosition(pnj, now);
+        actors.push({ id: `pnj:${pnj.name}`, x, y });
+      }
+      return actors;
+    },
+    drawPnjs(context, now = performance.now()) {
       if (!Array.isArray(this.pnjs) || this.pnjs.length === 0) return;
 
       const idleFrame = this.spriteAnimations?.down?.[0] || { x: 0, y: 0 };
@@ -1253,12 +1275,9 @@ export default {
         const spriteSheet = this.ensurePnjSpriteSheet(pnj.sprite);
         if (!spriteSheet || !spriteSheet.complete) continue;
 
-        const progress = this.preferences.animationsEnabled ? Math.min(1, (performance.now() - pnj.movedAt) / 380) : 1;
-        const moving = progress < 1 && (pnj.fromX !== pnj.x || pnj.fromY !== pnj.y);
-        const px = (pnj.fromX ?? pnj.x) + (pnj.x - (pnj.fromX ?? pnj.x)) * progress;
-        const py = (pnj.fromY ?? pnj.y) + (pnj.y - (pnj.fromY ?? pnj.y)) * progress;
-        const drawX = Math.round(px * 32 + 16 - 32);
-        const drawY = Math.round(py * 32 + 16 - 42 - (moving ? Math.abs(Math.sin(progress * Math.PI * 3)) * 2 : 0));
+        const { x, y, progress, moving } = this.pnjWorldPosition(pnj, now);
+        const drawX = Math.round(x - 32);
+        const drawY = Math.round(y - 42 - (moving ? Math.abs(Math.sin(progress * Math.PI * 3)) * 2 : 0));
         if (pnj.challengeLevel) {
           context.save(); context.fillStyle='#173e48'; context.strokeStyle='#c5ac6d';
           context.fillRect(drawX-10,drawY-24,84,20); context.strokeRect(drawX-10,drawY-24,84,20);
@@ -1936,6 +1955,7 @@ export default {
       if (this.mapLoading || this.mapLoadError || this.renderedMap !== this.map
         || !me || me.currentmap !== this.map || !this.mapImage?.complete || !this.mapImage.naturalWidth) {
         this._villageWater?.suspend();
+        this._grassRustle?.suspend();
         this.drawHeldWorldFrame(c, canvas);
         return;
       }
@@ -1947,6 +1967,7 @@ export default {
       c.save();
       c.imageSmoothingEnabled = false;
       c.setTransform(scale, 0, 0, scale, -camera.x * scale, -camera.y * scale);
+      const now = performance.now();
 
       // Fill the canvas with the map image
       if (this.mapImage) {
@@ -1956,13 +1977,18 @@ export default {
         } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
 
+      if (this.grassRustleActive && !document.hidden) {
+        if (!this._grassRustle) this._grassRustle = new GrassRustleRenderer();
+        this._grassRustle.draw(c, this.mapImage, this.map, this.grassActors(now), now);
+      } else this._grassRustle?.suspend();
+
       if (this.worldWeatherActive && !document.hidden) {
         if (!this._worldWeather) this._worldWeather = new WorldWeatherRenderer();
         this._worldWeather.drawGround(c, performance.now(), this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
       } else this._worldWeather?.suspend();
 
       drawPokemonComputers(c,this.worldDevices,this.map);
-      this.drawPnjs(c);
+      this.drawPnjs(c, now);
 
       // Loop through all the players and draw them
       for (const playerId in this.players) {
@@ -2533,6 +2559,7 @@ export default {
     this._villageWater?.destroy();
     this._worldWeather?.destroy();
     this._foregroundWind?.destroy();
+    this._grassRustle?.destroy();
     this._weatherMotionQuery?.removeEventListener?.('change', this._weatherMotionChange);
     this._mapLoadVersion = (this._mapLoadVersion || 0) + 1;
     this._mapScenes?.clear();
