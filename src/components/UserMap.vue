@@ -349,13 +349,13 @@ import BagPanel from './menu/BagPanel.vue';
 import PokemonComputer from './menu/PokemonComputer.vue';
 import {drawPokemonComputers} from '@/services/pokemonComputer';
 import api from "@/services/api";
-import { getSession } from "@/services/session";
+import { getSession, clearSession } from "@/services/session";
 import { saveDriftReport } from "@/services/driftReportHistory";
 import DriftRunPanel from "./drift/DriftRunPanel.vue";
 import ExpeditionTrainerOffer from "./drift/ExpeditionTrainerOffer.vue";
 import RiftSpectatorPanel from "./drift/RiftSpectatorPanel.vue";
 import DriftGlyph from "./drift/DriftGlyph.vue";
-import { createGameSocket, createDriftSocket } from "@/services/realtime";
+import { createGameSocket, createDriftSocket, isSessionConnectionFailure } from "@/services/realtime";
 import {
   getDirectionFromAction,
   getDirectionFromDelta,
@@ -2393,6 +2393,13 @@ export default {
     });
 
     this.socket.on("connect_error", (error) => {
+      if (isSessionConnectionFailure(error)) {
+        const redirect = this.isDrift ? this.driftLobbyPath : '/game';
+        clearSession();
+        this.socket.disconnect();
+        this.$router.replace({path:'/connexion',query:{redirect,reason:'session-expired'}});
+        return;
+      }
       console.log("Erreur de connexion au serveur:", error);
       this.saveState = { ...this.saveState, status: 'error', message: 'Connexion au serveur interrompue.' };
     });

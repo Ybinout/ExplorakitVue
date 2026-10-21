@@ -5,6 +5,9 @@
       <p class="eyebrow">RIFTMON · RETOUR AU CAMP</p>
       <h1>Bon retour,<br />dresseur.</h1>
       <p class="intro">Retrouve ton dresseur, rejoins un Rift ou poursuis ton Aventure.</p>
+      <p v-if="$route.query.reason === 'session-expired'" class="session-notice" role="alert" data-session-expired>
+        Ta session a expiré ou n’est plus valide. Reconnecte-toi pour reprendre ta partie.
+      </p>
 
       <form @submit.prevent="login">
         <label>
@@ -75,4 +78,5 @@ input:focus { border-color: #c97cec; box-shadow: 0 0 0 3px rgba(201,124,236,.14)
 .error-message { margin: 0; color: #ffb1c0; font-size: 13px; text-align: center; }
 @media (max-width: 520px) { .login-card { padding: 30px 21px; } .back-home { position: absolute; } }
 .login-page { background: radial-gradient(ellipse at 60% 20%, #2c75b74d, transparent 65%), linear-gradient(100deg, #081d35ee, #193d60dc), url('~@/assets/backgroundmenu.webp') center/cover; }.login-card { border-color: #82b1d34d; background: #0d2844e8; }.eyebrow { color: #8bc5f0; }.intro { color: #adc2d3; }label { color: #d4e0e9; }input { border-color: #83aac44d; background: #071a2e99; }input:focus { border-color: #83bfee; box-shadow: 0 0 0 3px #83bfee24; }.login-button { border-color: #9cc9e9; background: linear-gradient(135deg, #377fae, #215683); box-shadow: 0 12px 30px #0a264347; }.new-game { color: #b1c7d9; }
+.session-notice { margin:0 0 22px; padding:12px 14px; border:1px solid #a9cadb; border-radius:10px; background:#edf5fc; color:#243f53; font:14px/1.5 Arial,sans-serif; }
 </style>

@@ -18,9 +18,15 @@ export function createDriftSocket(token) {
   });
 }
 
+export function isSessionConnectionFailure(error) {
+  return ['Authentification requise.', 'Session invalide ou expirée.'].includes(
+    typeof error?.message === 'string' ? error.message.trim() : ''
+  );
+}
+
 export function getDriftConnectionFailure(error) {
   const message = typeof error?.message === 'string' ? error.message.trim() : '';
-  if (message === 'Authentification requise.' || message === 'Session invalide ou expirée.') {
+  if (isSessionConnectionFailure(error)) {
     return {
       kind: 'session',
       message: 'Ta session de compte est invalide ou a expiré. Reconnecte-toi pour rejoindre le camp.'
