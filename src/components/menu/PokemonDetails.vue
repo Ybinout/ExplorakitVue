@@ -2,7 +2,7 @@
   <div class="companion-backdrop" @mousedown.self="$emit('close')" @keydown.esc.stop="$emit('close')" @keydown.tab="trapFocus">
     <section ref="dialog" class="companion-sheet" role="dialog" aria-modal="true" :aria-label="`Fiche de ${pokemon.name}`">
       <header class="companion-heading">
-        <div><span class="companion-kicker">CARNET DE VOYAGE · {{ position }} / {{ total }}</span><h2>{{ pokemon.name }}</h2></div>
+        <div><span class="companion-kicker">{{ contextLabel }} · {{ position }} / {{ total }}</span><h2>{{ pokemon.name }}</h2></div>
         <button ref="close" class="companion-close" aria-label="Fermer la fiche" @click="$emit('close')">×</button>
       </header>
       <div class="companion-body">
@@ -36,7 +36,16 @@
           <p class="companion-tip">{{ mode === 'ev' ? `Entraînement : ${effortTotal} / 510. Les adversaires vaincus améliorent progressivement tes statistiques.` : mode === 'iv' ? 'Les IV sont innés. Le potentiel multiplie leur contribution aux statistiques ; il ne modifie pas les EV.' : 'Les statistiques combinent espèce, niveau, nature, IV, potentiel et entraînement. Les effets temporaires du combat sont exclus.' }}</p>
         </div>
       </div>
-      <section class="companion-evolutions" aria-labelledby="companion-evolution-title">
+      <section v-if="readOnly" class="companion-pc-moves" aria-labelledby="companion-moves-title">
+        <h3 id="companion-moves-title">Capacités</h3>
+        <p v-if="!pokemon.moveDetails?.length" class="evolution-help">Aucune capacité apprise.</p>
+        <article v-for="(move,index) in pokemon.moveDetails || []" :key="`${index}-${move.name}`" :data-companion-move="move.name">
+          <div><strong>{{ moveName(move.name) }}</strong><span>{{ typeName(move.type) }} · {{ moveClass(move.damageClass) }}</span></div>
+          <dl><div><dt>Puissance</dt><dd>{{ move.power>0?move.power:'—' }}</dd></div><div><dt>Précision</dt><dd>{{ move.accuracy>0?`${move.accuracy} %`:'—' }}</dd></div><div><dt>PP</dt><dd>{{ move.pp }} / {{ move.maxPp }}</dd></div></dl>
+        </article>
+        <p v-if="pokemon.heldItemName" class="evolution-help">Objet tenu : <strong>{{ pokemon.heldItemName }}</strong></p>
+      </section>
+      <section v-if="!readOnly" class="companion-evolutions" aria-labelledby="companion-evolution-title">
         <h3 ref="evolutionTitle" id="companion-evolution-title" tabindex="-1">Évolution</h3>
         <p v-if="evolutionLoading" role="status">Chargement des conditions…</p>
         <p v-else-if="!evolutionOptions.length && !evolutionError">Ce Pokémon n’a pas d’évolution dans RiftMon.</p>
@@ -51,7 +60,7 @@
         </article>
         <p v-if="pokemon.currentHp <= 0 && evolutionOptions.length" class="evolution-help">Soigne ce Pokémon avant de le faire évoluer.</p>
       </section>
-      <footer class="companion-footer"><button :disabled="position <= 1" @click="$emit('navigate', -1)">‹ Précédent</button><span>TON ÉQUIPE · TON AVENTURE</span><button :disabled="position >= total" @click="$emit('navigate', 1)">Suivant ›</button></footer>
+      <footer class="companion-footer"><button :disabled="position <= 1" @click="$emit('navigate', -1)">‹ Précédent</button><span>{{ footerLabel }}</span><button :disabled="position >= total" @click="$emit('navigate', 1)">Suivant ›</button></footer>
     </section>
   </div>
 </template>
@@ -60,7 +69,8 @@ import PotentialStar from '../PotentialStar.vue';
 import PokemonPortrait from '../PokemonPortrait.vue';
 import ExperienceBar from '../ExperienceBar.vue';
 import { experienceProgress } from '@/services/pokemonProgress';
-import { localizeAbilityName } from '@/services/i18n';
+import { localizeTypeName } from '@/services/pokemonTypes';
+import { localizeAbilityName, localizeMoveName } from '@/services/i18n';
 const stats = [
   { key: 'hp', label: 'PV', full: 'Points de vie' }, { key: 'attack', label: 'ATQ', full: 'Attaque' },
   { key: 'defense', label: 'DÉF', full: 'Défense' }, { key: 'speed', label: 'VIT', full: 'Vitesse' },
@@ -78,7 +88,7 @@ const natures = {
 };
 export default {
   components: { ExperienceBar, PokemonPortrait, PotentialStar },
-  props: { pokemon: { type: Object, required: true }, position: Number, total: Number, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
+  props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
   data: () => ({ mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
     typeNames: { Grass: 'Plante', Fire: 'Feu', Water: 'Eau', Bug: 'Insecte', Flying: 'Vol', Electric: 'Électrik', Ground: 'Sol', Rock: 'Roche', Ice: 'Glace', Fighting: 'Combat', Psychic: 'Psy', Ghost: 'Spectre', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' } }),
   computed: {
@@ -109,6 +119,8 @@ export default {
   mounted() { this.previousFocus = document.activeElement; this.$refs.close.focus(); },
   beforeDestroy() { this.previousFocus?.focus?.(); },
   methods: {
+    moveName(name){return localizeMoveName(name,'fr');},typeName:localizeTypeName,
+    moveClass(value){return {physical:'Physique',special:'Spéciale',status:'Statut'}[value] || '—';},
     point(index, ratio) { const angle = -Math.PI / 2 + index * Math.PI / 3; return { x: 160 + Math.cos(angle) * 85 * ratio, y: 140 + Math.sin(angle) * 85 * ratio }; },
     polygon(ratios) { return ratios.map((ratio, index) => { const p = this.point(index, ratio); return `${p.x},${p.y}`; }).join(' '); },
     switchTab(event, key) {
@@ -129,6 +141,9 @@ export default {
 };
 </script>
 <style scoped>
+.companion-pc-moves{padding:4px 26px 24px;border-top:1px solid var(--journal-border)}.companion-pc-moves h3{font:24px Georgia,serif;color:var(--journal-heading)}.companion-pc-moves article{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--journal-border)}.companion-pc-moves article>div{min-width:0}.companion-pc-moves article strong{font-size:13px;color:var(--journal-heading)}.companion-pc-moves article span{display:block;font-size:11px;color:var(--journal-muted);margin-top:4px}.companion-pc-moves dl{display:flex;gap:18px;margin:0;flex:none}.companion-pc-moves dt{font-size:9px;color:var(--journal-muted)}.companion-pc-moves dd{margin:4px 0 0;font-size:12px;text-align:right}.companion-heading>div{min-width:0}.companion-heading h2{overflow-wrap:anywhere}
+@media(max-width:540px){.companion-pc-moves{padding:4px 18px 18px}.companion-pc-moves article{flex-wrap:wrap;gap:10px}.companion-pc-moves dl{width:100%;justify-content:space-between}.companion-pc-moves dd{text-align:left}}
+
 .companion-evolutions{padding:4px 26px 24px;border-top:1px solid var(--journal-border)}
 .companion-evolutions h3{font:24px Georgia,serif;margin:20px 0 10px}.evolution-help{font-size:12px;line-height:1.6;color:var(--journal-muted)}
 .companion-evolutions article{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--journal-border)}

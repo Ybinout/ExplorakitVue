@@ -13,3 +13,13 @@ export function drawPokemonComputers(context, state, map) {
     context.restore();
   }
 }
+
+// Adapt the private PC snapshot to the shared companion sheet without changing owned data.
+export function computerPokemonDetails(pokemon) {
+  if(!pokemon)return null;
+  return {...pokemon, ...pokemon.stats, spriteId:pokemon.pokemonId,
+    name:pokemon.nickname && pokemon.nickname!=='test'?pokemon.nickname:pokemon.name,
+    truename:pokemon.name, k:pokemon.potential,
+    data:{id:pokemon.pokemonId,type:[...(pokemon.types || [])]},
+    abilities:[...(pokemon.moves || [])],movePp:[...(pokemon.movePp || [])]};
+}
