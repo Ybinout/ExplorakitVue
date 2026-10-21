@@ -65,6 +65,7 @@
                   <option value="">Choisir un Pokémon…</option>
                   <option v-for="p in teamPokemons" :key="p.uuid" :value="p.uuid" :disabled="!canReceiveMedicine(item, p)">{{ p.name }}{{ item.category==='evolution' && item.evolutions?.[p.uuid] ? ` → ${item.evolutions[p.uuid].name}` : ` · ${p.currentHp}/${p.maxHp} PV${medicineStatus(p)}` }}</option>
                 </select>
+                <small v-if="item.fieldUse?.effort && medicineTargets[item.key]" class="bag-use-hint" data-effort-preview>{{ effortPreview(item) }}</small>
                 <button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagItem(item) || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key]))" @click="useBagMedicine(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button>
                 <small v-if="!canUseBagItem(item)" class="bag-use-hint">{{ isDrift && driftState?.phase !== 'exploration' ? 'Soins automatiques entre les combats du tournoi.' : 'Disponible hors combat.' }}</small>
                 <small v-else-if="!teamPokemons.some(p => canReceiveMedicine(item, p))" class="bag-use-hint">Aucun Pokémon n’a besoin de cet objet.</small>
@@ -346,6 +347,7 @@ import { createMapSceneLoader } from '@/services/mapScene';
 import { moveTouchGesture } from '@/services/touchMovement';
 import JournalIcon from './menu/JournalIcon.vue';
 import BagPanel from './menu/BagPanel.vue';
+import moveLearningData from '@/data/moveLearning.json';
 import PokemonComputer from './menu/PokemonComputer.vue';
 import {drawPokemonComputers} from '@/services/pokemonComputer';
 import api from "@/services/api";
@@ -690,18 +692,29 @@ export default {
     isBagConsumable(item) {
       return Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse || (this.isDrift && item.category==='evolution')) && !(this.isDrift && item.revive));
     },
-    canUseBagItem(item) { return item.category==='evolution' && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
+    canUseBagItem(item) { return (item.category==='evolution' || item.fieldUse?.effort) && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
     canReceiveMedicine(item, pokemon) {
       if (!pokemon) return false;
       if(item.category==='evolution')return Boolean(item.evolutions?.[pokemon.uuid]);
       const effect = item.fieldUse || item;
       if (effect.revive) return !this.isDrift && pokemon.currentHp <= 0;
       if (pokemon.currentHp <= 0 && !(this.isDrift && pokemon.riftFainted && (effect.heal || effect.healFraction || item.category==='heal'))) return false;
+      if (effect.effort) {
+        if (pokemon.isEgg) return false;
+        const ev=pokemon.ev || {},value=Number(ev[effect.effort.stat]) || 0;
+        return effect.effort.amount < 0 ? value>0 : value<252 && Object.values(ev).reduce((n,v)=>n+Number(v),0)<510;
+      }
+      if (effect.restorePp) return !pokemon.isEgg && pokemon.abilities?.some((name,i)=>pokemon.movePp?.[i] < (moveLearningData[name]?.pp || 1));
       return Boolean(((effect.heal || effect.healFraction || item.category === 'heal') && pokemon.currentHp < pokemon.maxHp) || effect.cure?.includes(pokemon.status));
     },
     medicineStatus(pokemon) {
       const statuses = { poison: 'empoisonné', badly_poison: 'empoisonné', burn: 'brûlé', paralyze: 'paralysé', sleep: 'endormi', freeze: 'gelé' };
       return pokemon.currentHp <= 0 ? pokemon.riftFainted ? ' · K.O. protégé' : ' · K.O.' : statuses[pokemon.status] ? ` · ${statuses[pokemon.status]}` : '';
+    },
+    effortPreview(item) {
+      const p=this.teamPokemons.find(p=>p.uuid===this.medicineTargets[item.key]),ev=p?.ev || {};
+      const names={hp:'PV',attack:'Attaque',defense:'Défense',specialAttack:'Attaque Spéciale',specialDefense:'Défense Spéciale',speed:'Vitesse'};
+      return `EV ${names[item.fieldUse.effort.stat]} : ${ev[item.fieldUse.effort.stat] || 0}/252 · Total : ${Object.values(ev).reduce((n,v)=>n+Number(v),0)}/510`;
     },
     async useComputer(payload){
       if(this.pc.busy || !this.pc.visible)return;

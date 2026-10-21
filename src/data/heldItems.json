@@ -58,5 +58,149 @@
   "rift_talisman": {
     "name": "Talisman de sauvegarde",
     "description": "Évite une perte définitive une fois. Consommé au K.O. : le Pokémon reste à 0 PV, indisponible jusqu’à un soin hors combat ou entre deux rounds."
+  },
+  "cheri_berry": {
+    "name": "Baie Ceriz",
+    "description": "Tenue ou utilisée depuis le sac, soigne la paralysie. Consommée après utilisation."
+  },
+  "chesto_berry": {
+    "name": "Baie Maron",
+    "description": "Tenue ou utilisée depuis le sac, soigne le sommeil. Consommée après utilisation."
+  },
+  "pecha_berry": {
+    "name": "Baie Pêcha",
+    "description": "Tenue ou utilisée depuis le sac, soigne le poison. Consommée après utilisation."
+  },
+  "rawst_berry": {
+    "name": "Baie Fraive",
+    "description": "Tenue ou utilisée depuis le sac, soigne la brûlure. Consommée après utilisation."
+  },
+  "aspear_berry": {
+    "name": "Baie Willia",
+    "description": "Tenue ou utilisée depuis le sac, soigne le gel. Consommée après utilisation."
+  },
+  "persim_berry": {
+    "name": "Baie Kika",
+    "description": "Tenue, soigne la confusion. Consommée après utilisation."
+  },
+  "leppa_berry": {
+    "name": "Baie Mepo",
+    "description": "Restaure 10 PP à la première capacité épuisée, sinon à la première capacité incomplète depuis le sac. Tenue, s’active quand une capacité arrive à 0 PP."
+  },
+  "liechi_berry": {
+    "name": "Baie Lichii",
+    "description": "Tenue, augmente l’Attaque d’un cran à 25 % des PV ou moins. Consommée après utilisation."
+  },
+  "ganlon_berry": {
+    "name": "Baie Lingan",
+    "description": "Tenue, augmente la Défense d’un cran à 25 % des PV ou moins. Consommée après utilisation."
+  },
+  "salac_berry": {
+    "name": "Baie Sailak",
+    "description": "Tenue, augmente la Vitesse d’un cran à 25 % des PV ou moins. Consommée après utilisation."
+  },
+  "petaya_berry": {
+    "name": "Baie Pitaye",
+    "description": "Tenue, augmente l’Attaque Spéciale d’un cran à 25 % des PV ou moins. Consommée après utilisation."
+  },
+  "apicot_berry": {
+    "name": "Baie Abriko",
+    "description": "Tenue, augmente la Défense Spéciale d’un cran à 25 % des PV ou moins. Consommée après utilisation."
+  },
+  "occa_berry": {
+    "name": "Baie Chocco",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Feu super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "passho_berry": {
+    "name": "Baie Pocpoc",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Eau super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "wacan_berry": {
+    "name": "Baie Parma",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Électrik super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "rindo_berry": {
+    "name": "Baie Ratam",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Plante super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "yache_berry": {
+    "name": "Baie Nanone",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Glace super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "chople_berry": {
+    "name": "Baie Pomroz",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Combat super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "kebia_berry": {
+    "name": "Baie Kébia",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Poison super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "shuca_berry": {
+    "name": "Baie Jouca",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Sol super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "coba_berry": {
+    "name": "Baie Cobaba",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Vol super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "payapa_berry": {
+    "name": "Baie Yapap",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Psy super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "tanga_berry": {
+    "name": "Baie Panga",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Insecte super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "charti_berry": {
+    "name": "Baie Charti",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Roche super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "kasib_berry": {
+    "name": "Baie Sédra",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Spectre super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "haban_berry": {
+    "name": "Baie Fraigo",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Dragon super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "colbur_berry": {
+    "name": "Baie Lampou",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Ténèbres super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "babiri_berry": {
+    "name": "Baie Babiri",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Acier super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "roseli_berry": {
+    "name": "Baie Selro",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Fée super efficace qui touche le porteur. Consommée après utilisation."
+  },
+  "chilan_berry": {
+    "name": "Baie Zalis",
+    "description": "Tenue, divise par deux les dégâts de la première attaque Normal qui touche le porteur. Consommée après utilisation."
+  },
+  "pomeg_berry": {
+    "name": "Baie Grena",
+    "description": "Depuis le sac, retire jusqu’à 10 EV en PV pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation."
+  },
+  "kelpsy_berry": {
+    "name": "Baie Alga",
+    "description": "Depuis le sac, retire jusqu’à 10 EV en Attaque pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation."
+  },
+  "qualot_berry": {
+    "name": "Baie Qualot",
+    "description": "Depuis le sac, retire jusqu’à 10 EV en Défense pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation."
+  },
+  "hondew_berry": {
+    "name": "Baie Lonme",
+    "description": "Depuis le sac, retire jusqu’à 10 EV en Attaque Spéciale pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation."
+  },
+  "grepa_berry": {
+    "name": "Baie Résin",
+    "description": "Depuis le sac, retire jusqu’à 10 EV en Défense Spéciale pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation."
+  },
+  "tamato_berry": {
+    "name": "Baie Tamato",
+    "description": "Depuis le sac, retire jusqu’à 10 EV en Vitesse pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation."
   }
 }
