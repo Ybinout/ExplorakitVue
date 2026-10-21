@@ -709,7 +709,7 @@ export default {
         this.pc.state=result.state;
         if(result.equipe)this.applyTeamPokemons(result.equipe.pokemons);
         if(result.items)this.applyBagItems(result.items);
-        this.pc.notice={deposit:'Compagnon déposé dans le PC.',withdraw:'Compagnon ajouté à ton équipe.',swap:'Les deux Pokémon ont échangé leur place.',release:'Pokémon relâché. Son éventuel objet tenu est dans ton sac.'}[payload.action];
+        this.pc.notice={move:'Nouvel emplacement sauvegardé.',deposit:'Compagnon déposé dans le PC.',withdraw:'Compagnon ajouté à ton équipe.',swap:'Les deux Pokémon ont échangé leur place.',release:'Pokémon relâché. Son éventuel objet tenu est dans ton sac.'}[payload.action];
       }catch(error){this.pc.error=error.message;}
       finally{this.pc.busy=false;}
     },
