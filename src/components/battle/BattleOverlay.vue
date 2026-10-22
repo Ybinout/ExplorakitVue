@@ -26,6 +26,7 @@
       <battle-snow v-else-if="fieldState.weather === 'hail'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
       <div v-else class="battle-weather-layer" aria-hidden="true"></div>
       <div class="battle-terrain-layer" aria-hidden="true"></div>
+      <span v-if="weatherLabel" class="battle-weather-indicator" :class="`battle-weather-${fieldState.weather}`" :data-battle-weather="fieldState.weather" role="img" :aria-label="weatherLabel" :title="weatherLabel"><journal-icon :name="`weather-${fieldState.weather}`" /></span>
       <battle-send-out v-for="entry in sendOuts" :key="entry.uuid" :side="entry.side" :style="sendOutPosition(entry.side)" />
 
       <div
@@ -296,6 +297,7 @@ import PotentialStar from '../PotentialStar.vue';
 import BattleConditions from './BattleConditions.vue';
 import BattleRain from './BattleRain.vue';
 import BattleSnow from './BattleSnow.vue';
+import JournalIcon from '../menu/JournalIcon.vue';
 import { battleConditionChanges } from '@/services/battleConditions';
 import ExperienceBar from '../ExperienceBar.vue';
 import './battleViewport.css';
@@ -341,7 +343,7 @@ import { battleEnvironment } from '@/services/battleEnvironment';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleSnow },
+  components: { BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleSnow, JournalIcon },
   props: {
     mobile: Boolean,
     mapName: { type: String, default: '' },
@@ -502,11 +504,13 @@ export default {
         this.fieldState.terrain ? `terrain-${this.fieldState.terrain}` : ''
       ].filter(Boolean);
     },
+    weatherLabel() {
+      const labels = FIELD_LABELS[this.preferences.language] || FIELD_LABELS.fr;
+      return labels[this.fieldState.weather] || '';
+    },
     fieldLabel() {
       const labels = FIELD_LABELS[this.preferences.language] || FIELD_LABELS.fr;
-      return [labels[this.fieldState.weather], labels[this.fieldState.terrain]]
-        .filter(Boolean)
-        .join(' · ');
+      return labels[this.fieldState.terrain] || '';
     },
     audioVolume() {
       return Math.max(0, Math.min(1, Number(this.preferences.masterVolume) / 100));
@@ -1394,6 +1398,11 @@ export default {
 .battle-snow .battle-position-player .snow-disc { width:calc(var(--sprite-visible-size) * 1.9); height:calc(var(--sprite-visible-size) * .46); transform:translate(-50%,-84%); }
 .battle-colosseum .battle-background { filter:none; object-position:50% 44%; }
 .battle-arena-background { position:absolute; inset:0; }
+.battle-weather-indicator { position:absolute; z-index:14; top:10px; right:10px; display:grid; place-items:center; width:34px; height:34px; border:1px solid #96b8cb; border-radius:10px; background:#19384de6; color:#b5e0f8; box-shadow:0 2px 0 #10263460; cursor:help; }
+.battle-weather-indicator .journal-icon { width:23px; height:23px; }
+.battle-weather-sun { color:#f6d580; border-color:#d6bc7b; }
+.battle-weather-sandstorm { color:#efd19e; border-color:#c3aa7e; }
+.battle-weather-hail { color:#e2f6ff; }
 .battle-platform { position:absolute; z-index:0; width:var(--sprite-visible-size); height:0; pointer-events:none; }
 .battle-platform img { position:absolute; left:0; top:0; width:170%; max-width:none; height:auto; transform:translate(-50%,var(--platform-offset-y,-46%)); }
 .battle-platform.battle-position-player img { width:210%; }
