@@ -1,7 +1,7 @@
 // Presentation only: the server remains authoritative for ownership and item use.
 export const BAG_POCKETS = Object.freeze([
   {key:'medicine',name:'Soins',en:'Medicine',hint:'Pour remettre ton équipe sur pied.',enHint:'Keep your team ready for the road.'},
-  {key:'training',name:'Vitamines',en:'Vitamins',hint:'Des vitamines pour développer les statistiques de tes compagnons.',enHint:'Vitamins to train your companions’ stats.'},
+  {key:'training',name:'Entraînement',en:'Training',hint:'Vitamines, relances d’IV et remise à zéro des EV.',enHint:'Vitamins, IV rolls and EV resets.'},
   {key:'balls',name:'Balls',en:'Balls',hint:'Pour tes prochaines rencontres.',enHint:'Ready for your next encounter.'},
   {key:'field',name:'Objets',en:'Field items',hint:'Pour explorer plus tranquillement.',enHint:'For a quieter journey.'},
   {key:'berries',name:'Baies',en:'Berries',hint:'À consommer ou à faire tenir.',enHint:'Use them or give them to a Pokémon.'},
@@ -13,7 +13,7 @@ export const BAG_POCKETS = Object.freeze([
 export function bagPocket(item) {
   if(item.category==='ball')return 'balls';
   if(item.category==='heal')return 'medicine';
-  if(item.fieldUse?.effort?.amount>0)return 'training';
+  if(item.fieldUse?.effort?.amount>0||item.fieldUse?.ivReroll||item.fieldUse?.effortReset)return 'training';
   if(item.category==='held' && /_berry$/.test(item.key || ''))return 'berries';
   return ['medicine','field','held','evolution','key'].includes(item.category)?item.category:'other';
 }

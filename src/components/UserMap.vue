@@ -61,11 +61,12 @@
         <bag-panel v-if="isBagOpen" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
               <template v-if="isBagConsumable(item)">
-                <select :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
+                <select data-medicine-target :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
                   <option value="">Choisir un Pokémon…</option>
-                  <option v-for="p in teamPokemons" :key="p.uuid" :value="p.uuid" :disabled="!canReceiveMedicine(item, p)">{{ p.name }}{{ item.category==='evolution' && item.evolutions?.[p.uuid] ? ` → ${item.evolutions[p.uuid].name}` : ` · ${p.currentHp}/${p.maxHp} PV${medicineStatus(p)}` }}</option>
+                  <option v-for="p in teamPokemons" :key="p.uuid" :value="p.uuid" :disabled="!canReceiveMedicine(item, p)">{{ medicineTargetLabel(item,p) }}</option>
                 </select>
-                <small v-if="item.fieldUse?.effort && medicineTargets[item.key]" class="bag-use-hint" data-effort-preview>{{ effortPreview(item) }}</small>
+                <small v-if="(item.fieldUse?.effort||item.fieldUse?.ivReroll||item.fieldUse?.effortReset) && medicineTargets[item.key]" class="bag-use-hint" data-effort-preview>{{ effortPreview(item) }}</small>
+                <label v-if="item.fieldUse?.effort?.amount>0&&item.quantity>=5" class="bag-use-hint">Quantité <select data-medicine-quantity :value="medicineQuantities[item.key]||1" :disabled="medicineBusy" @change="$set(medicineQuantities,item.key,Number($event.target.value))"><option v-for="n in [1,5,10,25].filter(n=>n<=item.quantity)" :key="n" :value="n">×{{ n }}</option></select><small>Seules les vitamines utiles seront consommées.</small></label>
                 <button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagItem(item) || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key]))" @click="useBagMedicine(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button>
                 <small v-if="!canUseBagItem(item)" class="bag-use-hint">{{ isDrift && driftState?.phase !== 'exploration' ? 'Soins automatiques entre les combats du tournoi.' : 'Disponible hors combat.' }}</small>
                 <small v-else-if="!teamPokemons.some(p => canReceiveMedicine(item, p))" class="bag-use-hint">Aucun Pokémon n’a besoin de cet objet.</small>
@@ -182,7 +183,7 @@
         />
         <shop-panel
           :visible="shop.visible"
-          :catalog="shop.catalog"
+          :catalog="shop.catalog" :metadata="shop.metadata" :location="locationLabel"
           :expedition="isDrift" :merchant="driftState?.merchant" :drift-catalogue="driftCatalogue" :drifts="driftState?.drifts || []" :equipped="driftState?.equipped || []" @merchant="merchantCommand"
           :items="bagItems"
           :money="shop.money"
@@ -423,7 +424,7 @@ export default {
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
-      repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {},
+      repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{},
       endSentences: null,
       textImageSequence: [],
       socket: null,
@@ -472,6 +473,7 @@ export default {
         loading: false,
         error: '',
         catalog: [],
+        metadata:{},
         money: 0
       },
       saveState: {
@@ -694,13 +696,15 @@ export default {
     isBagConsumable(item) {
       return Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse || (this.isDrift && item.category==='evolution')) && !(this.isDrift && item.revive));
     },
-    canUseBagItem(item) { return (item.category==='evolution' || item.fieldUse?.effort) && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
+    canUseBagItem(item) { return (item.category==='evolution' || item.fieldUse?.effort || item.fieldUse?.ivReroll || item.fieldUse?.effortReset) && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
     canReceiveMedicine(item, pokemon) {
       if (!pokemon) return false;
       if(item.category==='evolution')return Boolean(item.evolutions?.[pokemon.uuid]);
       const effect = item.fieldUse || item;
       if (effect.revive) return !this.isDrift && pokemon.currentHp <= 0;
       if (pokemon.currentHp <= 0 && !(this.isDrift && pokemon.riftFainted && (effect.heal || effect.healFraction || item.category==='heal'))) return false;
+      if(effect.ivReroll)return !pokemon.isEgg&&Number.isInteger(pokemon.iv?.[effect.ivReroll])&&pokemon.iv[effect.ivReroll]>=0&&pokemon.iv[effect.ivReroll]<=31;
+      if(effect.effortReset)return !pokemon.isEgg&&(effect.effortReset==='all'?Object.values(pokemon.ev||{}).some(n=>n>0):(pokemon.ev?.[effect.effortReset]||0)>0);
       if (effect.effort) {
         if (pokemon.isEgg) return false;
         const ev=pokemon.ev || {},value=Number(ev[effect.effort.stat]) || 0;
@@ -716,7 +720,21 @@ export default {
     effortPreview(item) {
       const p=this.teamPokemons.find(p=>p.uuid===this.medicineTargets[item.key]),ev=p?.ev || {};
       const names={hp:'PV',attack:'Attaque',defense:'Défense',specialAttack:'Attaque Spéciale',specialDefense:'Défense Spéciale',speed:'Vitesse'};
+      if(item.fieldUse.ivReroll)return `IV ${names[item.fieldUse.ivReroll]} : ${p?.iv?.[item.fieldUse.ivReroll]||0}/31 · Tirage 0–31 : remplace la valeur actuelle, même si elle baisse. Potentiel K inchangé.`;
+      if(item.fieldUse.effortReset)return item.fieldUse.effortReset==='all'?`EV totaux : ${Object.values(ev).reduce((n,v)=>n+Number(v),0)}/510 → 0. Les six statistiques seront remises à zéro.`:`EV ${names[item.fieldUse.effortReset]} : ${ev[item.fieldUse.effortReset]||0}/252 → 0. Les autres statistiques restent identiques.`;
       return `EV ${names[item.fieldUse.effort.stat]} : ${ev[item.fieldUse.effort.stat] || 0}/252 · Total : ${Object.values(ev).reduce((n,v)=>n+Number(v),0)}/510`;
+    },
+    medicineTargetLabel(item,p){
+      if(item.category==='evolution')return `${p.name}${item.evolutions?.[p.uuid]?` → ${item.evolutions[p.uuid].name}`:''}`;
+      if(item.fieldUse?.ivReroll)return `${p.name} · IV ${p.iv?.[item.fieldUse.ivReroll]||0}/31`;
+      if(item.fieldUse?.effortReset)return `${p.name} · EV ${item.fieldUse.effortReset==='all'?Object.values(p.ev||{}).reduce((s,n)=>s+Number(n),0):(p.ev?.[item.fieldUse.effortReset]||0)}`;
+      return `${p.name} · ${p.currentHp}/${p.maxHp} PV${this.medicineStatus(p)}`;
+    },
+    trainingNotice(change,name,quantity=1){
+      const stats={hp:'PV',attack:'Attaque',defense:'Défense',specialAttack:'Attaque Spéciale',specialDefense:'Défense Spéciale',speed:'Vitesse'};
+      if(change.kind==='iv')return `${name} · IV ${stats[change.stat]} : ${change.before} → ${change.after} (tirage ${change.rolled}). Nouvel IV sauvegardé.`;
+      if(change.kind==='evReset')return `${name} · ${change.stat==='all'?'Tous les EV':`EV ${stats[change.stat]}`} remis à zéro. Entraînement sauvegardé.`;
+      return `${name} · ${quantity} vitamine${quantity>1?'s':''} · EV ${stats[change.stat]} : ${change.before} → ${change.after}.`;
     },
     async useComputer(payload){
       if(this.pc.busy || !this.pc.visible)return;
@@ -753,11 +771,12 @@ export default {
       if (!this.socket?.connected) { this.bagError = 'Reconnecte-toi pour utiliser un objet.'; return; }
       this.medicineBusy = true;
       try {
-        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(this.isDrift ? item.category==='evolution'?'drift:evolve':'drift:heal' : 'useMedicine', { itemKey: item.key, pokemonUuid }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
+        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(this.isDrift ? item.category==='evolution'?'drift:evolve':'drift:heal' : 'useMedicine', { itemKey: item.key, pokemonUuid,quantity:item.fieldUse?.effort?.amount>0?Math.min(Number(this.medicineQuantities[item.key])||1,item.quantity):1 }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
         if (!response?.success) throw new Error(response?.message || 'Soin impossible.');
         if (response.items) this.applyBagItems(response.items);
         if (response.equipe) this.applyTeamPokemons(response.equipe.pokemons);
-        this.medicineNotice = response.evolution ? `${pokemon.name} a évolué en ${response.evolution.name} !` : `${item.name} utilisée sur ${pokemon.name}. Soin sauvegardé.`;
+        this.$set(this.medicineQuantities,item.key,1);
+        this.medicineNotice = response.trainingChange?this.trainingNotice(response.trainingChange,pokemon.name,response.consumed):response.evolution ? `${pokemon.name} a évolué en ${response.evolution.name} !` : `${item.name} utilisée sur ${pokemon.name}. Soin sauvegardé.`;
       } catch (error) { this.bagError = error.message; }
       finally { this.medicineBusy = false; }
     },
@@ -844,6 +863,7 @@ export default {
     applyShopState(payload = {}) {
       if (!payload.success) return;
       if (Array.isArray(payload.catalog)) this.shop.catalog = payload.catalog;
+      if(payload.shopMeta)this.shop.metadata=payload.shopMeta;
       this.applyBagItems(payload.items);
       this.shop.money = Number(payload.money) || 0;
       this.shop.loading = false;
@@ -857,14 +877,14 @@ export default {
             insufficient_funds: 'You do not have enough money.',
             not_in_shop: 'You must be inside a shop.',
             invalid_quantity: 'Invalid quantity.',
-            item_unavailable: 'This item is unavailable.',
+            item_unavailable: 'This item is unavailable at this stage or in this shop.',inventory_busy:'Another action is in progress.',
             battle_active: 'The shop is unavailable during battle.'
           }
         : {
             insufficient_funds: "Tu n'as pas assez d'argent.",
             not_in_shop: 'Tu dois être dans une boutique.',
             invalid_quantity: 'Quantité invalide.',
-            item_unavailable: "Cet objet n'est pas disponible.",
+            item_unavailable: "Cet objet n’est pas disponible à ce stade ou dans cette boutique.",inventory_busy:"Une autre action est en cours.",
             battle_active: 'La boutique est indisponible pendant un combat.'
           };
       return messages[reason] || (isEnglish ? 'The shop is temporarily unavailable.' : 'La boutique est temporairement indisponible.');
@@ -1813,6 +1833,7 @@ export default {
       if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) { this.releaseAllMovementKeys(); return; }
       if (this.isDriftPanelOpen) { if (e.key === "Escape") this.isDriftPanelOpen = false; return; }
       if (this.selectedPokemonUuid) return;
+      if (e.key === 'Escape' && this.shop.visible) {e.preventDefault();this.closeShop();return;}
       if (e.key === 'Escape') {
         this.closeInfoPanel();
         if (this.interactionChoice.visible) {

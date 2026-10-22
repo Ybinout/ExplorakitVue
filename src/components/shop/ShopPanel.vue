@@ -1,123 +1,66 @@
 <template>
-  <div v-if="visible" class="shop-backdrop" @click.self="$emit('close')">
-    <section :class="['shop-card', {'expedition-shop':expedition}]" role="dialog" aria-modal="true" :aria-label="text.title">
+  <div v-if="visible" class="shop-backdrop" @click.self="$emit('close')" @keydown="handleKeydown">
+    <section ref="dialog" class="shop-card shop-counter" role="dialog" aria-modal="true" aria-labelledby="shop-title" :aria-busy="loading">
       <header class="shop-header">
-        <div>
-          <div class="shop-kicker">{{ text.counter }}</div>
-          <h2>{{ text.title }}</h2>
-        </div>
-        <button class="shop-close" :aria-label="language === 'en' ? 'Close' : 'Fermer'" type="button" @click="$emit('close')">×</button>
+        <svg class="counter-sign" viewBox="0 0 56 56" fill="none" aria-hidden="true"><path d="M9 24h38v25H9Z" fill="var(--journal-selected)"/><path d="m8 9-5 15c0 8 10 8 10 0 0 8 10 8 10 0 0 8 10 8 10 0 0 8 10 8 10 0 0 8 10 8 10 0L48 9Z" fill="var(--journal-accent)"/><path d="M14 9 12 24m13-15-2 15m9-15 1 15m9-15 1 15" stroke="var(--journal-paper)"/><path d="M15 32h13v11H15Zm21 0h7v17h-7Z" fill="var(--journal-paper)"/><path d="M6 50h44" stroke="var(--journal-accent)" stroke-width="2"/></svg>
+        <div><small>{{ english?'RIFTMON / SHOP':'RIFTMON / BOUTIQUE' }}</small><h2 id="shop-title">{{ english?'The counter':'Le comptoir' }}</h2><p v-if="location">{{ location }}</p></div>
+        <button ref="close" class="shop-close" :aria-label="english?'Close shop':'Fermer la boutique'" @click="$emit('close')">×</button>
       </header>
-
-      <div class="shop-wallet">{{ text.wallet }} <strong>{{ money }} ₽</strong></div>
-      <nav v-if="expedition" class="shop-tabs" aria-label="Marchands de l’expédition"><button v-for="t in tabs" :key="t.key" :data-shop-tab="t.key" :aria-pressed="tab===t.key" @click="tab=t.key">{{ t.label }}</button></nav>
-      <div v-if="error" class="shop-error">{{ error }}</div>
-      <div v-if="loading && !catalog.length" class="shop-empty">{{ text.loading }}</div>
-      <div v-else class="shop-list">
-        <rift-merchant v-if="expedition && tab==='drifts' && merchant" :stock="merchant" :catalogue="driftCatalogue" :drifts="drifts" :equipped="equipped" :money="money" :busy="loading" @command="$emit('merchant',$event)" />
-        <p v-if="expedition && tab==='stones'" class="shop-item-description">Le lapidaire propose dix pierres. Utilise-les depuis le sac : seuls les Pokémon compatibles pourront être choisis.</p>
-        <article v-for="item in filteredCatalog" :key="item.key" class="shop-item">
-          <div class="shop-item-copy">
-            <div class="shop-item-title">{{ item.name }}</div>
-            <div class="shop-item-description">{{ item.description }}</div>
-            <div class="shop-owned">{{ text.owned }} : {{ ownedQuantity(item.key) }}</div>
+      <div class="shop-wallet"><span>{{ stageLabel }}</span><span>{{ english?'Your money':'Ton argent' }} <strong>{{ money.toLocaleString(english?'en':'fr') }} ₽</strong></span></div>
+      <div class="counter-layout">
+        <nav class="shop-categories" role="tablist" :aria-label="english?'Shop departments':'Rayons de la boutique'">
+          <button v-for="c in categories" :id="`shop-category-${c.key}`" :key="c.key" role="tab" :data-shop-category="c.key" :data-shop-tab="c.key==='evolution'?'stones':c.key==='medicine'?'supplies':c.key" :aria-selected="active===c.key" :aria-controls="'shop-stock'" :tabindex="active===c.key?0:-1" @click="select(c.key)" @keydown="moveCategory($event,c.key)"><bag-item-icon :pocket="c.key"/><span>{{ english?c.en:c.name }}</span><small>{{ c.count }}</small></button>
+        </nav>
+        <div class="counter-main">
+          <label class="shop-search"><span aria-hidden="true">⌕</span><input v-model="query" type="search" :placeholder="english?'Find an item…':'Chercher un objet…'" :aria-label="english?'Find an item':'Chercher un objet'"/><button v-if="query" :aria-label="english?'Clear search':'Effacer la recherche'" @click="query=''">×</button></label>
+          <div ref="stock" id="shop-stock" class="shop-list" role="tabpanel" :aria-labelledby="`shop-category-${active}`" tabindex="0">
+            <div class="counter-heading"><div><small>{{ english?'DEPARTMENT':'RAYON' }}</small><h3>{{ query?(english?'Search results':'Résultats de recherche'):(english?current.en:current.name) }}</h3></div><span>{{ filteredCatalog.length }} {{ english?'items':'articles' }}</span></div>
+            <p v-if="!query&&active==='training'" class="counter-hint">{{ english?'Vitamins, targeted IV rolls and EV resets. Use them from the Training pocket of your bag.':'Vitamines, relances d’IV ciblées et resets d’EV. À utiliser dans la poche Entraînement du sac.' }}</p>
+            <nav v-if="!query&&active==='training'&&filteredTrainingAvailable" class="training-filters" :aria-label="english?'Training type':'Type d’entraînement'"><button v-for="t in trainingTabs" :key="t.key" :data-training-filter="t.key" :aria-pressed="trainingFilter===t.key" @click="trainingFilter=t.key">{{ english?t.en:t.name }}</button></nav>
+            <p v-if="error" class="shop-error" role="alert">{{ error }}</p>
+            <p v-if="loading&&!catalog.length" class="shop-empty" role="status">{{ english?'Opening the counter…':'Ouverture du comptoir…' }}</p>
+            <rift-merchant v-else-if="active==='drifts'&&!query&&merchant" :stock="merchant" :catalogue="driftCatalogue" :drifts="drifts" :equipped="equipped" :money="money" :busy="loading" @command="$emit('merchant',$event)"/>
+            <p v-else-if="!filteredCatalog.length" class="shop-empty">{{ active==='training'&&!metadata.trainingAvailable?(english?'Defeat Wanda to open the Training department in Whitepeak.':'Bats Wanda pour ouvrir le rayon Entraînement de Blanchecime.'):(english?'No items match your search.':'Aucun article ne correspond à ta recherche.') }}</p>
+            <article v-for="item in filteredCatalog" :key="item.key" :data-shop-item="item.key" class="shop-item">
+              <div class="shop-item-copy"><div class="counter-item-name"><bag-item-icon :pocket="pocket(item)" :item-key="item.key"/><div><div class="shop-item-title">{{ item.name }}</div><div class="shop-owned">{{ english?'Owned':'Possédé' }} : {{ ownedQuantity(item.key) }}</div></div></div><p class="shop-item-description">{{ item.description }}</p></div>
+              <div class="shop-buy-controls"><select v-model.number="quantities[item.key]" :disabled="loading" :aria-label="`${english?'Quantity':'Quantité'} · ${item.name}`"><option v-for="n in [1,5,10,25]" :key="n" :value="n">×{{ n }}</option></select><button :disabled="loading||money<totalFor(item)" :aria-label="`${item.name} · ${totalFor(item)} ₽`" @click="buy(item)"><span>{{ totalFor(item) }} ₽</span><small>{{ english?'Buy':'Acheter' }}</small></button></div>
+            </article>
           </div>
-          <div class="shop-buy-controls">
-            <select :aria-label="`${language === 'en' ? 'Quantity' : 'Quantité'} · ${item.name}`" v-model.number="quantities[item.key]" :disabled="loading">
-              <option :value="1">×1</option>
-              <option :value="5">×5</option>
-              <option :value="10">×10</option>
-            </select>
-            <button
-              type="button"
-              :disabled="loading || money < totalFor(item)"
-              @click="$emit('buy', { itemKey: item.key, quantity: quantityFor(item.key) })"
-            >
-              {{ totalFor(item) }} ₽
-            </button>
-          </div>
-        </article>
+        </div>
       </div>
+      <footer class="counter-footer"><span>{{ nextUnlock }}</span><span>{{ english?'Purchased items go into your bag.':'Les achats rejoignent ton sac.' }}</span></footer>
     </section>
   </div>
 </template>
-
 <script>
 import RiftMerchant from '../drift/RiftMerchant.vue';
+import BagItemIcon from '../menu/BagItemIcon.vue';
+import {BAG_POCKETS,bagPocket} from '@/services/bagPockets';
 export default {
-  name: 'ShopPanel',
-  components:{RiftMerchant},
-  props: {
-    expedition:Boolean, merchant:Object, driftCatalogue:Object, drifts:{type:Array,default:()=>[]}, equipped:{type:Array,default:()=>[]},
-    visible: { type: Boolean, default: false },
-    catalog: { type: Array, default: () => [] },
-    items: { type: Array, default: () => [] },
-    money: { type: Number, default: 0 },
-    loading: { type: Boolean, default: false },
-    error: { type: String, default: '' },
-    language: { type: String, default: 'fr' }
+  name:'ShopPanel',components:{RiftMerchant,BagItemIcon},
+  props:{visible:Boolean,catalog:{type:Array,default:()=>[]},items:{type:Array,default:()=>[]},metadata:{type:Object,default:()=>({})},location:String,money:{type:Number,default:0},loading:Boolean,error:String,language:String,expedition:Boolean,merchant:Object,driftCatalogue:Object,drifts:{type:Array,default:()=>[]},equipped:{type:Array,default:()=>[]}},
+  data(){return {active:'balls',query:'',quantities:{},trainingFilter:'vitamins',previousFocus:null,pendingFocus:null,trainingTabs:[{key:'vitamins',name:'Vitamines',en:'Vitamins'},{key:'iv',name:'Relances IV',en:'IV rolls'},{key:'ev',name:'Reset EV',en:'EV reset'}]};},
+  computed:{
+    english(){return this.language==='en';},
+    categories(){const order=['balls','medicine','berries','field','held','evolution','training'];const result=order.map(key=>({...BAG_POCKETS.find(p=>p.key===key),count:this.catalog.filter(i=>bagPocket(i)===key).length})).filter(p=>p.count||p.key==='training'&&this.metadata.specialty==='training');if(this.expedition&&this.merchant)result.push({key:'drifts',name:'Drifts',en:'Drifts',count:this.merchant.offers?.length||0});return result.length?result:[{key:'balls',name:'Balls',en:'Balls',count:0}];},
+    current(){return this.categories.find(c=>c.key===this.active)||this.categories[0];},
+    filteredTrainingAvailable(){return this.catalog.some(i=>bagPocket(i)==='training');},
+    filteredCatalog(){const q=this.query.trim().toLocaleLowerCase();return this.catalog.filter(i=>q?`${i.name} ${i.description}`.toLocaleLowerCase().includes(q):bagPocket(i)===this.active&&(this.active!=='training'||this.trainingKind(i)===this.trainingFilter));},
+    stageLabel(){return this.english?(this.expedition?'Expedition supplies':['Essentials','Lake trainer','Seasoned traveller','Trained team','Expert trainer','The final stretch'][this.metadata.tier||0]):this.metadata.name||(this.expedition?'Fournitures d’expédition':'Fournitures de voyage');},
+    nextUnlock(){return this.english?(this.expedition?'For this expedition only.':['Defeat Mounir for more supplies.','Defeat Hoze for evolution stones and Ultra Balls.','Defeat Raphael for advanced medicine.','Defeat Ana for Max Potions and Leppa Berries.','Defeat Wanda for the Whitepeak Training department.','Whitepeak’s Training department can help you prepare for 7p.'][this.metadata.tier||0]):this.metadata.next||'Le stock s’étoffe au fil de tes victoires d’arène.';}
   },
-  data() {
-    return { quantities: {}, tab:'supplies', tabs:[{key:'supplies',label:'Fournitures'},{key:'held',label:'Objets tenus'},{key:'stones',label:'Pierres'},{key:'drifts',label:'Drifts'}] };
-  },
-  computed: {
-    filteredCatalog() { if(!this.expedition)return this.catalog;return this.catalog.filter(i=>this.tab==='held'?i.category==='held':this.tab==='stones'?i.category==='evolution':this.tab==='drifts'?false:!['held','evolution'].includes(i.category)); },
-    text() {
-      return this.language === 'en'
-        ? { counter: 'Pokémon Shop', title: 'What do you need?', wallet: 'Wallet:', owned: 'Owned', loading: 'Loading…' }
-        : { counter: 'Boutique Pokémon', title: 'De quoi as-tu besoin ?', wallet: 'Porte-monnaie :', owned: 'Possédé', loading: 'Chargement…' };
-    }
-  },
-  watch: {
-    catalog: {
-      immediate: true,
-      handler(items) {
-        (items || []).forEach((item) => {
-          if (!this.quantities[item.key]) this.$set(this.quantities, item.key, 1);
-        });
-      }
-    }
-  },
-  methods: {
-    quantityFor(itemKey) {
-      return Number(this.quantities[itemKey]) || 1;
-    },
-    totalFor(item) {
-      return Number(item.price) * this.quantityFor(item.key);
-    },
-    ownedQuantity(itemKey) {
-      return Number(this.items.find((item) => item.key === itemKey)?.quantity) || 0;
-    }
-  }
+  watch:{loading(value){if(!value&&this.visible)this.$nextTick(()=>{if(!this.$refs.dialog?.contains(document.activeElement)){const button=this.pendingFocus?this.$refs.dialog?.querySelector(`[data-shop-item="${this.pendingFocus}"] button:not(:disabled)`):null;(button||this.$refs.close)?.focus({preventScroll:true});}this.pendingFocus=null;});},visible(value){if(value){this.previousFocus=document.activeElement===document.body?this.$parent.$el.querySelector('.location-shop-btn'):document.activeElement;this.active='balls';this.query='';this.trainingFilter='vitamins';this.$nextTick(()=>this.$refs.close?.focus({preventScroll:true}));}else this.restoreFocus();},catalog:{immediate:true,handler(items){for(const i of items||[])if(!this.quantities[i.key])this.$set(this.quantities,i.key,1);this.$nextTick(()=>{if(!this.categories.some(c=>c.key===this.active))this.active=this.categories[0].key;});}}},
+  beforeDestroy(){if(this.visible)this.restoreFocus();},
+  methods:{buy(item){this.pendingFocus=item.key;this.$emit('buy',{itemKey:item.key,quantity:this.quantityFor(item.key)});},pocket:bagPocket,trainingKind(i){return i.fieldUse?.ivReroll?'iv':i.fieldUse?.effortReset?'ev':'vitamins';},select(key){this.active=key;this.query='';this.$nextTick(()=>{if(this.$refs.stock)this.$refs.stock.scrollTop=0;});},quantityFor(key){return Number(this.quantities[key])||1;},totalFor(item){return item.price*this.quantityFor(item.key);},ownedQuantity(key){return Number(this.items.find(i=>i.key===key)?.quantity)||0;},restoreFocus(){const previous=this.previousFocus;this.$nextTick(()=>{if(previous?.isConnected)previous.focus({preventScroll:true});});},moveCategory(e,key){if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key))return;e.preventDefault();const n=this.categories.length,i=this.categories.findIndex(c=>c.key===key),next=e.key==='Home'?0:e.key==='End'?n-1:(i+(['ArrowLeft','ArrowUp'].includes(e.key)?-1:1)+n)%n;this.select(this.categories[next].key);this.$nextTick(()=>document.getElementById(`shop-category-${this.active}`)?.focus());},handleKeydown(e){if(e.key==='Escape'){e.preventDefault();e.stopPropagation();this.$emit('close');}if(e.key!=='Tab')return;const nodes=[...this.$refs.dialog.querySelectorAll('button:not(:disabled),select:not(:disabled),input,[tabindex="0"]')].filter(n=>n.getClientRects().length),first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}}
 };
 </script>
-
 <style scoped>
-.expedition-shop{display:flex;flex-direction:column;max-height:90dvh;background:#f7f8f3;color:#253b39;font-family:Arial,sans-serif}.expedition-shop .shop-header{background:#e5eddd;color:#253b39}.expedition-shop .shop-kicker{color:#8a6d36}.expedition-shop .shop-header h2{font:24px Georgia,serif}.expedition-shop .shop-list{min-height:0;max-height:65dvh;overflow:auto;overscroll-behavior:contain}.shop-tabs{display:flex;gap:5px;flex-wrap:wrap;padding:10px 14px}.shop-tabs button{flex:1;min-height:44px;border:1px solid #d3ddd2;border-radius:7px;background:#fcfcf8;color:#287366;font:700 12px Arial;cursor:pointer}.shop-tabs button[aria-pressed="true"]{background:#287366;color:white}.expedition-shop .shop-buy-controls button,.expedition-shop .shop-buy-controls select,.expedition-shop .shop-close{min-height:44px;min-width:44px;font-size:12px}.expedition-shop .shop-item-title{font:700 14px Arial}.expedition-shop .shop-owned{font:11px Arial}.shop-tabs button:focus-visible{outline:3px solid #b29b70;outline-offset:2px}
-
-.shop-backdrop { position: absolute; inset: 0; z-index: 90; display: grid; place-items: center; padding: 18px; background: rgba(3, 8, 13, .68); }
-.shop-card { width: min(690px, 96%); max-height: 84%; overflow: hidden; border: 3px solid #263a45; border-radius: 14px; background: #f5f0df; color: #18252d; box-shadow: 0 18px 48px rgba(0,0,0,.55), inset 0 0 0 3px #fff; }
-.shop-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 18px; color: white; background: linear-gradient(135deg, #287e8b, #185568); }
-.shop-header h2 { margin: 5px 0 0; font-size: 15px; }
-.shop-kicker { color: #bdeef0; font-size: 8px; text-transform: uppercase; }
-.shop-close { width: 34px; height: 34px; border-radius: 50%; color: white; background: rgba(0,0,0,.22); font-size: 21px; }
-.shop-wallet { padding: 11px 18px; border-bottom: 2px solid #d4ccb7; text-align: right; font-size: 10px; }
-.shop-list { max-height: 440px; overflow-y: auto; padding: 10px 14px 16px; }
-.shop-item { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 5px; border-bottom: 1px solid #cfc7b4; }
-.shop-item-copy { min-width: 0; }
-.shop-item-title { margin-bottom: 6px; font-size: 10px; }
-.shop-item-description { color: #596269; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.35; }
-.shop-owned { margin-top: 6px; color: #30717b; font-size: 8px; }
-.shop-buy-controls { display: flex; gap: 7px; flex: 0 0 auto; }
-.shop-buy-controls select, .shop-buy-controls button { min-height: 34px; border: 1px solid #536b70; border-radius: 6px; font-size: 9px; }
-.shop-buy-controls select { padding: 0 5px; background: white; }
-.shop-buy-controls button { min-width: 105px; padding: 0 10px; color: white; background: #2e8b57; }
-.shop-buy-controls button:disabled { opacity: .45; cursor: not-allowed; }
-.shop-error, .shop-empty { padding: 15px 18px; color: #9c2929; font-size: 9px; line-height: 1.5; }
-@media (max-width: 620px) {
-  .shop-backdrop { padding: 8px; }
-  .shop-card { width: 100%; max-height: 78%; }
-  .shop-item { align-items: stretch; flex-direction: column; }
-  .shop-buy-controls { justify-content: flex-end; }
-}
+.shop-backdrop{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:20px;background:var(--journal-backdrop);backdrop-filter:blur(5px)}
+.shop-backdrop .shop-card.shop-counter{box-sizing:border-box;display:flex;flex-direction:column;width:min(860px,100%);height:min(690px,calc(100dvh - 40px));max-height:none;min-height:0;overflow:hidden;border:2px solid var(--journal-border);border-radius:24px 24px 16px 16px;background:var(--journal-paper);color:var(--journal-ink);font:13px/1.45 var(--journal-font);box-shadow:var(--journal-shadow)}
+.shop-counter *{box-sizing:border-box}.shop-counter .shop-header{flex:none;display:flex;align-items:center;gap:14px;padding:16px 22px;border-bottom:1px solid var(--journal-border);background:var(--journal-card);color:var(--journal-heading)}.counter-sign{width:52px;height:52px;flex:none}.shop-header>div{flex:1;min-width:0}.shop-header small{font-size:9px;letter-spacing:.12em;color:var(--journal-muted)}.shop-counter .shop-header h2{margin:3px 0;font:600 28px/1.15 Georgia,serif;letter-spacing:0}.shop-header p{margin:3px 0 0;font-size:11px;color:var(--journal-muted);overflow-wrap:anywhere}.shop-counter .shop-close{width:44px;height:44px;flex:none;border:1px solid var(--journal-border);border-radius:50%;background:var(--journal-soft);color:var(--journal-ink);font:26px Arial;cursor:pointer}
+.shop-counter .shop-wallet{display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none;padding:11px 22px;border-bottom:1px solid var(--journal-border);background:var(--journal-soft);font:12px var(--journal-font);color:var(--journal-muted)}.shop-wallet strong{margin-left:8px;color:var(--journal-heading);font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}.counter-layout{flex:1;min-height:0;display:flex}.shop-categories{width:175px;flex:none;display:flex;flex-direction:column;gap:5px;padding:12px 9px;background:var(--journal-card);border-right:1px solid var(--journal-border);overflow:auto;overscroll-behavior:contain}.shop-categories button{display:flex;align-items:center;gap:7px;min-height:52px;flex:none;padding:8px;border:1px solid transparent;border-radius:9px;background:none;color:var(--journal-muted);font:600 11px var(--journal-font);text-align:left;cursor:pointer}.shop-categories .bag-object-icon{width:29px;height:29px}.shop-categories span{flex:1}.shop-categories small{font-size:10px}.shop-categories [aria-selected=true]{background:var(--journal-selected);border-color:var(--journal-progress);color:var(--journal-heading);box-shadow:inset 3px 0 var(--journal-progress)}.counter-main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}.shop-search{display:flex;align-items:center;gap:8px;flex:none;margin:14px 18px 0;border:1px solid var(--journal-border);border-radius:9px;padding:0 11px;background:var(--journal-card);color:var(--journal-muted)}.shop-search>span{font:24px Georgia}.shop-search input{width:100%;min-width:0;min-height:42px;border:0;background:none;color:var(--journal-ink);font:12px var(--journal-font);outline:none}.shop-search:focus-within{outline:2px solid var(--journal-accent);outline-offset:1px}.shop-search input::placeholder{color:var(--journal-muted)}.shop-search button{width:32px;height:32px;border:0;background:none;color:var(--journal-muted);font-size:22px;cursor:pointer}.shop-counter .shop-list{flex:1;min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain;padding:16px 18px}.counter-heading{display:flex;align-items:end;justify-content:space-between;gap:8px;margin-bottom:14px}.counter-heading small{font-size:9px;letter-spacing:.12em;color:var(--journal-muted)}.counter-heading h3{margin:4px 0 0;font:500 24px/1.2 Georgia,serif;color:var(--journal-heading)}.counter-heading>span{color:var(--journal-muted);font-size:10px;white-space:nowrap}.counter-hint{margin:0 0 12px;font-size:11px;color:var(--journal-muted)}.training-filters{display:flex;gap:5px;margin:0 0 14px}.training-filters button{flex:1;min-height:38px;padding:7px;border:1px solid var(--journal-border);border-radius:7px;background:var(--journal-card);color:var(--journal-muted);font:600 11px var(--journal-font);cursor:pointer}.training-filters [aria-pressed=true]{background:var(--journal-selected);color:var(--journal-heading);border-color:var(--journal-progress)}
+.shop-counter .shop-item{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--journal-border)}.shop-item-copy{flex:1;min-width:0}.counter-item-name{display:flex;align-items:center;gap:9px}.counter-item-name>.bag-object-icon{width:34px;height:34px;flex:none}.shop-counter .shop-item-title{font:600 13px var(--journal-font);color:var(--journal-heading);overflow-wrap:anywhere}.shop-counter .shop-owned{margin:4px 0 0;font:10px var(--journal-font);color:var(--journal-muted)}.shop-counter .shop-item-description{margin:9px 0 0;color:var(--journal-muted);font:11px/1.6 var(--journal-font);overflow-wrap:anywhere}.shop-buy-controls{display:flex;align-items:stretch;gap:6px;flex:none}.shop-buy-controls select{max-width:66px;min-height:44px;padding:0 5px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);color:var(--journal-ink);font:12px var(--journal-font)}.shop-buy-controls button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:86px;min-height:48px;padding:7px 10px;border:1px solid var(--journal-accent);border-radius:8px;background:var(--journal-accent);color:var(--journal-on-accent);font:600 12px var(--journal-font);cursor:pointer}.shop-buy-controls small{font-size:9px;font-weight:400}.shop-buy-controls button:disabled{opacity:.45;cursor:not-allowed}.shop-error{padding:10px;border-left:3px solid var(--journal-danger);background:var(--journal-soft);color:var(--journal-danger)}.shop-empty{padding:18px 4px;line-height:1.6;color:var(--journal-muted)}.counter-footer{display:flex;justify-content:space-between;gap:16px;flex:none;padding:11px 18px;border-top:1px solid var(--journal-border);background:var(--journal-soft);color:var(--journal-muted);font-size:10px}.counter-footer span:last-child{max-width:35%;text-align:right}.shop-counter :is(button,select,[tabindex]):focus-visible{outline:2px solid var(--journal-accent);outline-offset:-3px}
+@media(max-width:600px){.shop-backdrop{padding:8px}.shop-backdrop .shop-card.shop-counter{height:calc(100dvh - 16px);border-radius:20px 20px 13px 13px}.shop-counter .shop-header{padding:12px 14px;gap:10px}.counter-sign{width:42px;height:42px}.shop-counter .shop-header h2{font-size:24px}.shop-header small{font-size:8px}.shop-header p{font-size:10px}.shop-counter .shop-wallet{padding:10px 14px;font-size:10px;gap:8px}.shop-wallet strong{font-size:14px;margin-left:4px}.counter-layout{flex-direction:column}.shop-categories{width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:7px;border-right:0;border-bottom:1px solid var(--journal-border);overflow:visible}.shop-categories button{min-height:54px;padding:5px 2px;flex-direction:column;justify-content:center;gap:3px;text-align:center;font-size:9px;position:relative}.shop-categories span{flex:none}.shop-categories .bag-object-icon{width:24px;height:24px}.shop-categories small{position:absolute;top:2px;right:4px;font-size:8px}.shop-categories [aria-selected=true]{box-shadow:inset 0 -3px var(--journal-progress)}.shop-search{margin:10px 12px 0}.shop-search input{min-height:40px}.shop-counter .shop-list{padding:13px 12px}.counter-heading h3{font-size:22px}.counter-heading{margin-bottom:8px}.shop-counter .shop-item{gap:10px;padding:13px 0}.shop-buy-controls{flex-direction:column;gap:4px}.shop-buy-controls select{min-height:36px;max-width:none;width:84px}.shop-buy-controls button{min-height:44px;min-width:84px}.shop-counter .shop-item-title{font-size:12px}.counter-item-name{gap:6px}.counter-item-name>.bag-object-icon{width:29px;height:29px}.shop-counter .shop-item-description{font-size:10px}.counter-footer{padding:9px 12px;font-size:9px}.counter-footer span:last-child{display:none}.training-filters button{padding:6px 3px;font-size:10px}.counter-hint{font-size:10px}}
+@media(max-height:500px){.shop-counter .shop-header{padding:8px 14px}.shop-counter .shop-header h2{font-size:22px}.counter-sign{width:38px;height:38px}.shop-counter .shop-wallet{padding:8px 14px}.counter-footer{padding:7px 12px}.shop-counter .shop-list{padding-top:10px}.counter-heading h3{font-size:20px}}
+@media(max-width:600px) and (max-height:560px){.shop-categories{display:flex;flex-direction:row;overflow-x:auto;overflow-y:hidden}.shop-categories button{flex:0 0 72px}.shop-header small,.shop-header p{display:none}.shop-counter .shop-header{padding:8px 12px}.counter-footer{font-size:8px}}
 </style>
