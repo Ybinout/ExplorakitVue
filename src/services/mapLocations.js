@@ -1,6 +1,6 @@
 const labels = {
   fr: {
-    ville5: 'Blanchecime', ville5_arene: 'Arène de Blanchecime', ville5_shop: 'Boutique de Blanchecime',
+    route2_maison: 'Maison de Lucie', ville5: 'Blanchecime', ville5_arene: 'Arène de Blanchecime', ville5_shop: 'Boutique de Blanchecime',
     ville5_maison1: 'Maison de Blanchecime', ville5_maison2: 'Maison de Blanchecime',
     ville4: 'Rochebrume', ville4_arene: 'Arène de Rochebrume · Wanda', ville4_shop: 'Boutique de Rochebrume',
     ville4_maison1: 'Maison de Rochebrume', ville4_maison2: 'Maison de Rochebrume',
@@ -18,7 +18,7 @@ const labels = {
     gen_arene5: 'Arène d’Ocreville · Raphael'
   },
   en: {
-    ville5: 'Whitepeak', ville5_arene: 'Whitepeak Gym', ville5_shop: 'Whitepeak Shop',
+    route2_maison: 'Lucie’s House', ville5: 'Whitepeak', ville5_arene: 'Whitepeak Gym', ville5_shop: 'Whitepeak Shop',
     ville5_maison1: 'Whitepeak House', ville5_maison2: 'Whitepeak House',
     ville4: 'Miststone', ville4_arene: 'Miststone Gym · Wanda', ville4_shop: 'Miststone Shop',
     ville4_maison1: 'Miststone House', ville4_maison2: 'Miststone House',

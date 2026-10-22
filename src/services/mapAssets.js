@@ -1,4 +1,5 @@
 const MAP_ASSET_ALIASES = Object.freeze({
+    route2_maison: 'gen_maison2',
     ville5_arene: 'gen_arene2', ville5_shop: 'gen_shop1',
     ville5_maison1: 'gen_maison1', ville5_maison2: 'gen_maison2',
     ville4_arene: 'gen_arene2', ville4_shop: 'gen_shop1',

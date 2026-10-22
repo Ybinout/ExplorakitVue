@@ -8,6 +8,7 @@
 </template>
 <script>
 const designs = {
+  summit_badge: { color: '#849fb5', path: 'm23 54 12-29 8 17 6-11 10 23H23Zm7-15 5 4 5-4m3 8 6-4 5 4M29 59h22' },
   lake_badge: { color: '#6baac4', path: 'M40 19c-4 8-12 15-12 23a12 12 0 0 0 24 0c0-8-8-15-12-23Zm-6 24c0 4 2 6 6 7M25 59c5-4 10 4 15 0s10 4 15 0' },
   dune_badge: { color: '#c69b4e', path: 'm25 47 9-17 8 12 6-8 9 16H25Zm4 8h22M48 24h1' },
   bloom_badge: { color: '#c27b96', path: 'M40 32c-13-18-24 3-9 10-15 7-1 24 9 10 10 14 24-3 9-10 15-7 4-28-9-10Zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z' },
