@@ -5,7 +5,7 @@
     <section class="info-panel" role="dialog" aria-modal="true" :aria-label="panelTitle">
       <header class="info-header">
         <div>
-          <p class="info-kicker">Explorakit</p>
+          <p class="info-kicker">RiftMon</p>
           <h2>{{ panelTitle }}</h2>
         </div>
         <button class="close-button" :aria-label="tr('close')" @click="$emit('close')">×</button>

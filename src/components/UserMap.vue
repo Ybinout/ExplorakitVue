@@ -36,7 +36,7 @@
           </div>
           <nav v-if="isMenuOpen" id="adventure-menu" class="menu-dropdown" :aria-label="tr('menu')">
             <button v-if="learningPokemon" class="menu-dropdown-item" @click="openMoveLearning"><journal-icon name="pokemon" /><span>Attaques à apprendre</span></button>
-            <div class="menu-caption"><span>Explorakit</span><small>{{ isDrift ? (isColosseum ? 'Colosseum' : 'RiftMon') : (preferences.language === 'en' ? 'Adventure' : 'Aventure') }}</small></div>
+            <div class="menu-caption"><span>RiftMon</span><small>{{ isDrift ? (isColosseum ? 'Colosseum' : 'RiftMon') : (preferences.language === 'en' ? 'Adventure' : 'Aventure') }}</small></div>
             <button
               v-for="item in visibleMenuItems"
               :key="item.key"
@@ -81,7 +81,7 @@
         </bag-panel>
         <pokemon-computer v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
         <div v-if="isAppearancePanelOpen" class="appearance-panel" ref="appearancePanel">
-          <div class="appearance-title"><span><small>Explorakit</small>{{ tr('appearance') }}</span><button class="panel-close" :aria-label="tr('close')" @click="isAppearancePanelOpen = false">×</button></div>
+          <div class="appearance-title"><span><small>RiftMon</small>{{ tr('appearance') }}</span><button class="panel-close" :aria-label="tr('close')" @click="isAppearancePanelOpen = false">×</button></div>
           <div class="appearance-grid">
             <button
               v-for="spriteOption in availableSprites"

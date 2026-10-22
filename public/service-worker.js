@@ -1,7 +1,7 @@
 /* The game stays online and server-authoritative. No API, session or game asset cache. */
 /* global self, caches, fetch, URL */
 const scope = new URL(self.registration.scope);
-const cachePrefix = 'explorakit-offline-' + scope.pathname + '-';
+const cachePrefix = 'riftmon-offline-' + scope.pathname + '-';
 const cacheName = cachePrefix + 'v1';
 const offlineUrl = new URL('offline.html', scope).href;
 self.addEventListener('install', event => {

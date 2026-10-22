@@ -137,7 +137,7 @@ export default {
         const blob = new Blob([JSON.stringify(this.report, null, 2)], { type: 'application/json;charset=utf-8' });
         url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = url; link.download = `explorakit-drift-${String(this.report.runId || 'souvenirs').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80)}.json`;
+        link.href = url; link.download = `riftmon-drift-${String(this.report.runId || 'souvenirs').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80)}.json`;
         document.body.appendChild(link); link.click(); link.remove();
         this.downloadFeedback = 'Ton carnet a été préparé pour le téléchargement.';
       } catch (error) { this.downloadFeedback = 'Le carnet n’a pas pu être téléchargé. Réessaie dans ton navigateur.'; }

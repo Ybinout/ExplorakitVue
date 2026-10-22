@@ -1,6 +1,6 @@
 <template>
   <main class="mode-home" data-mode-menu>
-    <nav class="home-nav" aria-label="Compte"><router-link class="brand" to="/">✧ <span>EXPLORAKIT</span></router-link><div v-if="session"><router-link class="profile-nav-link" :to="`/profil/${session.id}`">Mon profil</router-link><button @click="logout">Déconnexion</button></div><router-link v-else to="/connexion">Se connecter</router-link></nav>
+    <nav class="home-nav" aria-label="Compte"><router-link class="brand" to="/">✧ <span>RIFTMON</span></router-link><div v-if="session"><router-link class="profile-nav-link" :to="`/profil/${session.id}`">Mon profil</router-link><button @click="logout">Déconnexion</button></div><router-link v-else to="/connexion">Se connecter</router-link></nav>
     <header class="home-intro"><p class="eyebrow">LE CAMP DES DRESSEURS</p><h1>À chaque envie,<br /><em>son aventure.</em></h1><p>Prends ton temps, retrouve tes amis ou vise le sommet.<br class="desktop-break" /> Choisis ton prochain départ.</p></header>
     <section class="mode-grid" aria-label="Choisir un mode de jeu">
       <router-link v-for="mode in modes" :key="mode.key" :to="mode.path" :data-mode="mode.key" class="mode-card" :class="mode.key">
@@ -12,7 +12,7 @@
     <router-link class="community-entry ranked-home-entry" to="/classements" data-home-rankings><drift-glyph name="trophy"/><span><strong>Classements Rift &amp; Colosseum</strong><small>Ton rang, tes points de ligue et les meilleurs dresseurs</small></span><b>→</b></router-link>
     <router-link class="community-entry" to="/dresseurs?onglet=amis"><drift-glyph name="players"/><span><strong>Le carnet des dresseurs</strong><small>Amis, profils et rangs Bronze → Diamant</small></span><b>→</b></router-link>
     <pwa-install />
-    <footer><span>EXPLORAKIT · RIFTMON</span><span v-if="!session">Nouveau ici ? <router-link to="/inscription">Créer mon dresseur</router-link></span><span v-else>À toi d’écrire la suite.</span></footer>
+    <footer><span>RIFTMON</span><span v-if="!session">Nouveau ici ? <router-link to="/inscription">Créer mon dresseur</router-link></span><span v-else>À toi d’écrire la suite.</span></footer>
   </main>
 </template>
 <script>

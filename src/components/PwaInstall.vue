@@ -1,7 +1,7 @@
 <template>
   <aside v-if="!installation.installed" class="install-card" data-pwa-install>
     <div class="install-row"><span class="install-icon" aria-hidden="true">✧</span><div><strong>Ton aventure, à portée de main.</strong><p>Installe le jeu pour l’ouvrir sans la barre d’adresse.</p></div><button :disabled="busy" :aria-expanded="help ? 'true' : 'false'" aria-controls="install-help" @click="install">{{ busy ? 'Installation…' : 'Installer le jeu' }} <span aria-hidden="true">↗</span></button></div>
-    <div v-if="help" id="install-help" class="install-help" role="status"><p v-if="ios"><strong>Sur iPhone ou iPad :</strong> ouvre ce site dans Safari, touche Partager puis « Sur l’écran d’accueil ». Active « Ouvrir comme app web » si cette option est proposée.</p><p v-else><strong>Dans le menu de ton navigateur :</strong> choisis « Installer l’application » ou « Ajouter à l’écran d’accueil ». Si l’option manque, ouvre ce site dans Chrome ou Safari.</p><p>Lance ensuite <strong>Explorakit depuis son icône</strong>. Une connexion internet reste nécessaire pour jouer.</p></div>
+    <div v-if="help" id="install-help" class="install-help" role="status"><p v-if="ios"><strong>Sur iPhone ou iPad :</strong> ouvre ce site dans Safari, touche Partager puis « Sur l’écran d’accueil ». Active « Ouvrir comme app web » si cette option est proposée.</p><p v-else><strong>Dans le menu de ton navigateur :</strong> choisis « Installer l’application » ou « Ajouter à l’écran d’accueil ». Si l’option manque, ouvre ce site dans Chrome ou Safari.</p><p>Lance ensuite <strong>RiftMon depuis son icône</strong>. Une connexion internet reste nécessaire pour jouer.</p></div>
   </aside>
 </template>
 <script>

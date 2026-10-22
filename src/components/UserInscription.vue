@@ -15,7 +15,7 @@
       <form v-if="step === 0" class="panel identity-panel" @submit.prevent="nextStep">
         <div class="professor-message">
           <span class="professor-avatar">?</span>
-          <p>Bienvenue à Explorakit. Avant de partir sur les traces de ta sœur, dis-moi qui tu es.</p>
+          <p>Bienvenue dans RiftMon. Avant de partir sur les traces de ta sœur, dis-moi qui tu es.</p>
         </div>
         <label>
           Nom du dresseur

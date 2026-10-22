@@ -4,7 +4,7 @@
       <header class="dex-header">
         <div class="dex-brand">
           <span class="dex-device" aria-hidden="true"><i></i><b></b><b></b></span>
-          <div><p class="dex-eyebrow">Explorakit <span>/ {{ tr('dexJournal') }}</span></p><h2 id="dex-title">{{ tr('pokedex') }}</h2></div>
+          <div><p class="dex-eyebrow">RiftMon <span>/ {{ tr('dexJournal') }}</span></p><h2 id="dex-title">{{ tr('pokedex') }}</h2></div>
         </div>
         <button ref="close" class="dex-close" :aria-label="tr('close')" @click="$emit('close')">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>

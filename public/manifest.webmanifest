@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Explorakit · RiftMon",
-  "short_name": "Explorakit",
+  "name": "RiftMon",
+  "short_name": "RiftMon",
   "description": "Ton aventure, les Rifts entre amis et le défi Colosseum.",
   "lang": "fr",
   "start_url": "./",
