@@ -22,6 +22,7 @@
       </template>
       <div class="battle-atmosphere" aria-hidden="true"></div>
       <battle-rain v-if="fieldState.weather === 'rain'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
+      <battle-snow v-else-if="fieldState.weather === 'hail'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
       <div v-else class="battle-weather-layer" aria-hidden="true"></div>
       <div class="battle-terrain-layer" aria-hidden="true"></div>
       <battle-send-out v-for="entry in sendOuts" :key="entry.uuid" :side="entry.side" :style="sendOutPosition(entry.side)" />
@@ -293,6 +294,7 @@ import { localizeTypeName } from '@/services/pokemonTypes';
 import PotentialStar from '../PotentialStar.vue';
 import BattleConditions from './BattleConditions.vue';
 import BattleRain from './BattleRain.vue';
+import BattleSnow from './BattleSnow.vue';
 import { battleConditionChanges } from '@/services/battleConditions';
 import ExperienceBar from '../ExperienceBar.vue';
 import './battleViewport.css';
@@ -334,7 +336,7 @@ import { battleEnvironment } from '@/services/battleEnvironment';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain },
+  components: { BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleSnow },
   props: {
     mobile: Boolean,
     mapName: { type: String, default: '' },
@@ -2417,11 +2419,7 @@ export default {
   animation: battle-sand 1.25s linear infinite;
 }
 
-.weather-hail .battle-weather-layer {
-  background-image: radial-gradient(circle, rgba(242, 250, 255, 0.92) 0 3px, transparent 4px);
-  background-size: 58px 58px;
-  animation: battle-hail 1.1s linear infinite;
-}
+
 
 .battle-terrain-layer {
   top: auto;
@@ -2540,10 +2538,7 @@ export default {
   to { background-position: 120px 30px, 85px 18px; }
 }
 
-@keyframes battle-hail {
-  from { background-position: 0 -70px; }
-  to { background-position: 16px 70px; }
-}
+
 
 @keyframes battle-terrain-pulse {
   from { opacity: 0.32; }
