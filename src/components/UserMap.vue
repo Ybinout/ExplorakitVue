@@ -396,6 +396,7 @@ import TextWithImage from './TextWithImage.vue';
 import { loadGamePreferences, saveGamePreferences } from '@/services/gamePreferences';
 import { localizeAbilityName, translate } from '@/services/i18n';
 import { getMapLocationLabel } from '@/services/mapLocations';
+import { WorldMusic } from '@/services/worldMusic';
 // import navBar from "./NavBar.vue"
 /* eslint-disable */
 
@@ -422,6 +423,7 @@ export default {
   data() {
     return {
       mapWeather: null, worldWeatherReducedMotion: false,
+      worldAudioConnected: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
@@ -573,6 +575,16 @@ export default {
     };
   },
   computed: {
+    worldMusicState() {
+      return {
+        map: this.map,
+        volume: this.preferences.masterVolume / 100,
+        // Keep playing while the next map decodes, including route → route.
+        active: this.worldAudioConnected && Boolean(this.renderedMap) && !this.battle && !this.battleResult
+          && !this.pendingBattleResult && !this.driftSpectator
+          && (!this.isDrift || this.driftState?.phase === 'exploration')
+      };
+    },
     villageWaterActive() { return hasVillageWater(this.map) && !(this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible || this.mapLoading || this.mapLoadError || this.renderedMap !== this.map); },
     effectiveWorldWeather() { return mapWorldWeather(this.map, this.mapWeather); },
     worldWeatherActive() { return Boolean(this.effectiveWorldWeather.wind || this.effectiveWorldWeather.rain || this.effectiveWorldWeather.sand || this.effectiveWorldWeather.snow) && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
@@ -621,6 +633,7 @@ export default {
     }
   },
   watch: {
+    worldMusicState: { handler() { this.syncWorldMusic(); }, deep: true },
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
     map() { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); },
@@ -645,6 +658,9 @@ export default {
   },
 
   methods: {
+    syncWorldMusic() {
+      this._worldMusic?.update({ ...this.worldMusicState, active: this.worldMusicState.active && !document.hidden });
+    },
     async loadEvolutionOptions() {
       const pokemon = this.selectedPokemon, key = this.evolutionLookupKey;
       this.evolutionOptions = []; this.evolutionError = '';
@@ -2101,6 +2117,11 @@ export default {
 
   },
   mounted() {
+    this._worldMusic = new WorldMusic({ village: require('@/assets/msc/village.mp3'), route: require('@/assets/msc/start.mp3') });
+    window.addEventListener('pointerdown', this.syncWorldMusic);
+    window.addEventListener('pointerup', this.syncWorldMusic);
+    window.addEventListener('keydown', this.syncWorldMusic);
+    document.addEventListener('visibilitychange', this.syncWorldMusic);
     this._detachPopupLayout = attachGamePopupLayout(this.$el, this.$refs.gameStage);
     document.body.classList.add("in-world");
     this._weatherMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -2168,6 +2189,7 @@ export default {
     }
 
     this.socket.on("connect", () => {
+      this.worldAudioConnected = true;
       console.log(`ConnectÃ© au serveur en tant qu'utilisateur ${userId}`);
       this.saveState = {
         ...this.saveState,
@@ -2476,6 +2498,8 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.worldAudioConnected = false;
+      this.syncWorldMusic();
       this.pc.visible=false;
       this.releaseAllMovementKeys();
       this.pendingBattleResult = null;
@@ -2505,6 +2529,7 @@ export default {
       this.$refs.battleOverlay?.prepareEntrance();
       this.$refs.battleOverlay?.updateFieldState(data?.field || {});
       this.battle = true;
+      this.syncWorldMusic();
       this.$nextTick(() => this.$refs.battleOverlay?.startMusic(data?.musicKind || data?.battleType || 'wild'));
       if (data?.message) this.$nextTick(() => this.$refs.battleOverlay?.showMessage(data.message));
 
@@ -2601,6 +2626,11 @@ export default {
   }
   ,
   beforeDestroy() {
+    this._worldMusic?.destroy();
+    window.removeEventListener('pointerdown', this.syncWorldMusic);
+    window.removeEventListener('pointerup', this.syncWorldMusic);
+    window.removeEventListener('keydown', this.syncWorldMusic);
+    document.removeEventListener('visibilitychange', this.syncWorldMusic);
     this._detachPopupLayout?.();
     this._villageWater?.destroy();
     this._worldWeather?.destroy();
