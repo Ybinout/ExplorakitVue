@@ -24,6 +24,7 @@
       <div class="battle-atmosphere" aria-hidden="true"></div>
       <battle-rain v-if="fieldState.weather === 'rain'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
       <battle-snow v-else-if="fieldState.weather === 'hail'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
+      <battle-sandstorm v-else-if="fieldState.weather === 'sandstorm'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
       <div v-else class="battle-weather-layer" aria-hidden="true"></div>
       <div class="battle-terrain-layer" aria-hidden="true"></div>
       <span v-if="weatherLabel" class="battle-weather-indicator" :class="`battle-weather-${fieldState.weather}`" :data-battle-weather="fieldState.weather" role="img" :aria-label="weatherLabel" :title="weatherLabel"><journal-icon :name="`weather-${fieldState.weather}`" /></span>
@@ -297,6 +298,7 @@ import PotentialStar from '../PotentialStar.vue';
 import BattleConditions from './BattleConditions.vue';
 import BattleRain from './BattleRain.vue';
 import BattleSnow from './BattleSnow.vue';
+import BattleSandstorm from './BattleSandstorm.vue';
 import JournalIcon from '../menu/JournalIcon.vue';
 import { battleConditionChanges } from '@/services/battleConditions';
 import ExperienceBar from '../ExperienceBar.vue';
@@ -343,7 +345,7 @@ import { battleEnvironment } from '@/services/battleEnvironment';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleSnow, JournalIcon },
+  components: { BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleSnow, BattleSandstorm, JournalIcon },
   props: {
     mobile: Boolean,
     mapName: { type: String, default: '' },
@@ -2439,13 +2441,7 @@ export default {
   animation: battle-sun 2.8s ease-in-out infinite alternate;
 }
 
-.weather-sandstorm .battle-weather-layer {
-  background-image:
-    radial-gradient(circle, rgba(230, 196, 121, 0.75) 0 2px, transparent 3px),
-    radial-gradient(circle, rgba(195, 151, 69, 0.55) 0 1px, transparent 2px);
-  background-size: 56px 41px, 39px 33px;
-  animation: battle-sand 1.25s linear infinite;
-}
+
 
 
 
@@ -2561,10 +2557,7 @@ export default {
   to { opacity: 0.95; }
 }
 
-@keyframes battle-sand {
-  from { background-position: 0 0, 0 0; }
-  to { background-position: 120px 30px, 85px 18px; }
-}
+
 
 
 

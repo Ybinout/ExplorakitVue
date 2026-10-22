@@ -1,8 +1,8 @@
+import { SandstormRenderer, sandParticleCount } from './sandstorm.js';
 import rainGround from '../data/worldRainGround.js';
 // Climate and intensity come from the server, identically for every player.
 const WIDTH = 896, HEIGHT = 640, FRAME_MS = 1000 / 30;
 const RAIN_COUNTS = [0, 36, 76, 128], WIND_COUNTS = [0, 8, 17, 28];
-const SAND_COUNTS = [0, 32, 68, 112];
 const SNOW_COUNTS = [0, 100, 240, 480];
 const mod = (value, size) => ((value % size) + size) % size;
 const level = value => Number.isInteger(Number(value)) ? Math.max(0, Math.min(3, Number(value))) : 0;
@@ -19,7 +19,7 @@ export function mapWorldWeather(map, climate) {
 }
 export function worldWeatherBudget(value) {
   const { wind, rain, sand = 0, snow = 0 } = normalizeWorldWeather(value);
-  return { rain: RAIN_COUNTS[rain], leaves: sand || snow ? 0 : WIND_COUNTS[wind], gusts: wind ? wind + 1 : 0, splashes: rain * 16, ...(sand ? { sand: SAND_COUNTS[sand] } : {}), ...(snow ? { snow: SNOW_COUNTS[snow] } : {}) };
+  return { rain: RAIN_COUNTS[rain], leaves: sand || snow ? 0 : WIND_COUNTS[wind], gusts: wind && !sand ? wind + 1 : 0, splashes: rain * 16, ...(sand ? { sand: sandParticleCount(WIDTH, HEIGHT, sand) } : {}), ...(snow ? { snow: SNOW_COUNTS[snow] } : {}) };
 }
 function seed(index) {
   // Stable particles keep the same world positions while the camera pans.
@@ -50,6 +50,7 @@ export class WorldWeatherRenderer {
     this.particles = Array.from({ length: 480 }, (_, i) => ({ x: seed(i * 4), y: seed(i * 4 + 1), depth: seed(i * 4 + 2), phase: seed(i * 4 + 3) * Math.PI * 2 }));
   }
   suspend() {
+    this._sandRenderer?.destroy(); this._sandRenderer = null;
     if (this.canvas) { this.canvas.width = 0; this.canvas.height = 0; }
     this.canvas = null; this.context = null; this.signature = ''; this.lastTime = -Infinity; this.impacts = [];
   }
@@ -109,29 +110,11 @@ export class WorldWeatherRenderer {
       c.stroke();
     }
     if (sand) {
-      // Contrasting grains and warm air streaks stay visible on pale town/road tiles.
-      c.fillStyle = `rgba(190,151,91,${sand * .026})`; c.fillRect(0, 0, WIDTH, HEIGHT);
-      const drift = time * (18 + wind * 20);
-      for (let i = 0; i < this.budget.sand; i++) {
-        const p = this.particles[i], x = mod(p.x * (WIDTH + 40) + drift * (1 + p.depth), WIDTH + 40) - 20;
-        const y = mod(p.y * HEIGHT + Math.sin(time * .65 + p.phase) * (5 + wind * 3) + time * 2, HEIGHT);
-        c.fillStyle = `rgba(242,208,145,${.58 + p.depth * .24 + (sand - 1) * .04})`;
-        c.strokeStyle = 'rgba(119,81,42,.4)'; c.lineWidth = .65;
-        c.beginPath(); c.ellipse(x, y, .95 + p.depth, .5 + p.depth * .4, -.15, 0, Math.PI * 2); c.fill(); c.stroke();
-      }
-      // Stagger trails over the map height so the mobile camera also sees the wind.
-      c.lineCap = 'round';
-      const trails = 4 + sand * 2;
-      for (let i = 0; i < trails; i++) {
-        const p = this.particles[200 + i], life = mod(time * .15 + p.depth, 1);
-        const alpha = Math.sin(life * Math.PI) ** 2;
-        const x = mod(p.x * (WIDTH + 260) + drift * 1.65, WIDTH + 260) - 220;
-        const y = (i + .2 + p.y * .6) * HEIGHT / trails + Math.sin(time * .8 + p.phase) * 8;
-        const length = 90 + p.depth * 85;
-        c.beginPath(); c.moveTo(x, y); c.bezierCurveTo(x + length * .35, y - 6, x + length * .7, y + 5, x + length, y - 2);
-        c.lineWidth = 3 + p.depth * 7; c.strokeStyle = `rgba(151,111,58,${alpha * (.19 + sand * .04)})`; c.stroke();
-        c.lineWidth = .9 + p.depth; c.strokeStyle = `rgba(255,236,188,${alpha * (.36 + sand * .07)})`; c.stroke();
-      }
+      this._sandRenderer ||= new SandstormRenderer(this.createCanvas);
+      this._sandRenderer.reset(); // The world surface already owns the 30 Hz/static cache.
+      this._sandRenderer.draw(c, time * 1000, { width: WIDTH, height: HEIGHT, intensity: sand, wind, groundTop: 0, motion, clear: false });
+    } else if (this._sandRenderer) {
+      this._sandRenderer.destroy(); this._sandRenderer = null;
     }
     if (snow) {
       // Different depths and a blue rim keep white flakes visible on snowy ground.
@@ -147,16 +130,16 @@ export class WorldWeatherRenderer {
         c.beginPath(); c.ellipse(x, y, size, size * .88, p.phase + time * .12, 0, Math.PI * 2); c.fill(); c.stroke();
       }
     }
-    if (!wind) return;
+    if (!wind || sand) return;
     const speed = [0, 34, 76, 132][wind];
     const displacement = speed * (.85 * time - .15 / .75 * Math.cos(time * .75));
     // Sparse moving air streaks and small leaves show wind without hiding the map.
     for (let i = 0; i < this.budget.gusts; i++) {
       const p = this.particles[160 + i], phase = mod(time * .12 + p.depth, 1);
-      const opacity = Math.sin(phase * Math.PI) ** 4 * (sand ? .16 + wind * .04 : .05 + wind * .025);
+      const opacity = Math.sin(phase * Math.PI) ** 4 * (.05 + wind * .025);
       const x = mod(p.x * (WIDTH + 260) + time * speed * 1.8, WIDTH + 260) - 180;
       const y = p.y * HEIGHT + Math.sin(time + p.phase) * 10;
-      c.strokeStyle = sand ? `rgba(246,222,175,${opacity})` : `rgba(242,250,235,${opacity})`; c.lineWidth = sand ? 1.6 + wind * .3 : .8 + wind * .2;
+      c.strokeStyle = `rgba(242,250,235,${opacity})`; c.lineWidth = .8 + wind * .2;
       c.beginPath();c.moveTo(x, y);c.bezierCurveTo(x + 35, y - 7, x + 65, y + 6, x + 110 + wind * 12, y - 2);c.stroke();
     }
     for (let i = 0; i < this.budget.leaves; i++) {
