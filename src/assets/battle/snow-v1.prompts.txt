@@ -1,0 +1,15 @@
+RiftMon — décors de combat enneigés v1 — 22 octobre 2026
+Outil : image_gen intégré (skill imagegen), deux éditions séparées.
+Sorties : snow-mobile-v1.webp (1024×1536), snow-wide-v1.webp (1536×1024).
+Conversion PNG → WebP par Canvas, qualité 0,93, dimensions intactes, sans recadrage ni retouche.
+Socles : superpositions du moteur, indépendantes du décor ; aucune plateforme peinte.
+
+MOBILE — référence/cible : grass-mobile-v3.webp.
+PNG original : /home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-2cdff834-6dbc-4a01-afb2-d0f9cea47d2a.png
+Prompt exact :
+Use case: lighting-weather. Edit target: supplied portrait battle backdrop. Create a production portrait winter variant for RiftMon, a pixel art monster battling game. Preserve this exact portrait framing and crisp 16-bit pixel-art style, the horizon near the upper fifth and the large uncluttered battlefield extending to the bottom. Transform the entire green meadow into continuous pale blue-white snow with small natural wind-swept drifts and subtle ice-blue shadows, all distant trees into snow-laden evergreens, far hills into snowy mountains. Replace sunny blue sky with soft overcast winter sky. NO green grass anywhere. NO Pokémon, characters, text, HUD, border, logo, painted platforms or circular pits: two battle platforms will be positioned separately by the game at runtime. Keep the main field flat and open, especially lower left foreground and middle right. No large foreground rocks, no tree trunks in the fighting area, no photographic textures, no blur and no baked-in snowfall particles. Portrait composition 1024x1536.
+
+PC / PAYSAGE — cible : back.webp ; référence de style : PNG mobile ci-dessus.
+PNG original : /home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-004ff5e6-64cb-43fa-87aa-20bff1ac4746.png
+Prompt exact :
+Use case: lighting-weather. Image 1 is the landscape game battle backdrop to adapt. Image 2 is the winter pixel-art style and palette reference. Produce a LANDSCAPE winter battle backdrop for the same RiftMon game, 1536x1024. Preserve the open landscape battlefield framing of image 1, but transform all green ground into continuous pale blue-white snow and subtle ice-blue wind drifts, with distant snow-covered evergreen trees and snowy mountains, matching the crisp tasteful 16-bit pixel art, colors and overcast mood of image 2. REMOVE both old circular grass/dirt platforms and blend them into flat, continuous snowy ground: battle platforms are separate runtime overlays. Sky must be cold overcast with soft layered clouds, no stylized horizontal cyan bands from image 1. Horizon about 30 percent down, large calm readable open snowy battlefield all the way to bottom, with room for a creature at middle right and bottom left. No Pokémon, characters, HUD, text, logo, border, circles, pits, green grass, foreground obstacles, photographic texture, blur or baked-in snow particles.

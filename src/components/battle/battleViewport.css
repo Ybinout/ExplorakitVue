@@ -115,3 +115,7 @@
 .game-root .game-stage .battle-lake-gym .battle-platform.battle-position-player { --platform-offset-y:-72%; }
 .game-root .game-stage .battle-phased .battle-sprite { opacity:0; visibility:hidden; animation:none; }
 .game-root .game-stage .battle-phase-marker { position:absolute; z-index:8; left:0; bottom:calc(100% + 8px); transform:translateX(-50%); white-space:nowrap; border:1px dashed #e6d795; border-radius:50%; padding:8px 12px; background:#17394ee8; color:#fff3c4; font:700 11px/1.3 Arial,sans-serif; }
+
+/* Snow platforms share fighter anchors, including the mobile foreground edge. */
+.game-root .game-stage .battle-snow .battle-background { object-fit:fill; filter:none; image-rendering:pixelated; }
+.game-root.is-mobile .game-stage .battle-snow .battle-ground-disc.snow-disc { background:#edf7ff; border-color:#9db9cd; border-bottom-color:#7597af; box-shadow:0 3px 0 #35597630,inset 0 3px 0 #ffffff; }
