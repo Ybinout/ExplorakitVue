@@ -1,22 +1,30 @@
 import ground from '../data/snowGround.js';
 
 const SOURCE_W=448,SOURCE_H=320,WIDTH=896,HEIGHT=640,FRAME_MS=1000/30;
-export const FOOTPRINT_LIFETIME=3200,FOOTPRINT_LIMIT=1024;
-const STEP=4,MAX_ACTORS=64;
+export const FOOTPRINT_LIFETIME=1350,FOOTPRINT_MAX_DISTANCE=64,FOOTPRINT_LIMIT=1024;
+const STEP=4,STRIDE=14,MAX_ACTORS=64;
 // Only the three authored snow-floor colours: paving, water, grass blades,
 // shadows and roof snow are not writable, even in a walkable mixed tile.
 const SNOW=new Set(['217,230,233','214,218,228','209,211,219']);
-// A swept 24 px channel: compressed snow, soft granular edges and a pale berm.
-// Max coverage, rather than alpha stacking, keeps crossings from turning dark.
-const BRUSH=[];
-for(let dy=-6;dy<=6;dy++)for(let dx=-6;dx<=6;dx++){
-    const distance=Math.hypot(dx,dy);if(distance>6)continue;
-    BRUSH.push({dx,dy,core:distance<4.8?255*Math.pow(1-distance/5.2,.45):0,rim:distance>=4.8?80*(1-Math.abs(distance-5.3)/1.3):0});
+// A faint, narrow scuff with alternating shallow depressions, not a solid rut.
+// Max coverage keeps retracing/crossings from accumulating dark outlines.
+const SCUFF=[],SOLE=[];
+for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){
+    const distance=Math.hypot(dx,dy);if(distance>4)continue;
+    SCUFF.push({dx,dy,core:distance<3.3?90*Math.pow(1-distance/3.8,.6):0,rim:distance>=3.3?14:0});
 }
+for(let along=-2;along<=2;along++)for(let across=-1;across<=1;across++){
+    const depth=1-(along/2.6)**2-(across/1.45)**2;
+    if(depth>0)SOLE.push({along,across,core:255*(.55+.45*depth)});
+}
+const SOLES=Object.fromEntries([[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy])=>[
+    `${dx},${dy}`,SOLE.map(p=>({dx:p.along*dx-p.across*dy,dy:p.along*dy+p.across*dx,core:p.core}))
+]));
 export function hasSnowGround(map){return Object.prototype.hasOwnProperty.call(ground,map);}
-export function footprintOpacity(now,born){
+export function footprintOpacity(now,born,distance=0){
     const age=now-born;
-    return age<0||age>=FOOTPRINT_LIFETIME?0:.48*Math.pow(1-Math.max(0,age-650)/(FOOTPRINT_LIFETIME-650),1.25);
+    const tail=1-Math.max(0,distance-16)/(FOOTPRINT_MAX_DISTANCE-16);
+    return age<0||age>=FOOTPRINT_LIFETIME||tail<=0?0:.42*Math.pow(1-Math.max(0,age-120)/(FOOTPRINT_LIFETIME-120),1.35)*Math.pow(tail,1.25);
 }
 
 export class SnowFootprintsRenderer{
@@ -53,20 +61,29 @@ export class SnowFootprintsRenderer{
             const {id,x,y}=actor;if(!id||!Number.isFinite(x)||!Number.isFinite(y))continue;seen.add(id);
             const old=this.actors.get(id),distance=old?Math.hypot(x-old.x,y-old.y):0,delta=old?now-old.time:0;
             const valid=old&&delta>0&&delta<250&&distance<=48&&distance<=Math.max(12,delta*.6);
-            const state={x,y,time:now,travel:valid?old.travel:0};
+            // A path object survives its actor until its marks melt. Resetting
+            // after a teleport therefore cannot brighten old marks or join them.
+            const path=valid?old.path:{distance:0};
+            const state={x,y,time:now,path,side:valid?old.side:-1};
             this.actors.set(id,state);
             if(!valid||distance<.001)continue;
             const dx=(x-old.x)/distance,dy=(y-old.y)/distance;
-            let offset=STEP-state.travel;
-            while(offset<=distance){
-                const px=old.x+dx*offset,py=old.y+dy*offset;
-                if(this.onSnow(px,py)){
-                    this.marks.push({x:Math.round(px/2)*2,y:Math.round(py/2)*2,born:now});this.triggers++;
-                    if(this.marks.length>FOOTPRINT_LIMIT)this.marks.shift();
+            const start=path.distance;path.distance+=distance;
+            const heading=Math.abs(dx)>=Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)];
+            for(const [kind,spacing]of [['scuff',STEP],['step',STRIDE]]){
+                let offset=spacing-start%spacing;
+                while(offset<=distance){
+                    const side=kind==='step'?state.side*4:0;
+                    const px=old.x+dx*offset-dy*side,py=old.y+dy*offset+dx*side;
+                    if(kind==='step')state.side*=-1;
+                    if(this.onSnow(px,py)){
+                        this.marks.push({x:Math.round(px/2)*2,y:Math.round(py/2)*2,born:now-delta*(1-offset/distance),kind,
+                            heading:heading.join(','),path,travelled:start+offset});this.triggers++;
+                        if(this.marks.length>FOOTPRINT_LIMIT)this.marks.shift();
+                    }
+                    offset+=spacing;
                 }
-                offset+=STEP;
             }
-            state.travel=(state.travel+distance)%STEP;
         }
         for(const id of this.actors.keys())if(!seen.has(id))this.actors.delete(id);
     }
@@ -79,16 +96,17 @@ export class SnowFootprintsRenderer{
         this.observe(actors,now);
         if(!this.marks.length&&!this.paintedPixels)return;
         if(now-this.lastTime>=FRAME_MS||now<this.lastTime){
-            this.lastTime=now;this.marks=this.marks.filter(m=>footprintOpacity(now,m.born)>0);
+            this.lastTime=now;this.marks=this.marks.filter(m=>footprintOpacity(now,m.born,(m.path?.distance||0)-(m.travelled||0))>0);
             this.depth.fill(0);this.rim.fill(0);this.frame.data.fill(0);this.paintedPixels=0;
             for(const mark of this.marks){
-                const alpha=footprintOpacity(now,mark.born),cx=mark.x/2,cy=mark.y/2;
-                for(const point of BRUSH){
+                const alpha=footprintOpacity(now,mark.born,(mark.path?.distance||0)-(mark.travelled||0)),cx=mark.x/2,cy=mark.y/2;
+                const brush=mark.kind==='step'?SOLES[mark.heading]:SCUFF;
+                for(const point of brush){
                     const x=cx+point.dx,y=cy+point.dy;
                     if(x<0||y<0||x>=SOURCE_W||y>=SOURCE_H)continue;
                     const i=y*SOURCE_W+x;if(!this.mask[i])continue;
                     const fleck=(Math.imul(x,73856093)^Math.imul(y,19349663))>>>0;
-                    const grain=.68+(fleck%9)*.045;
+                    const grain=.68+(fleck%8)*.04;
                     if(point.core)this.depth[i]=Math.max(this.depth[i],Math.round(alpha*point.core*grain));
                     else if(fleck%5<3)this.rim[i]=Math.max(this.rim[i],Math.round(alpha*point.rim*grain));
                 }
