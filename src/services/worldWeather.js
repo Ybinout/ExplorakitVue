@@ -2,21 +2,23 @@ import rainGround from '../data/worldRainGround.js';
 // Climate and intensity come from the server, identically for every player.
 const WIDTH = 896, HEIGHT = 640, FRAME_MS = 1000 / 30;
 const RAIN_COUNTS = [0, 36, 76, 128], WIND_COUNTS = [0, 8, 17, 28];
+const SAND_COUNTS = [0, 32, 68, 112];
 const mod = (value, size) => ((value % size) + size) % size;
 const level = value => Number.isInteger(Number(value)) ? Math.max(0, Math.min(3, Number(value))) : 0;
 export function normalizeWorldWeather(value = {}) {
-  return { wind: level(value?.wind), rain: level(value?.rain) };
+  const sand = level(value?.sand);
+  return { wind: level(value?.wind), rain: level(value?.rain), ...(sand ? { sand } : {}) };
 }
 export function worldWeatherEnabled(map, { hidden = false, battle = false, loading = false } = {}) {
-  return Object.prototype.hasOwnProperty.call(rainGround, map) && !hidden && !battle && !loading;
+  return (map === 'ville4' || Object.prototype.hasOwnProperty.call(rainGround, map)) && !hidden && !battle && !loading;
 }
 export function mapWorldWeather(map, climate) {
-  return worldWeatherEnabled(map) && climate?.map === map && climate.kind === 'rain'
+  return worldWeatherEnabled(map) && climate?.map === map && ['rain', 'sandstorm'].includes(climate.kind)
     ? normalizeWorldWeather(climate.ambience) : { wind: 0, rain: 0 };
 }
 export function worldWeatherBudget(value) {
-  const { wind, rain } = normalizeWorldWeather(value);
-  return { rain: RAIN_COUNTS[rain], leaves: WIND_COUNTS[wind], gusts: wind ? wind + 1 : 0, splashes: rain * 16 };
+  const { wind, rain, sand = 0 } = normalizeWorldWeather(value);
+  return { rain: RAIN_COUNTS[rain], leaves: sand ? 0 : WIND_COUNTS[wind], gusts: wind ? wind + 1 : 0, splashes: rain * 16, ...(sand ? { sand: SAND_COUNTS[sand] } : {}) };
 }
 function seed(index) {
   // Stable particles keep the same world positions while the camera pans.
@@ -54,8 +56,8 @@ export class WorldWeatherRenderer {
   prepare(timestamp, value, motion = true, map = 'start') {
     if (this.destroyed) return;
     const settings = normalizeWorldWeather(value);
-    if (!settings.wind && !settings.rain) { this.suspend(); this.budget = worldWeatherBudget(settings); return; }
-    const signature = `${map}:${settings.wind}:${settings.rain}:${Boolean(motion)}`;
+    if (!settings.wind && !settings.rain && !settings.sand) { this.suspend(); this.budget = worldWeatherBudget(settings); return; }
+    const signature = `${map}:${settings.wind}:${settings.rain}:${settings.sand || 0}:${Boolean(motion)}`;
     const time = Number.isFinite(timestamp) ? Math.max(0, timestamp) : 0;
     const changed = signature !== this.signature;
     if (!this.canvas) {
@@ -86,7 +88,7 @@ export class WorldWeatherRenderer {
     this.prepare(timestamp, value, motion, map);
     if (this.canvas) target.drawImage(this.canvas, 0, 0, WIDTH, HEIGHT);
   }
-  paint(time, { wind, rain }, motion, map) {
+  paint(time, { wind, rain, sand = 0 }, motion, map) {
     const c = this.context;
     this.impacts = motion ? worldRainImpacts(time * 1000, rain, map) : [];
     c.clearRect(0, 0, WIDTH, HEIGHT);
@@ -104,6 +106,17 @@ export class WorldWeatherRenderer {
         c.moveTo(x, y); c.lineTo(x + .8 * lean * 3 * length / speed, y + length);
       }
       c.stroke();
+    }
+    if (sand) {
+      // A faint warm veil and sparse fine grains, with no blur or opaque tiles.
+      c.fillStyle = `rgba(190,151,91,${sand * .022})`; c.fillRect(0, 0, WIDTH, HEIGHT);
+      const drift = time * (18 + wind * 20);
+      for (let i = 0; i < this.budget.sand; i++) {
+        const p = this.particles[i], x = mod(p.x * (WIDTH + 40) + drift * (1 + p.depth), WIDTH + 40) - 20;
+        const y = mod(p.y * HEIGHT + Math.sin(time * .65 + p.phase) * (5 + wind * 3) + time * 2, HEIGHT);
+        c.fillStyle = `rgba(215,183,123,${.18 + p.depth * .18 + (sand - 1) * .035})`;
+        c.beginPath(); c.ellipse(x, y, .7 + p.depth * .65, .4 + p.depth * .3, -.15, 0, Math.PI * 2); c.fill();
+      }
     }
     if (!wind) return;
     const speed = [0, 34, 76, 132][wind];
