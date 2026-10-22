@@ -2,7 +2,7 @@
   <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift, 'is-mobile': showMobileControls }]">
     <!-- <navBar></navBar> -->
     <div class="game-layout">
-      <div class="game-stage">
+      <div class="game-stage" ref="gameStage">
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
       <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
       <starter-choice v-if="isDrift && driftState?.phase==='selection'" :choices="driftState.starterChoices" :seconds="Math.max(0,Math.ceil((driftState.selectionEndsAt-driftClock-driftOffset)/1000))" :busy="starterBusy" :error="starterError" @choose="chooseStarter" @cancel="cancelStarter" />
@@ -375,6 +375,8 @@ import PokemonDetails from './menu/PokemonDetails.vue';
 import ExperienceBar from './ExperienceBar.vue';
 import './adventure.css';
 import './worldViewport.css';
+import './gamePopupLayout.css';
+import { attachGamePopupLayout } from './gamePopupLayout';
 import BattleOverlay from './battle/BattleOverlay.vue';
 import BattleResultPanel from './battle/BattleResultPanel.vue';
 import MoveLearningPanel from './menu/MoveLearningPanel.vue';
@@ -2070,6 +2072,7 @@ export default {
 
   },
   mounted() {
+    this._detachPopupLayout = attachGamePopupLayout(this.$el, this.$refs.gameStage);
     document.body.classList.add("in-world");
     this._weatherMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     this._weatherMotionChange = () => { this.worldWeatherReducedMotion = Boolean(this._weatherMotionQuery?.matches); };
@@ -2569,6 +2572,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    this._detachPopupLayout?.();
     this._villageWater?.destroy();
     this._worldWeather?.destroy();
     this._foregroundWind?.destroy();

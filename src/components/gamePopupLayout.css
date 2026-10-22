@@ -1,0 +1,29 @@
+@media (min-width:921px) {
+/* Desktop menus follow the visible game, while their scrim still covers the
+   viewport. Do not transform/contain the stage: fixed drag previews use client coordinates. */
+#app .game-root:not(.is-mobile) :is(.dex-backdrop, .bag-backdrop, .badge-case-backdrop,
+  .info-backdrop, .shop-backdrop, .pc-backdrop, .companion-backdrop,
+  .learning-backdrop, .evolution-backdrop, .battle-summary-backdrop,
+  .drift-backdrop, .trainer-backdrop, .starter-backdrop, .spectator-backdrop) {
+  box-sizing:border-box;
+  padding:var(--game-popup-top,24px) var(--game-popup-right,24px)
+    var(--game-popup-bottom,24px) var(--game-popup-left,24px);
+}
+#app .game-root:not(.is-mobile) :is(.dex-backdrop, .bag-backdrop, .badge-case-backdrop,
+  .info-backdrop, .shop-backdrop, .pc-backdrop, .companion-backdrop,
+  .learning-backdrop, .evolution-backdrop, .battle-summary-backdrop,
+  .drift-backdrop, .trainer-backdrop, .starter-backdrop, .spectator-backdrop) > section {
+  box-sizing:border-box;
+  min-height:0;
+  max-height:var(--game-popup-height,calc(100dvh - 48px));
+}
+#app .game-root:not(.is-mobile) .game-stage :is(.appearance-panel, .team-panel) {
+  position:fixed;
+  top:var(--game-popup-center-y,50%);
+  left:var(--game-popup-center-x,50%);
+  right:auto;
+  transform:translate(-50%,-50%);
+  width:min(430px,var(--game-popup-width,calc(100vw - 48px)));
+  max-height:var(--game-popup-height,calc(100dvh - 48px));
+}
+}
