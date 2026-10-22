@@ -3,22 +3,23 @@ import rainGround from '../data/worldRainGround.js';
 const WIDTH = 896, HEIGHT = 640, FRAME_MS = 1000 / 30;
 const RAIN_COUNTS = [0, 36, 76, 128], WIND_COUNTS = [0, 8, 17, 28];
 const SAND_COUNTS = [0, 32, 68, 112];
+const SNOW_COUNTS = [0, 100, 240, 480];
 const mod = (value, size) => ((value % size) + size) % size;
 const level = value => Number.isInteger(Number(value)) ? Math.max(0, Math.min(3, Number(value))) : 0;
 export function normalizeWorldWeather(value = {}) {
-  const sand = level(value?.sand);
-  return { wind: level(value?.wind), rain: level(value?.rain), ...(sand ? { sand } : {}) };
+  const sand = level(value?.sand), snow = level(value?.snow);
+  return { wind: level(value?.wind), rain: level(value?.rain), ...(sand ? { sand } : {}), ...(snow ? { snow } : {}) };
 }
 export function worldWeatherEnabled(map, { hidden = false, battle = false, loading = false } = {}) {
-  return (map === 'ville4' || Object.prototype.hasOwnProperty.call(rainGround, map)) && !hidden && !battle && !loading;
+  return (['ville4', 'route13', 'route14'].includes(map) || Object.prototype.hasOwnProperty.call(rainGround, map)) && !hidden && !battle && !loading;
 }
 export function mapWorldWeather(map, climate) {
-  return worldWeatherEnabled(map) && climate?.map === map && ['rain', 'sandstorm'].includes(climate.kind)
+  return worldWeatherEnabled(map) && climate?.map === map && ['rain', 'sandstorm', 'snow'].includes(climate.kind)
     ? normalizeWorldWeather(climate.ambience) : { wind: 0, rain: 0 };
 }
 export function worldWeatherBudget(value) {
-  const { wind, rain, sand = 0 } = normalizeWorldWeather(value);
-  return { rain: RAIN_COUNTS[rain], leaves: sand ? 0 : WIND_COUNTS[wind], gusts: wind ? wind + 1 : 0, splashes: rain * 16, ...(sand ? { sand: SAND_COUNTS[sand] } : {}) };
+  const { wind, rain, sand = 0, snow = 0 } = normalizeWorldWeather(value);
+  return { rain: RAIN_COUNTS[rain], leaves: sand || snow ? 0 : WIND_COUNTS[wind], gusts: wind ? wind + 1 : 0, splashes: rain * 16, ...(sand ? { sand: SAND_COUNTS[sand] } : {}), ...(snow ? { snow: SNOW_COUNTS[snow] } : {}) };
 }
 function seed(index) {
   // Stable particles keep the same world positions while the camera pans.
@@ -46,7 +47,7 @@ export class WorldWeatherRenderer {
     this.createCanvas = createCanvas;
     this.canvas = null; this.context = null; this.lastTime = -Infinity; this.signature = ''; this.destroyed = false;
     this.frames = 0; this.budget = worldWeatherBudget({}); this.impacts = [];
-    this.particles = Array.from({ length: 200 }, (_, i) => ({ x: seed(i * 4), y: seed(i * 4 + 1), depth: seed(i * 4 + 2), phase: seed(i * 4 + 3) * Math.PI * 2 }));
+    this.particles = Array.from({ length: 480 }, (_, i) => ({ x: seed(i * 4), y: seed(i * 4 + 1), depth: seed(i * 4 + 2), phase: seed(i * 4 + 3) * Math.PI * 2 }));
   }
   suspend() {
     if (this.canvas) { this.canvas.width = 0; this.canvas.height = 0; }
@@ -56,8 +57,8 @@ export class WorldWeatherRenderer {
   prepare(timestamp, value, motion = true, map = 'start') {
     if (this.destroyed) return;
     const settings = normalizeWorldWeather(value);
-    if (!settings.wind && !settings.rain && !settings.sand) { this.suspend(); this.budget = worldWeatherBudget(settings); return; }
-    const signature = `${map}:${settings.wind}:${settings.rain}:${settings.sand || 0}:${Boolean(motion)}`;
+    if (!settings.wind && !settings.rain && !settings.sand && !settings.snow) { this.suspend(); this.budget = worldWeatherBudget(settings); return; }
+    const signature = `${map}:${settings.wind}:${settings.rain}:${settings.sand || 0}:${settings.snow || 0}:${Boolean(motion)}`;
     const time = Number.isFinite(timestamp) ? Math.max(0, timestamp) : 0;
     const changed = signature !== this.signature;
     if (!this.canvas) {
@@ -88,7 +89,7 @@ export class WorldWeatherRenderer {
     this.prepare(timestamp, value, motion, map);
     if (this.canvas) target.drawImage(this.canvas, 0, 0, WIDTH, HEIGHT);
   }
-  paint(time, { wind, rain, sand = 0 }, motion, map) {
+  paint(time, { wind, rain, sand = 0, snow = 0 }, motion, map) {
     const c = this.context;
     this.impacts = motion ? worldRainImpacts(time * 1000, rain, map) : [];
     c.clearRect(0, 0, WIDTH, HEIGHT);
@@ -116,6 +117,20 @@ export class WorldWeatherRenderer {
         const y = mod(p.y * HEIGHT + Math.sin(time * .65 + p.phase) * (5 + wind * 3) + time * 2, HEIGHT);
         c.fillStyle = `rgba(215,183,123,${.18 + p.depth * .18 + (sand - 1) * .035})`;
         c.beginPath(); c.ellipse(x, y, .7 + p.depth * .65, .4 + p.depth * .3, -.15, 0, Math.PI * 2); c.fill();
+      }
+    }
+    if (snow) {
+      // Different depths and a blue rim keep white flakes visible on snowy ground.
+      // A single bounded surface follows the map camera, never the interface.
+      c.fillStyle = `rgba(113,150,184,${snow * .012})`; c.fillRect(0, 0, WIDTH, HEIGHT);
+      for (let i = 0; i < this.budget.snow; i++) {
+        const p = this.particles[i], depth = .35 + p.depth * .65;
+        const x = mod(p.x * (WIDTH + 32) + time * (8 + wind * 14) * depth + Math.sin(time * .75 + p.phase) * (8 + wind * 3), WIDTH + 32) - 16;
+        const y = mod(p.y * (HEIGHT + 32) + time * (22 + depth * 40), HEIGHT + 32) - 16;
+        const size = 1.1 + p.depth * 3.2;
+        c.fillStyle = `rgba(248,253,255,${.55 + p.depth * .4})`;
+        c.strokeStyle = `rgba(72,109,145,${.15 + p.depth * .12})`; c.lineWidth = .65;
+        c.beginPath(); c.ellipse(x, y, size, size * .88, p.phase + time * .12, 0, Math.PI * 2); c.fill(); c.stroke();
       }
     }
     if (!wind) return;

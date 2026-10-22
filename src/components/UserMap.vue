@@ -570,7 +570,7 @@ export default {
   computed: {
     villageWaterActive() { return hasVillageWater(this.map) && !(this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible || this.mapLoading || this.mapLoadError || this.renderedMap !== this.map); },
     effectiveWorldWeather() { return mapWorldWeather(this.map, this.mapWeather); },
-    worldWeatherActive() { return Boolean(this.effectiveWorldWeather.wind || this.effectiveWorldWeather.rain || this.effectiveWorldWeather.sand) && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
+    worldWeatherActive() { return Boolean(this.effectiveWorldWeather.wind || this.effectiveWorldWeather.rain || this.effectiveWorldWeather.sand || this.effectiveWorldWeather.snow) && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
     grassRustleActive() { return hasRustlingGrass(this.map) && this.preferences.animationsEnabled && !this.worldWeatherReducedMotion && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
     learningPokemon() {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
