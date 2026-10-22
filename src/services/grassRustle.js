@@ -5,7 +5,10 @@ const SOURCE_W=448,SOURCE_H=320,TILE=16,WORLD_TILE=32,FRAME_MS=1000/30,LIFETIME=
 // crowns, alpha and the surrounding grass floor must retain their real pixels.
 const DARK=['57,107,77','37,78,54','99,135,84','77,128,77','104,148,102','27,59,40'];
 const LIGHT=['82,155,111','117,184,112','54,113,78','160,225,152','143,195,122','38,85,57','162,206,140'];
-const palette=id=>new Set(id===3225?DARK:LIGHT);
+// Authored tile 2961: icy blades and snow tips only. Snow floor 217,230,233,
+// its speckles, earth, shadows and transparent pixels remain fixed.
+const SNOW=['152,184,200','183,207,215','240,240,240','214,232,237','200,224,232'];
+const palette=id=>new Set(id===2961?SNOW:id===3225?DARK:LIGHT);
 export function hasRustlingGrass(map){return Object.prototype.hasOwnProperty.call(profiles,map);}
 export function grassCells(map){return profiles[map]||[];}
 export function grassPose(now,event,row){
