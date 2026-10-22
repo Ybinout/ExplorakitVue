@@ -11,7 +11,7 @@ export function normalizeWorldWeather(value = {}) {
   return { wind: level(value?.wind), rain: level(value?.rain), ...(sand ? { sand } : {}), ...(snow ? { snow } : {}) };
 }
 export function worldWeatherEnabled(map, { hidden = false, battle = false, loading = false } = {}) {
-  return (['ville4', 'route12', 'route13', 'route14'].includes(map) || Object.prototype.hasOwnProperty.call(rainGround, map)) && !hidden && !battle && !loading;
+  return (['ville4', 'ville5', 'route12', 'route13', 'route14'].includes(map) || Object.prototype.hasOwnProperty.call(rainGround, map)) && !hidden && !battle && !loading;
 }
 export function mapWorldWeather(map, climate) {
   return worldWeatherEnabled(map) && climate?.map === map && ['rain', 'sandstorm', 'snow'].includes(climate.kind)
