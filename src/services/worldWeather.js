@@ -11,7 +11,7 @@ export function normalizeWorldWeather(value = {}) {
   return { wind: level(value?.wind), rain: level(value?.rain), ...(sand ? { sand } : {}), ...(snow ? { snow } : {}) };
 }
 export function worldWeatherEnabled(map, { hidden = false, battle = false, loading = false } = {}) {
-  return (['ville4', 'route13', 'route14'].includes(map) || Object.prototype.hasOwnProperty.call(rainGround, map)) && !hidden && !battle && !loading;
+  return (['ville4', 'route12', 'route13', 'route14'].includes(map) || Object.prototype.hasOwnProperty.call(rainGround, map)) && !hidden && !battle && !loading;
 }
 export function mapWorldWeather(map, climate) {
   return worldWeatherEnabled(map) && climate?.map === map && ['rain', 'sandstorm', 'snow'].includes(climate.kind)
@@ -109,14 +109,28 @@ export class WorldWeatherRenderer {
       c.stroke();
     }
     if (sand) {
-      // A faint warm veil and sparse fine grains, with no blur or opaque tiles.
-      c.fillStyle = `rgba(190,151,91,${sand * .022})`; c.fillRect(0, 0, WIDTH, HEIGHT);
+      // Contrasting grains and warm air streaks stay visible on pale town/road tiles.
+      c.fillStyle = `rgba(190,151,91,${sand * .026})`; c.fillRect(0, 0, WIDTH, HEIGHT);
       const drift = time * (18 + wind * 20);
       for (let i = 0; i < this.budget.sand; i++) {
         const p = this.particles[i], x = mod(p.x * (WIDTH + 40) + drift * (1 + p.depth), WIDTH + 40) - 20;
         const y = mod(p.y * HEIGHT + Math.sin(time * .65 + p.phase) * (5 + wind * 3) + time * 2, HEIGHT);
-        c.fillStyle = `rgba(215,183,123,${.18 + p.depth * .18 + (sand - 1) * .035})`;
-        c.beginPath(); c.ellipse(x, y, .7 + p.depth * .65, .4 + p.depth * .3, -.15, 0, Math.PI * 2); c.fill();
+        c.fillStyle = `rgba(242,208,145,${.58 + p.depth * .24 + (sand - 1) * .04})`;
+        c.strokeStyle = 'rgba(119,81,42,.4)'; c.lineWidth = .65;
+        c.beginPath(); c.ellipse(x, y, .95 + p.depth, .5 + p.depth * .4, -.15, 0, Math.PI * 2); c.fill(); c.stroke();
+      }
+      // Stagger trails over the map height so the mobile camera also sees the wind.
+      c.lineCap = 'round';
+      const trails = 4 + sand * 2;
+      for (let i = 0; i < trails; i++) {
+        const p = this.particles[200 + i], life = mod(time * .15 + p.depth, 1);
+        const alpha = Math.sin(life * Math.PI) ** 2;
+        const x = mod(p.x * (WIDTH + 260) + drift * 1.65, WIDTH + 260) - 220;
+        const y = (i + .2 + p.y * .6) * HEIGHT / trails + Math.sin(time * .8 + p.phase) * 8;
+        const length = 90 + p.depth * 85;
+        c.beginPath(); c.moveTo(x, y); c.bezierCurveTo(x + length * .35, y - 6, x + length * .7, y + 5, x + length, y - 2);
+        c.lineWidth = 3 + p.depth * 7; c.strokeStyle = `rgba(151,111,58,${alpha * (.19 + sand * .04)})`; c.stroke();
+        c.lineWidth = .9 + p.depth; c.strokeStyle = `rgba(255,236,188,${alpha * (.36 + sand * .07)})`; c.stroke();
       }
     }
     if (snow) {
@@ -139,10 +153,10 @@ export class WorldWeatherRenderer {
     // Sparse moving air streaks and small leaves show wind without hiding the map.
     for (let i = 0; i < this.budget.gusts; i++) {
       const p = this.particles[160 + i], phase = mod(time * .12 + p.depth, 1);
-      const opacity = Math.sin(phase * Math.PI) ** 4 * (.05 + wind * .025);
+      const opacity = Math.sin(phase * Math.PI) ** 4 * (sand ? .16 + wind * .04 : .05 + wind * .025);
       const x = mod(p.x * (WIDTH + 260) + time * speed * 1.8, WIDTH + 260) - 180;
       const y = p.y * HEIGHT + Math.sin(time + p.phase) * 10;
-      c.strokeStyle = `rgba(242,250,235,${opacity})`; c.lineWidth = .8 + wind * .2;
+      c.strokeStyle = sand ? `rgba(246,222,175,${opacity})` : `rgba(242,250,235,${opacity})`; c.lineWidth = sand ? 1.6 + wind * .3 : .8 + wind * .2;
       c.beginPath();c.moveTo(x, y);c.bezierCurveTo(x + 35, y - 7, x + 65, y + 6, x + 110 + wind * 12, y - 2);c.stroke();
     }
     for (let i = 0; i < this.budget.leaves; i++) {
