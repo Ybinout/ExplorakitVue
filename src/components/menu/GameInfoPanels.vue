@@ -1,6 +1,6 @@
 <template>
   <pokedex-panel v-if="active === 'pokedex'" :pokedex="pokedex" :loading="loading" :language="preferences.language" @close="$emit('close')" />
-  <badges-panel v-else-if="active === 'badges'" :badges="progress.badges || []" :loading="loading" :language="preferences.language" @close="$emit('close')" />
+  <badges-panel v-else-if="active === 'badges'" :badges="progress.badges || []" :capture="progress.capture" :loading="loading" :language="preferences.language" @close="$emit('close')" />
   <div v-else-if="active" class="info-backdrop" @mousedown.self="$emit('close')">
     <section class="info-panel" role="dialog" aria-modal="true" :aria-label="panelTitle">
       <header class="info-header">

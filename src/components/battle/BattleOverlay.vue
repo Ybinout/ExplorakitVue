@@ -257,6 +257,7 @@
         </div>
 
         <div v-else-if="actionState.bagPanel" class="battle-grid battle-grid-bag">
+          <p v-if="capturePolicy" class="battle-capture-policy" :class="{'is-difficult':capturePolicy.excessLevels>0}" data-capture-policy role="status">{{ capturePolicyText }}</p>
           <div v-if="bagLoading" class="battle-empty-state">{{ tr('loadingBag') }}</div>
           <div v-else-if="battleBallItems.length === 0" class="battle-empty-state">{{ tr('noBall') }}</div>
           <button
@@ -401,6 +402,7 @@ export default {
         wild: { widthRatio: 1, heightRatio: 1 },
         player: { widthRatio: 1, heightRatio: 1 }
       },
+      capturePolicy: null,
       captureTimers: [],
       captureFx: {
         visible: false,
@@ -458,6 +460,12 @@ export default {
         '--move-dx': `${this.movePath.targetX - this.movePath.startX}px`,
         '--move-dy': `${this.movePath.targetY - this.movePath.startY}px`
       };
+    },
+    capturePolicyText() {
+      if(!this.capturePolicy)return '';
+      const p=this.capturePolicy,en=this.preferences.language==='en';
+      if(p.excessLevels>0)return en?`Very difficult capture · level ${this.opponent?.level}, badge tier ${p.comfortableLevel}. More badges greatly improve your chances.`:`Capture très difficile · Niv. ${this.opponent?.level}, palier ${p.comfortableLevel}. Gagne des badges pour améliorer tes chances.`;
+      return en?`${p.badgeCount} badge(s) · capture tier: level ${p.comfortableLevel}. Above it, captures remain possible but much harder.`:`${p.badgeCount} badge${p.badgeCount>1?'s':''} · palier de capture : Niv. ${p.comfortableLevel}. Au-delà, les captures restent possibles mais bien plus difficiles.`;
     },
     captureStyle() {
       const path = this.captureFx.path;
@@ -905,6 +913,7 @@ export default {
       this.driftNoticeTimer=setTimeout(()=>{this.driftNotices=[];},2200);
     },
     updateBattleState(payload = {}) {
+      this.capturePolicy = payload.capturePolicy || null;
       this.phaseReturning = { player:false, wild:false };
       this.opponentEffortYield = payload.effortYield || null;
       if(payload.musicKind)this.startMusic(payload.musicKind);
@@ -1300,6 +1309,7 @@ export default {
       this.usableMoveIndexes = null;
       this.resolvedMoveTypes = null;
       this.challenge = null;
+      this.capturePolicy = null;
       this.cancelExperience();
       this.finishing = false;
       clearTimeout(this.experienceTimer);
@@ -1692,6 +1702,8 @@ export default {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.battle-capture-policy {grid-column:1 / -1;margin:0;padding:7px 9px;font-size:11px;line-height:1.4;color:var(--journal-ink,#e5eff8);background:var(--journal-soft,#233b4a);border-left:3px solid var(--journal-progress,#9cbacf);border-radius:5px;}
+.battle-capture-policy.is-difficult {border-left-color:#c79553;}
 .battle-grid-pokemon {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
