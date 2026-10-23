@@ -7,6 +7,7 @@ export const SUPPORTED_LANGUAGES = Object.freeze(['fr', 'en']);
 
 const messages = {
   fr: {
+    saveAndQuit: 'Sauvegarder et quitter',
     debugTools: 'Debug · Dépannage', unstuckButton: 'Débloquer mon personnage',
     unstuckHelp: 'Bloqué dans le décor ? Reviens sur une case accessible proche, dans le même lieu. Ton équipe et ta progression sont conservées.',
     unstuckBusy: 'Repositionnement…', unstuckDone: 'Tu es sur une case accessible. Ferme ce menu pour reprendre.',
@@ -46,6 +47,7 @@ const messages = {
     ballDrops: 'La Ball retombe…', captured: '{pokemon} est capturé !', escaped: "{pokemon} s'est échappé !"
   },
   en: {
+    saveAndQuit: 'Save and quit',
     debugTools: 'Debug · Troubleshooting', unstuckButton: 'Unstuck my character',
     unstuckHelp: 'Stuck in the scenery? Return to a nearby accessible tile in the same location. Your team and progress are preserved.',
     unstuckBusy: 'Repositioning…', unstuckDone: 'You are on an accessible tile. Close this menu to continue.',

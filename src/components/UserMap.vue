@@ -49,7 +49,7 @@
               <small v-if="item.key==='contracts' && readyContractCount" class="contract-reward-label">{{ readyContractCount }} à récupérer</small>
             </button>
             <button class="menu-dropdown-item" data-menu-action="minimap" @click="handleMenuAction('minimap')"><journal-icon name="minimap" /><span>Minimap</span></button>
-            <button class="menu-dropdown-item" data-menu-action="quit" :disabled="quitting" @click="quitGame"><journal-icon name="quit" /><span>{{ quitting ? 'Sauvegarde…' : preferences.language === 'en' ? 'Quit' : 'Quitter' }}</span><small>Accueil</small></button>
+            <button class="menu-dropdown-item" data-menu-action="quit" :disabled="quitting" @click="quitGame"><journal-icon name="quit" /><span>{{ quitting ? tr('saving') : tr('saveAndQuit') }}</span><small>Accueil</small></button>
             <small v-if="isDrift" class="menu-quit-hint">Le temps continue hors du jeu. Une déconnexion prolongée compte comme un abandon.</small>
             <leave-expedition v-if="isDrift" :phase="driftState?.phase" :busy="starterBusy" :disabled="!socket?.connected" @confirm="cancelStarter" />
           </nav>
@@ -547,7 +547,6 @@ export default {
         { key: 'pokemon' },
         { key: 'appearance' },
         { key: 'bag' },
-        { key: 'save' },
         { key: 'options' }
       ],
 
