@@ -800,6 +800,30 @@
         "rows": 4,
         "index": 18
       }
+    },
+    "gwenn_route8": {
+      "name": "gwenn_route8",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 20
+      }
+    },
+    "gwenn_route8_after": {
+      "name": "gwenn_route8",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 20
+      }
+    },
+    "gwenn_route8_locked": {
+      "name": "gwenn_route8",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 20
+      }
     }
   }
 }
