@@ -142,7 +142,7 @@
         <i v-for="(effect,index) in conditionFx[side]" :key="effect.key" :class="`condition-${effect.kind}`" :style="{'--effect-index':index,'--effect-count':conditionFx[side].length}">{{ effect.symbol }}</i>
       </div>
 
-      <div v-if="criticalFx.side" :key="`critical-${criticalFx.nonce}`" class="battle-critical-burst" :data-critical-side="criticalFx.side" :style="conditionPosition(criticalFx.side)" aria-hidden="true"><i v-for="ray in 8" :key="ray" :style="{'--ray':ray}"></i><b>✦</b></div>
+      <div v-if="criticalFx.side" :key="`critical-${criticalFx.nonce}`" class="battle-critical-burst" :data-critical-side="criticalFx.side" :style="conditionPosition(criticalFx.side)" aria-hidden="true"><b>!</b></div>
       <template v-for="side in ['wild', 'player']">
         <div v-if="attackFx[side].visible || resultSide === side" :key="`feedback-${side}`" :ref="`feedback-${side}`"
           :class="['battle-result-fx', `battle-result-${side}`]" :style="getResultPosition(side)" role="status" aria-live="polite">
@@ -1403,7 +1403,6 @@ export default {
 
 <style scoped>
 .battle-critical-burst{position:absolute;transform:translate(-50%,-50%);z-index:55;pointer-events:none;color:#ffe390;filter:drop-shadow(0 2px 1px #633425);animation:critical-burst .7s ease-out both}
-.battle-critical-burst i{position:absolute;left:50%;top:50%;height:5px;width:45%;background:linear-gradient(90deg,#fff7ce,#ffab45);border-radius:100%;transform-origin:0 50%;transform:rotate(calc(var(--ray)*45deg)) translateX(28%)}
 .battle-critical-burst b{position:absolute;left:50%;top:50%;font:900 60px/1 Arial;transform:translate(-50%,-50%)}
 @keyframes critical-burst{0%{opacity:0;scale:.45}22%{opacity:1;scale:1}75%{opacity:.8}100%{opacity:0;scale:1.3}}
 @media(prefers-reduced-motion:reduce){.battle-critical-burst{display:none}}

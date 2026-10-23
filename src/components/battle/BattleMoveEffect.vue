@@ -2,7 +2,6 @@
   <svg class="move-library" :data-move-family="fx.family" :data-move-phase="fx.stage" aria-hidden="true" :style="{color, '--flight':`${fx.travelMs}ms`}">
     <g v-if="fx.stage === 'windup'" :transform="`translate(${path.startX} ${path.startY})`" class="move-gather">
       <circle r="13" fill="currentColor" opacity=".3"/><circle r="22" fill="none" stroke="currentColor" stroke-width="2"/>
-      <path v-for="n in 6" :key="n" d="M 29 0 L 38 0" :transform="`rotate(${n*60})`" stroke="currentColor" stroke-width="3"/>
     </g>
     <g v-if="['travel','impact'].includes(fx.stage) && fx.family === 'beam'" class="move-beam" :class="{'move-beam-fading':fx.stage === 'impact'}">
         <path :d="line" pathLength="1" stroke="currentColor" stroke-width="18" opacity=".22" fill="none"/>
@@ -28,10 +27,6 @@
       <g v-else-if="fx.family === 'zone'" fill="none" stroke="currentColor" stroke-width="4">
         <ellipse v-for="n in 3" :key="n" rx="52" ry="17" class="move-ground-wave" :style="{'--delay':`${(n-1)*90}ms`}"/>
         <path v-for="n in 8" :key="`stone-${n}`" d="M0,-18 l-4,-8 6,-5 4,9z" fill="currentColor" :transform="`rotate(${n*45})`" class="move-spark"/>
-      </g>
-      <g v-else class="move-contact">
-        <path d="M0,-34 8,-12 29,-23 17,-4 36,7 13,12 18,33 -2,19 -21,32 -16,10 -36,0 -12,-7 -19,-29z" fill="currentColor" opacity=".8"/>
-        <circle r="11" fill="#fff9df"/>
       </g>
       <circle v-if="fx.family !== 'zone'" r="32" fill="none" stroke="currentColor" stroke-width="3" class="move-impact-ring"/>
     </g>
