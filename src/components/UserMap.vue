@@ -208,6 +208,7 @@
           <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
+          <div v-if="interactionNotice && interactionNoticeKind === 'gate' && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ interactionNotice }}</div>
           <div v-if="mapLoading || mapLoadError || worldContextLost" class="world-loading" role="status" :class="{ 'has-error': mapLoadError }">
             <span>{{ mapLoadError || (preferences.language === 'en' ? 'Loading location…' : 'Chargement du lieu…') }}</span>
             <button v-if="mapLoadError" @click="loadMapImage">{{ preferences.language === 'en' ? 'Retry' : 'Réessayer' }}</button>
@@ -266,7 +267,7 @@
           </div>
         </div>
         </div>
-        <div v-if="interactionNotice && !battle" class="interaction-notice">
+        <div v-if="interactionNotice && interactionNoticeKind !== 'gate' && !battle" class="interaction-notice">
           {{ interactionNotice }}
         </div>
         <div v-if="interactionChoice.visible" class="interaction-popup">
@@ -354,6 +355,7 @@
 <script>
 import FishingPrompt from './world/FishingPrompt.vue';
 import { drawFishing } from '@/services/fishingRenderer';
+import { StoryGateRenderer } from '@/services/storyGateRenderer';
 import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas } from '@/services/npcFrames';
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
@@ -532,6 +534,7 @@ export default {
         fromName: ''
       },
       interactionNotice: '',
+      interactionNoticeKind: '',
       interactionNoticeTimer: null,
       chatSession: {
         visible: false,
@@ -1007,9 +1010,10 @@ export default {
       const token = getSession()?.token;
       return typeof token === 'string' ? token : '';
     },
-    showInteractionNotice(message, duration = 2600) {
+    showInteractionNotice(message, duration = 2600, kind = '') {
       if (!message) return;
       this.interactionNotice = message;
+      this.interactionNoticeKind = kind;
       if (this.interactionNoticeTimer) {
         clearTimeout(this.interactionNoticeTimer);
         this.interactionNoticeTimer = null;
@@ -2194,6 +2198,7 @@ export default {
         this._worldWeather.drawGround(c, performance.now(), this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
       } else this._worldWeather?.suspend();
 
+      if (!this.isDrift && !this.battle && !this.battleResult && !document.hidden) this._storyGateRenderer?.draw(c,this.map,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       drawPokemonComputers(c,this.worldDevices,this.map);
       this.drawPnjs(c, now);
 
@@ -2358,6 +2363,21 @@ export default {
     });
 
     this.socket.on('fieldEffectState', (payload={})=>{this.repelSteps=Number(payload.repelSteps)||0;});
+    this.socket.on('storyGatesState', (payload = {}) => {
+      if (this.isDrift) return;
+      if (!this._storyGateRenderer) this._storyGateRenderer = new StoryGateRenderer();
+      const opened = (payload.gates || []).some(g => !g.locked && this._storyGateRenderer.gates.get(g.id)?.locked && g.map === this.map);
+      this._storyGateRenderer.sync(payload.gates || []);
+      if (opened && this.interactionNoticeKind === 'gate') this.showInteractionNotice(this.preferences.language === 'en' ? 'The passage is open!' : 'Le passage est ouvert !', 1800, 'gate');
+      this.drawPlayers();
+    });
+    this.socket.on('storyGateBlocked', (payload = {}) => {
+      if (this.isDrift || payload.map !== this.map) return;
+      this._storyGateRenderer?.pulse(payload.id);
+      this.showInteractionNotice(this.preferences.language === 'en' ? payload.messageEn : payload.message, 3500, 'gate');
+      this.drawPlayers();
+    });
+
     this.socket.on('progressionNotice', (payload = {}) => {
       this.showInteractionNotice(payload.message || 'Progression mise à jour.', 3800);
     });
@@ -2803,6 +2823,7 @@ export default {
     this._grassRustle?.destroy();
     this._snowFootprints?.destroy();
     this._dirtFootprints?.destroy();
+    this._storyGateRenderer?.destroy();
     this._weatherMotionQuery?.removeEventListener?.('change', this._weatherMotionChange);
     this._mapLoadVersion = (this._mapLoadVersion || 0) + 1;
     this._mapScenes?.clear();
@@ -2921,6 +2942,12 @@ button:hover {
   width: 100%;
   max-width: none;
   margin: 0;
+}
+
+.story-gate-notice {
+  position:absolute;left:12px;right:12px;bottom:12px;z-index:55;margin:auto;max-width:380px;
+  padding:10px 13px;border:1px solid var(--journal-border);border-radius:10px;background:var(--journal-paper);
+  color:var(--journal-ink);font:13px/1.45 var(--journal-font);box-shadow:0 3px 10px #0002;pointer-events:none;
 }
 
 .interaction-notice {
