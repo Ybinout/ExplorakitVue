@@ -46,7 +46,7 @@
                   <slot name="actions" :item="item"/>
                   <p v-if="activePocket==='balls'" class="bag-use-hint">{{ english?'Choose a Ball from your bag during a wild battle.':'Choisis une Ball dans le sac pendant un combat sauvage.' }}</p>
                   <button v-if="activePocket==='held' || activePocket==='berries'" class="bag-equip-link" @click="$emit('team')">{{ english?'Give to a Pokémon':'Faire tenir à un Pokémon' }} <span aria-hidden="true">→</span></button>
-                  <p v-if="item.key==='exp_share'" class="bag-use-hint" data-exp-share-active>{{ english?'Active in your bag · fighter 100% · reserves at least 50% · no stacking.':'Actif depuis le sac · combattant 100 % · réserves au moins 50 % · sans cumul.' }}</p>
+                  <p v-if="item.key==='exp_share'" class="bag-use-hint" data-exp-share-active>{{ english ? `Active in your bag · fighter 100% · reserves ${expedition ? 'at least 50%' : '40%'} · no stacking.` : `Actif depuis le sac · combattant 100 % · réserves ${expedition ? 'au moins 50 %' : '40 %'} · sans cumul.` }}</p>
                   <p v-else-if="activePocket==='key'" class="bag-use-hint">{{ english?'Keep this item: it is part of your story.':'Cet objet est conservé pour ton histoire.' }}</p>
                 </div>
               </article>
