@@ -189,7 +189,7 @@
         <shop-panel
           :visible="shop.visible"
           :catalog="shop.catalog" :metadata="shop.metadata" :location="locationLabel"
-          :expedition="isDrift" :merchant="driftState?.merchant" :drift-catalogue="driftCatalogue" :drifts="driftState?.drifts || []" :equipped="driftState?.equipped || []" @merchant="merchantCommand"
+          :expedition="isDrift" :merchant="shop.metadata.department && shop.metadata.department!==1 ? null : driftState?.merchant" :drift-catalogue="driftCatalogue" :drifts="driftState?.drifts || []" :equipped="driftState?.equipped || []" @merchant="merchantCommand"
           :items="bagItems"
           :money="shop.money"
           :loading="shop.loading"
@@ -624,7 +624,7 @@ export default {
       return getMapLocationLabel(this.map, this.preferences.language);
     },
     isShopMap() {
-      return ['ville_safe1_shop', 'ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1', 'gen_shop_route10', 'ville3_shop', 'ville4_shop', 'ville5_shop'].includes(this.map);
+      return ['tour_rdc','tour_etage1','tour_etage2','tour_etage3','ville_safe1_shop', 'ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1', 'gen_shop_route10', 'ville3_shop', 'ville4_shop', 'ville5_shop'].includes(this.map);
     },
     heldBagItems() {
       if (!Array.isArray(this.bagItems)) return [];
