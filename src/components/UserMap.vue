@@ -74,7 +74,7 @@
                 <label v-if="item.fieldUse?.effort?.amount>0&&item.quantity>=5" class="bag-use-hint">Quantité <select data-medicine-quantity :value="medicineQuantities[item.key]||1" :disabled="medicineBusy" @change="$set(medicineQuantities,item.key,Number($event.target.value))"><option v-for="n in [1,5,10,25].filter(n=>n<=item.quantity)" :key="n" :value="n">×{{ n }}</option></select><small>Seules les vitamines utiles seront consommées.</small></label>
                 <button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagItem(item) || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key]))" @click="useBagMedicine(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button>
                 <small v-if="!canUseBagItem(item)" class="bag-use-hint">{{ isDrift && driftState?.phase !== 'exploration' ? 'Soins automatiques entre les combats du tournoi.' : 'Disponible hors combat.' }}</small>
-                <small v-else-if="!teamPokemons.some(p => canReceiveMedicine(item, p))" class="bag-use-hint">Aucun Pokémon n’a besoin de cet objet.</small>
+                <small v-else-if="!teamPokemons.some(p => canReceiveMedicine(item, p))" class="bag-use-hint">{{ item.category === 'evolution' ? 'Aucun Pokémon compatible et apte dans ton équipe. Soigne les Pokémon K.O. avant de les faire évoluer.' : 'Aucun Pokémon n’a besoin de cet objet.' }}</small>
               </template>
               <template v-else-if="item.category==='field' && item.repelSteps">
                 <button class="bag-use-button" data-use-repel :disabled="medicineBusy || !canUseBagConsumables || repelSteps>0 || !teamPokemons.some(p=>p.currentHp>0)" @click="useBagRepel(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button>
@@ -743,12 +743,12 @@ export default {
       this.loadTeamPokemons();
     },
     isBagConsumable(item) {
-      return Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse || (this.isDrift && item.category==='evolution')) && !(this.isDrift && item.revive));
+      return Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse || item.category==='evolution') && !(this.isDrift && item.revive));
     },
     canUseBagItem(item) { return (item.category==='machine' || item.category==='evolution' || item.fieldUse?.effort || item.fieldUse?.ivReroll || item.fieldUse?.effortReset) && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
     canReceiveMedicine(item, pokemon) {
       if (!pokemon) return false;
-      if(item.category==='evolution')return Boolean(item.evolutions?.[pokemon.uuid]);
+      if(item.category==='evolution')return !pokemon.isEgg && pokemon.currentHp > 0 && Boolean(item.evolutions?.[pokemon.uuid]);
       const effect = item.fieldUse || item;
       if (effect.revive) return !this.isDrift && pokemon.currentHp <= 0;
       if (pokemon.currentHp <= 0 && !(this.isDrift && pokemon.riftFainted && (effect.heal || effect.healFraction || item.category==='heal'))) return false;
@@ -774,7 +774,7 @@ export default {
       return `EV ${names[item.fieldUse.effort.stat]} : ${ev[item.fieldUse.effort.stat] || 0}/252 · Total : ${Object.values(ev).reduce((n,v)=>n+Number(v),0)}/510`;
     },
     medicineTargetLabel(item,p){
-      if(item.category==='evolution')return `${p.name}${item.evolutions?.[p.uuid]?` → ${item.evolutions[p.uuid].name}`:''}`;
+      if(item.category==='evolution')return `${p.name}${item.evolutions?.[p.uuid]?` → ${item.evolutions[p.uuid].name}`:''}${this.medicineStatus(p)}`;
       if(item.fieldUse?.ivReroll)return `${p.name} · IV ${p.iv?.[item.fieldUse.ivReroll]||0}/31`;
       if(item.fieldUse?.effortReset)return `${p.name} · EV ${item.fieldUse.effortReset==='all'?Object.values(p.ev||{}).reduce((s,n)=>s+Number(n),0):(p.ev?.[item.fieldUse.effortReset]||0)}`;
       return `${p.name} · ${p.currentHp}/${p.maxHp} PV${this.medicineStatus(p)}`;
@@ -835,8 +835,9 @@ export default {
       if (!this.socket?.connected) { this.bagError = 'Reconnecte-toi pour utiliser un objet.'; return; }
       this.medicineBusy = true;
       try {
-        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(this.isDrift ? item.category==='evolution'?'drift:evolve':'drift:heal' : 'useMedicine', { itemKey: item.key, pokemonUuid,quantity:item.fieldUse?.effort?.amount>0?Math.min(Number(this.medicineQuantities[item.key])||1,item.quantity):1 }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
-        if (!response?.success) throw new Error(response?.message || 'Soin impossible.');
+        const event = item.category === 'evolution' ? (this.isDrift ? 'drift:evolve' : 'useEvolutionStone') : (this.isDrift ? 'drift:heal' : 'useMedicine');
+        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(event, { itemKey: item.key, pokemonUuid,quantity:item.fieldUse?.effort?.amount>0?Math.min(Number(this.medicineQuantities[item.key])||1,item.quantity):1 }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
+        if (!response?.success) throw new Error(response?.message || 'Utilisation impossible.');
         if (response.items) this.applyBagItems(response.items);
         if (response.equipe) this.applyTeamPokemons(response.equipe.pokemons);
         this.$set(this.medicineQuantities,item.key,1);
