@@ -203,7 +203,7 @@
           <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
-          <div v-if="mapLoading || mapLoadError" class="world-loading" role="status" :class="{ 'has-error': mapLoadError }">
+          <div v-if="mapLoading || mapLoadError || worldContextLost" class="world-loading" role="status" :class="{ 'has-error': mapLoadError }">
             <span>{{ mapLoadError || (preferences.language === 'en' ? 'Loading location…' : 'Chargement du lieu…') }}</span>
             <button v-if="mapLoadError" @click="loadMapImage">{{ preferences.language === 'en' ? 'Retry' : 'Réessayer' }}</button>
           </div>
@@ -446,6 +446,7 @@ export default {
       movementIntervalId: null,
       lock: false,
       battle: false,
+      worldContextLost: false,
       battleResult: null,
       pendingBattleResult: null,
       learningDeferred: false, learningBusy: false, learningError: '',
@@ -634,7 +635,7 @@ export default {
       if (!Array.isArray(this.bagItems)) return [];
       return this.bagItems.filter((item) => item.category === 'held' && Number(item.quantity) > 0);
     },
-    movementBlocked() { return this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
+    movementBlocked() { return this.worldContextLost || this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
     movementSuspended() {
       return this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
@@ -721,7 +722,14 @@ export default {
       this.releaseAllMovementKeys();
       this.closeLegacyPanels(); this.closeInfoPanel(); this.closeShop();
       this.isMenuOpen = false; this.selectedPokemonUuid = null; this.lock = true;
-      await this.$refs.battleOverlay?.finishPresentation();
+      try {
+        await this.$refs.battleOverlay?.finishPresentation();
+      } catch (error) {
+        // A failed visual effect must never strand an already settled combat.
+        if (this.pendingBattleResult !== result || this._isDestroyed || this._isBeingDestroyed) return;
+        console.warn('Présentation de fin de combat interrompue:', error);
+        this.$refs.battleOverlay?.resetBattleUi();
+      }
       if (this.pendingBattleResult !== result || this._isDestroyed || this._isBeingDestroyed) return;
       this.battleResult = result; this.pendingBattleResult = null;
       this.battle = false;
@@ -819,6 +827,7 @@ export default {
       this.battleResult = null;
       this.learningDeferred = false;
       this.lock = Boolean(this.battle);
+      this.$nextTick(this.restoreWorldView);
     },
     async chooseStarter(pokemonUuid) {
       if(this.starterBusy)return;this.starterBusy=true;this.starterError='';
@@ -1130,6 +1139,29 @@ export default {
       canvas.height = Math.round(height * pixelRatio);
       this.drawPlayers();
     },
+    restoreWorldView() {
+      if (this._isDestroyed || this._isBeingDestroyed || document.hidden || this.worldContextLost) return;
+      const canvas = this.$refs.monCanvas;
+      if (!canvas) return;
+      // Mobile browsers may discard the canvas backing store while the combat
+      // or another app covers it. Recreate it without changing the player/map.
+      this.resizeWorldViewport();
+      canvas.width = Math.round(this.worldFrame.width * this.worldFrame.pixelRatio);
+      canvas.height = Math.round(this.worldFrame.height * this.worldFrame.pixelRatio);
+      this.startGameLoop();
+      this.startMovementLoop();
+      this.drawPlayers();
+    },
+    onWorldContextLost(event) {
+      event.preventDefault();
+      this.worldContextLost = true;
+      this.releaseAllMovementKeys();
+      this.stopGameLoop();
+    },
+    onWorldContextRestored() {
+      this.worldContextLost = false;
+      this.restoreWorldView();
+    },
     syncPlayerIdleState() {
       if (!this.socket || !this.socket.id) return;
       const player = this.players[this.socket.id];
@@ -1195,7 +1227,7 @@ export default {
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (document.hidden) { this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
+    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       this.releaseAllMovementKeys();
@@ -1345,7 +1377,7 @@ export default {
       const idleFrame = this.spriteAnimations?.down?.[0] || { x: 0, y: 0 };
       for (const pnj of this.pnjs) {
         const spriteSheet = this.ensurePnjSpriteSheet(pnj.sprite);
-        if (!spriteSheet || !spriteSheet.complete) continue;
+        if (!spriteSheet?.complete || !spriteSheet.naturalWidth || !spriteSheet.naturalHeight) continue;
 
         const { x, y, progress, moving } = this.pnjWorldPosition(pnj, now);
         const drawX = Math.round(x - 32);
@@ -1859,6 +1891,8 @@ export default {
 
 
     async loadMapImage() {
+      this._worldRenderFailures = 0;
+      this.startGameLoop();
       const requestedMap = this.map;
       const version = this._mapLoadVersion = (this._mapLoadVersion || 0) + 1;
       if (!this.mapLoading && this.renderedMap && this.$refs.monCanvas) {
@@ -1981,6 +2015,10 @@ export default {
         return;
       }
 
+      // Queue the next frame before drawing: one failed image/effect must not
+      // leave a non-null frame ID that prevents the world from ever restarting.
+      this.animationFrameId = window.requestAnimationFrame(this.animate);
+      if (this.worldContextLost) return;
       const now = Number.isFinite(timestamp) ? timestamp : performance.now();
       const frameDelta = this.lastAnimationTimestamp === null
         ? 0
@@ -2010,8 +2048,16 @@ export default {
         }
       }
 
-      this.drawPlayers();
-      this.animationFrameId = window.requestAnimationFrame(this.animate);
+      try {
+        this.drawPlayers();
+        this._worldRenderFailures = 0;
+      } catch (error) {
+        this._worldRenderFailures = (this._worldRenderFailures || 0) + 1;
+        if (this._worldRenderFailures === 1) console.warn('Affichage de la carte interrompu:', error);
+        if (this._worldRenderFailures >= 3) {
+          this.mapLoadError = this.preferences.language === 'en' ? 'Unable to display this location.' : 'Affichage du lieu interrompu. Réessaie pour reprendre.';
+        }
+      }
     }
 
     ,
@@ -2066,10 +2112,12 @@ export default {
       }
 
       // Clear the canvas for the new render
+      c.setTransform(1, 0, 0, 1, 0, 0);
       c.clearRect(0, 0, canvas.width, canvas.height);
       const camera = getWorldCamera(this.worldFrame.width, this.worldFrame.height, me, this.showMobileControls);
       const scale = camera.scale * this.worldFrame.pixelRatio;
       c.save();
+      try {
       c.imageSmoothingEnabled = false;
       c.setTransform(scale, 0, 0, scale, -camera.x * scale, -camera.y * scale);
       const now = performance.now();
@@ -2140,7 +2188,7 @@ export default {
           const playerSpriteSheet = this.getSpriteSheetForPlayer(player);
 
           // Assure-toi que le sprite existe avant d'essayer de dessiner
-          if (sprite && playerSpriteSheet && playerSpriteSheet.complete) {
+          if (sprite && playerSpriteSheet?.complete && playerSpriteSheet.naturalWidth && playerSpriteSheet.naturalHeight) {
             c.drawImage(
               playerSpriteSheet,
               sprite.x, sprite.y, this.spriteWidth, this.spriteHeight,
@@ -2167,7 +2215,9 @@ export default {
       } else this._worldWeather?.suspend();
       if(this.fishing && this.fishing.map===this.map && !document.hidden && !this.mapLoading && !this.battle)
         drawFishing(c,this.fishing,performance.now()-this.fishingReceivedAt,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
-      c.restore();
+      } finally {
+        c.restore();
+      }
     },
 
   },
@@ -2561,6 +2611,8 @@ export default {
       this.pendingBattleResult = null;
       this.$refs.battleOverlay?.cancelExperience();
       this.battle = false;
+      this.lock = false;
+      this.$refs.battleOverlay?.resetBattleUi();
       if (this.driftSpectator) { this.driftSpectator = null; this.isDriftPanelOpen = true; }
       this.$refs.battleOverlay?.stopMusic();
       this.saveState = { ...this.saveState, status: 'error', message: 'Hors ligne : reconnexion automatique…' };
@@ -2648,6 +2700,7 @@ export default {
     this.socket.on('battleExperience', data => this.$refs.battleOverlay?.presentEvent('updateExperience', data));
 
     this.socket.on('introAnimation', (data) => {
+      if (!this.battle || this.pendingBattleResult) return;
       this.lock = true;
       this.$refs.battleOverlay?.presentEvent('updateBattleState', data);
     });
@@ -2665,9 +2718,12 @@ export default {
     window.addEventListener('orientationchange', this.updateMobileControlsVisibility);
     window.addEventListener('blur', this.releaseAllMovementKeys);
     document.addEventListener('visibilitychange', this.onWorldVisibility);
+    window.addEventListener('pageshow', this.restoreWorldView);
     this.updateMobileControlsVisibility();
 
     const canvas = this.$refs.monCanvas;
+    canvas.addEventListener('contextlost', this.onWorldContextLost);
+    canvas.addEventListener('contextrestored', this.onWorldContextRestored);
     canvas.width = WORLD_WIDTH;
     canvas.height = WORLD_HEIGHT;
     this.worldResizeObserver = new ResizeObserver(this.resizeWorldViewport);
@@ -2725,6 +2781,9 @@ export default {
     window.removeEventListener('orientationchange', this.updateMobileControlsVisibility);
     window.removeEventListener('blur', this.releaseAllMovementKeys);
     document.removeEventListener('visibilitychange', this.onWorldVisibility);
+    window.removeEventListener('pageshow', this.restoreWorldView);
+    this.$refs.monCanvas?.removeEventListener('contextlost', this.onWorldContextLost);
+    this.$refs.monCanvas?.removeEventListener('contextrestored', this.onWorldContextRestored);
     this.releaseAllMovementKeys();
     if (this.interactionNoticeTimer) {
       clearTimeout(this.interactionNoticeTimer);
