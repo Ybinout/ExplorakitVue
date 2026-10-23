@@ -388,7 +388,7 @@ import BattleResultPanel from './battle/BattleResultPanel.vue';
 import MoveLearningPanel from './menu/MoveLearningPanel.vue';
 import EvolutionPresentation from './menu/EvolutionPresentation.vue';
 import { VillageWaterRenderer, hasVillageWater } from '@/services/villageWater';
-import { ForegroundWindRenderer } from '@/services/foregroundWind';
+import { ForegroundWindRenderer, hasWindTrees } from '@/services/foregroundWind';
 import { GrassRustleRenderer, hasRustlingGrass } from '@/services/grassRustle';
 import { SnowFootprintsRenderer, hasSnowGround } from '@/services/snowFootprints';
 import { DirtFootprintsRenderer, hasDirtGround } from '@/services/dirtFootprints';
@@ -645,8 +645,8 @@ export default {
   watch: {
     worldMusicState: { handler() { this.syncWorldMusic(); }, deep: true },
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
-    worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); } },
-    map() { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); },
+    worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); } },
+    map() { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); },
     dirtFootprintsActive(active) { if (!active) this._dirtFootprints?.suspend(); },
     snowFootprintsActive(active) { if (!active) this._snowFootprints?.suspend(); },
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
@@ -1189,7 +1189,7 @@ export default {
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (document.hidden) { this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
+    onWorldVisibility() { if (document.hidden) { this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       this.releaseAllMovementKeys();
@@ -2039,7 +2039,7 @@ export default {
       // placeholder while the authoritative player snapshot is still arriving.
       if (this.mapLoading || this.mapLoadError || this.renderedMap !== this.map
         || !me || me.currentmap !== this.map || !this.mapImage?.complete || !this.mapImage.naturalWidth) {
-        this._villageWater?.suspend();
+        this._villageWater?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend();
         this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend();
         this.drawHeldWorldFrame(c, canvas);
         return;
@@ -2061,6 +2061,11 @@ export default {
           this._villageWater.draw(c, this.mapImage, performance.now(), this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
         } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
+
+      if (hasWindTrees(this.map,'background') && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
+        if(!this._backgroundWind)this._backgroundWind=new ForegroundWindRenderer();
+        this._backgroundWind.draw(c,this.mapImage,now,this.effectiveWorldWeather.wind,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion,this.map,'background');
+      } else this._backgroundWind?.suspend();
 
       if (this.grassRustleActive && !document.hidden) {
         if (!this._grassRustle) this._grassRustle = new GrassRustleRenderer();
@@ -2131,9 +2136,9 @@ export default {
 
       // Dessiner les Ã©lÃ©ments de premier plan si nÃ©cessaire
       if (this.foregroundImage?.complete && this.foregroundImage.naturalWidth) {
-        if (this.map === 'start' && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
+        if (hasWindTrees(this.map) && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
           if (!this._foregroundWind) this._foregroundWind = new ForegroundWindRenderer();
-          this._foregroundWind.draw(c, this.foregroundImage, performance.now(), this.effectiveWorldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
+          this._foregroundWind.draw(c, this.foregroundImage, performance.now(), this.effectiveWorldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
         } else { this._foregroundWind?.suspend(); c.drawImage(this.foregroundImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
       if (this.worldWeatherActive && !document.hidden) {
@@ -2669,7 +2674,7 @@ export default {
     this._detachPopupLayout?.();
     this._villageWater?.destroy();
     this._worldWeather?.destroy();
-    this._foregroundWind?.destroy();
+    this._foregroundWind?.destroy(); this._backgroundWind?.destroy();
     this._grassRustle?.destroy();
     this._snowFootprints?.destroy();
     this._dirtFootprints?.destroy();

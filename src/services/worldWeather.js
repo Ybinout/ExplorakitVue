@@ -2,7 +2,7 @@ import { SandstormRenderer, sandParticleCount } from './sandstorm.js';
 import rainGround from '../data/worldRainGround.js';
 // Climate and intensity come from the server, identically for every player.
 const WIDTH = 896, HEIGHT = 640, FRAME_MS = 1000 / 30;
-const RAIN_COUNTS = [0, 36, 76, 128], WIND_COUNTS = [0, 8, 17, 28];
+const RAIN_COUNTS = [0, 36, 76, 128], WIND_COUNTS = [0, 8, 20, 42];
 const SNOW_COUNTS = [0, 100, 240, 480];
 const mod = (value, size) => ((value % size) + size) % size;
 const level = value => Number.isInteger(Number(value)) ? Math.max(0, Math.min(3, Number(value))) : 0;
@@ -19,7 +19,7 @@ export function mapWorldWeather(map, climate) {
 }
 export function worldWeatherBudget(value) {
   const { wind, rain, sand = 0, snow = 0 } = normalizeWorldWeather(value);
-  return { rain: RAIN_COUNTS[rain], leaves: sand || snow ? 0 : WIND_COUNTS[wind], gusts: wind && !sand ? wind + 1 : 0, splashes: rain * 16, ...(sand ? { sand: sandParticleCount(WIDTH, HEIGHT, sand) } : {}), ...(snow ? { snow: SNOW_COUNTS[snow] } : {}) };
+  return { rain: RAIN_COUNTS[rain], leaves: sand || snow ? 0 : WIND_COUNTS[wind], gusts: wind && !sand ? [0,2,3,6][wind] : 0, splashes: rain * 16, ...(sand ? { sand: sandParticleCount(WIDTH, HEIGHT, sand) } : {}), ...(snow ? { snow: SNOW_COUNTS[snow] } : {}) };
 }
 function seed(index) {
   // Stable particles keep the same world positions while the camera pans.
@@ -131,22 +131,22 @@ export class WorldWeatherRenderer {
       }
     }
     if (!wind || sand) return;
-    const speed = [0, 34, 76, 132][wind];
+    const speed = [0, 38, 100, 205][wind];
     const displacement = speed * (.85 * time - .15 / .75 * Math.cos(time * .75));
     // Sparse moving air streaks and small leaves show wind without hiding the map.
     for (let i = 0; i < this.budget.gusts; i++) {
       const p = this.particles[160 + i], phase = mod(time * .12 + p.depth, 1);
-      const opacity = Math.sin(phase * Math.PI) ** 4 * (.05 + wind * .025);
+      const opacity = Math.sin(phase * Math.PI) ** 2 * (.07 + wind * .07);
       const x = mod(p.x * (WIDTH + 260) + time * speed * 1.8, WIDTH + 260) - 180;
       const y = p.y * HEIGHT + Math.sin(time + p.phase) * 10;
-      c.strokeStyle = `rgba(242,250,235,${opacity})`; c.lineWidth = .8 + wind * .2;
-      c.beginPath();c.moveTo(x, y);c.bezierCurveTo(x + 35, y - 7, x + 65, y + 6, x + 110 + wind * 12, y - 2);c.stroke();
+      c.strokeStyle = `rgba(56,87,85,${opacity*.6})`; c.lineWidth = 2 + wind * .35;
+      c.beginPath();c.moveTo(x, y);c.bezierCurveTo(x + 35, y - 7, x + 65, y + 6, x + 110 + wind * 12, y - 2);c.stroke();c.strokeStyle=`rgba(244,251,235,${opacity})`;c.lineWidth=.8+wind*.25;c.stroke();
     }
     for (let i = 0; i < this.budget.leaves; i++) {
       const p = this.particles[i + 80], x = mod(p.x * (WIDTH + 60) + displacement * (1 + p.depth * .4), WIDTH + 60) - 30;
       const y = mod(p.y * HEIGHT + time * (3 + wind * 3) + Math.sin(time * 2 + p.phase) * 12, HEIGHT);
-      c.save();c.translate(x, y);c.rotate(p.phase + time * (1 + p.depth));c.globalAlpha = .34 + wind * .07;
-      c.fillStyle = i % 3 ? '#b4c789' : '#c99e62';c.beginPath();c.ellipse(0, 0, 2 + p.depth, .9 + p.depth * .5, 0, 0, Math.PI * 2);c.fill();c.restore();
+      c.save();c.translate(x, y);c.rotate(p.phase + time * (1 + p.depth));c.globalAlpha = .38 + wind * .1;
+      c.fillStyle = wind>=2 ? (i%3?'#6d8b4e':'#b08446') : (i%3?'#b4c789':'#c99e62');c.beginPath();c.ellipse(0, 0, 2 + p.depth + wind*.2, 1 + p.depth * .5, 0, 0, Math.PI * 2);c.fill();c.restore();
     }
   }
 }
