@@ -944,6 +944,7 @@ export default {
             insufficient_funds: 'You do not have enough money.',
             not_in_shop: 'You must be inside a shop.',
             invalid_quantity: 'Invalid quantity.',
+            badge_required: 'Earn the indicated Gym Badge to purchase this item.',
             item_unavailable: 'This item is unavailable at this stage or in this shop.',inventory_busy:'Another action is in progress.',
             battle_active: 'The shop is unavailable during battle.'
           }
@@ -952,6 +953,7 @@ export default {
             insufficient_funds: "Tu n'as pas assez d'argent.",
             not_in_shop: 'Tu dois être dans une boutique.',
             invalid_quantity: 'Quantité invalide.',
+            badge_required: "Obtiens le badge indiqué pour acheter cet article.",
             item_unavailable: "Cet objet n’est pas disponible à ce stade ou dans cette boutique.",inventory_busy:"Une autre action est en cours.",
             battle_active: 'La boutique est indisponible pendant un combat.'
           };
