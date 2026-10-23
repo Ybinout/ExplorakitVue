@@ -32,19 +32,10 @@
       <span v-if="weatherLabel" class="battle-weather-indicator" :class="`battle-weather-${fieldState.weather}`" :data-battle-weather="fieldState.weather" role="img" :aria-label="weatherLabel" :title="weatherLabel"><journal-icon :name="`weather-${fieldState.weather}`" /></span>
       <battle-send-out v-for="entry in sendOuts" :key="entry.uuid" :side="entry.side" :style="sendOutPosition(entry.side)" />
 
-      <div
-        v-if="battleMoveFx.visible"
-        :key="`move-${battleMoveFx.nonce}`"
-        :class="[
-          'battle-move-effect',
-          `battle-move-${battleMoveFx.damageClass}`,
-          `battle-move-from-${battleMoveFx.actor}`
-        ]"
-        :style="battleMoveStyle"
-        aria-hidden="true"
-      >
-        <span></span>
-      </div>
+      <battle-move-effect v-if="battleMoveFx.visible && !reducedMotion()" :key="`move-${battleMoveFx.nonce}-${battleMoveFx.stage}`"
+        :fx="battleMoveFx" :path="movePath" :color="battleMoveStyle['--battle-move-color']" />
+      <battle-persistent-effect v-for="side in ['wild','player']" :key="`persistent-${side}-${getPokemonBattleKey(side === 'wild' ? opponent : currentPokemon)}`"
+        :effects="persistentEffects(side)" :style="conditionPosition(side)" :reduced="reducedMotion()" />
 
       <div
         v-if="opponent && opponent.data"
@@ -57,7 +48,7 @@
           {
             'battle-fainted': Number(opponent.currentHp)<=0 && !transitionFx.wild,
             [`battle-transition-${transitionFx.wild}`]: Boolean(transitionFx.wild),
-            'battle-attacking-wild': battleMoveFx.visible && battleMoveFx.actor === 'opponent',
+            'move-actor': moveActor('wild'), [`move-actor-${battleMoveFx.stage}`]: moveActor('wild'),
             'battle-phased': phasedState('wild'),
             'battle-capture-target': captureFx.visible,
             'capture-target-contained': captureFx.targetContained,
@@ -67,7 +58,7 @@
       >
         <img
           :class="['battle-sprite', { 'battle-hit-shake': attackFx.wild.hit, 'battle-sprite-ready': battleSpriteStyles.wild['--sprite-image-width'] }]"
-          :style="battleSpriteStyles.wild"
+          :style="{...battleSpriteStyles.wild,...moveActorStyle('wild')}"
           :src="getPokemonSprite(opponent, 'front')"
           :alt="opponent.truename || opponent.name || 'Pokemon adverse'"
           @load="calibrateBattleSprite($event, 'wild')"
@@ -83,12 +74,12 @@
           'battle-sprite-anchor',
           'battle-sprite-player',
           'battle-position-player',
-          { 'battle-fainted': Number(currentPokemon.currentHp)<=0 && !transitionFx.player, [`battle-transition-${transitionFx.player}`]: Boolean(transitionFx.player), 'battle-attacking-player': battleMoveFx.visible && battleMoveFx.actor === 'player', 'battle-phased': phasedState('player') }
+          { 'battle-fainted': Number(currentPokemon.currentHp)<=0 && !transitionFx.player, [`battle-transition-${transitionFx.player}`]: Boolean(transitionFx.player), 'move-actor': moveActor('player'), [`move-actor-${battleMoveFx.stage}`]: moveActor('player'), 'battle-phased': phasedState('player') }
         ]"
       >
         <img
           :class="['battle-sprite', { 'battle-hit-shake': attackFx.player.hit, 'battle-sprite-ready': battleSpriteStyles.player['--sprite-image-width'] }]"
-          :style="battleSpriteStyles.player"
+          :style="{...battleSpriteStyles.player,...moveActorStyle('player')}"
           :src="getPokemonSprite(currentPokemon, 'back')"
           :alt="currentPokemon.name || 'Ton Pokemon'"
           @load="calibrateBattleSprite($event, 'player')"
@@ -301,6 +292,9 @@ import moveLearning from '@/data/moveLearning.json';
 import { localizeTypeName } from '@/services/pokemonTypes';
 import PotentialStar from '../PotentialStar.vue';
 import BattleConditions from './BattleConditions.vue';
+import BattleMoveEffect from './BattleMoveEffect.vue';
+import BattlePersistentEffect from './BattlePersistentEffect.vue';
+import { moveVisual, persistentMoveVisuals, moveConnected } from '@/services/moveVisuals';
 import BattleRain from './BattleRain.vue';
 import BattleSnow from './BattleSnow.vue';
 import BattleSandstorm from './BattleSandstorm.vue';
@@ -351,7 +345,7 @@ import { battleEnvironment } from '@/services/battleEnvironment';
 
 export default {
   name: 'BattleOverlay',
-  components: { LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleSnow, BattleSandstorm, JournalIcon },
+  components: { BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleSnow, BattleSandstorm, JournalIcon },
   props: {
     mobile: Boolean,
     mapName: { type: String, default: '' },
@@ -399,7 +393,7 @@ export default {
       resultTimer: null,
       criticalFx: { side: null, nonce: 0 }, criticalTimer: null, pendingCritical: null,
       battleMoveFx: {
-        visible: false, actor: 'player', moveName: '', moveType: 'Normal', damageClass: 'status', nonce: 0
+        visible: false, actor: 'player', moveName: '', moveType: 'Normal', damageClass: 'status', nonce: 0, family:'status', stage:'windup', travelMs:0, result:null, prepare:false, moveTarget:'opponent'
       },
       movePath: { startX: 180, startY: 390, targetX: 700, targetY: 220 },
       resultFx: { visible: false, actor: 'opponent', labels: [], nonce: 0 },
@@ -643,9 +637,9 @@ export default {
       this._presentation ||= createBattlePresentation({ changed: busy => { this.presentationBusy = busy; } });
       const delay = () => {
         if (!this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
-        if (method === 'playMoveAnimation') return payload?.phase === 'prepare' || payload?.damageClass === 'status' ? 850 : 650;
+        if (method === 'playMoveAnimation') return 300;
         if (method === 'playDriftEffects') return 650;
-        if (method === 'playMoveResult') return this.resultFx.visible ? 1150 : 250;
+        if (method === 'playMoveResult') return this.battleMoveFx.visible ? 0 : this.resultFx.visible ? 1150 : 250;
         return 0;
       };
       return this._presentation.push(() => method==='updateBattleState' ? this.presentState(payload) : this[method](payload), delay);
@@ -666,7 +660,7 @@ export default {
       else if (this.music.paused) this.music.play().catch(() => {});
     },
     syncAudio() {
-      if (document.hidden) { this.cancelEntrance(); this._presentation?.skipWait(); this._transitionRelease?.(); this.clearCaptureTimers(); }
+      if (document.hidden) { this.clearMoveFx(); this.cancelEntrance(); this._presentation?.skipWait(); this._transitionRelease?.(); this.clearCaptureTimers(); }
       this._battleAudio?.setVolume(this.soundEnabled && !document.hidden ? this.audioVolume : 0);
       this.syncMusic();
     },
@@ -844,6 +838,19 @@ export default {
       const changes = { player:battleConditionChanges(this.currentPokemon,payload.player?.equipe?.pokemons?.[0]), wild:battleConditionChanges(this.opponent,payload.wildPokemon) };
       const outgoing = events.filter(e => e.kind === 'faint' || e.kind === 'recall');
       const incoming = events.filter(e => e.kind === 'enter');
+      const move = this.battleMoveFx;
+      const connected = moveConnected(move.result);
+      if (move.visible && !move.prepare && !this.reducedMotion()) {
+        // No HP changes until the projectile/beam reaches its target. The queued
+        // server result is authoritative for misses, immunity and protection.
+        this.movePath = this.buildMovePath(move.actor,move.damageClass,move.moveTarget);
+        this.movePath.groundY = this.getSpriteGeometry(move.actor === 'opponent' ? 'player' : 'wild').bottomY - 4;
+        move.stage = 'travel';
+        await this.transitionWait(move.travelMs);
+        if (epoch !== this.visualEpoch) return;
+        move.stage = connected ? (move.damageClass === 'status' ? 'aura' : 'impact') : 'miss';
+      }
+      const healing = [];
       // Settle damage on the Pokémon that received it before removing its sprite.
       let hpChanged = false;
       for (const [side, previous, next] of [
@@ -855,13 +862,33 @@ export default {
         if (previous && Number.isFinite(nextHp) && nextHp !== Number(previous.currentHp)) {
           const delta = nextHp - Number(previous.currentHp);
           if (faint) this.$set(this.transitionFx, side, 'hit');
-          this.$set(previous, 'currentHp', nextHp);
-          this.triggerHealthFx(side, delta, nextHp);
+          if (delta > 0 && move.visible && move.family === 'drain' && connected && !this.reducedMotion()) {
+            healing.push({side,previous,nextHp,delta});
+          } else {
+            this.$set(previous, 'currentHp', nextHp);
+            this.triggerHealthFx(side, delta, nextHp);
+          }
           hpChanged = true;
         }
       }
+      if (healing.length) {
+        await this.transitionWait(220);
+        if (epoch !== this.visualEpoch) return;
+        move.stage = 'drain';
+        await this.transitionWait(560);
+        if (epoch !== this.visualEpoch) return;
+        for (const {side,previous,nextHp,delta} of healing) {
+          this.$set(previous, 'currentHp', nextHp);
+          this.triggerHealthFx(side,delta,nextHp);
+        }
+      }
+      if (move.visible) {
+        clearTimeout(this.moveTimer);
+        this.moveTimer = setTimeout(() => { move.visible = false; this.moveTimer = null; }, 650);
+      }
       this.pendingCritical = null;
       if (hpChanged && !this.reducedMotion()) await this.transitionWait(1020);
+      if (!hpChanged && move.visible && !this.reducedMotion()) await this.transitionWait(680);
       if (epoch !== this.visualEpoch) return;
       if (outgoing.length) {
         this.clearMoveFx(); this.resultFx.visible = false; this.driftNotices = [];
@@ -1103,6 +1130,18 @@ export default {
         // Le style de secours garde le sprite visible si le canvas est indisponible.
       }
     },
+    persistentEffects(side) { return persistentMoveVisuals(side === 'wild' ? this.opponent : this.currentPokemon); },
+    moveActor(side) {
+      return this.battleMoveFx.visible && ['charge','punch'].includes(this.battleMoveFx.family)
+        && (this.battleMoveFx.actor === 'opponent' ? 'wild' : 'player') === side;
+    },
+    moveActorStyle(side) {
+      if (!this.moveActor(side)) return {};
+      const dx=this.movePath.targetX-this.movePath.startX, dy=this.movePath.targetY-this.movePath.startY;
+      const length=Math.max(1,Math.hypot(dx,dy)), distance=Math.min(this.mobile?64:110,length*.4);
+      return {'--lunge-x':`${dx/length*distance}px`,'--lunge-y':`${dy/length*distance}px`,
+        '--anticipate-x':`${-dx/length*7}px`,'--anticipate-y':`${-dy/length*7}px`};
+    },
     playMoveAnimation(payload = {}) {
       const actor = payload.actor === 'opponent' ? 'opponent' : 'player';
       const side = actor === 'opponent' ? 'wild' : 'player';
@@ -1110,33 +1149,25 @@ export default {
       const damageClass = payload.phase === 'prepare' ? 'status' : (['physical', 'special', 'status'].includes(payload.damageClass)
         ? payload.damageClass : 'status');
       this.clearMoveFx();
+      clearTimeout(this.resultTimer); this.resultFx.visible = false;
       if (this.reducedMotion()) return;
       this.movePath = this.buildMovePath(actor, damageClass, payload.phase === 'prepare' ? 'self' : payload.moveTarget);
-      Object.assign(this.battleMoveFx, {
-        actor,
-        moveName: payload.moveName || '',
-        moveType: payload.moveType || 'Normal',
-        damageClass,
-        visible: true,
-        nonce: this.battleMoveFx.nonce + 1
+      const targetSide = actor === 'opponent' ? 'player' : 'wild';
+      this.movePath.groundY = this.getSpriteGeometry(targetSide).bottomY - 4;
+      Object.assign(this.battleMoveFx, moveVisual(payload), {
+        actor, moveName:payload.moveName || '', moveType:payload.moveType || 'Normal', damageClass,
+        visible:true, nonce:this.battleMoveFx.nonce+1, stage:'windup', result:null, prepare:payload.phase==='prepare', moveTarget:payload.moveTarget || 'opponent'
       });
       this._battleAudio?.move({ damageClass, moveType: payload.moveType || 'Normal' });
-      this.moveTimer = setTimeout(() => {
-        this.battleMoveFx.visible = false;
-        this.moveTimer = null;
-      }, damageClass === 'status' ? 850 : 650);
     },
     playMoveResult(payload = {}) {
+      this.battleMoveFx.result = payload;
       const labels = [];
       const side = payload.actor === 'opponent' ? 'player' : 'wild';
       const critical = payload.critical && Number(payload.damage) > 0 && !payload.missed && !payload.blocked && !payload.immune;
       clearTimeout(this.criticalTimer);
       this.criticalFx.side = null;
       this.pendingCritical = critical ? {side, key:this.getPokemonBattleKey(side === 'player' ? this.currentPokemon : this.opponent)} : null;
-      if (critical && !this.reducedMotion()) {
-        this.criticalFx = {side, nonce:this.criticalFx.nonce+1};
-        this.criticalTimer = setTimeout(()=>{this.criticalFx.side=null;},700);
-      }
       if (Number(payload.hits)>1 && !payload.missed && !payload.blocked && !payload.immune) {
         const side=payload.actor==='opponent'?'player':'wild';
         const hits=Math.min(10,Math.floor(Number(payload.hits)));
@@ -1161,7 +1192,6 @@ export default {
       this.resultFx.nonce += 1;
       this.resultFx.visible = true;
       if (payload.missed) this.playSound('miss');
-      else if (critical) this.playSound('critical');
       this.resultTimer = setTimeout(() => {
         this.resultFx.visible = false;
         this.resultTimer = null;
@@ -1174,6 +1204,13 @@ export default {
       this.clearHealthTimers(target);
       const fxState = this.attackFx[target];
       fxState.critical = numericDelta < 0 && this.pendingCritical?.side === target && this.pendingCritical.key === this.getPokemonBattleKey(target === 'player' ? this.currentPokemon : this.opponent);
+      if (fxState.critical) {
+        this.playSound('critical');
+        if (!this.reducedMotion()) {
+          this.criticalFx = {side:target,nonce:this.criticalFx.nonce+1};
+          this.criticalTimer = setTimeout(()=>{this.criticalFx.side=null;},700);
+        }
+      }
       if (this.pendingCritical?.side === target) this.pendingCritical = null;
       fxState.amount = Math.max(1, Math.round(Math.abs(numericDelta)));
       fxState.kind = numericDelta > 0 ? 'heal' : 'damage';
@@ -2090,66 +2127,10 @@ export default {
   animation: battle-impact-flash 0.28s ease-out;
 }
 
-.battle-move-effect {
-  position: absolute;
-  z-index: 54;
-  width: 66px;
-  height: 66px;
-  border-radius: 50%;
-  pointer-events: none;
-  color: var(--battle-move-color);
-  background: radial-gradient(circle, #ffffff 0 8%, currentColor 20%, transparent 68%);
-  filter: drop-shadow(0 0 10px currentColor);
-  left: var(--move-start-x);
-  top: var(--move-start-y);
-}
-
-.battle-move-effect span {
-  position: absolute;
-  inset: 11px;
-  border: 3px solid currentColor;
-  border-radius: 50%;
-}
-
-.battle-move-from-player {
-  --move-rotation: 150deg;
-}
-
-.battle-move-from-opponent {
-  --move-rotation: -150deg;
-}
-
-.battle-move-physical.battle-move-from-player,
-.battle-move-special.battle-move-from-player,
-.battle-move-physical.battle-move-from-opponent,
-.battle-move-special.battle-move-from-opponent {
-  animation: battle-projectile-target 0.62s cubic-bezier(0.3, 0.75, 0.4, 1) both;
-}
-
-.battle-move-physical {
-  width: 48px;
-  height: 48px;
-  clip-path: polygon(50% 0, 64% 28%, 100% 20%, 75% 50%, 100% 80%, 64% 72%, 50% 100%, 36% 72%, 0 80%, 25% 50%, 0 20%, 36% 28%);
-}
-
-.battle-move-status {
-  background: transparent;
-  border: 3px solid currentColor;
-  box-shadow: 0 0 18px currentColor;
-  animation: battle-status-aura 0.82s ease-out both;
-}
-
-.battle-move-status span {
-  animation: battle-status-orbit 0.82s linear both;
-}
-
-.battle-attacking-player {
-  animation: battle-lunge-player 0.58s ease-in-out both;
-}
-
-.battle-attacking-wild {
-  animation: battle-lunge-opponent 0.58s ease-in-out both;
-}
+.move-actor .battle-sprite { transition:translate .24s cubic-bezier(.3,.1,.6,1); }
+.move-actor-windup .battle-sprite { translate:var(--anticipate-x) var(--anticipate-y); }
+.move-actor-travel .battle-sprite { translate:var(--lunge-x) var(--lunge-y); }
+.move-actor-impact .battle-sprite,.move-actor-miss .battle-sprite { translate:0 0; }
 
 @keyframes battle-status-hit {
   0% { transform: scale(1); box-shadow: 0 10px 18px rgba(0, 0, 0, 0.35); }
