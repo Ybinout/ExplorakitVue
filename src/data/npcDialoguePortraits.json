@@ -824,6 +824,30 @@
         "rows": 4,
         "index": 20
       }
+    },
+    "mathilde_pikapika": {
+      "name": "mathilde_pikapika",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 7
+      }
+    },
+    "mathilde_pikapika_after": {
+      "name": "mathilde_pikapika",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 7
+      }
+    },
+    "mathilde_pikapika_locked": {
+      "name": "mathilde_pikapika",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 7
+      }
     }
   }
 }
