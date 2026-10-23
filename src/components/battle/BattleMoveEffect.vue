@@ -1,8 +1,5 @@
 <template>
   <svg class="move-library" :data-move-family="fx.family" :data-move-phase="fx.stage" aria-hidden="true" :style="{color, '--flight':`${fx.travelMs}ms`}">
-    <g v-if="fx.stage === 'windup'" :transform="`translate(${path.startX} ${path.startY})`" class="move-gather">
-      <circle r="13" fill="currentColor" opacity=".3"/><circle r="22" fill="none" stroke="currentColor" stroke-width="2"/>
-    </g>
     <g v-if="['travel','impact'].includes(fx.stage) && fx.family === 'beam'" class="move-beam" :class="{'move-beam-fading':fx.stage === 'impact'}">
         <path :d="line" pathLength="1" stroke="currentColor" stroke-width="18" opacity=".22" fill="none"/>
         <path :d="line" pathLength="1" stroke="currentColor" stroke-width="9" fill="none"/>
@@ -56,7 +53,6 @@ export default {
 </script>
 <style scoped>
 .move-library{position:absolute;inset:0;width:100%;height:100%;z-index:56;pointer-events:none;overflow:hidden;stroke-linecap:round}
-.move-gather{opacity:.8;animation:move-gather .3s ease-out both;transform-box:fill-box;transform-origin:center}
 .move-flight{animation:move-flight var(--flight) cubic-bezier(.4,.1,.7,.9) both}
 .move-beam{stroke-dasharray:1;animation:move-beam var(--flight) ease-out both}
 .move-beam-fading{animation:move-fade .4s ease-out both}
@@ -69,7 +65,6 @@ export default {
 .move-dissipate,.move-spark{animation:move-fade .45s ease-out both}
 @keyframes move-flight{from{transform:translate(var(--sx),var(--sy));opacity:.2}20%{opacity:1}to{transform:translate(var(--tx),var(--ty));opacity:1}}
 @keyframes move-beam{from{stroke-dashoffset:1;opacity:.2}to{stroke-dashoffset:0;opacity:1}}
-@keyframes move-gather{from{opacity:0}to{opacity:.8}}
 @keyframes move-contact{0%{transform:scale(.3);opacity:0}20%{transform:scale(1.12);opacity:1}to{transform:scale(.85);opacity:0}}
 @keyframes move-ring{from{transform:scale(.3);opacity:.9}to{transform:scale(1.5);opacity:0}}
 @keyframes move-slash{from{stroke-dashoffset:100;opacity:0}30%{opacity:1}to{stroke-dashoffset:0;opacity:0}}
