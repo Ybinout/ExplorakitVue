@@ -1,0 +1,805 @@
+{
+  "source": "src/assets/6931.png",
+  "sourceSha256": "c52207adff88198d3d3c16fbaf728ed9a53e5013434b60f56ef3b29a5e9d5d81",
+  "generatedBy": "Built-in imagegen, 2026-10-23. Illustrated references from the actual 36 world sprite frames; champions excluded.",
+  "assets": [
+    {
+      "imageName": "civilian-portraits-a.png",
+      "width": 1774,
+      "height": 887,
+      "columns": 6,
+      "rows": 3,
+      "rowBounds": [
+        0,
+        296,
+        591,
+        887
+      ],
+      "sha256": "a943a161e4cf2a51c34947a7f699917fd34cdd7b8e3a59eb82e2d56e3557122e"
+    },
+    {
+      "imageName": "civilian-portraits-b.png",
+      "width": 1774,
+      "height": 887,
+      "columns": 6,
+      "rows": 3,
+      "rowBounds": [
+        0,
+        326,
+        602,
+        887
+      ],
+      "sha256": "3941281ebcd8a24b83c5ed1f9de54e55956376bdff56cc8c6050d02488b32e58"
+    }
+  ],
+  "actors": {
+    "shop_keeper_ville1": {
+      "name": "vendeuse_ville_du_lac",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 0
+      }
+    },
+    "route_guide_1": {
+      "name": "eclaireur_route1",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 1
+      }
+    },
+    "route_guide_2": {
+      "name": "randonneuse_route2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 2
+      }
+    },
+    "route_guide_3": {
+      "name": "naturaliste_route3",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 3
+      }
+    },
+    "route_guide_4": {
+      "name": "mineur_route4",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 4
+      }
+    },
+    "route_guide_5": {
+      "name": "jardiniere_route5",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 5
+      }
+    },
+    "route_guide_6": {
+      "name": "voyageur_route6",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 6
+      }
+    },
+    "route_guide_7": {
+      "name": "dresseuse_route7",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 7
+      }
+    },
+    "route_guide_8": {
+      "name": "cartographe_route8",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 8
+      }
+    },
+    "city_guide_1": {
+      "name": "guide_clairbois",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 9
+      }
+    },
+    "city_guide_2": {
+      "name": "guide_rivazur",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 10
+      }
+    },
+    "city_guide_3": {
+      "name": "guide_rochebourg",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 11
+      }
+    },
+    "city_guide_4": {
+      "name": "guide_floraville",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 12
+      }
+    },
+    "city_guide_5": {
+      "name": "guide_ocreville",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 13
+      }
+    },
+    "clara_letter": {
+      "name": "archiviste_eloi",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 14
+      }
+    },
+    "clara_letter_after": {
+      "name": "archiviste_eloi",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 14
+      }
+    },
+    "clara_letter_locked": {
+      "name": "archiviste_eloi",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 14
+      }
+    },
+    "home_resident_1": {
+      "name": "habitante_clairbois",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 15
+      }
+    },
+    "home_resident_2": {
+      "name": "habitant_rivazur",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 16
+      }
+    },
+    "home_resident_3": {
+      "name": "collectionneur_rochebourg",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 17
+      }
+    },
+    "shop_keeper_1": {
+      "name": "vendeuse_route10",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 18
+      }
+    },
+    "town_lina": {
+      "name": "town_lina",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 19
+      }
+    },
+    "town_lina_after": {
+      "name": "town_lina",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 19
+      }
+    },
+    "town_bastien": {
+      "name": "town_bastien",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 20
+      }
+    },
+    "town_bastien_after": {
+      "name": "town_bastien",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 20
+      }
+    },
+    "town_nadir": {
+      "name": "town_nadir",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 21
+      }
+    },
+    "town_nadir_after": {
+      "name": "town_nadir",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 21
+      }
+    },
+    "town_salome": {
+      "name": "town_salome",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 22
+      }
+    },
+    "town_salome_after": {
+      "name": "town_salome",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 22
+      }
+    },
+    "town_iris": {
+      "name": "town_iris",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 23
+      }
+    },
+    "town_iris_after": {
+      "name": "town_iris",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 23
+      }
+    },
+    "town_noe": {
+      "name": "town_noe",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 24
+      }
+    },
+    "town_noe_after": {
+      "name": "town_noe",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 24
+      }
+    },
+    "town_malo": {
+      "name": "town_malo",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 25
+      }
+    },
+    "town_malo_after": {
+      "name": "town_malo",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 25
+      }
+    },
+    "town_maelle": {
+      "name": "town_maelle",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 26
+      }
+    },
+    "town_maelle_after": {
+      "name": "town_maelle",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 26
+      }
+    },
+    "town_louis": {
+      "name": "town_louis",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 27
+      }
+    },
+    "town_louis_after": {
+      "name": "town_louis",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 27
+      }
+    },
+    "town_ines": {
+      "name": "town_ines",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 28
+      }
+    },
+    "town_ines_after": {
+      "name": "town_ines",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 28
+      }
+    },
+    "town_robin": {
+      "name": "town_robin",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 29
+      }
+    },
+    "town_robin_after": {
+      "name": "town_robin",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 29
+      }
+    },
+    "town_celia": {
+      "name": "town_celia",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 30
+      }
+    },
+    "town_celia_after": {
+      "name": "town_celia",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 30
+      }
+    },
+    "dia0": {
+      "name": "mere_clara",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 31
+      }
+    },
+    "ch2_iris": {
+      "name": "town_ch2_iris",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 15
+      }
+    },
+    "ch2_iris_after": {
+      "name": "town_ch2_iris",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 15
+      }
+    },
+    "ch2_iris_locked": {
+      "name": "town_ch2_iris",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 15
+      }
+    },
+    "ch2_nora": {
+      "name": "town_ch2_nora",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 16
+      }
+    },
+    "ch2_nora_after": {
+      "name": "town_ch2_nora",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 16
+      }
+    },
+    "ch2_nora_locked": {
+      "name": "town_ch2_nora",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 16
+      }
+    },
+    "ch2_soren": {
+      "name": "town_ch2_soren",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 17
+      }
+    },
+    "ch2_soren_after": {
+      "name": "town_ch2_soren",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 17
+      }
+    },
+    "ch2_soren_locked": {
+      "name": "town_ch2_soren",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 17
+      }
+    },
+    "ch2_clara": {
+      "name": "town_ch2_clara",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 18
+      }
+    },
+    "ch2_clara_after": {
+      "name": "town_ch2_clara",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 18
+      }
+    },
+    "ch2_clara_locked": {
+      "name": "town_ch2_clara",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 18
+      }
+    },
+    "refuge_lyse": {
+      "name": "town_refuge_lyse",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 19
+      }
+    },
+    "refuge_lyse_after": {
+      "name": "town_refuge_lyse",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 19
+      }
+    },
+    "refuge_lyse_locked": {
+      "name": "town_refuge_lyse",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 19
+      }
+    },
+    "refuge_abel": {
+      "name": "town_refuge_abel",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 20
+      }
+    },
+    "refuge_abel_after": {
+      "name": "town_refuge_abel",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 20
+      }
+    },
+    "refuge_abel_locked": {
+      "name": "town_refuge_abel",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 20
+      }
+    },
+    "shop_rivazur": {
+      "name": "town_shop_rivazur",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 21
+      }
+    },
+    "shop_ocreville": {
+      "name": "town_shop_ocreville",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 22
+      }
+    },
+    "valpierre_guide": {
+      "name": "valpierre_guide",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 15
+      }
+    },
+    "valpierre_refuge": {
+      "name": "valpierre_refuge",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 31
+      }
+    },
+    "valpierre_vendeur": {
+      "name": "valpierre_vendeur",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 30
+      }
+    },
+    "aspha_route2": {
+      "name": "aspha_route2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 25
+      }
+    },
+    "aspha_route2_after": {
+      "name": "aspha_route2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 25
+      }
+    },
+    "aspha_route2_locked": {
+      "name": "aspha_route2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 25
+      }
+    },
+    "ocreville_resident2": {
+      "name": "ocreville_resident2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 26
+      }
+    },
+    "ocreville_resident3": {
+      "name": "ocreville_resident3",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 27
+      }
+    },
+    "clairfontaine_guide": {
+      "name": "clairfontaine_guide",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 20
+      }
+    },
+    "clairfontaine_vendeuse": {
+      "name": "clairfontaine_vendeuse",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 18
+      }
+    },
+    "clairfontaine_habitant1": {
+      "name": "clairfontaine_habitant1",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 26
+      }
+    },
+    "clairfontaine_habitant2": {
+      "name": "clairfontaine_habitant2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 27
+      }
+    },
+    "route11_guide": {
+      "name": "route11_guide",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 6
+      }
+    },
+    "route12_guide": {
+      "name": "route12_guide",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 7
+      }
+    },
+    "rochebrume_guide": {
+      "name": "rochebrume_guide",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 20
+      }
+    },
+    "rochebrume_vendeuse": {
+      "name": "rochebrume_vendeuse",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 18
+      }
+    },
+    "rochebrume_habitant1": {
+      "name": "rochebrume_habitant1",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 26
+      }
+    },
+    "rochebrume_habitant2": {
+      "name": "rochebrume_habitant2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 27
+      }
+    },
+    "blanchecime_guide": {
+      "name": "blanchecime_guide",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 20
+      }
+    },
+    "blanchecime_vendeuse": {
+      "name": "blanchecime_vendeuse",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 18
+      }
+    },
+    "blanchecime_habitant1": {
+      "name": "blanchecime_habitant1",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 26
+      }
+    },
+    "blanchecime_habitant2": {
+      "name": "blanchecime_habitant2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 27
+      }
+    },
+    "lucie_route2": {
+      "name": "lucie_route2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 18
+      }
+    },
+    "lucie_route2_after": {
+      "name": "lucie_route2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 18
+      }
+    },
+    "lucie_route2_locked": {
+      "name": "lucie_route2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 18
+      }
+    },
+    "commercial_keeper_1": {
+      "name": "vendeuse_commercial_1",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 0
+      }
+    },
+    "commercial_keeper_2": {
+      "name": "vendeuse_commercial_2",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 0
+      }
+    },
+    "commercial_keeper_3": {
+      "name": "vendeuse_commercial_3",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 0
+      }
+    },
+    "commercial_keeper_4": {
+      "name": "vendeuse_commercial_4",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 0
+      }
+    },
+    "commercial_guide": {
+      "name": "guide_commercial",
+      "spriteFrame": {
+        "columns": 8,
+        "rows": 4,
+        "index": 18
+      }
+    }
+  }
+}

@@ -6,9 +6,13 @@ export function dialoguePortraitRect(image, frame) {
   const column = index % columns, row = Math.floor(index / columns);
   // Integer boundaries and a one-pixel gutter exclude adjacent portraits at fractional cell sizes.
   const x = Math.floor(column * image.naturalWidth / columns) + 1;
-  const y = Math.floor(row * image.naturalHeight / rows) + 1;
+  const rowBounds = frame.rowBounds;
+  if (rowBounds && (!Array.isArray(rowBounds) || rowBounds.length !== rows + 1
+    || rowBounds[0] !== 0 || rowBounds[rows] !== image.naturalHeight
+    || rowBounds.some((value, i) => !Number.isInteger(value) || (i > 0 && value <= rowBounds[i - 1])))) return null;
+  const y = (rowBounds ? rowBounds[row] : Math.floor(row * image.naturalHeight / rows)) + 1;
   const right = Math.floor((column + 1) * image.naturalWidth / columns) - 1;
-  const bottom = Math.floor((row + 1) * image.naturalHeight / rows) - 1;
+  const bottom = (rowBounds ? rowBounds[row + 1] : Math.floor((row + 1) * image.naturalHeight / rows)) - 1;
   return right > x && bottom > y ? { x, y, w: right - x, h: bottom - y } : null;
 }
 export function drawDialoguePortrait(context, image, frame, width, height) {

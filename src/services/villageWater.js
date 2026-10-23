@@ -1,6 +1,8 @@
 // Pixel currents stay inside each mapped lake, never across its shoreline.
 const WIDTH = 448, HEIGHT = 320, FRAME_MS = 1000 / 15, CREST_COLOR = [190,235,255];
 const LAKES = {
+  ville_safe1: { bounds: { left: 36, right: 108, top: 183, bottom: 238 }, colors: ['48,176,240', '64,184,240', '48,144,232', '48,160,232', '72,200,240'], ripples: true },
+  gen_ville5: { bounds: { left: 372, right: 412, top: 103, bottom: 142 }, colors: ['48,176,240', '64,184,240', '48,144,232', '48,160,232', '72,200,240'], ripples: true },
   start: { bounds: { left: 54, right: 149, top: 245, bottom: 320 }, colors: ['81,145,177', '56,109,139', '53,87,100', '95,164,201'] },
   route3: { bounds: { left: 248, right: 360, top: 244, bottom: 320 }, colors: ['81,145,177', '56,109,139', '53,87,100', '95,164,201'] },
   ville3: { bounds: { left: 176, right: 304, top: 98, bottom: 192 }, colors: ['48,176,240', '64,184,240', '48,144,232', '48,160,232', '72,200,240'] },
@@ -51,7 +53,7 @@ export class VillageWaterRenderer {
     const time = Number.isFinite(timestamp) ? Math.max(0, timestamp) : 0;
     if (time < this.lastTime || time - this.lastTime >= FRAME_MS) {
       this.lastTime = time;
-      const seconds = time / 1000, visibleRipples = map === 'ville1' || map === 'ville3';
+      const seconds = time / 1000, visibleRipples = map === 'ville1' || map === 'ville3' || LAKES[map].ripples;
       for (const index of this.mask.pixels) {
         const x = index % WIDTH, y = Math.floor(index / WIDTH);
         const offset = visibleRipples

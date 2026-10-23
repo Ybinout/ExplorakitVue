@@ -396,6 +396,7 @@ import BattleOverlay from './battle/BattleOverlay.vue';
 import BattleResultPanel from './battle/BattleResultPanel.vue';
 import MoveLearningPanel from './menu/MoveLearningPanel.vue';
 import EvolutionPresentation from './menu/EvolutionPresentation.vue';
+import { illustratedNpcPortrait } from '@/services/npcPortraits';
 import { VillageWaterRenderer, hasVillageWater } from '@/services/villageWater';
 import { ForegroundWindRenderer, hasWindTrees } from '@/services/foregroundWind';
 import { GrassRustleRenderer, hasRustlingGrass } from '@/services/grassRustle';
@@ -1882,11 +1883,12 @@ export default {
       });
       return images;
     },
-    updateTextImageSequence(sentences) {
+    updateTextImageSequence(sentences, dialogueName = '') {
       const images = this.importAllImages(require.context('@/assets/image', false, /\.(png|jpe?g|svg)$/));
 
       // Mettre Ã  jour `textImageSequence` avec les sentences reÃ§ues du serveur
-      this.textImageSequence = sentences.map(sentence => {
+      this.textImageSequence = sentences.map(original => {
+        const sentence = illustratedNpcPortrait(original, dialogueName);
         return { text: sentence.text, image: images[sentence.imageName], portraitFrame: sentence.portraitFrame };
       });
     },
@@ -2525,7 +2527,7 @@ export default {
 
     this.socket.on('dialogue', (sentences) => {
       if (sentences && sentences.length > 0) {
-        this.updateTextImageSequence(sentences[0]);
+        this.updateTextImageSequence(sentences[0], sentences[1]);
         this.endSentences = sentences[1]
       } else {
         this.textImageSequence = [];
