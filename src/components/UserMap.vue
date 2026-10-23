@@ -48,6 +48,7 @@
               <journal-icon :name="item.key==='contracts'?'progress':item.key" /><span>{{ menuItemLabel(item) }}</span>
               <small v-if="item.key==='contracts' && readyContractCount" class="contract-reward-label">{{ readyContractCount }} à récupérer</small>
             </button>
+            <button class="menu-dropdown-item" data-menu-action="minimap" @click="handleMenuAction('minimap')"><journal-icon name="minimap" /><span>Minimap</span></button>
             <button class="menu-dropdown-item" data-menu-action="quit" :disabled="quitting" @click="quitGame"><journal-icon name="quit" /><span>{{ quitting ? 'Sauvegarde…' : preferences.language === 'en' ? 'Quit' : 'Quitter' }}</span><small>Accueil</small></button>
             <small v-if="isDrift" class="menu-quit-hint">Le temps continue hors du jeu. Une déconnexion prolongée compte comme un abandon.</small>
             <leave-expedition v-if="isDrift" :phase="driftState?.phase" :busy="starterBusy" :disabled="!socket?.connected" @confirm="cancelStarter" />
@@ -179,6 +180,7 @@
         </div>
         <game-info-panels
           :active="activeInfoPanel"
+          :current-map="map" :current-region="players[socket?.id]?.regionLocation"
           :recovery-busy="positionRecoveryBusy" :recovery-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && driftState?.phase === 'exploration' && !driftState?.storagePaused && !driftState?.recoveryWaiting))" :recovery-notice="positionRecoveryNotice"
           @recover-position="recoverPosition"
           :loading="menuDataLoading"
@@ -1683,7 +1685,7 @@ export default {
       this.isTeamPanelOpen = false;
     },
     closeInfoPanel() {
-      const restoreFocus = this.activeInfoPanel === 'badges';
+      const restoreFocus = ['badges', 'minimap'].includes(this.activeInfoPanel);
       this.activeInfoPanel = '';
       if (restoreFocus) this.$nextTick(() => this.$refs.menuToggle?.focus());
     },
@@ -1796,9 +1798,9 @@ export default {
         return;
       }
 
-      if (actionKey === 'options') {
+      if (actionKey === 'options' || actionKey === 'minimap') {
         this.closeLegacyPanels();
-        this.activeInfoPanel = 'options';
+        this.activeInfoPanel = actionKey;
         return;
       }
 

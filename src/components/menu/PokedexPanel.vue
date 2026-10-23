@@ -1,6 +1,6 @@
 <template>
   <div class="dex-backdrop" @mousedown.self="$emit('close')">
-    <section class="dex" role="dialog" aria-modal="true" aria-labelledby="dex-title" @keydown.stop="handleKeydown" @keyup.stop>
+    <section v-show="!locatedPokemon" class="dex" role="dialog" aria-modal="true" aria-labelledby="dex-title" @keydown.stop="handleKeydown" @keyup.stop>
       <header class="dex-header">
         <div class="dex-brand">
           <span class="dex-device" aria-hidden="true"><i></i><b></b><b></b></span>
@@ -49,7 +49,8 @@
             </div>
             <h3 :title="pokemon.seen ? pokemon.name : tr('dexUndiscovered')">{{ pokemon.seen ? pokemon.name : '— — —' }}</h3>
             <div v-if="pokemon.seen" class="dex-types"><span v-for="type in pokemon.types || []" :key="type" :class="['dex-type', `type-${type.toLowerCase()}`]">{{ typeName(type) }}</span></div>
-            <p v-else class="dex-unknown-label">{{ tr('dexUndiscovered') }}</p>
+            <button v-if="pokemon.seen || pokemon.caught" class="dex-location" :data-dex-location="pokemon.id" @click="locatedPokemon = pokemon">⌖ {{ language === 'en' ? 'Location' : 'Localisation' }}</button>
+            <p v-if="!pokemon.seen && !pokemon.caught" class="dex-unknown-label">{{ tr('dexUndiscovered') }}</p>
           </article>
         </div>
         <div v-else class="dex-empty" role="status">
@@ -59,10 +60,12 @@
       </div>
       <footer class="dex-footer"><span role="status">{{ tr('dexResults', { count: loading ? '…' : filteredEntries.length }) }}</span><span>{{ tr('dexGenerations') }} <b>I — IV</b></span></footer>
     </section>
+    <region-map-panel v-if="locatedPokemon" :pokemon="locatedPokemon" :entries="pokedex.entries" :current-map="currentMap" :current-region="currentRegion" :language="language" :animations-enabled="animationsEnabled" @close="locatedPokemon = null" />
   </div>
 </template>
 
 <script>
+import RegionMapPanel from './RegionMapPanel.vue';
 import { translate } from '@/services/i18n';
 
 const regions = [
@@ -76,12 +79,14 @@ const normalizeSearch = (value) => String(value).normalize('NFD').replace(/[\u03
 
 export default {
   name: 'PokedexPanel',
+  components: { RegionMapPanel },
   props: {
+    currentMap: String, currentRegion: String, animationsEnabled: { type: Boolean, default: true },
     pokedex: { type: Object, required: true },
     loading: { type: Boolean, default: false },
     language: { type: String, default: 'fr' }
   },
-  data() { return { search: '', status: 'all', region: 'all', regions }; },
+  data() { return { locatedPokemon: null, search: '', status: 'all', region: 'all', regions }; },
   computed: {
     caughtPercent() { return Math.max(0, Math.min(100, Math.round((this.pokedex.caught || 0) / (this.pokedex.total || 493) * 100))); },
     filters() {
@@ -131,6 +136,8 @@ export default {
 </script>
 
 <style scoped>
+.dex-location{width:100%;min-height:44px;margin-top:7px;border:1px solid var(--journal-border);border-radius:6px;color:var(--journal-accent);background:var(--journal-card);font-size:11px!important;font-weight:600;padding:4px!important}
+
 .dex-backdrop {
   position:fixed;
   inset:0;

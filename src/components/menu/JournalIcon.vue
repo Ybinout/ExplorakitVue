@@ -6,6 +6,7 @@
 
 <script>
 const paths = {
+  minimap: 'm3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16',
   menu: 'M4 6h16M4 12h16M4 18h16',
   quit: 'M10 4H4v16h6m4-12 4 4-4 4m-5-4h12',
   'weather-rain': 'M6 14a4 4 0 0 1-1-7.9 5 5 0 0 1 9.6-1.2A4.5 4.5 0 1 1 18 14ZM8 17l-1 3m6-3-1 3m6-3-1 3',
