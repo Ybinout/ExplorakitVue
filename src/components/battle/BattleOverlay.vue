@@ -1,5 +1,5 @@
 <template>
-  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-lake': environment === 'lake' }]" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
+  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-lake': environment === 'lake' }]" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
     <battle-entrance v-if="entranceActive" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
@@ -13,13 +13,14 @@
       <picture v-if="challenge" class="battle-arena-background"><source media="(orientation: landscape)" :srcset="raining ? rainBackgrounds.arenaWide : require('@/assets/battle/colosseum-wide-v2.webp')"><img :src="raining ? rainBackgrounds.arenaMobile : require('@/assets/battle/colosseum-mobile-v3.webp')" class="battle-background battle-colosseum-background" alt=""></picture>
       <picture v-else-if="environment === 'lake'" class="battle-arena-background" data-battle-environment="lake"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/lake-mobile-v2.webp')"><img src="../../assets/battle/lake-wide-v2.webp" class="battle-background" alt=""></picture>
       <picture v-else-if="environment === 'lake-gym'" class="battle-arena-background" data-battle-environment="lake-gym"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/mounir-mobile-v1.webp')"><img src="../../assets/battle/mounir-wide-v1.webp" class="battle-background" alt=""></picture>
+      <picture v-else-if="environment === 'raph-gym'" class="battle-arena-background" data-battle-environment="raph-gym"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/raph-mobile-v1.webp')"><img src="../../assets/battle/raph-wide-v1.webp" class="battle-background" alt=""></picture>
       <picture v-else-if="environment === 'cave'" class="battle-arena-background" data-battle-environment="cave"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/cave-mobile-v1.webp')"><img src="../../assets/battle/cave-wide-v1.webp" class="battle-background battle-cave-background" alt=""></picture>
       <picture v-else-if="environment === 'snow'" class="battle-arena-background" data-battle-environment="snow"><source v-if="mobile" media="(orientation: portrait)" :srcset="snowBackgrounds.mobile"><img :src="snowBackgrounds.wide" class="battle-background battle-snow-background" alt=""></picture>
       <picture v-else class="battle-arena-background"><source v-if="mobile" media="(orientation: portrait)" :srcset="raining ? rainBackgrounds.grassMobile : require('@/assets/battle/grass-mobile-v3.webp')"><img :src="raining ? rainBackgrounds.grassWide : require('@/assets/battle/back.webp')" class="battle-background" alt=""></picture>
       <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
-      <template v-if="challenge || mobile || environment === 'cave' || environment === 'lake-gym' || environment === 'lake' || environment === 'snow'">
+      <template v-if="challenge || mobile || environment === 'raph-gym' || environment === 'cave' || environment === 'lake-gym' || environment === 'lake' || environment === 'snow'">
         <div v-for="side in ['wild', 'player']" :key="`platform-${side}`" :class="['battle-platform', `battle-position-${side}`]" :data-battle-platform="side" aria-hidden="true">
-          <img v-if="environment === 'lake-gym'" src="../../assets/battle/mounir-platform-v1.webp" alt=""><span v-else-if="mobile || environment === 'cave' || environment === 'lake' || environment === 'snow'" :class="['battle-ground-disc', { 'arena-disc': challenge, 'cave-disc': environment === 'cave', 'snow-disc': environment === 'snow', 'lake-disc': environment === 'lake' }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
+          <img v-if="environment === 'lake-gym'" src="../../assets/battle/mounir-platform-v1.webp" alt=""><span v-else-if="mobile || environment === 'raph-gym' || environment === 'cave' || environment === 'lake' || environment === 'snow'" :class="['battle-ground-disc', { 'arena-disc': challenge, 'raph-disc': environment === 'raph-gym', 'cave-disc': environment === 'cave', 'snow-disc': environment === 'snow', 'lake-disc': environment === 'lake' }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
         </div>
       </template>
       <level-growth v-if="levelGrowthNotice" class="battle-level-growth" :growth="levelGrowthNotice" compact />
@@ -645,10 +646,11 @@ export default {
       return this._presentation.push(() => method==='updateBattleState' ? this.presentState(payload) : this[method](payload), delay);
     },
     startMusic(kind) {
+      if (kind === 'arena' && this.battleMapName === 'gen_arene5') kind = 'raph';
       if(this.musicKind===kind&&this.music){this.syncMusic();return;}
       this.stopMusic();
       this.musicKind = kind;
-      const tracks = { wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
+      const tracks = { raph: require('@/assets/msc/raph.mp3'), wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
       this.music = new Audio(tracks[kind] || tracks.wild);
       this.music.loop = true;
       this.syncMusic();

@@ -122,3 +122,9 @@
 
 /* The lake shore shares the same anchors as every mobile battle. */
 .game-root.is-mobile .game-stage .battle-lake .battle-ground-disc.lake-disc { background:#75b9c7; border-color:#91d2dc; border-bottom-color:#438eaa; box-shadow:0 4px 0 #345d7030,inset 0 3px 0 #c7edf1; }
+
+/* Raph: independent pedestals share sprite ground anchors at every viewport. */
+.game-root .game-stage .battle-raph-gym .battle-background { object-fit:fill; filter:none; image-rendering:pixelated; }
+.game-root .game-stage .battle-raph-gym .battle-atmosphere { background:linear-gradient(180deg,#122f3210,transparent 65%); }
+.game-root .game-stage .battle-raph-gym .battle-ground-disc.raph-disc { position:absolute; left:0; top:0; width:calc(var(--sprite-visible-size) * 1.65); height:calc(var(--sprite-visible-size) * .4); transform:translate(-50%,-58%); border:3px solid #ba975d; border-bottom:5px solid #5b675d; border-radius:50%; background:#80998b; box-shadow:0 4px 0 #122e3540,inset 0 3px 0 #d2b77e,inset 0 -3px 0 #58766a; }
+.game-root .game-stage .battle-raph-gym .battle-position-player .raph-disc { width:calc(var(--sprite-visible-size) * 1.9); height:calc(var(--sprite-visible-size) * .46); transform:translate(-50%,-84%); }
