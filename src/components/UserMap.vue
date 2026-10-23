@@ -885,12 +885,12 @@ export default {
       if (open) this.releaseAllMovementKeys();
     },
     openDriftTeam() { this.isDriftPanelOpen = false; this.handleMenuAction('pokemon'); },
-    async driftCommand({ name, data = {} }) {
+    async driftCommand({ name, data = {}, includeResponse = false }) {
       if (!this.socket?.connected) return false;
       try {
         const response = await new Promise((resolve, reject) => this.socket.timeout(6000).emit(name, data, (error, result) => error ? reject(error) : resolve(result)));
         if (!response?.success) throw new Error(response?.message || 'Action impossible.');
-        return true;
+        return includeResponse ? response : true;
       } catch (error) { this.showInteractionNotice(error.message); return false; }
     },
     openPokemonDetails(pokemon) { this.releaseAllMovementKeys(); this.selectedPokemonUuid = pokemon.uuid; },

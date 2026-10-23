@@ -59,6 +59,7 @@
               <strong class="experience-value">+{{ formatNumber(entry.xpGained) }} <small>XP</small></strong>
             </li>
           </ul>
+          <level-growth v-for="entry in experience.filter(p=>p.levelGrowth)" :key="'growth-'+entry.uuid" :growth="entry.levelGrowth" />
         </section>
 
         <div v-if="money" class="result-money">
@@ -90,12 +91,13 @@
 
 <script>
 import PokemonPortrait from '../PokemonPortrait.vue';
+import LevelGrowth from '../LevelGrowth.vue';
 
 const outcomes = ['victory', 'defeat', 'captured', 'fled', 'draw', 'interrupted'];
 
 export default {
   name: 'BattleResultPanel',
-  components: { PokemonPortrait },
+  components: { PokemonPortrait, LevelGrowth },
   props: {
     result: { type: Object, required: true },
     gameMode: { type: String, default: '' },

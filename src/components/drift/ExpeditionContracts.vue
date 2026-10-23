@@ -3,6 +3,7 @@
     <header><p class="eyebrow">À TON RYTHME</p><h3>Les contrats de l’expédition</h3><p>Ils progressent automatiquement pendant tes rencontres. Aucun n’est obligatoire. Choisis une récompense par contrat accompli : il sera remplacé par un défi plus difficile et mieux récompensé. Récupère tes gains avant la fin de l’exploration.</p></header>
     <p v-if="state.phase!=='exploration'" class="notice">L’exploration est terminée. Les récompenses non récupérées ont expiré.</p>
     <p role="status">{{ notice }}</p>
+    <level-growth v-for="growth in levelGains" :key="growth.uuid" :growth="growth" />
     <article v-for="contract in state.contracts" :key="contract.id" :data-contract="contract.key" :data-contract-stage="contract.stage||1" :class="{complete:contract.complete}">
       <p class="contract-tier">Palier {{ contract.stage||1 }} · {{ (contract.stage||1)>1 ? 'Défi avancé' : 'Premiers pas' }}</p>
       <div class="contract-heading"><h4>{{ contract.name }}</h4><span>{{ contract.claimed ? '✓ Récupéré' : contract.complete ? 'Récompense prête' : `${contract.progress} / ${contract.goal}` }}</span></div>
@@ -15,9 +16,10 @@
   </section>
 </template>
 <script>
-export default {props:{state:Object,execute:Function},data(){return {opened:null,busy:false,notice:''};},methods:{
+import LevelGrowth from '../LevelGrowth.vue';
+export default {components:{LevelGrowth},props:{state:Object,execute:Function},data(){return {opened:null,busy:false,notice:'',levelGains:[]};},methods:{
  rewardName(c){return c.rewards.find(r=>r.key===c.claimed)?.name||'Choix enregistré';},
- async claim(c,r){if(this.busy)return;this.busy=true;this.notice='';try{const ok=await this.execute({name:'drift:contractClaim',data:{contractId:c.id,reward:r.key}});this.notice=ok?'Récompense reçue : '+r.name+'. Un nouveau contrat t’attend au palier '+((c.stage||1)+1)+'.':'Récompense non reçue. Vérifie le message du serveur puis réessaie.';if(ok)this.opened=null;}finally{this.busy=false;}}
+ async claim(c,r){if(this.busy)return;this.busy=true;this.notice='';this.levelGains=[];try{const response=await this.execute({includeResponse:true,name:'drift:contractClaim',data:{contractId:c.id,reward:r.key}});const ok=response?.success;this.levelGains=response?.levelGrowth||[];this.notice=ok?'Récompense reçue : '+r.name+'. Un nouveau contrat t’attend au palier '+((c.stage||1)+1)+'.':'Récompense non reçue. Vérifie le message du serveur puis réessaie.';if(ok)this.opened=null;}finally{this.busy=false;}}
 }};
 </script>
 <style scoped>

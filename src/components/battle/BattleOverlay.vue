@@ -22,6 +22,7 @@
           <img v-if="environment === 'lake-gym'" src="../../assets/battle/mounir-platform-v1.webp" alt=""><span v-else-if="mobile || environment === 'cave' || environment === 'lake' || environment === 'snow'" :class="['battle-ground-disc', { 'arena-disc': challenge, 'cave-disc': environment === 'cave', 'snow-disc': environment === 'snow', 'lake-disc': environment === 'lake' }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
         </div>
       </template>
+      <level-growth v-if="levelGrowthNotice" class="battle-level-growth" :growth="levelGrowthNotice" compact />
       <div class="battle-atmosphere" aria-hidden="true"></div>
       <battle-rain v-if="fieldState.weather === 'rain'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
       <battle-snow v-else-if="fieldState.weather === 'hail'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
@@ -304,6 +305,7 @@ import BattleSandstorm from './BattleSandstorm.vue';
 import JournalIcon from '../menu/JournalIcon.vue';
 import { battleConditionChanges } from '@/services/battleConditions';
 import ExperienceBar from '../ExperienceBar.vue';
+import LevelGrowth from '../LevelGrowth.vue';
 import './battleViewport.css';
 import HealthBar from '../HealthBar.vue';
 import { getBattleStatus } from '@/services/gameView';
@@ -347,7 +349,7 @@ import { battleEnvironment } from '@/services/battleEnvironment';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleSnow, BattleSandstorm, JournalIcon },
+  components: { LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleSnow, BattleSandstorm, JournalIcon },
   props: {
     mobile: Boolean,
     mapName: { type: String, default: '' },
@@ -425,6 +427,7 @@ export default {
       music: null,
       musicKind: null,
       experienceNotice: '',
+      levelGrowthNotice: null,
       experienceTimer: null,
       experienceVisual: null,
       experienceBusy: false,
@@ -673,13 +676,17 @@ export default {
       const signal = this._experienceAbort.signal;
       const play = async () => {
         if (signal.aborted) return;
+        clearTimeout(this._growthTimer);
+        this.levelGrowthNotice=null;
         const label = this.currentPokemon?.uuid === pokemon.uuid ? '' : `${pokemon.truename || pokemon.name} : `;
         this.experienceNotice = `${label}+${payload.xpGained} XP`;
         const reduced = !this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         await playExperienceGain(payload, frame => {
           this.experienceVisual = { ...frame, uuid: pokemon.uuid };
+          if (frame.level === pokemon.level && payload.levelGrowth) this.levelGrowthNotice=payload.levelGrowth;
           if (frame.level > payload.previousLevel) this.experienceNotice = `${label}Niveau ${frame.level} ! +${payload.xpGained} XP`;
         }, signal, reduced);
+        if (!signal.aborted) this._growthTimer=setTimeout(()=>{this.levelGrowthNotice=null;},3500);
       };
       const previous = this._experiencePlayback;
       // The first frame is set synchronously, before the authoritative team update renders.
@@ -703,6 +710,8 @@ export default {
       await this._experiencePlayback;
     },
     cancelExperience() {
+      clearTimeout(this._growthTimer);
+      this.levelGrowthNotice=null;
       this._experienceAbort?.abort();
       this._experienceAbort = null;
       this._experiencePlayback = null;
@@ -2616,4 +2625,8 @@ export default {
   }
 }
 .experience-notice { display:block; max-width:100%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:#297eb5; font-size:11px; font-weight:800; }
+</style>
+
+<style scoped>
+.battle-level-growth{position:absolute;z-index:42;left:50%;top:38%;transform:translate(-50%,-50%);width:min(330px,90%);max-height:45%;overflow:auto;box-shadow:0 5px 20px #071d3440;pointer-events:none}
 </style>
