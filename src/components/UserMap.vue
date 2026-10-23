@@ -3,6 +3,7 @@
     <!-- <navBar></navBar> -->
     <div class="game-layout">
       <div class="game-stage" ref="gameStage">
+      <fishing-prompt v-if="fishing && !battle" :state="fishing" @start="fishingAction" @cancel="cancelFishing()" />
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
       <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
       <starter-choice v-if="isDrift && driftState?.phase==='selection'" :choices="driftState.starterChoices" :seconds="Math.max(0,Math.ceil((driftState.selectionEndsAt-driftClock-driftOffset)/1000))" :busy="starterBusy" :error="starterError" @choose="chooseStarter" @cancel="cancelStarter" />
@@ -346,6 +347,8 @@
 </template>
 
 <script>
+import FishingPrompt from './world/FishingPrompt.vue';
+import { drawFishing } from '@/services/fishingRenderer';
 import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas } from '@/services/npcFrames';
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
@@ -411,7 +414,7 @@ const MOVEMENT_INTERPOLATION_MS = 175;
 
 export default {
   components: {
-    StarterChoice, LeaveExpedition,
+    FishingPrompt, StarterChoice, LeaveExpedition,
     JournalIcon, BagPanel, PokemonComputer,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
@@ -428,6 +431,7 @@ export default {
   },
   data() {
     return {
+      fishing:null, fishingReceivedAt:0,
       mapWeather: null, worldWeatherReducedMotion: false,
       worldAudioConnected: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
@@ -646,14 +650,14 @@ export default {
     worldMusicState: { handler() { this.syncWorldMusic(); }, deep: true },
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); } },
-    map() { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); },
+    map() { this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); },
     dirtFootprintsActive(active) { if (!active) this._dirtFootprints?.suspend(); },
     snowFootprintsActive(active) { if (!active) this._snowFootprints?.suspend(); },
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
     mapLoadError(error) { if (error) this.releaseAllMovementKeys(); },
     evolutionLookupKey() { this.loadEvolutionOptions(); },
     selectedPokemonUuid() { this.evolutionNotice = ''; },
-    movementSuspended(blocked) { if (blocked) this.releaseAllMovementKeys(); },
+    movementSuspended(blocked) { if (blocked) { this.cancelFishing(); this.releaseAllMovementKeys(); } },
     movementBlocked(blocked) {
       if (blocked) {
         if (this.mapLoading && !this.movementSuspended && this._touchGesture) this.setMobileDirection(null);
@@ -904,6 +908,7 @@ export default {
       const isEnglish = this.preferences.language === 'en';
       const messages = isEnglish
         ? {
+            purchase_limit: 'You already own this rod. One is all you need.',
             insufficient_funds: 'You do not have enough money.',
             not_in_shop: 'You must be inside a shop.',
             invalid_quantity: 'Invalid quantity.',
@@ -911,6 +916,7 @@ export default {
             battle_active: 'The shop is unavailable during battle.'
           }
         : {
+            purchase_limit: "Tu possèdes déjà cette canne. Un seul exemplaire suffit.",
             insufficient_funds: "Tu n'as pas assez d'argent.",
             not_in_shop: 'Tu dois être dans une boutique.',
             invalid_quantity: 'Quantité invalide.',
@@ -1189,7 +1195,7 @@ export default {
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (document.hidden) { this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
+    onWorldVisibility() { if (document.hidden) { this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       this.releaseAllMovementKeys();
@@ -1825,7 +1831,18 @@ export default {
     },
 
 
+    cancelFishing(send=true) {
+      if (!this.fishing) return;
+      this.fishing=null;
+      if(send && this.socket?.connected)this.socket.emit('fishing:cancel',{});
+    },
+    fishingAction() {
+      if(!this.fishing || !this.socket?.connected)return;
+      const event=this.fishing.phase==='offer'?'fishing:start':'fishing:reel';
+      this.socket.emit(event,{id:this.fishing.id});
+    },
     espace() {
+      if(this.fishing){this.fishingAction();return;}
       if (this.pc.visible || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       console.log('espace');
       if (this.interactionChoice.visible || this.incomingRequest.visible) {
@@ -1879,6 +1896,8 @@ export default {
       context.restore();
     },
     handleKeydown(e) {
+      if(this.fishing && e.key==='Escape'){e.preventDefault();this.cancelFishing();return;}
+      if(this.fishing && (e.code==='Space' || e.code==='KeyA') && !e.ctrlKey && !e.metaKey && !e.altKey){e.preventDefault();if(!e.repeat)this.fishingAction();return;}
       if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) { this.releaseAllMovementKeys(); return; }
       if (this.isDriftPanelOpen) { if (e.key === "Escape") this.isDriftPanelOpen = false; return; }
       if (this.selectedPokemonUuid) return;
@@ -2023,6 +2042,7 @@ export default {
         const player = this.players[this.socket.id];
         if (!player) return;
 
+        this.cancelFishing();
         this.socket.emit('playerAction', action);
 
         player.direction = this.getDirectionFromAction(action);  // Une fonction pour dÃ©terminer la direction
@@ -2145,15 +2165,10 @@ export default {
         if (!this._worldWeather) this._worldWeather = new WorldWeatherRenderer();
         this._worldWeather.draw(c, performance.now(), this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
       } else this._worldWeather?.suspend();
+      if(this.fishing && this.fishing.map===this.map && !document.hidden && !this.mapLoading && !this.battle)
+        drawFishing(c,this.fishing,performance.now()-this.fishingReceivedAt,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       c.restore();
     },
-
-
-
-
-
-
-
 
   },
   mounted() {
@@ -2538,6 +2553,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.cancelFishing(false);
       this.worldAudioConnected = false;
       this.syncWorldMusic();
       this.pc.visible=false;
@@ -2551,12 +2567,24 @@ export default {
     });
 
 
+    this.socket.on('fishingState', state => {
+      if(state.phase==='idle'){
+        this.cancelFishing(false);
+        if(state.message)this.showInteractionNotice(state.message,3600);
+        return;
+      }
+      if(state.map!==this.map || this.movementSuspended || this.mapLoading || document.hidden){this.socket.emit('fishing:cancel',{});return;}
+      if(state.phase==='offer')this.releaseAllMovementKeys();
+      const owner=this.players[this.socket.id];if(owner&&state.phase==='casting'){owner.direction=state.direction;owner.isMoving=false;}
+      this.fishing=state;this.fishingReceivedAt=performance.now();
+    });
     this.socket.on('mapWeatherState', state => { this.mapWeather = state; });
     this.socket.on('worldDevicesState', state=>{this.worldDevices=state;});
     this.socket.on('pcOpened', state=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;this.pc={visible:true,busy:false,state,error:'',notice:''};});
     this.socket.on('pcUpdated',state=>{if(this.pc.visible)this.pc.state=state;});
 
     this.socket.on('battletrigger', (data) => {
+      this.cancelFishing();
       this.pc.visible=false;
       this.pendingBattleResult = null;
       this.battleResult = null;
@@ -2566,6 +2594,7 @@ export default {
       this.clearIncomingRequest();
       this.closeChatSession(true);
       this.$refs.battleOverlay?.resetBattleUi();
+      this.$refs.battleOverlay?.setEncounterEnvironment(data?.environment);
       this.$refs.battleOverlay?.prepareEntrance();
       this.$refs.battleOverlay?.updateFieldState(data?.field || {});
       this.battle = true;
@@ -2666,6 +2695,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    this.cancelFishing();
     this._worldMusic?.destroy();
     window.removeEventListener('pointerdown', this.syncWorldMusic);
     window.removeEventListener('pointerup', this.syncWorldMusic);

@@ -119,3 +119,6 @@
 /* Snow platforms share fighter anchors, including the mobile foreground edge. */
 .game-root .game-stage .battle-snow .battle-background { object-fit:fill; filter:none; image-rendering:pixelated; }
 .game-root.is-mobile .game-stage .battle-snow .battle-ground-disc.snow-disc { background:#edf7ff; border-color:#9db9cd; border-bottom-color:#7597af; box-shadow:0 3px 0 #35597630,inset 0 3px 0 #ffffff; }
+
+/* The lake shore shares the same anchors as every mobile battle. */
+.game-root.is-mobile .game-stage .battle-lake .battle-ground-disc.lake-disc { background:#b5c9a3; border-color:#78928a; border-bottom-color:#4b726c; box-shadow:0 4px 0 #345d7030,inset 0 3px 0 #deebc1; }

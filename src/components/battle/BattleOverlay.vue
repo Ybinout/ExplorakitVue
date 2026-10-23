@@ -1,5 +1,5 @@
 <template>
-  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym' }]" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
+  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-lake': environment === 'lake' }]" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
     <battle-entrance v-if="entranceActive" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
@@ -11,14 +11,15 @@
       ]"
     >
       <picture v-if="challenge" class="battle-arena-background"><source media="(orientation: landscape)" :srcset="raining ? rainBackgrounds.arenaWide : require('@/assets/battle/colosseum-wide-v2.webp')"><img :src="raining ? rainBackgrounds.arenaMobile : require('@/assets/battle/colosseum-mobile-v3.webp')" class="battle-background battle-colosseum-background" alt=""></picture>
+      <picture v-else-if="environment === 'lake'" class="battle-arena-background" data-battle-environment="lake"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/lake-mobile-v1.webp')"><img src="../../assets/battle/lake-wide-v1.webp" class="battle-background" alt=""></picture>
       <picture v-else-if="environment === 'lake-gym'" class="battle-arena-background" data-battle-environment="lake-gym"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/mounir-mobile-v1.webp')"><img src="../../assets/battle/mounir-wide-v1.webp" class="battle-background" alt=""></picture>
       <picture v-else-if="environment === 'cave'" class="battle-arena-background" data-battle-environment="cave"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/cave-mobile-v1.webp')"><img src="../../assets/battle/cave-wide-v1.webp" class="battle-background battle-cave-background" alt=""></picture>
       <picture v-else-if="environment === 'snow'" class="battle-arena-background" data-battle-environment="snow"><source v-if="mobile" media="(orientation: portrait)" :srcset="snowBackgrounds.mobile"><img :src="snowBackgrounds.wide" class="battle-background battle-snow-background" alt=""></picture>
       <picture v-else class="battle-arena-background"><source v-if="mobile" media="(orientation: portrait)" :srcset="raining ? rainBackgrounds.grassMobile : require('@/assets/battle/grass-mobile-v3.webp')"><img :src="raining ? rainBackgrounds.grassWide : require('@/assets/battle/back.webp')" class="battle-background" alt=""></picture>
       <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
-      <template v-if="challenge || mobile || environment === 'cave' || environment === 'lake-gym' || environment === 'snow'">
+      <template v-if="challenge || mobile || environment === 'cave' || environment === 'lake-gym' || environment === 'lake' || environment === 'snow'">
         <div v-for="side in ['wild', 'player']" :key="`platform-${side}`" :class="['battle-platform', `battle-position-${side}`]" :data-battle-platform="side" aria-hidden="true">
-          <img v-if="environment === 'lake-gym'" src="../../assets/battle/mounir-platform-v1.webp" alt=""><span v-else-if="mobile || environment === 'cave' || environment === 'snow'" :class="['battle-ground-disc', { 'arena-disc': challenge, 'cave-disc': environment === 'cave', 'snow-disc': environment === 'snow' }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
+          <img v-if="environment === 'lake-gym'" src="../../assets/battle/mounir-platform-v1.webp" alt=""><span v-else-if="mobile || environment === 'cave' || environment === 'lake' || environment === 'snow'" :class="['battle-ground-disc', { 'arena-disc': challenge, 'cave-disc': environment === 'cave', 'snow-disc': environment === 'snow', 'lake-disc': environment === 'lake' }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
         </div>
       </template>
       <div class="battle-atmosphere" aria-hidden="true"></div>
@@ -386,6 +387,7 @@ export default {
         bagPanel: false,
         text: "pas d'information"
       },
+      encounterEnvironment:null,
       battleMapName: this.mapName,
       messageNonce: 0,
       messageTimer: null,
@@ -434,7 +436,7 @@ export default {
     raining() { return this.fieldState.weather === 'rain'; },
     rainBackgrounds() { return RAIN_BACKGROUNDS; },
     snowBackgrounds() { return SNOW_BACKGROUNDS; },
-    environment() { return battleEnvironment(this.battleMapName, Boolean(this.challenge), this.fieldState.weather); },
+    environment() { return battleEnvironment(this.battleMapName, Boolean(this.challenge), this.fieldState.weather,this.encounterEnvironment); },
     hasAnnouncements() { if (this.replacementChoice) return false; return this.notice || this.transitionLabel || this.conditionNotice || this.driftNotices.length || this.fieldLabel || (this.captureFx.visible && this.captureFx.message); },
     resultSide() { return this.resultFx.visible ? (this.resultFx.actor === 'opponent' ? 'wild' : 'player') : null; },
     currentPokemon() {
@@ -1304,7 +1306,9 @@ export default {
       this.clearCaptureTimers();
       this.clearHealthTimers();
     },
+    setEncounterEnvironment(environment) { this.encounterEnvironment=environment==='lake'?'lake':null; },
     resetBattleUi() {
+      this.encounterEnvironment=null;
       this._presentation?.cancel();
       this.usableMoveIndexes = null;
       this.resolvedMoveTypes = null;
@@ -1404,6 +1408,9 @@ export default {
 .battle-cave .battle-atmosphere { background:linear-gradient(180deg,#211c4315,transparent 60%); }
 .battle-cave .battle-ground-disc.cave-disc { position:absolute; left:0; top:0; width:calc(var(--sprite-visible-size) * 1.65); height:calc(var(--sprite-visible-size) * .4); transform:translate(-50%,-58%); border:3px solid #776b83; border-bottom:5px solid #51485f; border-radius:50%; background:#a19295; box-shadow:0 3px 0 #251d4140,inset 0 3px 0 #c8b4a6; }
 .battle-cave .battle-position-player .cave-disc { width:calc(var(--sprite-visible-size) * 1.9); height:calc(var(--sprite-visible-size) * .46); transform:translate(-50%,-84%); }
+.battle-lake .battle-background { filter:none; image-rendering:pixelated; object-position:50% 50%; }
+.battle-lake .battle-ground-disc.lake-disc { position:absolute; left:0; top:0; width:calc(var(--sprite-visible-size) * 1.65); height:calc(var(--sprite-visible-size) * .4); transform:translate(-50%,-58%); border:3px solid #78928a; border-bottom:5px solid #4b726c; border-radius:50%; background:#b5c9a3; box-shadow:0 4px 0 #345d7030,inset 0 3px 0 #deebc1; }
+.battle-lake .battle-position-player .lake-disc { width:calc(var(--sprite-visible-size) * 1.9); height:calc(var(--sprite-visible-size) * .46); transform:translate(-50%,-84%); }
 .battle-snow .battle-background { filter:none; image-rendering:pixelated; object-position:50% 50%; }
 .battle-snow .battle-atmosphere { background:linear-gradient(180deg,#7dacc714,transparent 60%); }
 .battle-snow .battle-ground-disc.snow-disc { position:absolute; left:0; top:0; width:calc(var(--sprite-visible-size) * 1.65); height:calc(var(--sprite-visible-size) * .4); transform:translate(-50%,-58%); border:3px solid #9db9cd; border-bottom:5px solid #7597af; border-radius:50%; background:#edf7ff; box-shadow:0 3px 0 #35597630,inset 0 3px 0 #ffffff; }
