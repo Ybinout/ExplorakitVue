@@ -95,6 +95,13 @@
           </label>
         </div>
         <p class="options-note">{{ tr('localOptions') }}</p>
+        <details class="debug-options" data-debug-options>
+          <summary>{{ tr('debugTools') }}</summary>
+          <p>{{ tr('unstuckHelp') }}</p>
+          <button type="button" data-recover-position :disabled="recoveryBusy || !recoveryAllowed" @click="$emit('recover-position')">{{ tr(recoveryBusy ? 'unstuckBusy' : 'unstuckButton') }}</button>
+          <p v-if="recoveryNotice" role="status" class="recovery-feedback">{{ recoveryNotice }}</p>
+          <p v-else-if="!recoveryAllowed" class="recovery-feedback">{{ tr('unstuckUnavailable') }}</p>
+        </details>
       </template>
     </section>
   </div>
@@ -110,6 +117,7 @@ export default {
   name: 'GameInfoPanels',
   components: { PokedexPanel, AdventureGuide, BadgesPanel },
   props: {
+    recoveryBusy: Boolean, recoveryAllowed: Boolean, recoveryNotice: {type:String,default:''},
     active: { type: String, default: '' },
     loading: { type: Boolean, default: false },
     pokedex: { type: Object, default: () => ({ entries: [] }) },
@@ -178,4 +186,12 @@ export default {
 .theme-choice input{position:absolute;opacity:0;width:100%;height:100%;inset:0;margin:0;cursor:pointer}
 .theme-swatch{width:16px;height:16px;flex:none;border-radius:50%;border:1px solid #0002}
 @media(max-width:480px){.theme-colors{grid-template-columns:1fr 1fr}}
+</style>
+
+<style scoped>
+.debug-options{margin-top:20px;border:1px solid var(--journal-border);border-radius:10px;background:var(--journal-card);color:var(--journal-ink);padding:0 16px 12px}
+.debug-options summary{min-height:48px;display:list-item;align-content:center;cursor:pointer;color:var(--journal-heading);font-weight:700}
+.debug-options p{font-size:13px;line-height:1.5;color:var(--journal-muted);margin:8px 0 12px}
+.debug-options button{min-height:48px;padding:12px 16px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-selected);color:var(--journal-heading);font:inherit;font-weight:700;cursor:pointer;width:100%}
+.debug-options button:disabled{opacity:.6;cursor:default}.debug-options :focus-visible{outline:2px solid var(--journal-accent);outline-offset:3px}
 </style>

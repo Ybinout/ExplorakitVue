@@ -7,6 +7,10 @@ export const SUPPORTED_LANGUAGES = Object.freeze(['fr', 'en']);
 
 const messages = {
   fr: {
+    debugTools: 'Debug · Dépannage', unstuckButton: 'Débloquer mon personnage',
+    unstuckHelp: 'Bloqué dans le décor ? Reviens sur une case accessible proche, dans le même lieu. Ton équipe et ta progression sont conservées.',
+    unstuckBusy: 'Repositionnement…', unstuckDone: 'Tu es sur une case accessible. Ferme ce menu pour reprendre.',
+    unstuckUnavailable: 'Disponible pendant l’exploration, hors combat.', unstuckOffline: 'Connexion indisponible. Réessaie dans un instant.',
     interfaceColor: 'Couleur de l’interface', displayMode: 'Affichage', lightMode: 'Clair', nightMode: 'Nocturne',
     themeBlue: 'Bleu', themeSage: 'Sauge', themeLavender: 'Lavande', themeSand: 'Sable',
     orderAutoSave: 'L’ordre est enregistré automatiquement.', orderSaved: 'Ordre enregistré.', orderFailed: 'Ordre non modifié. Réessaie dans un instant.',
@@ -42,6 +46,10 @@ const messages = {
     ballDrops: 'La Ball retombe…', captured: '{pokemon} est capturé !', escaped: "{pokemon} s'est échappé !"
   },
   en: {
+    debugTools: 'Debug · Troubleshooting', unstuckButton: 'Unstuck my character',
+    unstuckHelp: 'Stuck in the scenery? Return to a nearby accessible tile in the same location. Your team and progress are preserved.',
+    unstuckBusy: 'Repositioning…', unstuckDone: 'You are on an accessible tile. Close this menu to continue.',
+    unstuckUnavailable: 'Available while exploring, outside battles.', unstuckOffline: 'Connection unavailable. Please try again shortly.',
     interfaceColor: 'Interface colour', displayMode: 'Display', lightMode: 'Light', nightMode: 'Night',
     themeBlue: 'Blue', themeSage: 'Sage', themeLavender: 'Lavender', themeSand: 'Sand',
     orderAutoSave: 'Team order saves automatically.', orderSaved: 'Order saved.', orderFailed: 'Order unchanged. Please try again.',

@@ -179,6 +179,8 @@
         </div>
         <game-info-panels
           :active="activeInfoPanel"
+          :recovery-busy="positionRecoveryBusy" :recovery-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && driftState?.phase === 'exploration' && !driftState?.storagePaused && !driftState?.recoveryWaiting))" :recovery-notice="positionRecoveryNotice"
+          @recover-position="recoverPosition"
           :loading="menuDataLoading"
           :pokedex="pokedexState"
           :progress="progressionState"
@@ -453,6 +455,7 @@ export default {
       pendingBattleResult: null,
       learningDeferred: false, learningBusy: false, learningError: '',
       evolutionQueue: [], evolutionTracker: createEvolutionTracker(evolutionGraph),
+      positionRecoveryBusy: false, positionRecoveryNotice: '',
       evolutionOptions: [], evolutionLoading: false, evolutionBusy: false, evolutionError: '', evolutionNotice: '',
       user: {
         nom: '',
@@ -1717,6 +1720,19 @@ export default {
       } finally {
         this.menuDataLoading = false;
       }
+    },
+    async recoverPosition() {
+      if (this.positionRecoveryBusy) return;
+      this.positionRecoveryNotice = '';
+      if (!this.socket?.connected) { this.positionRecoveryNotice = this.tr('unstuckOffline'); return; }
+      this.positionRecoveryBusy = true;
+      this.releaseAllMovementKeys();
+      try {
+        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit('recoverPosition', {}, (error, result) => error ? reject(new Error(this.tr('unstuckOffline'))) : resolve(result)));
+        if (!response?.success) throw new Error(response?.message || this.tr('unstuckUnavailable'));
+        this.positionRecoveryNotice = this.tr('unstuckDone');
+      } catch (error) { this.positionRecoveryNotice = error.message; }
+      finally { this.positionRecoveryBusy = false; }
     },
     async saveGameNow() {
       if (this.isDrift) return;
