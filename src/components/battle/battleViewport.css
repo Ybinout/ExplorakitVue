@@ -121,4 +121,4 @@
 .game-root.is-mobile .game-stage .battle-snow .battle-ground-disc.snow-disc { background:#edf7ff; border-color:#9db9cd; border-bottom-color:#7597af; box-shadow:0 3px 0 #35597630,inset 0 3px 0 #ffffff; }
 
 /* The lake shore shares the same anchors as every mobile battle. */
-.game-root.is-mobile .game-stage .battle-lake .battle-ground-disc.lake-disc { background:#b5c9a3; border-color:#78928a; border-bottom-color:#4b726c; box-shadow:0 4px 0 #345d7030,inset 0 3px 0 #deebc1; }
+.game-root.is-mobile .game-stage .battle-lake .battle-ground-disc.lake-disc { background:#75b9c7; border-color:#91d2dc; border-bottom-color:#438eaa; box-shadow:0 4px 0 #345d7030,inset 0 3px 0 #c7edf1; }
