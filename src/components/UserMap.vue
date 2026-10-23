@@ -63,7 +63,8 @@
         </div>
         <bag-panel v-if="isBagOpen" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
-              <template v-if="isBagConsumable(item)">
+              <machine-item-use v-if="item.category==='machine'" :key="item.key" :item="item" :team="teamPokemons" :busy="medicineBusy || teamLoading" :allowed="canUseBagItem(item)" @use="useBagMachine" />
+              <template v-else-if="isBagConsumable(item)">
                 <select data-medicine-target :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
                   <option value="">Choisir un Pokémon…</option>
                   <option v-for="p in teamPokemons" :key="p.uuid" :value="p.uuid" :disabled="!canReceiveMedicine(item, p)">{{ medicineTargetLabel(item,p) }}</option>
@@ -356,6 +357,7 @@ import { createMapSceneLoader } from '@/services/mapScene';
 import { moveTouchGesture } from '@/services/touchMovement';
 import JournalIcon from './menu/JournalIcon.vue';
 import BagPanel from './menu/BagPanel.vue';
+import MachineItemUse from './menu/MachineItemUse.vue';
 import moveLearningData from '@/data/moveLearning.json';
 import PokemonComputer from './menu/PokemonComputer.vue';
 import {drawPokemonComputers} from '@/services/pokemonComputer';
@@ -415,7 +417,7 @@ const MOVEMENT_INTERPOLATION_MS = 175;
 export default {
   components: {
     FishingPrompt, StarterChoice, LeaveExpedition,
-    JournalIcon, BagPanel, PokemonComputer,
+    JournalIcon, BagPanel, MachineItemUse, PokemonComputer,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -738,7 +740,7 @@ export default {
     isBagConsumable(item) {
       return Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse || (this.isDrift && item.category==='evolution')) && !(this.isDrift && item.revive));
     },
-    canUseBagItem(item) { return (item.category==='evolution' || item.fieldUse?.effort || item.fieldUse?.ivReroll || item.fieldUse?.effortReset) && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
+    canUseBagItem(item) { return (item.category==='machine' || item.category==='evolution' || item.fieldUse?.effort || item.fieldUse?.ivReroll || item.fieldUse?.effortReset) && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
     canReceiveMedicine(item, pokemon) {
       if (!pokemon) return false;
       if(item.category==='evolution')return Boolean(item.evolutions?.[pokemon.uuid]);
@@ -804,6 +806,21 @@ export default {
         this.medicineNotice=`${item.name} utilisé.`;
       }catch(error){this.bagError=error.message;}
       finally{this.medicineBusy=false;}
+    },
+    async useBagMachine(choice) {
+      const item=this.bagItems.find(i=>i.key===choice.itemKey);
+      if (!item || this.medicineBusy || !this.canUseBagItem(item)) return;
+      this.medicineNotice=''; this.bagError='';
+      if (!this.socket?.connected) { this.bagError='Reconnecte-toi pour utiliser une CS.'; return; }
+      this.medicineBusy=true;
+      try {
+        const response=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit(this.isDrift?'drift:useMachine':'useMachine',choice,(error,result)=>error?reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')):resolve(result)));
+        if (!response?.success) throw new Error(response?.message || 'Apprentissage impossible.');
+        if (response.items) this.applyBagItems(response.items);
+        if (response.equipe) this.applyTeamPokemons(response.equipe.pokemons);
+        this.medicineNotice=`${item.name} utilisée. La nouvelle attaque est sauvegardée.`;
+      } catch(error) { this.bagError=error.message; }
+      finally { this.medicineBusy=false; }
     },
     async useBagMedicine(item) {
       const pokemonUuid = this.medicineTargets[item.key];
