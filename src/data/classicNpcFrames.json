@@ -1,0 +1,303 @@
+{
+  "source": "src/assets/6931.png",
+  "sha256": "c52207adff88198d3d3c16fbaf728ed9a53e5013434b60f56ef3b29a5e9d5d81",
+  "width": 1451,
+  "height": 1155,
+  "extent": 32,
+  "roles": {
+    "aspha": 32,
+    "vendeur": 33,
+    "infirmiere": 34,
+    "lucie": 35
+  },
+  "frames": [
+    {
+      "name": "vendeuse",
+      "x": 751,
+      "y": 802,
+      "w": 17,
+      "h": 24,
+      "pixels": 315
+    },
+    {
+      "name": "eclaireur",
+      "x": 78,
+      "y": 163,
+      "w": 18,
+      "h": 23,
+      "pixels": 308
+    },
+    {
+      "name": "randonneuse",
+      "x": 173,
+      "y": 288,
+      "w": 21,
+      "h": 26,
+      "pixels": 404
+    },
+    {
+      "name": "naturaliste",
+      "x": 367,
+      "y": 35,
+      "w": 17,
+      "h": 24,
+      "pixels": 339
+    },
+    {
+      "name": "mineur",
+      "x": 271,
+      "y": 930,
+      "w": 17,
+      "h": 24,
+      "pixels": 305
+    },
+    {
+      "name": "jardiniere",
+      "x": 750,
+      "y": 545,
+      "w": 17,
+      "h": 25,
+      "pixels": 336
+    },
+    {
+      "name": "voyageur",
+      "x": 79,
+      "y": 290,
+      "w": 17,
+      "h": 24,
+      "pixels": 317
+    },
+    {
+      "name": "dresseuse",
+      "x": 749,
+      "y": 419,
+      "w": 19,
+      "h": 23,
+      "pixels": 320
+    },
+    {
+      "name": "cartographe",
+      "x": 462,
+      "y": 290,
+      "w": 17,
+      "h": 24,
+      "pixels": 313
+    },
+    {
+      "name": "guide_1",
+      "x": 271,
+      "y": 34,
+      "w": 17,
+      "h": 24,
+      "pixels": 322
+    },
+    {
+      "name": "guide_2",
+      "x": 558,
+      "y": 288,
+      "w": 17,
+      "h": 26,
+      "pixels": 340
+    },
+    {
+      "name": "guide_3",
+      "x": 462,
+      "y": 673,
+      "w": 17,
+      "h": 25,
+      "pixels": 334
+    },
+    {
+      "name": "guide_4",
+      "x": 79,
+      "y": 546,
+      "w": 17,
+      "h": 24,
+      "pixels": 307
+    },
+    {
+      "name": "guide_5",
+      "x": 174,
+      "y": 34,
+      "w": 19,
+      "h": 24,
+      "pixels": 332
+    },
+    {
+      "name": "archiviste",
+      "x": 79,
+      "y": 675,
+      "w": 17,
+      "h": 23,
+      "pixels": 306
+    },
+    {
+      "name": "habitante",
+      "x": 844,
+      "y": 548,
+      "w": 21,
+      "h": 22,
+      "pixels": 339
+    },
+    {
+      "name": "habitant",
+      "x": 653,
+      "y": 546,
+      "w": 19,
+      "h": 24,
+      "pixels": 327
+    },
+    {
+      "name": "collectionneur",
+      "x": 1036,
+      "y": 673,
+      "w": 18,
+      "h": 25,
+      "pixels": 344
+    },
+    {
+      "name": "commercante",
+      "x": 557,
+      "y": 545,
+      "w": 19,
+      "h": 25,
+      "pixels": 356
+    },
+    {
+      "name": "lina",
+      "x": 78,
+      "y": 33,
+      "w": 21,
+      "h": 26,
+      "pixels": 384
+    },
+    {
+      "name": "bastien",
+      "x": 751,
+      "y": 40,
+      "w": 15,
+      "h": 18,
+      "pixels": 215
+    },
+    {
+      "name": "nadir",
+      "x": 79,
+      "y": 802,
+      "w": 17,
+      "h": 24,
+      "pixels": 315
+    },
+    {
+      "name": "salome",
+      "x": 174,
+      "y": 802,
+      "w": 19,
+      "h": 24,
+      "pixels": 331
+    },
+    {
+      "name": "iris",
+      "x": 269,
+      "y": 417,
+      "w": 21,
+      "h": 25,
+      "pixels": 338
+    },
+    {
+      "name": "noe",
+      "x": 941,
+      "y": 418,
+      "w": 19,
+      "h": 24,
+      "pixels": 333
+    },
+    {
+      "name": "malo",
+      "x": 1035,
+      "y": 33,
+      "w": 19,
+      "h": 25,
+      "pixels": 358
+    },
+    {
+      "name": "maelle",
+      "x": 846,
+      "y": 40,
+      "w": 17,
+      "h": 18,
+      "pixels": 223
+    },
+    {
+      "name": "louis",
+      "x": 654,
+      "y": 801,
+      "w": 17,
+      "h": 25,
+      "pixels": 317
+    },
+    {
+      "name": "ines",
+      "x": 463,
+      "y": 414,
+      "w": 17,
+      "h": 28,
+      "pixels": 333
+    },
+    {
+      "name": "robin",
+      "x": 1037,
+      "y": 802,
+      "w": 17,
+      "h": 24,
+      "pixels": 327
+    },
+    {
+      "name": "celia",
+      "x": 175,
+      "y": 546,
+      "w": 17,
+      "h": 24,
+      "pixels": 305
+    },
+    {
+      "name": "mere",
+      "x": 749,
+      "y": 419,
+      "w": 19,
+      "h": 23,
+      "pixels": 320
+    },
+    {
+      "name": "aspha",
+      "x": 652,
+      "y": 33,
+      "w": 21,
+      "h": 25,
+      "pixels": 367
+    },
+    {
+      "name": "vendeur",
+      "x": 175,
+      "y": 163,
+      "w": 17,
+      "h": 23,
+      "pixels": 305
+    },
+    {
+      "name": "infirmiere",
+      "x": 655,
+      "y": 897,
+      "w": 17,
+      "h": 26,
+      "pixels": 310
+    },
+    {
+      "name": "lucie",
+      "x": 844,
+      "y": 548,
+      "w": 21,
+      "h": 22,
+      "pixels": 339
+    }
+  ]
+}

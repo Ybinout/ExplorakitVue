@@ -341,7 +341,7 @@
 </template>
 
 <script>
-import { drawNpcFrame } from '@/services/npcFrames';
+import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas } from '@/services/npcFrames';
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
 import { createMapSceneLoader } from '@/services/mapScene';
@@ -1260,7 +1260,8 @@ export default {
       });
       registerSources(pnjContext);
       registerSources(playerSpriteContext);
-      sources['townspeople.png'] = sources['townspeople-pixel-v2.png'];
+      sources['townspeople.png'] = require('@/assets/6931.png');
+      sources['perso1.png'] = sources['townspeople.png'];
       this.pnjSpriteSources = sources;
     },
     normalizePnjSpriteName(spriteName) {
@@ -1341,9 +1342,10 @@ export default {
           context.fillStyle='#fff8df'; context.font='12px sans-serif'; context.textAlign='center';
           context.fillText(`Défi · N. ${pnj.challengeLevel}`,drawX+32,drawY-10); context.restore();
         }
-        if (pnj.spriteFrame) {
-          // Keep the smaller world size preferred by the creator; exact atlas crops stay unchanged.
-          drawNpcFrame(context, spriteSheet, pnj.spriteFrame, drawX + 8, drawY + 4, 48);
+        if (pnj.spriteFrame || usesClassicNpcAtlas(spriteSheet)) {
+          // Original pixels at 2x, cropped to one person; preserve the feet anchor.
+          const size = npcWorldSize(spriteSheet);
+          drawNpcFrame(context, spriteSheet, pnj.spriteFrame, drawX + (64-size)/2, drawY + 52-size, size, pnj);
           continue;
         }
         const treatAsSpriteSheet =
