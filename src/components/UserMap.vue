@@ -47,6 +47,8 @@
               <journal-icon :name="item.key==='contracts'?'progress':item.key" /><span>{{ menuItemLabel(item) }}</span>
               <small v-if="item.key==='contracts' && readyContractCount" class="contract-reward-label">{{ readyContractCount }} à récupérer</small>
             </button>
+            <button class="menu-dropdown-item" data-menu-action="quit" :disabled="quitting" @click="quitGame"><journal-icon name="quit" /><span>{{ quitting ? 'Sauvegarde…' : preferences.language === 'en' ? 'Quit' : 'Quitter' }}</span><small>Accueil</small></button>
+            <small v-if="isDrift" class="menu-quit-hint">Le temps continue hors du jeu. Une déconnexion prolongée compte comme un abandon.</small>
             <leave-expedition v-if="isDrift" :phase="driftState?.phase" :busy="starterBusy" :disabled="!socket?.connected" @confirm="cancelStarter" />
           </nav>
         </div>
@@ -89,12 +91,15 @@
               class="appearance-option"
               :class="{ 'is-active': selectedSprite === spriteOption.key }"
               :aria-pressed="selectedSprite === spriteOption.key"
+              :disabled="appearanceBusy"
+              :data-appearance="spriteOption.key"
               @click="selectPlayerSprite(spriteOption.key)"
             >
-              <img class="appearance-preview" :src="spriteOption.src" alt="">
+              <span class="appearance-preview" aria-hidden="true" :style="{ backgroundImage: `url(${spriteOption.src})` }"></span>
               <span class="appearance-label">{{ spriteOption.label }}</span>
             </button>
           </div>
+          <p v-if="appearanceError" class="team-state team-error" role="alert">{{ appearanceError }}</p>
         </div>
         <div v-if="isTeamPanelOpen" class="team-panel" ref="teamPanel">
           <div class="team-title"><span><small>COMPAGNONS DE VOYAGE</small>{{ tr('team') }}</span><button class="team-close" aria-label="Fermer l’équipe" @click="isTeamPanelOpen = false">×</button></div>
@@ -539,6 +544,9 @@ export default {
       spriteSheets: {},
       availableSprites: [],
       selectedSprite: 'sprite.png',
+      appearanceBusy: false,
+      appearanceError: '',
+      quitting: false,
       // spriteWidth: 32,  // Change ces valeurs selon la taille de tes sprites
       // spriteHeight: 32,
       spriteAnimations: {
@@ -605,7 +613,7 @@ export default {
       if (this.isDrift && this.driftState && !this.driftState.alive) return 'Ton expédition est terminée : ses objets ont disparu.';
       return this.tr('emptyBag');
     },
-    visibleMenuItems() { return this.isDrift ? [...this.menuItems.filter(i => !['pokedex', 'progress', 'badges', 'save', 'appearance'].includes(i.key)), { key: 'drifts' }, ...(this.driftState?.contracts?.length?[{key:'contracts'}]:[])] : this.menuItems; },
+    visibleMenuItems() { return this.isDrift ? [...this.menuItems.filter(i => !['pokedex', 'progress', 'badges', 'save'].includes(i.key)), { key: 'drifts' }, ...(this.driftState?.contracts?.length?[{key:'contracts'}]:[])] : this.menuItems; },
     readyContractCount() { return this.isDrift && this.driftState?.alive && this.driftState.phase === 'exploration' ? (this.driftState.contracts || []).filter(c => c.complete && !c.claimed).length : 0; },
     driftPhaseLabel() { return { selection:'Choix du compagnon', exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', colosseum_ready: 'Colosseum · prêt ?', colosseum_battle: 'Colosseum', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
     driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return this.isColosseum && this.driftState?.colosseum ? `${this.driftState.colosseum.score} pts` : ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
@@ -624,7 +632,7 @@ export default {
     },
     movementBlocked() { return this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
     movementSuspended() {
-      return this.lock || this.battle || this.battleResult || this.driftSpectator
+      return this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
@@ -1369,18 +1377,20 @@ export default {
         }
       }
     },
-    selectPlayerSprite(spriteName) {
+    async selectPlayerSprite(spriteName) {
+      if (this.appearanceBusy) return;
       const normalizedSprite = this.normalizeSpriteName(spriteName);
-      this.selectedSprite = normalizedSprite;
-      this.ensureSpriteSheet(normalizedSprite);
-
-      if (this.socket && this.socket.id && this.players[this.socket.id]) {
-        this.$set(this.players[this.socket.id], 'sprite', normalizedSprite);
-      }
-
-      if (this.socket && this.socket.connected) {
-        this.socket.emit('setSprite', { sprite: normalizedSprite });
-      }
+      this.appearanceBusy = true;
+      this.appearanceError = '';
+      try {
+        if (!this.socket?.connected) throw new Error('Reconnexion en cours. Réessaie dans un instant.');
+        await this.ensureSpriteSheet(normalizedSprite).decode();
+        const result = await new Promise((resolve,reject)=>this.socket.timeout(6000).emit('setSprite',{sprite:normalizedSprite},(error,result)=>error?reject(new Error('Le serveur ne répond pas. Réessaie.')):resolve(result)));
+        if (!result?.success) throw new Error(result?.message || 'Apparence indisponible.');
+        this.selectedSprite = this.normalizeSpriteName(result.sprite);
+        if (this.players[this.socket.id]) this.$set(this.players[this.socket.id], 'sprite', this.selectedSprite);
+      } catch (error) { this.appearanceError = error.message || 'Apparence indisponible.'; }
+      finally { this.appearanceBusy = false; }
     },
     applyBagItems(items) {
       if (!Array.isArray(items)) return;
@@ -1683,6 +1693,21 @@ export default {
           message: error.message || 'Synchronisation impossible.'
         };
       }
+    },
+    async quitGame() {
+      if (this.quitting || this.appearanceBusy) return;
+      this.quitting = true;
+      this.releaseAllMovementKeys();
+      try {
+        if (!this.socket?.connected) { this.showInteractionNotice('Serveur déconnecté. Attends la reconnexion avant de quitter.'); return; }
+        if (this.isDrift) {
+          if (!await this.driftCommand({ name:'drift:save' })) return;
+        } else {
+          await this.saveGameNow();
+          if (this.saveState.status !== 'synced') { this.showInteractionNotice(this.saveState.message); return; }
+        }
+        await this.$router.push('/');
+      } finally { this.quitting = false; }
     },
     async handleMenuAction(actionKey) {
       this.isMenuOpen = false;
@@ -3172,11 +3197,15 @@ button:hover {
 }
 
 .appearance-preview {
+  display: block;
   width: 64px;
   height: 64px;
-  object-fit: contain;
+  background-size: 256px 256px;
+  background-position: 0 0;
+  background-repeat: no-repeat;
   image-rendering: pixelated;
 }
+.menu-quit-hint { display:block; padding:0 12px 10px; font-size:10px; line-height:1.4; color:var(--journal-muted); }
 
 .appearance-label {
   font-size: 9px;

@@ -34,6 +34,8 @@ export function getSpriteOrder(spriteName) {
 }
 
 export function getSpriteLabel(spriteName) {
+  const labels = { 'sprite.png':'Dresseur', 'sprite2.png':'Dresseuse', 'sprite3.png':'Éclaireur', 'sprite4.png':'Exploratrice', 'sprite5.png':'Randonneur', 'sprite6.png':'Voyageuse' };
+  if (labels[spriteName]) return labels[spriteName];
   const match = spriteName.match(/^sprite(\d*)\.png$/);
   return !match || !match[1] ? 'Sprite 1' : `Sprite ${match[1]}`;
 }
