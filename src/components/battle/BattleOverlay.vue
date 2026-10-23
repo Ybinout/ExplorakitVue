@@ -245,10 +245,12 @@
 
         <div v-else-if="actionState.pokemonPanel" class="battle-grid battle-grid-pokemon" :data-replacement-choice="replacementChoice ? 'true' : null" aria-label="Pokémon disponibles">
           <button
-            v-for="(pokemon, index) in battleTeam"
+            v-for="{ pokemon, index } in orderedBattleTeam"
             :key="getPokemonBattleKey(pokemon) || index"
             type="button"
             class="battle-choice-btn battle-pokemon-choice"
+            :data-party-uuid="pokemon.uuid"
+            :data-battle-index="index"
             :disabled="isSwitchUnavailable(pokemon, index)"
             @click="submitAction({ action: 'change', number: index }, tr('switchRunning'))"
           >
@@ -447,6 +449,13 @@ export default {
     },
     battleTeam() {
       return Array.isArray(this.player?.equipe?.pokemons) ? this.player.equipe.pokemons : [];
+    },
+    orderedBattleTeam() {
+      return this.battleTeam.map((pokemon, index) => ({ pokemon, index }))
+        .sort((a, b) => {
+          const rank = entry => Number.isInteger(entry.pokemon.battlePartySlot) ? entry.pokemon.battlePartySlot : Number.MAX_SAFE_INTEGER;
+          return rank(a) - rank(b) || a.index - b.index;
+        });
     },
     canChooseAction() {
       return this.canAct && !this.entranceActive && !this.presentationBusy && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
