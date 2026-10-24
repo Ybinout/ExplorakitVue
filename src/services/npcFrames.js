@@ -18,12 +18,6 @@ export function npcWorldSize(image) { return usesClassicNpcAtlas(image) ? 64 : 4
 // The generated atlas has unequal row gutters. Grid division included neighbours'
 // feet. These source rectangles are for world pixel sprites only.
 export function npcFrame(image, frame, actor) {
-  // Single authored sprite: remove transparent margins at draw time, never sample
-  // another atlas character. Keep her feet on the same anchor as the player.
-  if (/(?:^|\/)lucie-v1(?:\.[a-z0-9]+)?\.png(?:[?#]|$)/i.test(String(image.src))) {
-    const scale = image.naturalWidth / 1254;
-    return { x:319*scale, y:160*scale, w:609*scale, h:1012*scale, extent:1012*scale };
-  }
   if (usesClassicNpcAtlas(image)) {
     const { x, y, w, h } = classic.frames[classicNpcIndex(frame, actor)];
     return { x, y, w, h, extent:classic.extent };

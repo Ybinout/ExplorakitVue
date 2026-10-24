@@ -323,6 +323,10 @@ const SNOW_BACKGROUNDS = Object.freeze({
   wide: require('@/assets/battle/snow-wide-v1.webp')
 });
 const GYM_BACKGROUNDS = Object.freeze({
+  'lucie-house': {
+    wide: require('@/assets/battle/lucie-house-wide-v1.webp'), mobile: require('@/assets/battle/lucie-house-mobile-v1.webp'),
+    platform: { '--gym-ground': '#485268', '--gym-rim': '#747891', '--gym-edge': '#282d40', '--gym-light': '#9299b2' }
+  },
   'hoze-gym': {
     wide: require('@/assets/battle/hoze-wide-v1.webp'), mobile: require('@/assets/battle/hoze-mobile-v1.webp'),
     platform: { '--gym-ground': '#d1ae70', '--gym-rim': '#a67f46', '--gym-edge': '#795c35', '--gym-light': '#efd39c' }
