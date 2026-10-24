@@ -349,7 +349,7 @@
         <TextWithImage
           :sequence="textImageSequence"
           :char-per-step="preferences.textSpeed"
-          :sound-volume="preferences.masterVolume / 100"
+          :sound-volume="preferences.masterVolume / 100 * 0.5"
           :sound-enabled="preferences.masterVolume > 0"
           @sequence-end="clearSequence"
         />
