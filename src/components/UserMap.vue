@@ -2345,7 +2345,7 @@ export default {
 
   },
   mounted() {
-    this._worldMusic = new WorldMusic({ 'mounir-room': require('@/assets/msc/mounir-arene.mp3'), 'hoze-room': require('@/assets/msc/hoze-arene.mp3'), village: require('@/assets/msc/village.mp3'), route: require('@/assets/msc/start.mp3'), cave: require('@/assets/msc/cave.mp3'), snow: require('@/assets/msc/snow.mp3'), 'wanda-room': require('@/assets/msc/areneWanda.mp3'), 'sevenp-room': require('@/assets/msc/arene7p.mp3'), 'raph-room': require('@/assets/msc/areneraph.mp3'), 'ana-room': require('@/assets/msc/ana_arene.mp3'), 'lucie-room': require('@/assets/msc/lucie-maison.mp3') });
+    this._worldMusic = new WorldMusic({ 'mounir-room': require('@/assets/msc/mounir-arene.mp3'), 'hoze-room': require('@/assets/msc/hoze-arene.mp3'), center: require('@/assets/msc/center.mp3'), village: require('@/assets/msc/village.mp3'), route: require('@/assets/msc/start.mp3'), cave: require('@/assets/msc/cave.mp3'), snow: require('@/assets/msc/snow.mp3'), 'wanda-room': require('@/assets/msc/areneWanda.mp3'), 'sevenp-room': require('@/assets/msc/arene7p.mp3'), 'raph-room': require('@/assets/msc/areneraph.mp3'), 'ana-room': require('@/assets/msc/ana_arene.mp3'), 'lucie-room': require('@/assets/msc/lucie-maison.mp3') });
     window.addEventListener('pointerdown', this.syncWorldMusic);
     window.addEventListener('pointerup', this.syncWorldMusic);
     window.addEventListener('keydown', this.syncWorldMusic);

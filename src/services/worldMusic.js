@@ -3,6 +3,7 @@
 export function worldMusicTrack(map) {
   if (map === 'ville1_arene') return 'mounir-room';
   if (map === 'ville_safe1_arene') return 'hoze-room';
+  if (map === 'centre') return 'center';
   if (map === 'route2_maison') return 'lucie-room';
   if (map === 'ville3_arene') return 'ana-room';
   if (map === 'gen_arene5') return 'raph-room';
@@ -14,7 +15,7 @@ export function worldMusicTrack(map) {
   if (map==='ville_commerciale'||/^tour_(?:rdc|etage[123])$/.test(map)) return 'village';
   if (/^(?:gen_)?route\d+$/.test(map) || map === 'gen_shop_route10' || /^pk[12]$/.test(map)) return 'route';
   if (map === 'start' || /^(?:ville(?:_safe)?\d+|gen_ville\d+)(?:_|$)/.test(map)
-    || /^(?:maison\d*|etage\d*|centre|route2_maison)$/.test(map)
+    || /^(?:maison\d*|etage\d*|route2_maison)$/.test(map)
     || /^gen_(?:shop|maison|arene)/.test(map)) return 'village';
   return null;
 }

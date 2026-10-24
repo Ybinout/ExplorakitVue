@@ -3,7 +3,8 @@ export function drawPokemonComputers(context, state, map) {
   if(state?.map!==map)return;
   for(const device of state.devices || []){
     if(device.kind!=='pc')continue;
-    context.save();context.translate(device.x*32,device.y*32-16);
+    // Seat the screen inside the counter opening without moving its interaction tile.
+    context.save();context.translate(device.x*32+8,device.y*32-16);
     const rect=(color,x,y,w,h)=>{context.fillStyle=color;context.fillRect(x,y,w,h);};
     rect('#343e58',2,2,28,44);rect('#687c96',4,4,24,40);rect('#b9d3df',4,4,24,3);
     rect('#26384f',6,8,20,20);rect('#83cee0',8,10,16,14);rect('#c8f0e5',10,12,12,2);
