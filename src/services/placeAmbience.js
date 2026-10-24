@@ -117,6 +117,14 @@ export function placeAmbienceProfile(map) {
       color: '#73bad1',
     };
   if (caves[map]) return { kind: 'cave', shade: '#142238', opacity: 0.27, ...caves[map] };
+  if (map === 'ville5_arene')
+    return {
+      kind: 'summit',
+      ...ARENA_LIGHTS['7p-gym'],
+      opacity: 0.035,
+      lights: [[224, 56, 60], [62, 148, 22], [386, 148, 22], [62, 244, 22], [386, 244, 22]],
+      lanterns: [[136, 24], [312, 24], [20, 130], [428, 130], [20, 215], [428, 215], [196, 265], [251, 265]],
+    };
   if (gymMaps[map])
     return {
       kind: 'arena',
@@ -288,6 +296,20 @@ export class PlaceAmbienceRenderer {
       glow(c, x, y + 8, r, '#fff', 0.8);
       c.restore();
       glow(c, x, y + 8, r, p.color, p.kind === 'snow' ? 0.23 : 0.16);
+    }
+    if (p.kind === 'summit') {
+      for (const [x, y] of p.lanterns) {
+        const strength = motion ? 0.21 + Math.sin(t * 1.7 + x) * 0.025 : 0.21;
+        glow(c, x, y, 16, '#ffd69b', strength);
+      }
+      // A few suspended motes inside the window's light, never across the HUD.
+      if (motion) for (let n = 0; n < 12; n++) {
+        const age = mod(t * 0.035 + n * 0.083, 1);
+        c.globalAlpha = Math.sin(age * Math.PI) * 0.36;
+        c.fillStyle = '#d9f4ff';
+        c.fillRect(Math.round(174 + (n * 31 % 100) + Math.sin(t * 0.25 + n) * 3), Math.round(90 + age * 100), 1, 1);
+      }
+      c.globalAlpha = 1;
     }
     if (p.kind === 'snow') {
       for (const [x, y, w, h] of p.windows) {
