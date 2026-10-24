@@ -120,14 +120,24 @@ export class WorldWeatherRenderer {
       // Different depths and a blue rim keep white flakes visible on snowy ground.
       // A single bounded surface follows the map camera, never the interface.
       c.fillStyle = `rgba(113,150,184,${snow * .012})`; c.fillRect(0, 0, WIDTH, HEIGHT);
-      for (let i = 0; i < this.budget.snow; i++) {
-        const p = this.particles[i], depth = .35 + p.depth * .65;
-        const x = mod(p.x * (WIDTH + 32) + time * (8 + wind * 14) * depth + Math.sin(time * .75 + p.phase) * (8 + wind * 3), WIDTH + 32) - 16;
-        const y = mod(p.y * (HEIGHT + 32) + time * (22 + depth * 40), HEIGHT + 32) - 16;
-        const size = 1.1 + p.depth * 3.2;
-        c.fillStyle = `rgba(248,253,255,${.55 + p.depth * .4})`;
-        c.strokeStyle = `rgba(72,109,145,${.15 + p.depth * .12})`; c.lineWidth = .65;
-        c.beginPath(); c.ellipse(x, y, size, size * .88, p.phase + time * .12, 0, Math.PI * 2); c.fill(); c.stroke();
+      // Six depth batches replace hundreds of fill/stroke submissions. Keep every
+      // particle, its trajectory, size and rotation; only opacity is quantized.
+      for (let band = 0; band < 6; band++) {
+        const alphaDepth = (band + .5) / 6;
+        c.fillStyle = `rgba(248,253,255,${.55 + alphaDepth * .4})`;
+        c.strokeStyle = `rgba(72,109,145,${.15 + alphaDepth * .12})`; c.lineWidth = .65;
+        c.beginPath();
+        for (let i = 0; i < this.budget.snow; i++) {
+          const p = this.particles[i];
+          if (Math.min(5, Math.floor(p.depth * 6)) !== band) continue;
+          const depth = .35 + p.depth * .65;
+          const x = mod(p.x * (WIDTH + 32) + time * (8 + wind * 14) * depth + Math.sin(time * .75 + p.phase) * (8 + wind * 3), WIDTH + 32) - 16;
+          const y = mod(p.y * (HEIGHT + 32) + time * (22 + depth * 40), HEIGHT + 32) - 16;
+          const size = 1.1 + p.depth * 3.2, angle = p.phase + time * .12;
+          c.moveTo(x + Math.cos(angle) * size, y + Math.sin(angle) * size);
+          c.ellipse(x, y, size, size * .88, angle, 0, Math.PI * 2);
+        }
+        c.fill(); c.stroke();
       }
     }
     if (!wind || sand) return;

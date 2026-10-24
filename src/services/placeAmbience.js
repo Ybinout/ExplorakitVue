@@ -115,7 +115,7 @@ export function placeAmbienceProfile(map) {
         [90, 199],
         [388, 199],
       ],
-      signs: [[327, 94]],
+      signs: [],
       color: '#ffd494',
     };
   if (map === 'ville1')
@@ -287,10 +287,8 @@ export class PlaceAmbienceRenderer {
     }
     target.drawImage(this.canvas, 0, 0, 896, 640);
   }
-  paint(t, motion, wind) {
-    const c = this.context,
-      p = this.profile;
-    c.clearRect(0, 0, WIDTH, HEIGHT);
+  paintBase(c) {
+    const p = this.profile;
     c.save();
     c.globalAlpha = p.opacity;
     c.fillStyle = p.shade;
@@ -304,20 +302,6 @@ export class PlaceAmbienceRenderer {
       glow(c, x, y + 8, r, '#fff', 0.8);
       c.restore();
       glow(c, x, y + 8, r, p.color, p.kind === 'snow' ? 0.23 : 0.16);
-    }
-    if (p.kind === 'summit' || p.kind === 'hall') {
-      for (const [x, y] of p.lanterns) {
-        const strength = motion ? 0.21 + Math.sin(t * 1.7 + x) * 0.025 : 0.21;
-        glow(c, x, y, 16, p.lanternColor || '#ffd69b', strength);
-      }
-      // A few suspended motes inside the window's light, never across the HUD.
-      if (motion) for (let n = 0; n < 12; n++) {
-        const age = mod(t * 0.035 + n * 0.083, 1);
-        c.globalAlpha = Math.sin(age * Math.PI) * 0.36;
-        c.fillStyle = '#d9f4ff';
-        c.fillRect(Math.round(174 + (n * 31 % 100) + Math.sin(t * 0.25 + n) * 3), Math.round(90 + age * 100), 1, 1);
-      }
-      c.globalAlpha = 1;
     }
     if (p.kind === 'snow') {
       for (const [x, y, w, h] of p.windows) {
@@ -335,6 +319,36 @@ export class PlaceAmbienceRenderer {
         glow(c, x, y, 8, '#ffdf9e', 0.6);
         glow(c, x, y + 29, 28, p.color, .18, .45);
       }
+    }
+  }
+  paint(t, motion, wind) {
+    const c = this.context,
+      p = this.profile;
+    c.clearRect(0, 0, WIDTH, HEIGHT);
+    if (p.kind === 'snow') {
+      if (!this.staticLighting) {
+        this.staticLighting = this.createCanvas();
+        this.staticLighting.width = WIDTH;
+        this.staticLighting.height = HEIGHT;
+        this.paintBase(this.staticLighting.getContext('2d'));
+      }
+      c.drawImage(this.staticLighting, 0, 0);
+    } else this.paintBase(c);
+    if (p.kind === 'summit' || p.kind === 'hall') {
+      for (const [x, y] of p.lanterns) {
+        const strength = motion ? 0.21 + Math.sin(t * 1.7 + x) * 0.025 : 0.21;
+        glow(c, x, y, 16, p.lanternColor || '#ffd69b', strength);
+      }
+      // A few suspended motes inside the window's light, never across the HUD.
+      if (motion) for (let n = 0; n < 12; n++) {
+        const age = mod(t * 0.035 + n * 0.083, 1);
+        c.globalAlpha = Math.sin(age * Math.PI) * 0.36;
+        c.fillStyle = '#d9f4ff';
+        c.fillRect(Math.round(174 + (n * 31 % 100) + Math.sin(t * 0.25 + n) * 3), Math.round(90 + age * 100), 1, 1);
+      }
+      c.globalAlpha = 1;
+    }
+    if (p.kind === 'snow') {
       for (const [x, y] of p.chimneys) {
         if (motion)
           for (let i = 0; i < 5; i++) {
@@ -447,7 +461,7 @@ export class PlaceAmbienceRenderer {
     for (const [x, y] of p.flags || []) cloth(c, x, y, t, p.color, motion ? Math.max(0.5, wind) : 0);
   }
   suspend() {
-    for (const key of ['canvas', 'water', 'waterMask']) {
+    for (const key of ['canvas', 'water', 'waterMask', 'staticLighting']) {
       if (this[key]) {
         this[key].width = 0;
         this[key].height = 0;
