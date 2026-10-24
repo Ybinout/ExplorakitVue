@@ -94,23 +94,7 @@ export function placeAmbienceProfile(map) {
     return {
       kind: 'snow',
       shade: '#203e78',
-      opacity: 0.16,
-      lights: [
-        [151, 120, 29],
-        [311, 120, 29],
-        [151, 248, 27],
-        [295, 248, 27],
-      ],
-      windows: [
-        [52, 260, 6, 6],
-        [73, 260, 8, 6],
-        [87, 260, 8, 6],
-        [323, 245, 6, 5],
-        [371, 261, 8, 6],
-        [385, 261, 6, 6],
-        [51, 104, 6, 5],
-        [94, 103, 6, 5],
-      ],
+      opacity: 0,
       chimneys: [
         [90, 199],
         [388, 199],
@@ -265,7 +249,7 @@ export class PlaceAmbienceRenderer {
       } // Lake effects fail closed; never spill onto land.
     }
   }
-  draw(target, source, map, timestamp, motion = true, wind = 0) {
+  draw(target, source, map, timestamp, motion = true, wind = 0, daylight = { night: 0 }) {
     if (this.destroyed) return;
     if (!placeAmbienceProfile(map)) {
       this.suspend();
@@ -274,13 +258,13 @@ export class PlaceAmbienceRenderer {
     if (this.map !== map || this.source !== source || !this.canvas) this.prepare(source, map);
     if (!this.context) return;
     const time = Number.isFinite(timestamp) ? Math.max(0, timestamp) : 0;
-    const settings = `${motion}:${wind}`;
+    const settings = `${motion}:${wind}:${Math.round(daylight.night * 1000)}`;
     if (
       this.lastTime === -Infinity ||
       this.settings !== settings ||
       (motion && (time < this.lastTime || time - this.lastTime >= FRAME_MS))
     ) {
-      this.paint(motion ? time / 1000 : 0, motion, Math.max(0, Math.min(3, Number(wind) || 0)));
+      this.paint(motion ? time / 1000 : 0, motion, Math.max(0, Math.min(3, Number(wind) || 0)), daylight.night);
       this.lastTime = time;
       this.settings = settings;
       this.frames++;
@@ -289,6 +273,8 @@ export class PlaceAmbienceRenderer {
   }
   paintBase(c) {
     const p = this.profile;
+    // Outdoor windows and lanterns now belong to the shared day/night layer.
+    if (p.kind === 'snow') return;
     c.save();
     c.globalAlpha = p.opacity;
     c.fillStyle = p.shade;
@@ -301,39 +287,14 @@ export class PlaceAmbienceRenderer {
       c.globalCompositeOperation = 'destination-out';
       glow(c, x, y + 8, r, '#fff', 0.8);
       c.restore();
-      glow(c, x, y + 8, r, p.color, p.kind === 'snow' ? 0.23 : 0.16);
-    }
-    if (p.kind === 'snow') {
-      for (const [x, y, w, h] of p.windows) {
-        glow(c, x + w / 2, y + h / 2, 16, p.color, 0.24);
-        c.fillStyle = '#ffe6a6';
-        c.globalAlpha = 0.7;
-        c.fillRect(x, y, w, h);
-        c.globalAlpha = 1;
-        c.fillStyle = '#896d5a';
-        c.fillRect(x + Math.floor(w / 2), y, 1, h);
-      }
-      for (const [x, y] of p.lights) {
-        c.fillStyle = '#ffe4a8';
-        c.fillRect(x - 2, y - 1, 4, 3);
-        glow(c, x, y, 8, '#ffdf9e', 0.6);
-        glow(c, x, y + 29, 28, p.color, .18, .45);
-      }
+      glow(c, x, y + 8, r, p.color, 0.16);
     }
   }
-  paint(t, motion, wind) {
+  paint(t, motion, wind, night = 0) {
     const c = this.context,
       p = this.profile;
     c.clearRect(0, 0, WIDTH, HEIGHT);
-    if (p.kind === 'snow') {
-      if (!this.staticLighting) {
-        this.staticLighting = this.createCanvas();
-        this.staticLighting.width = WIDTH;
-        this.staticLighting.height = HEIGHT;
-        this.paintBase(this.staticLighting.getContext('2d'));
-      }
-      c.drawImage(this.staticLighting, 0, 0);
-    } else this.paintBase(c);
+    this.paintBase(c);
     if (p.kind === 'summit' || p.kind === 'hall') {
       for (const [x, y] of p.lanterns) {
         const strength = motion ? 0.21 + Math.sin(t * 1.7 + x) * 0.025 : 0.21;
@@ -430,7 +391,7 @@ export class PlaceAmbienceRenderer {
       if (motion)
         for (let n = 0; n < 2; n++) {
           const x = mod(t * 2.1 + n * 290, 750) - 150;
-          glow(c, x, 106 + n * 117, 108, '#243c61', 0.065, 0.42);
+          glow(c, x, 106 + n * 117, 108, '#243c61', 0.065 * (1 - night), 0.42);
         }
     }
     if (motion && p.butterflies) {
@@ -444,7 +405,7 @@ export class PlaceAmbienceRenderer {
         const bx = Math.round(x + Math.sin(phase) * (garden ? 6 : 12));
         const by = Math.round(y + Math.sin(phase * 1.7) * 3 - Math.cos(phase * .6) * 2);
         const wing = Math.sin(t * (9 + i % 4) + i) > 0 ? 3 : 1;
-        c.globalAlpha = Math.min(1, age * 2, (duration - age) * 2) * .95;
+        c.globalAlpha = Math.min(1, age * 2, (duration - age) * 2) * .95 * (1 - night);
         c.fillStyle = ['#ffe4a0', '#e9c6fa', '#a7e2f5', '#ffb7c6'][i % 4];
         c.fillRect(bx - wing, by - 1, wing, 3);
         c.fillRect(bx + 1, by - 1, wing, 3);
@@ -461,7 +422,7 @@ export class PlaceAmbienceRenderer {
     for (const [x, y] of p.flags || []) cloth(c, x, y, t, p.color, motion ? Math.max(0.5, wind) : 0);
   }
   suspend() {
-    for (const key of ['canvas', 'water', 'waterMask', 'staticLighting']) {
+    for (const key of ['canvas', 'water', 'waterMask']) {
       if (this[key]) {
         this[key].width = 0;
         this[key].height = 0;

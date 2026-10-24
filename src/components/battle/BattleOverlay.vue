@@ -1,5 +1,5 @@
 <template>
-  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle}" :data-place-light="placeLight ? environment : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
+  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle, ...daylightStyle}" :data-place-light="placeLight ? environment : null" :data-day-phase="outdoorLighting ? daylight.phase : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
     <battle-entrance v-if="entranceActive" :key="visualEpoch" :champion="entranceChampion" @portrait-ready="onEntrancePortraitReady" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
@@ -24,6 +24,7 @@
           <img v-if="environment === 'lake-gym'" src="../../assets/battle/mounir-platform-v1.webp" alt=""><span v-else-if="mobile || gymBackground || environment === 'raph-gym' || environment === 'cave' || environment === 'lake' || environment === 'snow'" :class="['battle-ground-disc', { 'arena-disc': challenge, 'gym-disc': Boolean(gymBackground), 'raph-disc': environment === 'raph-gym', 'cave-disc': environment === 'cave', 'snow-disc': environment === 'snow', 'lake-disc': environment === 'lake' }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
         </div>
       </template>
+      <div v-if="outdoorLighting" class="battle-daylight-veil" aria-hidden="true"></div>
       <level-growth v-if="levelGrowthNotice" class="battle-level-growth" :growth="levelGrowthNotice" compact />
       <div class="battle-atmosphere" aria-hidden="true"></div>
       <battle-rain v-if="fieldState.weather === 'rain'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
@@ -367,6 +368,7 @@ const FIELD_LABELS = {
   }
 };
 
+import { outdoorMap } from '@/data/nightLights';
 import { battleEnvironment } from '@/services/battleEnvironment';
 import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
@@ -375,6 +377,7 @@ export default {
   components: { BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleSnow, BattleSandstorm, JournalIcon },
   props: {
     mobile: Boolean,
+    daylight: { type: Object, default: () => ({ night: 0, warmth: 0, phase: 'day' }) },
     mapName: { type: String, default: '' },
     notice: { type: String, default: '' },
     active: { type: Boolean, default: false },
@@ -461,6 +464,13 @@ export default {
   computed: {
     entranceActive() { return this.entrancePhase !== 'ready'; },
     raining() { return this.fieldState.weather === 'rain'; },
+    outdoorLighting() { return !this.challenge && outdoorMap(this.battleMapName); },
+    daylightStyle() {
+      if (!this.outdoorLighting) return {};
+      const night = this.daylight.night * (this.fieldState.weather === 'sun' ? .4 : 1);
+      return { '--night-alpha': night * .24, '--night-sky-alpha': night * .45, '--night-brightness': 1 - night * .34,
+        '--night-sprite-brightness': 1 - night * .12, '--dusk-alpha': this.daylight.warmth * .12 };
+    },
     placeLight() { return ARENA_LIGHTS[this.environment] || null; },
     placeLightStyle() { return this.placeLight ? {'--place-light-rgb':this.placeLight.rgb,'--place-light-shade':this.placeLight.shade} : {}; },
     gymBackground() { return GYM_BACKGROUNDS[this.environment] || null; },
@@ -1524,6 +1534,14 @@ export default {
 
 .battle-entry-holding > .battle-scene, .battle-entry-holding > .battle-action-shell { visibility:hidden; }
 .battle-entry-holding .battle-sprite { animation:none; }
+
+.battle-daylight-veil { position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:linear-gradient(150deg,rgba(255,173,112,var(--dusk-alpha)),transparent 70%),
+    linear-gradient(rgba(5,11,39,var(--night-sky-alpha)),transparent 68%),
+    linear-gradient(rgba(12,23,65,var(--night-alpha)),rgba(20,34,68,var(--night-alpha)));
+}
+.battle[data-day-phase] .battle-background { filter:brightness(var(--night-brightness)); transition:filter 5s linear; }
+.battle[data-day-phase] .battle-sprite-anchor { filter:brightness(var(--night-sprite-brightness)); transition:filter 5s linear; }
 
 .battle-scene {
   position: absolute;

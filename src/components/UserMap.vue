@@ -14,7 +14,7 @@
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
       <battle-overlay
         ref="battleOverlay"
-        :active="battle" :mobile="showMobileControls" :map-name="map"
+        :active="battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
         :bag-items="bagItems"
         :bag-loading="bagLoading"
         :preferences="preferences"
@@ -413,6 +413,9 @@ import MoveLearningPanel from './menu/MoveLearningPanel.vue';
 import EvolutionPresentation from './menu/EvolutionPresentation.vue';
 import { illustratedNpcPortrait } from '@/services/npcPortraits';
 import { VillageWaterRenderer, hasVillageWater } from '@/services/villageWater';
+import { WorldClock, daylightAt, bindWorldClock } from '@/services/worldDaylight';
+import { WorldNightRenderer } from '@/services/worldNight';
+import { outdoorMap } from '@/data/nightLights';
 import { PlaceAmbienceRenderer, placeAmbienceProfile } from '@/services/placeAmbience';
 import { ForegroundWindRenderer, hasWindTrees } from '@/services/foregroundWind';
 import { GrassRustleRenderer, hasRustlingGrass } from '@/services/grassRustle';
@@ -457,7 +460,7 @@ export default {
   data() {
     return {
       fishing:null, fishingReceivedAt:0,
-      mapWeather: null, worldWeatherReducedMotion: false,
+      mapWeather: null, worldWeatherReducedMotion: false, worldDaylight: daylightAt(Date.now()),
       worldAudioConnected: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
@@ -629,6 +632,7 @@ export default {
     },
     placeAmbienceActive() { return Boolean(placeAmbienceProfile(this.map)) && !(this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible || this.mapLoading || this.mapLoadError || this.renderedMap !== this.map); },
     villageWaterActive() { return hasVillageWater(this.map) && !(this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible || this.mapLoading || this.mapLoadError || this.renderedMap !== this.map); },
+    worldNightActive() { return outdoorMap(this.map) && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
     effectiveWorldWeather() { return mapWorldWeather(this.map, this.mapWeather); },
     worldWeatherActive() { return Boolean(this.effectiveWorldWeather.wind || this.effectiveWorldWeather.rain || this.effectiveWorldWeather.sand || this.effectiveWorldWeather.snow) && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
     snowFootprintsActive() { return hasSnowGround(this.map) && this.preferences.animationsEnabled && !this.worldWeatherReducedMotion && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
@@ -687,8 +691,9 @@ export default {
     worldMusicState: { handler() { this.syncWorldMusic(); }, deep: true },
     placeAmbienceActive(active) { if (!active) this._placeAmbience?.suspend(); },
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
+    worldNightActive(active) { if (!active) this._worldNight?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); } },
-    map() { this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); },
+    map() { this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); },
     dirtFootprintsActive(active) { if (!active) this._dirtFootprints?.suspend(); },
     snowFootprintsActive(active) { if (!active) this._snowFootprints?.suspend(); },
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
@@ -1288,7 +1293,7 @@ export default {
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
+    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       if(this.flight)return;
@@ -2210,7 +2215,7 @@ export default {
       // placeholder while the authoritative player snapshot is still arriving.
       if (this.mapLoading || this.mapLoadError || this.renderedMap !== this.map
         || !me || me.currentmap !== this.map || !this.mapImage?.complete || !this.mapImage.naturalWidth) {
-        this._placeAmbience?.suspend(); this._villageWater?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend();
+        this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend();
         this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend();
         this.drawHeldWorldFrame(c, canvas);
         return;
@@ -2325,8 +2330,12 @@ export default {
       } else this._worldWeather?.suspend();
       if (this.placeAmbienceActive && !document.hidden) {
         if (!this._placeAmbience) this._placeAmbience = new PlaceAmbienceRenderer();
-        this._placeAmbience.draw(c, this.mapImage, this.map, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.effectiveWorldWeather.wind);
+        this._placeAmbience.draw(c, this.mapImage, this.map, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.effectiveWorldWeather.wind, this.worldDaylight);
       } else this._placeAmbience?.suspend();
+      if (this.worldNightActive && !document.hidden) {
+        if (!this._worldNight) this._worldNight = new WorldNightRenderer();
+        this._worldNight.draw(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.mapImage);
+      } else this._worldNight?.suspend();
       if(this.fishing && this.fishing.map===this.map && !document.hidden && !this.mapLoading && !this.battle)
         drawFishing(c,this.fishing,performance.now()-this.fishingReceivedAt,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       } finally {
@@ -2407,6 +2416,8 @@ export default {
       this.socket.on('connect', () => this.socket.emit('drift:enter', {}, response => { if (!response?.success) this.$router.replace(this.driftLobbyPath); }));
     }
 
+    this._worldClock = new WorldClock();
+    this._detachWorldClock = bindWorldClock(this.socket, this._worldClock, value => { this.worldDaylight = value; });
     this.socket.on("connect", () => {
       this.worldAudioConnected = true;
       console.log(`ConnectÃ© au serveur en tant qu'utilisateur ${userId}`);
@@ -2904,6 +2915,8 @@ export default {
     this._detachPopupLayout?.();
     this._villageWater?.destroy();
     this._placeAmbience?.destroy();
+    this._worldNight?.destroy();
+    this._detachWorldClock?.();
     this._worldWeather?.destroy();
     this._foregroundWind?.destroy(); this._backgroundWind?.destroy();
     this._grassRustle?.destroy();
