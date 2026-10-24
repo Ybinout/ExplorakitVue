@@ -1,5 +1,5 @@
-// A map change never reloads an already selected track. All playheads survive
-// battles, mute, visibility changes and a return to another kind of location.
+// Adjacent maps sharing a theme keep playing. Returning from a different theme
+// starts at the beginning; battle, mute and visibility pauses preserve position.
 export function worldMusicTrack(map) {
   if (map === 'gen_arene5') return 'raph-room';
   if (map === 'ville4_arene') return 'wanda-room';
@@ -29,7 +29,12 @@ export class WorldMusic {
 
   update({ map, active, volume }) {
     if (this.destroyed) return;
-    this.track = worldMusicTrack(map);
+    const nextTrack = worldMusicTrack(map);
+    if (nextTrack !== this.track) {
+      const audio = this.tracks.get(nextTrack);
+      if (audio) audio.currentTime = 0;
+      this.track = nextTrack;
+    }
     this.active = Boolean(active);
     this.volume = Math.max(0, Math.min(1, Number(volume) || 0)) * 0.22;
     this.sync();
