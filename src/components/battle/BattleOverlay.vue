@@ -1,5 +1,5 @@
 <template>
-  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="gymBackground ? gymBackground.platform : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
+  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle}" :data-place-light="placeLight ? environment : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
     <battle-entrance v-if="entranceActive" :key="visualEpoch" :champion="entranceChampion" @portrait-ready="onEntrancePortraitReady" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
@@ -364,6 +364,7 @@ const FIELD_LABELS = {
 };
 
 import { battleEnvironment } from '@/services/battleEnvironment';
+import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
@@ -456,6 +457,8 @@ export default {
   computed: {
     entranceActive() { return this.entrancePhase !== 'ready'; },
     raining() { return this.fieldState.weather === 'rain'; },
+    placeLight() { return ARENA_LIGHTS[this.environment] || null; },
+    placeLightStyle() { return this.placeLight ? {'--place-light-rgb':this.placeLight.rgb,'--place-light-shade':this.placeLight.shade} : {}; },
     gymBackground() { return GYM_BACKGROUNDS[this.environment] || null; },
     rainBackgrounds() { return RAIN_BACKGROUNDS; },
     snowBackgrounds() { return SNOW_BACKGROUNDS; },
@@ -1455,6 +1458,19 @@ export default {
 </script>
 
 <style scoped>
+/* Static lighting never touches the HUD, action queue, sprite geometry or weather rules. */
+.battle[data-place-light] .battle-scene::after {
+  content:''; position:absolute; inset:0; z-index:2; pointer-events:none;
+  background:linear-gradient(115deg,rgba(var(--place-light-rgb),.15),transparent 32%,transparent 68%,rgba(var(--place-light-rgb),.08)),linear-gradient(0deg,var(--place-light-shade),transparent 45%);
+  opacity:.45;
+}
+.battle[data-place-light] .battle-sprite-anchor {
+  filter:drop-shadow(-1px -1px 1px rgba(var(--place-light-rgb),.32)) drop-shadow(0 3px 2px #13253655);
+}
+.battle[data-place-light] .battle-platform {
+  filter:drop-shadow(0 -2px 2px rgba(var(--place-light-rgb),.4));
+}
+
 .battle-critical-burst{position:absolute;transform:translate(-50%,-50%);z-index:55;pointer-events:none;color:#ffe390;filter:drop-shadow(0 2px 1px #633425);animation:critical-burst .7s ease-out both}
 .battle-critical-burst b{position:absolute;left:50%;top:50%;font:900 60px/1 Arial;transform:translate(-50%,-50%)}
 @keyframes critical-burst{0%{opacity:0;scale:.45}22%{opacity:1;scale:1}75%{opacity:.8}100%{opacity:0;scale:1.3}}
