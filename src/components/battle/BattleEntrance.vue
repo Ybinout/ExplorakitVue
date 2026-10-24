@@ -1,5 +1,5 @@
 <template>
-  <div class="battle-entrance" :class="{ 'is-revealing': phase === 'revealing', 'is-reduced': reducedMotion, 'is-arena': champion }" :style="champion ? { '--champion-accent': champion.accent } : null" data-battle-entrance :data-phase="phase" role="status" aria-live="polite" @pointerdown.stop.prevent @pointerup.stop.prevent @click.stop.prevent>
+  <div class="battle-entrance" :class="{ 'is-revealing': phase === 'revealing', 'is-reduced': reducedMotion, 'is-arena': champion, 'is-story': champion && champion.story }" :style="champion ? { '--champion-accent': champion.accent } : null" data-battle-entrance :data-phase="phase" role="status" aria-live="polite" @pointerdown.stop.prevent @pointerup.stop.prevent @click.stop.prevent>
     <div class="entrance-shutter entrance-shutter-top" aria-hidden="true"></div>
     <div class="entrance-shutter entrance-shutter-bottom" aria-hidden="true"></div>
     <section v-if="champion" class="champion-intro" :class="{ 'portrait-ready': portraitReady }" data-arena-intro>
@@ -9,7 +9,7 @@
         <img v-if="!portraitFailed" class="entrance-portrait" :src="champion.src" alt="" decoding="async" @load="onPortraitLoad" @error="portraitFailed = true" />
       </div>
       <div class="champion-heading">
-        <p class="champion-eyebrow">{{ language === 'en' ? 'GYM CHALLENGE' : 'DÉFI D’ARÈNE' }}</p>
+        <p class="champion-eyebrow">{{ language === 'en' ? (champion.eyebrowEn || 'GYM CHALLENGE') : (champion.eyebrow || 'DÉFI D’ARÈNE') }}</p>
         <h2>{{ champion.name }}</h2>
         <p class="champion-city">{{ language === 'en' ? champion.cityEn : champion.city }}</p>
       </div>
@@ -54,6 +54,8 @@ export default {
 .is-reduced .entrance-shutter,.is-reduced .entrance-caption { transition:none; }
 .is-reduced .entrance-ball { animation:none; }
 @media(prefers-reduced-motion:reduce) { .entrance-shutter,.entrance-caption { transition:none; } .entrance-ball { animation:none; } }
+.is-story .champion-intro { background:linear-gradient(115deg,#151521 15%,#343044 80%); }
+.is-story .champion-footer { background:#151521ed; }
 /* Arena cards use the existing full-resolution dialogue illustrations. */
 .is-arena .entrance-shutter { background:#102936; border-color:var(--champion-accent); }
 .champion-intro { position:absolute; inset:0; overflow:hidden; transition:opacity .28s ease; background:linear-gradient(115deg,#0b202c 15%,#183e50 80%); }

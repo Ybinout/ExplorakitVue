@@ -9,5 +9,10 @@ const champions = {
   ville5_arene: { name: '7p', city: 'Blanchecime', cityEn: 'Whitepeak', portrait: '7ps.png', accent: '#b6dbef' }
 };
 export function arenaChampion(mapName, encounterKind) {
-  return encounterKind === 'arena' && Object.hasOwn(champions, mapName) ? champions[mapName] : null;
+  if (mapName === 'route2_maison' && encounterKind === 'trainer') return {
+    name: 'Lucie', city: 'Sous l’emprise de l’Aube', cityEn: 'Under the Dawn’s influence',
+    portrait: 'lucie-v1.png', accent: '#baa6d8', story: true,
+    eyebrow: 'RETROUVAILLES', eyebrowEn: 'REUNION', minimumMs: 4400, portraitMs: 2600
+  };
+  return encounterKind === 'arena'  && Object.hasOwn(champions, mapName) ? champions[mapName] : null;
 }

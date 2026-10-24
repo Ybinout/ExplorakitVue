@@ -624,8 +624,8 @@ export default {
         : {airborne:'En vol',underground:'Sous terre',submerged:'Sous l’eau',vanished:'Disparu'};
       return labels[state] || '';
     },
-    arenaPortrait() {
-      const champion = arenaChampion(this.mapName, 'arena');
+    arenaPortrait(kind = this.mapName === 'route2_maison' ? 'trainer' : 'arena') {
+      const champion = arenaChampion(this.mapName, kind);
       return champion ? { ...champion, src: require('@/assets/image/' + champion.portrait) } : null;
     },
     preloadArenaPortrait() {
@@ -643,7 +643,7 @@ export default {
       this._entranceController = new AbortController();
       this._entranceStartedAt = performance.now();
       this._entrancePortraitAt = null;
-      this.entranceChampion = arenaChampion(this.mapName, encounterKind) ? this.arenaPortrait() : null;
+      this.entranceChampion = this.arenaPortrait(encounterKind);
       this.entrancePhase = 'holding';
     },
     cancelEntrance() {
@@ -671,12 +671,14 @@ export default {
       if (this.entranceChampion && !document.hidden) {
         // Give a late-loading portrait a readable moment too, within a bounded
         // wait. This stays in the presentation queue ahead of turn controls.
+        const minimumMs = this.reducedMotion() ? 1200 : (this.entranceChampion.minimumMs || 2800);
+        const portraitMs = this.reducedMotion() ? 900 : (this.entranceChampion.portraitMs || 1600);
         const visibleFor = this._entrancePortraitAt == null ? Infinity : performance.now() - this._entrancePortraitAt;
-        await entranceDelay(Math.max((this.reducedMotion() ? 1200 : 2800) - elapsed, (this.reducedMotion() ? 900 : 1600) - visibleFor), signal);
+        await entranceDelay(Math.max(minimumMs - elapsed, portraitMs - visibleFor), signal);
         // A portrait can finish just after the asset timeout, while the title
         // is still holding. Do not flash it for a single frame before leaving.
         if (!obsolete() && this._entrancePortraitAt != null && !document.hidden) {
-          await entranceDelay((this.reducedMotion() ? 900 : 1600) - (performance.now() - this._entrancePortraitAt), signal);
+          await entranceDelay(portraitMs - (performance.now() - this._entrancePortraitAt), signal);
         }
       } else if (!this.reducedMotion()) await entranceDelay(520 - elapsed, signal);
       if (obsolete()) return;

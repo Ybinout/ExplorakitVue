@@ -1,8 +1,8 @@
 <template>
-  <div class="dialogue-shell">
+  <div class="dialogue-shell" :class="{ 'is-cinematic': typewriterMs > 0 }">
     <div class="text-with-image">
       
-      <div class="text" role="button" tabindex="0" aria-label="Continuer le dialogue" @click="continueText" @keydown.enter.stop.prevent="continueText" @keydown.space.stop.prevent="continueText">{{ displayedText }}</div>
+      <div class="text" role="button" tabindex="0" aria-label="Continuer le dialogue" @click="continueText" @keydown.enter.stop.prevent="continueText" @keydown.space.stop.prevent="continueText"><span v-if="typewriterMs" class="dialogue-reserved" aria-hidden="true">{{ currentText }}</span><span class="dialogue-visible">{{ displayedText }}</span></div>
       <div class="texts">
         <atlas-portrait v-if="portraitFrame" :src="currentImageSrc" :frame="portraitFrame" />
         <img v-else class="imagetoto" :src="currentImageSrc" alt="Illustration" />
@@ -43,6 +43,7 @@ export default {
     };
   },
   computed: {
+    typewriterMs() { return Math.max(0, Number(this.sequence[this.currentIndex]?.typewriterMs) || 0); },
     portraitFrame() { return this.sequence[this.currentIndex]?.portraitFrame; },
     currentText() {
       return this.sequence[this.currentIndex]?.text || '';
@@ -52,6 +53,7 @@ export default {
     },
   },
   watch: {
+    sequence() { this.currentIndex = 0; this.resetText(); this.advanceText(); },
     soundVolume(value) {
       if (this.audio) this.audio.volume = Math.max(0, Math.min(1, Number(value) || 0));
     },
@@ -71,6 +73,16 @@ export default {
       }
     },
     advanceText() {
+      if (this._typingTimer != null) {
+        this.stopTyping();
+        this.currentCharIndex = this.currentText.length;
+        this.displayedText = this.currentText;
+        return;
+      }
+      if (this.typewriterMs && this.currentText.length && this.currentCharIndex === 0) {
+        this.revealNextCharacter();
+        return;
+      }
       if (this.currentCharIndex < this.currentText.length) {
         let nextCharIndex = this.currentCharIndex + this.charPerStep;
 
@@ -97,10 +109,27 @@ export default {
       }
     },
     resetText() {
+      this.stopTyping();
       this.displayedText = '';
       this.currentCharIndex = 0;
     },
+    stopTyping() {
+      clearTimeout(this._typingTimer);
+      this._typingTimer = null;
+    },
+    revealNextCharacter() {
+      this._typingTimer = null;
+      if (this.currentCharIndex >= this.currentText.length) return;
+      this.currentCharIndex++;
+      this.displayedText = this.currentText.slice(0, this.currentCharIndex);
+      if (this.currentCharIndex < this.currentText.length) {
+        const last = this.displayedText.slice(-1);
+        const pause = /[.!?…]/.test(last) ? 360 : /[,;:]/.test(last) ? 150 : 0;
+        this._typingTimer = setTimeout(this.revealNextCharacter, this.typewriterMs + pause);
+      }
+    },
     notifyParentSequenceEnd() {
+      this.stopTyping();
       this.$emit('sequence-end'); // Émettre l'événement 'sequence-end' au parent
     },
   },
@@ -112,12 +141,16 @@ export default {
     window.addEventListener('keydown', this.handleSpacePress);
   },
   beforeDestroy() {
+    this.stopTyping();
     window.removeEventListener('keydown', this.handleSpacePress);
   },
 };
 </script>
 
 <style scoped>
+.is-cinematic .text { display:grid; }
+.is-cinematic .dialogue-reserved,.is-cinematic .dialogue-visible { grid-area:1 / 1; }
+.dialogue-reserved { visibility:hidden; pointer-events:none; }
 .dialogue-shell {
   box-sizing: border-box;
   display: grid;

@@ -4,6 +4,10 @@ import { classicNpcIndex } from './npcFrames';
 // Keep the server's legacy dialogue format and every champion portrait intact.
 // Resolve identity from the same role rules used by the actual world sprite.
 export function illustratedNpcPortrait(sentence, dialogueName = '') {
+  if (['lucie_route2', 'lucie_route2_after', 'lucie_route2_locked'].includes(dialogueName)) {
+    return { ...sentence, imageName: 'lucie-v1.png', portraitFrame: null,
+      typewriterMs: dialogueName === 'lucie_route2_locked' ? 0 : 45 };
+  }
   let index;
   if (sentence.imageName === 'townspeople.png') {
     const actor = manifest.actors[dialogueName] || {};

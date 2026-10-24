@@ -1910,7 +1910,7 @@ export default {
       // Mettre Ã  jour `textImageSequence` avec les sentences reÃ§ues du serveur
       this.textImageSequence = sentences.map(original => {
         const sentence = illustratedNpcPortrait(original, dialogueName);
-        return { text: sentence.text, image: images[sentence.imageName], portraitFrame: sentence.portraitFrame };
+        return { text: sentence.text, image: images[sentence.imageName], portraitFrame: sentence.portraitFrame, typewriterMs: sentence.typewriterMs };
       });
     },
     clearSequence() {
