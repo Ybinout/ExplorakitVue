@@ -291,6 +291,7 @@ import { arenaChampion } from '@/services/arenaEntrance';
 import { createBattlePresentation } from '@/services/battlePresentation';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
+import { battleMusicTrack } from '@/services/battleMusic';
 import moveLearning from '@/data/moveLearning.json';
 import { localizeTypeName } from '@/services/pokemonTypes';
 import PotentialStar from '../PotentialStar.vue';
@@ -696,11 +697,11 @@ export default {
       return this._presentation.push(() => method==='updateBattleState' ? this.presentState(payload) : this[method](payload), delay);
     },
     startMusic(kind) {
-      if (kind === 'arena' && this.battleMapName === 'gen_arene5') kind = 'raph';
+      kind = battleMusicTrack(kind, this.battleMapName);
       if(this.musicKind===kind&&this.music){this.syncMusic();return;}
       this.stopMusic();
       this.musicKind = kind;
-      const tracks = { raph: require('@/assets/msc/raph.mp3'), wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
+      const tracks = { ana: require('@/assets/msc/ana.mp3'), wanda: require('@/assets/msc/wanda.mp3'), '7p': require('@/assets/msc/7p.mp3'), raph: require('@/assets/msc/raph.mp3'), wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
       this.music = new Audio(tracks[kind] || tracks.wild);
       this.music.loop = true;
       this.syncMusic();

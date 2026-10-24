@@ -2276,7 +2276,7 @@ export default {
 
   },
   mounted() {
-    this._worldMusic = new WorldMusic({ village: require('@/assets/msc/village.mp3'), route: require('@/assets/msc/start.mp3') });
+    this._worldMusic = new WorldMusic({ village: require('@/assets/msc/village.mp3'), route: require('@/assets/msc/start.mp3'), cave: require('@/assets/msc/cave.mp3'), snow: require('@/assets/msc/snow.mp3') });
     window.addEventListener('pointerdown', this.syncWorldMusic);
     window.addEventListener('pointerup', this.syncWorldMusic);
     window.addEventListener('keydown', this.syncWorldMusic);

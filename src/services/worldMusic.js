@@ -1,6 +1,8 @@
-// A map change never reloads an already selected track. Both playheads survive
-// battles, mute, visibility changes and a return to the other kind of location.
+// A map change never reloads an already selected track. All playheads survive
+// battles, mute, visibility changes and a return to another kind of location.
 export function worldMusicTrack(map) {
+  if (/^cave(?:\d|_|$)/.test(map)) return 'cave';
+  if (/^ville5(?:_|$)/.test(map)) return 'snow';
   if (map==='ville_commerciale'||/^tour_(?:rdc|etage[123])$/.test(map)) return 'village';
   if (/^(?:gen_)?route\d+$/.test(map) || map === 'gen_shop_route10' || /^pk[12]$/.test(map)) return 'route';
   if (map === 'start' || /^(?:ville(?:_safe)?\d+|gen_ville\d+)(?:_|$)/.test(map)
