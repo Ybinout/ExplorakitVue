@@ -96,6 +96,16 @@
           </label>
         </div>
         <p class="options-note">{{ tr('localOptions') }}</p>
+        <section v-if="arenaTestState.allowed" class="arena-test-options" data-arena-admin aria-labelledby="arena-test-heading">
+          <h3 id="arena-test-heading">{{ preferences.language === 'en' ? 'Arena tests' : 'Tests des arènes' }}</h3>
+          <p>{{ preferences.language === 'en' ? 'Replay champions you have defeated. Your badges and progress stay saved; no extra rewards, XP or EVs.' : 'Rejoue les champions déjà battus. Tes badges et ta progression sont conservés, sans nouvelle récompense, XP ou EV.' }}</p>
+          <p class="arena-test-count">{{ arenaTestState.ready || 0 }} / {{ arenaTestState.unlocked || 0 }} {{ preferences.language === 'en' ? 'ready for a rematch' : 'prêts pour une revanche' }}</p>
+          <button type="button" data-rearm-arenas :disabled="arenaTestBusy || !arenaTestAllowed || !arenaTestState.unlocked" @click="$emit('rearm-arenas')">
+            {{ preferences.language === 'en' ? (arenaTestBusy ? 'Reactivating…' : 'Reactivate champions') : (arenaTestBusy ? 'Réactivation…' : 'Réactiver les champions') }}
+          </button>
+          <p v-if="arenaTestNotice" role="status">{{ arenaTestNotice }}</p>
+          <p v-else-if="!arenaTestAllowed">{{ preferences.language === 'en' ? 'Finish your current action first.' : 'Termine ton action en cours avant de réactiver les arènes.' }}</p>
+        </section>
         <details class="debug-options" data-debug-options>
           <summary>{{ tr('debugTools') }}</summary>
           <p>{{ tr('unstuckHelp') }}</p>
@@ -120,6 +130,7 @@ export default {
   components: { RegionMapPanel, PokedexPanel, AdventureGuide, BadgesPanel },
   props: {
     currentMap: String, currentRegion: String, flightAllowed: Boolean,
+    arenaTestState: {type:Object,default:()=>({allowed:false})}, arenaTestBusy:Boolean, arenaTestAllowed:Boolean, arenaTestNotice:{type:String,default:''},
     recoveryBusy: Boolean, recoveryAllowed: Boolean, recoveryNotice: {type:String,default:''},
     active: { type: String, default: '' },
     loading: { type: Boolean, default: false },
@@ -192,6 +203,13 @@ export default {
 </style>
 
 <style scoped>
+.arena-test-options{margin-top:20px;padding:16px;border:1px solid var(--journal-border);border-radius:10px;background:var(--journal-card);color:var(--journal-ink)}
+.arena-test-options h3{margin:0;font-size:16px;color:var(--journal-heading)}
+.arena-test-options p{font-size:13px;line-height:1.5;color:var(--journal-muted);margin:10px 0}
+.arena-test-options .arena-test-count{font-weight:700;color:var(--journal-heading)}
+.arena-test-options button{width:100%;min-height:48px;padding:12px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-selected);color:var(--journal-heading);font:inherit;font-weight:700;cursor:pointer}
+.arena-test-options button:disabled{opacity:.6;cursor:default}
+.arena-test-options button:focus-visible{outline:2px solid var(--journal-accent);outline-offset:3px}
 .debug-options{margin-top:20px;border:1px solid var(--journal-border);border-radius:10px;background:var(--journal-card);color:var(--journal-ink);padding:0 16px 12px}
 .debug-options summary{min-height:48px;display:list-item;align-content:center;cursor:pointer;color:var(--journal-heading);font-weight:700}
 .debug-options p{font-size:13px;line-height:1.5;color:var(--journal-muted);margin:8px 0 12px}

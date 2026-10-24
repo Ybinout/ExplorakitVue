@@ -189,6 +189,9 @@
           :current-map="map" :current-region="players[socket?.id]?.regionLocation"
           :recovery-busy="positionRecoveryBusy" :recovery-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && driftState?.phase === 'exploration' && !driftState?.storagePaused && !driftState?.recoveryWaiting))" :recovery-notice="positionRecoveryNotice"
           @recover-position="recoverPosition"
+          :arena-test-state="isDrift ? {allowed:false} : arenaTestState"
+          :arena-test-busy="arenaTestBusy" :arena-test-allowed="!battle && !battleResult && !mapLoading && !textImageSequence.length"
+          :arena-test-notice="arenaTestNotice" @rearm-arenas="rearmArenas"
           :loading="menuDataLoading"
           :pokedex="pokedexState"
           :progress="progressionState"
@@ -482,6 +485,7 @@ export default {
       learningDeferred: false, learningBusy: false, learningError: '',
       evolutionQueue: [], evolutionTracker: createEvolutionTracker(evolutionGraph),
       positionRecoveryBusy: false, positionRecoveryNotice: '',
+      arenaTestState: {allowed:false}, arenaTestBusy:false, arenaTestNotice:'',
       evolutionOptions: [], evolutionLoading: false, evolutionBusy: false, evolutionError: '', evolutionNotice: '',
       user: {
         nom: '',
@@ -1805,6 +1809,21 @@ export default {
       } catch(error) { if(alive())this.showInteractionNotice(error.message); }
       finally { if(alive()){this.flight=null;this.drawPlayers();} }
     },
+    async rearmArenas() {
+      if (this.isDrift || !this.arenaTestState.allowed || this.arenaTestBusy) return;
+      const en = this.preferences.language === 'en';
+      this.arenaTestNotice = '';
+      if (!this.socket?.connected) { this.arenaTestNotice = this.tr('unstuckOffline'); return; }
+      this.arenaTestBusy = true;
+      this.releaseAllMovementKeys();
+      try {
+        const response = await new Promise((resolve, reject) => this.socket.timeout(10000).emit('admin:rearmArenas', {}, (error, result) => error ? reject(new Error(this.tr('unstuckOffline'))) : resolve(result)));
+        if (!response?.success) throw new Error(response?.message || (en ? 'Please try again.' : 'Réessaie dans un instant.'));
+        this.arenaTestState = response.state;
+        this.arenaTestNotice = en ? `${response.count} champions ready. Talk to them to battle again.` : `${response.count} champions réactivés. Retourne leur parler pour les défier.`;
+      } catch (error) { this.arenaTestNotice = error.message; }
+      finally { this.arenaTestBusy = false; }
+    },
     async recoverPosition() {
       if (this.positionRecoveryBusy) return;
       this.positionRecoveryNotice = '';
@@ -2444,6 +2463,7 @@ export default {
       };
     });
 
+    this.socket.on('adminArenaState', state => { this.arenaTestState = state?.allowed === true ? state : {allowed:false}; });
     this.socket.on('flightState', state=>this.$set(this.progressionState,'flight',state));
     this.socket.on('progressionState', (payload = {}) => {
       this.progressionState = payload;
@@ -2775,6 +2795,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.arenaTestState = {allowed:false}; this.arenaTestNotice = '';
       this.pendingRoomEntry=null;
       if(this.endSentences==='lucie_room_entry')this.textImageSequence=[];
       clearTimeout(this._roomObstacleTimer);
