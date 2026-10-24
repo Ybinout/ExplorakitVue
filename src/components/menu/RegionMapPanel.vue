@@ -75,11 +75,20 @@
           <p class="map-gesture-hint">{{ en ? 'Scroll or pinch to zoom · Drag to move' : 'Molette ou pincement pour zoomer · Glisse pour déplacer' }}</p>
         </div>
         <div class="region-detail">
+          <div v-if="flightAllowed && !pokemon" class="flight-module" data-flight-module>
+            <strong>{{ en ? 'Flight Module' : 'Module Vol' }}</strong>
+            <p>{{ flight?.unlocked ? (en ? 'Choose a visited town, then take flight.' : 'Choisis une ville visitée, puis prends ton envol.') : (en ? 'Wanda will give you this module after your victory.' : 'Wanda te remettra ce module après ta victoire.') }}</p>
+          </div>
           <label for="region-place">{{ pokemon ? (en ? 'Habitats' : 'Localisations') : (en ? 'Explore the map' : 'Explorer la carte') }}</label>
           <select id="region-place" v-model="selected" @change="centerOn(selectedNode)"><option value="">{{ en ? 'Choose a location' : 'Choisir un lieu' }}</option><option v-for="node in selectableNodes" :key="node.id" :value="node.id">{{ label(node.id) }}</option></select>
           <div v-if="selectedNode" class="place-detail" aria-live="polite"><strong>{{ label(selectedNode.id) }}</strong><span v-if="selectedNode.id === currentNode?.id" class="here-label">{{ en ? 'You are here' : 'Tu es ici' }}</span><p v-for="(entry,i) in selectedHabitats" :key="i">{{ methodLabel(entry.method) }}<template v-if="entry.level"> · {{ en ? 'Lv.' : 'Niv.' }} {{ entry.level.min }}–{{ entry.level.max }}</template><template v-if="entry.speciesId"> · {{ speciesName(entry.speciesId) }}</template></p></div>
+
         </div>
         <footer class="region-footer">{{ pokemon ? (en ? 'Presence areas, not guaranteed encounters.' : 'Zones de présence, rencontres non garanties.') : (en ? 'Select a town or route to find your way.' : 'Sélectionne une ville ou une route pour te repérer.') }}</footer>
+      </div>
+      <div v-if="flightAllowed && !pokemon && selectedNode?.kind === 'town' && flight?.unlocked" class="flight-actionbar">
+        <div><small>{{ en ? 'Flight destination' : 'Destination du vol' }}</small><strong>{{ label(selected) }}</strong></div>
+        <button class="flight-button" data-fly :disabled="!canFlySelected" @click="$emit('fly',selected)">{{ canFlySelected ? (en ? 'Fly here ↗' : 'Voler ici ↗') : (en ? 'Not visited' : 'Non visitée') }}</button>
       </div>
     </section>
   </div>
@@ -90,9 +99,10 @@ import { getMapLocationLabel } from '@/services/mapLocations';
 import { mapLayout, anchoredMapScroll, clampMapZoom } from '@/services/regionMapViewport';
 export default {
   name:'RegionMapPanel',
-  props:{currentMap:String,currentRegion:String,pokemon:Object,entries:{type:Array,default:()=>[]},language:{type:String,default:'fr'},animationsEnabled:{type:Boolean,default:true}},
+  props:{currentMap:String,currentRegion:String,pokemon:Object,entries:{type:Array,default:()=>[]},language:{type:String,default:'fr'},animationsEnabled:{type:Boolean,default:true},flight:{type:Object,default:null},flightAllowed:Boolean},
   data:()=>({atlas:null,loading:true,error:'',selected:'',zoom:1,dragging:false,viewport:{width:512,height:448}}),
   computed:{
+    canFlySelected(){return this.flightAllowed&&this.flight?.unlocked&&this.selectedNode?.kind==='town'&&this.flight.visited.includes(this.selected);},
     layout(){return mapLayout(this.atlas || {width:512,height:448},this.viewport,this.zoom);},
     artStyle(){return {width:this.layout.mapWidth+'px',height:this.layout.mapHeight+'px'};},
     surfaceStyle(){return {width:Math.max(this.viewport.width,this.layout.mapWidth)+'px',height:Math.max(this.viewport.height,this.layout.mapHeight)+'px'};},
@@ -176,6 +186,10 @@ export default {
 };
 </script>
 <style scoped>
+.flight-actionbar{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-top:1px solid var(--journal-border);background:var(--journal-card)}.flight-actionbar small{display:block;color:var(--journal-muted);font-size:10px;margin-bottom:4px}.flight-actionbar strong{font-size:13px}
+
+.flight-module{padding:12px;background:var(--journal-soft);border:1px solid var(--journal-border);border-radius:10px;margin-bottom:12px}.flight-module p,.flight-unvisited{font-size:12px;line-height:1.5;margin:6px 0;color:var(--journal-muted)}.region-panel .flight-button{min-width:130px;background:var(--journal-accent);color:var(--journal-paper);font-weight:700}
+
 .region-backdrop{position:fixed;inset:0;z-index:1210;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--journal-backdrop);backdrop-filter:blur(7px)}
 .region-panel,.region-panel *{box-sizing:border-box}.region-panel{width:650px;max-width:100%;max-height:94dvh;display:flex;flex-direction:column;overflow:hidden;background:var(--journal-paper);color:var(--journal-ink);border:1px solid var(--journal-border);border-radius:18px;box-shadow:0 24px 80px #0005;text-align:left;font:14px var(--journal-font)}
 .region-header{display:flex;align-items:center;justify-content:space-between;padding:17px 22px;background:var(--journal-card);border-bottom:1px solid var(--journal-border);gap:12px}.region-header p{margin:0 0 5px;font-size:9px;letter-spacing:.13em;color:var(--journal-muted)}.region-header p span{letter-spacing:.06em}.region-header h2{margin:0;font-size:24px;color:var(--journal-heading)}

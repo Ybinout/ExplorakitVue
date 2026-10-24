@@ -1,6 +1,6 @@
 <template>
   <pokedex-panel v-if="active === 'pokedex'" :pokedex="pokedex" :loading="loading" :language="preferences.language" :current-map="currentMap" :current-region="currentRegion" :animations-enabled="preferences.animationsEnabled" @close="$emit('close')" />
-  <region-map-panel v-else-if="active === 'minimap'" :current-map="currentMap" :current-region="currentRegion" :language="preferences.language" :animations-enabled="preferences.animationsEnabled" @close="$emit('close')" />
+  <region-map-panel v-else-if="active === 'minimap'" :flight="progress.flight" :flight-allowed="flightAllowed" @fly="$emit('fly',$event)" :current-map="currentMap" :current-region="currentRegion" :language="preferences.language" :animations-enabled="preferences.animationsEnabled" @close="$emit('close')" />
   <badges-panel v-else-if="active === 'badges'" :badges="progress.badges || []" :capture="progress.capture" :loading="loading" :language="preferences.language" @close="$emit('close')" />
   <div v-else-if="active" class="info-backdrop" @mousedown.self="$emit('close')">
     <section class="info-panel" role="dialog" aria-modal="true" :aria-label="panelTitle">
@@ -119,7 +119,7 @@ export default {
   name: 'GameInfoPanels',
   components: { RegionMapPanel, PokedexPanel, AdventureGuide, BadgesPanel },
   props: {
-    currentMap: String, currentRegion: String,
+    currentMap: String, currentRegion: String, flightAllowed: Boolean,
     recoveryBusy: Boolean, recoveryAllowed: Boolean, recoveryNotice: {type:String,default:''},
     active: { type: String, default: '' },
     loading: { type: Boolean, default: false },

@@ -184,6 +184,7 @@
           <p class="team-order-status" role="status">{{ teamSaving ? tr('saving') : teamOrderNotice || tr('orderAutoSave') }}</p>
         </div>
         <game-info-panels
+          :flight-allowed="!isDrift" @fly="flyToTown"
           :active="activeInfoPanel"
           :current-map="map" :current-region="players[socket?.id]?.regionLocation"
           :recovery-busy="positionRecoveryBusy" :recovery-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && driftState?.phase === 'exploration' && !driftState?.storagePaused && !driftState?.recoveryWaiting))" :recovery-notice="positionRecoveryNotice"
@@ -210,6 +211,7 @@
           @buy="buyShopItem"
         />
         <div class="world-viewport" ref="worldViewport">
+          <flight-transition v-if="flight" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" />
           <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
@@ -362,6 +364,8 @@ import FishingPrompt from './world/FishingPrompt.vue';
 import { drawFishing } from '@/services/fishingRenderer';
 import { StoryGateRenderer } from '@/services/storyGateRenderer';
 import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset } from '@/services/npcFrames';
+import FlightTransition from './FlightTransition.vue';
+import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
 import { createMapSceneLoader } from '@/services/mapScene';
@@ -429,6 +433,7 @@ const MOVEMENT_INTERPOLATION_MS = 175;
 
 export default {
   components: {
+    FlightTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
     JournalIcon, BagPanel, MachineItemUse, PokemonComputer,
     BattleResultPanel,
@@ -454,6 +459,7 @@ export default {
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
       repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{},
       endSentences: null,
+      flight: null,
       textImageSequence: [],
       socket: null,
       animationFrameId: null,
@@ -653,7 +659,7 @@ export default {
     },
     movementBlocked() { return this.worldContextLost || this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
     movementSuspended() {
-      return this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
@@ -1007,6 +1013,7 @@ export default {
       this.$nextTick(() => this.$refs.teamToggle?.focus());
     },
     toggleMenu() {
+      if(this.flight)return;
       this.isMenuOpen = !this.isMenuOpen;
     },
     getStoredUserId() {
@@ -1270,6 +1277,7 @@ export default {
     onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
+      if(this.flight)return;
       this.releaseAllMovementKeys();
       if (this.battle || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       if (this.textImageSequence.length > 0) {
@@ -1734,13 +1742,37 @@ export default {
       this.menuDataLoading = true;
       try {
         if (panel === 'pokedex') await this.loadPokedexState();
-        if (panel === 'progress' || panel === 'badges') await this.loadProgressionState();
+        if (panel === 'progress' || panel === 'badges' || panel === 'minimap') await this.loadProgressionState();
       } catch (error) {
         console.error(`Erreur chargement panneau ${panel}:`, error);
         this.showInteractionNotice('Impossible de synchroniser ces données.');
       } finally {
         this.menuDataLoading = false;
       }
+    },
+    async flyToTown(map) {
+      if(this.flight||this.isDrift||this.battle||this.battleResult||!this.socket?.connected)return;
+      this.releaseAllMovementKeys();this.closeInfoPanel();this.isMenuOpen=false;
+      const reduced=!this.preferences.animationsEnabled||this.worldWeatherReducedMotion;
+      const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+      const alive=()=>!this._isDestroyed&&!this._isBeingDestroyed;
+      this.flight={phase:'departure',startedAt:performance.now(),label:getMapLocationLabel(map,this.preferences.language)};
+      try {
+        if(!reduced)await wait(650);
+        if(!alive())return;
+        this.flight={...this.flight,phase:'loading',startedAt:performance.now()};
+        const response=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('flyToTown',{map},(error,result)=>error?reject(new Error('Connexion interrompue. Vérifie ta position après reconnexion.')):resolve(result)));
+        if(!response?.success)throw new Error(response?.message||'Vol indisponible.');
+        const deadline=performance.now()+16000;
+        while(alive()&&(this.mapLoading||this.renderedMap!==map||this.map!==map)){
+          if(this.mapLoadError||performance.now()>deadline)throw new Error('Le lieu attend encore son chargement. Utilise Réessayer si nécessaire.');
+          await wait(50);
+        }
+        if(!alive())return;
+        this.flight={...this.flight,phase:'arrival',startedAt:performance.now()};
+        if(!reduced)await wait(650);
+      } catch(error) { if(alive())this.showInteractionNotice(error.message); }
+      finally { if(alive()){this.flight=null;this.drawPlayers();} }
     },
     async recoverPosition() {
       if (this.positionRecoveryBusy) return;
@@ -1802,10 +1834,11 @@ export default {
       } finally { this.quitting = false; }
     },
     async handleMenuAction(actionKey) {
+      if(this.flight)return;
       this.isMenuOpen = false;
       if (["drifts","contracts"].includes(actionKey)) { this.closeLegacyPanels(); this.driftPanelTab=actionKey; this.releaseAllMovementKeys(); this.isDriftPanelOpen = true; return; }
 
-      if (['pokedex', 'progress', 'badges'].includes(actionKey)) {
+      if (['pokedex', 'progress', 'badges', 'minimap'].includes(actionKey)) {
         await this.openServerPanel(actionKey);
         return;
       }
@@ -1817,7 +1850,7 @@ export default {
         return;
       }
 
-      if (actionKey === 'options' || actionKey === 'minimap') {
+      if (actionKey === 'options') {
         this.closeLegacyPanels();
         this.activeInfoPanel = actionKey;
         return;
@@ -1987,6 +2020,7 @@ export default {
       context.restore();
     },
     handleKeydown(e) {
+      if(this.flight){e.preventDefault();return;}
       if(this.fishing && e.key==='Escape'){e.preventDefault();this.cancelFishing();return;}
       if(this.fishing && (e.code==='Space' || e.code==='KeyA') && !e.ctrlKey && !e.metaKey && !e.altKey){e.preventDefault();if(!e.repeat)this.fishingAction();return;}
       if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) { this.releaseAllMovementKeys(); return; }
@@ -2247,11 +2281,15 @@ export default {
 
           // Assure-toi que le sprite existe avant d'essayer de dessiner
           if (sprite && playerSpriteSheet?.complete && playerSpriteSheet.naturalWidth && playerSpriteSheet.naturalHeight) {
+            const pose=flightPose(playerId===this.socket?.id?this.flight:null,now,!this.preferences.animationsEnabled||this.worldWeatherReducedMotion);
+            c.save();c.globalAlpha=pose.alpha;
+            c.translate(player.x,player.y+10-pose.lift);c.scale(pose.scale,pose.scale);c.translate(-player.x,-player.y-10);
             c.drawImage(
               playerSpriteSheet,
               sprite.x, sprite.y, this.spriteWidth, this.spriteHeight,
               player.x - 32, player.y - 42, this.spriteWidth, this.spriteHeight  // DÃ©cale la position Y de 32 pixels
             );
+            c.restore();
           } else {
             console.error(`Invalid sprite frame: ${currentFrame}`);
           }
@@ -2365,6 +2403,7 @@ export default {
       };
     });
 
+    this.socket.on('flightState', state=>this.$set(this.progressionState,'flight',state));
     this.socket.on('progressionState', (payload = {}) => {
       this.progressionState = payload;
       if (payload.syncedAt) {
