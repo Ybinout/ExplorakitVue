@@ -8,13 +8,13 @@
   background:var(--journal-card); border:1px solid var(--journal-border); border-radius:16px 16px 0 0;
 }
 .game-root .game-stage .game-header { position:relative; height:auto; padding:0; background:none; border:0; }
-.game-root .game-stage .menu-toggle-btn {
+.game-root .game-stage :is(.menu-toggle-btn, .team-toggle-btn) {
   display:flex; align-items:center; gap:10px; min-height:44px; padding:10px 16px;
   border:1px solid var(--journal-border); border-radius:10px; background:var(--journal-soft);
   color:var(--journal-heading); font:600 13px var(--journal-font); box-shadow:none;
 }
-.game-root .game-stage .menu-toggle-btn:hover,
-.game-root .game-stage .menu-toggle-btn[aria-expanded=true] { background:var(--journal-selected); border-color:var(--journal-border); }
+.game-root .game-stage :is(.menu-toggle-btn, .team-toggle-btn):hover,
+.game-root .game-stage :is(.menu-toggle-btn, .team-toggle-btn)[aria-expanded=true] { background:var(--journal-selected); border-color:var(--journal-border); }
 .game-root .game-stage .menu-dropdown {
   top:calc(100% + 16px); left:0; width:250px; min-width:0; max-width:calc(100vw - 28px);
   max-height:calc(100dvh - 100px); overflow:auto; overscroll-behavior:contain; padding:10px;
@@ -33,6 +33,15 @@
 .game-root .location-name { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .game-root .game-stage .location-shop-btn { flex:none; min-height:44px; margin:0; padding:8px 12px; border:1px solid var(--journal-border); border-radius:9px; background:var(--journal-soft); color:var(--journal-accent); font:600 12px var(--journal-font); }
 .game-root .game-stage .location-shop-btn:hover { background:var(--journal-selected); }
+
+/* Team access stays beside Menu, including narrow expedition headers. */
+.game-root .game-stage .header-actions { display:flex; align-items:center; flex:none; gap:6px; }
+.game-root .game-stage .header-actions button { white-space:nowrap; }
+.game-root.is-drift .game-stage .game-header { flex-wrap:wrap; row-gap:4px; }
+.game-root.is-drift .game-stage .drift-hud { flex:none; }
+@media(max-width:550px) {
+  .game-root .game-stage .header-actions :is(.menu-toggle-btn, .team-toggle-btn) { padding-inline:9px; gap:6px; font-size:12px; }
+}
 
 /* Quick panels: the same paper cards, header and close control as the Pokédex. */
 .game-root .game-stage :is(.team-panel, .bag-panel, .appearance-panel) { box-sizing:border-box; top:76px; left:12px; width:min(380px,calc(100% - 24px)); max-height:min(620px,calc(100dvh - 145px)); padding:18px; background:var(--journal-paper); border:1px solid var(--journal-border); border-radius:18px; color:var(--journal-ink); box-shadow:var(--journal-shadow); font:13px/1.4 var(--journal-font); overscroll-behavior:contain; }
@@ -123,7 +132,7 @@
 }
 @media(max-width:600px) {
   .game-root .game-stage .world-toolbar { padding:9px 10px; gap:8px; border-radius:0; }
-  .game-root .game-stage .menu-toggle-btn { padding:8px 12px; gap:8px; }
+  .game-root .game-stage :is(.menu-toggle-btn, .team-toggle-btn) { padding:8px 12px; gap:8px; }
   .game-root .game-stage .location-banner { font-size:13px; max-width:calc(100% - 98px); gap:6px; }
   .game-root .game-stage .location-name { white-space:normal; }
   .game-root .location-banner:has(.location-shop-btn) .location-copy small { display:none; }

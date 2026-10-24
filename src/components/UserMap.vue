@@ -26,11 +26,16 @@
       <div class="game-shell" :inert="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? '' : null" :aria-hidden="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? 'true' : null">
         <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
+          <div class="header-actions">
           <button ref="menuToggle" class="menu-toggle-btn" :class="{ 'has-contract-reward': readyContractCount > 0 }" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
             <journal-icon name="menu" />
             {{ tr('menu') }}
             <span v-if="readyContractCount" class="contract-reward-dot" data-contract-alert role="status" :aria-label="`${readyContractCount} récompense${readyContractCount > 1 ? 's' : ''} de contrat disponible${readyContractCount > 1 ? 's' : ''}`">{{ readyContractCount }}</span>
           </button>
+          <button ref="teamToggle" class="team-toggle-btn" data-menu-action="pokemon" :aria-expanded="isTeamPanelOpen" aria-controls="pokemon-team-panel" @click="handleMenuAction('pokemon')">
+            <journal-icon name="pokemon" /><span>{{ tr('pokemon') }}</span>
+          </button>
+          </div>
           <div v-if="isDrift" class="drift-hud">
             <div class="drift-clock"><drift-glyph name="clock" /><span><small>{{ driftPhaseLabel }}</small><strong>{{ driftCountdown || 'Rift' }}</strong></span></div>
             <button class="drift-hud-toggle" :aria-expanded="isDriftPanelOpen" aria-label="Ouvrir le carnet Drift" @click="toggleDriftPanel"><drift-glyph /><span>Drifts <small>{{ driftState?.equipped?.length || 0 }}/5</small></span></button>
@@ -104,8 +109,8 @@
           </div>
           <p v-if="appearanceError" class="team-state team-error" role="alert">{{ appearanceError }}</p>
         </div>
-        <div v-if="isTeamPanelOpen" class="team-panel" ref="teamPanel">
-          <div class="team-title"><span><small>COMPAGNONS DE VOYAGE</small>{{ tr('team') }}</span><button class="team-close" aria-label="Fermer l’équipe" @click="isTeamPanelOpen = false">×</button></div>
+        <div v-if="isTeamPanelOpen" id="pokemon-team-panel" class="team-panel" ref="teamPanel">
+          <div class="team-title"><span><small>COMPAGNONS DE VOYAGE</small>{{ tr('team') }}</span><button class="team-close" :aria-label="tr('close')" @click="closeTeamPanel">×</button></div>
           <div v-if="teamLoading" class="team-state">{{ tr('loading') }}</div>
           <p v-if="teamError" class="team-state team-error" role="alert">{{ teamError }}</p>
           <div v-if="!teamLoading && teamPokemons.length === 0" class="team-state">{{ tr('noPokemon') }}</div>
@@ -548,7 +553,6 @@ export default {
         { key: 'pokedex' },
         { key: 'progress' },
         { key: 'badges' },
-        { key: 'pokemon' },
         { key: 'appearance' },
         { key: 'bag' },
         { key: 'options' }
@@ -995,6 +999,10 @@ export default {
       });
     },
 
+    closeTeamPanel() {
+      this.isTeamPanelOpen = false;
+      this.$nextTick(() => this.$refs.teamToggle?.focus());
+    },
     toggleMenu() {
       this.isMenuOpen = !this.isMenuOpen;
     },
@@ -1827,6 +1835,8 @@ export default {
       }
 
       if (actionKey === 'pokemon') {
+        this.releaseAllMovementKeys();
+        this.isDriftPanelOpen = false;
         this.isAppearancePanelOpen = false;
         this.isBagOpen = false;
         if (this.isTeamPanelOpen) {
@@ -1992,7 +2002,7 @@ export default {
         }
         this.isMenuOpen = false;
         this.isBagOpen = false;
-        this.isTeamPanelOpen = false;
+        if (this.isTeamPanelOpen) this.closeTeamPanel();
         this.isAppearancePanelOpen = false;
         if (this.battle) {
           this.$refs.battleOverlay?.closePanels();
