@@ -1,6 +1,8 @@
 // Adjacent maps sharing a theme keep playing. Returning from a different theme
 // starts at the beginning; battle, mute and visibility pauses preserve position.
 export function worldMusicTrack(map) {
+  if (map === 'ville1_arene') return 'mounir-room';
+  if (map === 'ville_safe1_arene') return 'hoze-room';
   if (map === 'route2_maison') return 'lucie-room';
   if (map === 'ville3_arene') return 'ana-room';
   if (map === 'gen_arene5') return 'raph-room';
