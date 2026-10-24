@@ -75,7 +75,21 @@ const caves = {
     color: '#b3e8dc',
   },
 };
+// Flower beds and open grass: bounded paths stay clear of roofs and water.
+const butterflyGardens = {
+  gen_ville5: [[26,74],[128,58],[153,35],[230,30],[320,24],[424,74],
+    [34,98],[139,113],[35,232],[115,279],[422,161],[423,235],
+    [42,294],[91,279],[128,290],[425,286],
+    [205,168],[265,155],[303,174],[175,241]],
+  route4: [[57,109],[87,115],[123,111],[164,121],[204,111],[244,119],
+    [54,247],[92,250],[130,267],[147,287],[248,266],[302,273],
+    [353,255],[400,277],[348,104],[406,103]],
+};
 export function placeAmbienceProfile(map) {
+  if (butterflyGardens[map]) return {
+    kind: 'garden', shade: '#000000', opacity: 0,
+    butterflies: butterflyGardens[map],
+  };
   if (map === 'ville5')
     return {
       kind: 'snow',
@@ -404,21 +418,31 @@ export class PlaceAmbienceRenderer {
           const x = mod(t * 2.1 + n * 290, 750) - 150;
           glow(c, x, 106 + n * 117, 108, '#243c61', 0.065, 0.42);
         }
-      if (motion)
-        for (const [i, [x, y]] of p.butterflies.entries()) {
-          const age = mod(t + i * 13, 37);
-          if (age > 8) continue;
-          const bx = x + Math.sin(age * 0.6 + i) * 12,
-            by = y - age * 1.5 + Math.sin(age * 2) * 2;
-          c.globalAlpha = Math.min(1, age, 8 - age) * 0.8;
-          c.fillStyle = i ? '#f3cf8d' : '#d2c5f5';
-          const wing = Math.sin(t * 10) > 0 ? 3 : 1;
-          c.fillRect(Math.round(bx) - wing, Math.round(by), wing, 2);
-          c.fillRect(Math.round(bx) + 1, Math.round(by) - 1, wing, 2);
-          c.fillStyle = '#586173';
-          c.fillRect(Math.round(bx), Math.round(by), 1, 3);
-          c.globalAlpha = 1;
-        }
+    }
+    if (motion && p.butterflies) {
+      const garden = p.kind === 'garden';
+      const duration = garden ? 22 : 8, cycle = garden ? 26 : 37;
+      for (const [i, [x, y]] of p.butterflies.entries()) {
+        // Staggered rests: gardens always have a dozen butterflies in flight.
+        const age = mod(t + i * (garden ? cycle / p.butterflies.length : 13), cycle);
+        if (age >= duration) continue;
+        const phase = t * (0.65 + (i % 3) * 0.09) + i * 2.4;
+        const bx = Math.round(x + Math.sin(phase) * (garden ? 6 : 12));
+        const by = Math.round(y + Math.sin(phase * 1.7) * 3 - Math.cos(phase * .6) * 2);
+        const wing = Math.sin(t * (9 + i % 4) + i) > 0 ? 3 : 1;
+        c.globalAlpha = Math.min(1, age * 2, (duration - age) * 2) * .95;
+        c.fillStyle = ['#ffe4a0', '#e9c6fa', '#a7e2f5', '#ffb7c6'][i % 4];
+        c.fillRect(bx - wing, by - 1, wing, 3);
+        c.fillRect(bx + 1, by - 1, wing, 3);
+        c.fillRect(bx - Math.max(1, wing - 1), by + 2, Math.max(1, wing - 1), 1);
+        c.fillRect(bx + 1, by + 2, Math.max(1, wing - 1), 1);
+        c.fillStyle = '#fff4d7';
+        c.fillRect(bx - wing, by - 1, 1, 1);
+        c.fillRect(bx + wing, by - 1, 1, 1);
+        c.fillStyle = '#596078';
+        c.fillRect(bx, by, 1, 3);
+      }
+      c.globalAlpha = 1;
     }
     for (const [x, y] of p.flags || []) cloth(c, x, y, t, p.color, motion ? Math.max(0.5, wind) : 0);
   }
