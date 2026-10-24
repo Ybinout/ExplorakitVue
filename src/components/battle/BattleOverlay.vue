@@ -1,6 +1,6 @@
 <template>
   <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-lake': environment === 'lake' }]" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
-    <battle-entrance v-if="entranceActive" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
+    <battle-entrance v-if="entranceActive" :key="visualEpoch" :champion="entranceChampion" @portrait-ready="onEntrancePortraitReady" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
       :inert="entranceActive ? '' : null" :aria-hidden="entranceActive ? 'true' : null"
@@ -286,6 +286,7 @@
 import BattleEntrance from './BattleEntrance.vue';
 import BattleSendOut from './BattleSendOut.vue';
 import { waitForBattleAssets, entranceDelay } from '@/services/battleEntrance';
+import { arenaChampion } from '@/services/arenaEntrance';
 import { createBattlePresentation } from '@/services/battlePresentation';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
@@ -373,6 +374,7 @@ export default {
       actionTurnId: null,
       presentationBusy: false,
       entrancePhase: 'ready',
+      entranceChampion: null,
       feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
       visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
       sendOuts: [], trainerSpeech: null,
@@ -536,7 +538,7 @@ export default {
     }
   },
   watch: {
-    mapName() { this.preloadSnowBackground(); },
+    mapName() { this.preloadSnowBackground(); this.preloadArenaPortrait(); },
     mobile() { this.preloadSnowBackground(); },
     audioVolume() { this.syncAudio(); },
     soundEnabled() { this.syncAudio(); },
@@ -547,6 +549,7 @@ export default {
   },
   mounted() {
     this.preloadSnowBackground();
+    this.preloadArenaPortrait();
     // Warm the two matching weather variants before a battle, sharing the browser cache.
     const format = this.mobile && window.matchMedia('(orientation: portrait)').matches ? 'Mobile' : 'Wide';
     for (const scene of ['grass', 'arena']) {
@@ -597,16 +600,32 @@ export default {
         : {airborne:'En vol',underground:'Sous terre',submerged:'Sous l’eau',vanished:'Disparu'};
       return labels[state] || '';
     },
-    prepareEntrance() {
+    arenaPortrait() {
+      const champion = arenaChampion(this.mapName, 'arena');
+      return champion ? { ...champion, src: require('@/assets/image/' + champion.portrait) } : null;
+    },
+    preloadArenaPortrait() {
+      const champion = this.arenaPortrait();
+      if (!champion || preloadedBackgrounds.has(champion.src)) return;
+      preloadedBackgrounds.add(champion.src);
+      const image = new Image(); image.src = champion.src;
+    },
+    onEntrancePortraitReady() {
+      if (this.entrancePhase === 'holding') this._entrancePortraitAt = performance.now();
+    },
+    prepareEntrance(encounterKind = 'wild') {
       this.cancelEntrance();
       this.battleMapName = this.mapName;
       this._entranceController = new AbortController();
       this._entranceStartedAt = performance.now();
+      this._entrancePortraitAt = null;
+      this.entranceChampion = arenaChampion(this.mapName, encounterKind) ? this.arenaPortrait() : null;
       this.entrancePhase = 'holding';
     },
     cancelEntrance() {
       this._entranceController?.abort();
       this._entranceController = null;
+      this.entranceChampion = null;
       this.entrancePhase = 'ready';
     },
     async revealEntrance(epoch) {
@@ -616,7 +635,7 @@ export default {
       const obsolete = () => signal.aborted || epoch !== this.visualEpoch;
       await this.$nextTick();
       if (obsolete()) return;
-      await waitForBattleAssets(() => [...(this.$el.querySelectorAll?.('.battle-background, .battle-sprite, .battle-platform img') || [])], { signal });
+      await waitForBattleAssets(() => [...(this.$el.querySelectorAll?.('.battle-background, .battle-sprite, .battle-platform img, .entrance-portrait') || [])], { signal });
       if (obsolete()) return;
       // Cached images may have loaded before their Vue load handler was attached.
       for (const [side, anchor] of [['wild', this.$refs.opponentAnchor], ['player', this.$refs.playerAnchor]]) {
@@ -624,7 +643,18 @@ export default {
         if (image) this.calibrateBattleSprite({ currentTarget: image }, side);
       }
       await this.$nextTick();
-      if (!this.reducedMotion()) await entranceDelay(520 - (performance.now() - this._entranceStartedAt), signal);
+      const elapsed = performance.now() - this._entranceStartedAt;
+      if (this.entranceChampion && !document.hidden) {
+        // Give a late-loading portrait a readable moment too, within a bounded
+        // wait. This stays in the presentation queue ahead of turn controls.
+        const visibleFor = this._entrancePortraitAt == null ? Infinity : performance.now() - this._entrancePortraitAt;
+        await entranceDelay(Math.max((this.reducedMotion() ? 1200 : 2800) - elapsed, (this.reducedMotion() ? 900 : 1600) - visibleFor), signal);
+        // A portrait can finish just after the asset timeout, while the title
+        // is still holding. Do not flash it for a single frame before leaving.
+        if (!obsolete() && this._entrancePortraitAt != null && !document.hidden) {
+          await entranceDelay((this.reducedMotion() ? 900 : 1600) - (performance.now() - this._entrancePortraitAt), signal);
+        }
+      } else if (!this.reducedMotion()) await entranceDelay(520 - elapsed, signal);
       if (obsolete()) return;
       if (!this.reducedMotion()) {
         this.entrancePhase = 'revealing';

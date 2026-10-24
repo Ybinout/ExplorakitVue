@@ -2716,7 +2716,7 @@ export default {
       this.closeChatSession(true);
       this.$refs.battleOverlay?.resetBattleUi();
       this.$refs.battleOverlay?.setEncounterEnvironment(data?.environment);
-      this.$refs.battleOverlay?.prepareEntrance();
+      this.$refs.battleOverlay?.prepareEntrance(data?.musicKind || data?.battleType || 'wild');
       this.$refs.battleOverlay?.updateFieldState(data?.field || {});
       this.battle = true;
       this.syncWorldMusic();
