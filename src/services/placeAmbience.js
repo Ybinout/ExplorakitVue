@@ -127,18 +127,12 @@ export function placeAmbienceProfile(map) {
     };
   if (gymMaps[map])
     return {
-      kind: 'arena',
-      opacity: 0.13,
+      kind: 'hall',
       ...ARENA_LIGHTS[gymMaps[map]],
-      lights: [
-        [216, 82, 64],
-        [77, 209, 35],
-        [365, 209, 35],
-      ],
-      flags: [
-        [162, 37],
-        [286, 37],
-      ],
+      opacity: 0.035,
+      lights: [[224, 56, 60]],
+      lanternColor: map === 'ville4_arene' ? '#cbb4ff' : '#ffd69b',
+      lanterns: [[136, 24], [312, 24], [20, 130], [428, 130], [20, 215], [428, 215], [196, 265], [251, 265]],
     };
   return null;
 }
@@ -297,10 +291,10 @@ export class PlaceAmbienceRenderer {
       c.restore();
       glow(c, x, y + 8, r, p.color, p.kind === 'snow' ? 0.23 : 0.16);
     }
-    if (p.kind === 'summit') {
+    if (p.kind === 'summit' || p.kind === 'hall') {
       for (const [x, y] of p.lanterns) {
         const strength = motion ? 0.21 + Math.sin(t * 1.7 + x) * 0.025 : 0.21;
-        glow(c, x, y, 16, '#ffd69b', strength);
+        glow(c, x, y, 16, p.lanternColor || '#ffd69b', strength);
       }
       // A few suspended motes inside the window's light, never across the HUD.
       if (motion) for (let n = 0; n < 12; n++) {
