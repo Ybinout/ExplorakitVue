@@ -128,3 +128,13 @@
 .game-root .game-stage .battle-raph-gym .battle-atmosphere { background:linear-gradient(180deg,#122f3210,transparent 65%); }
 .game-root .game-stage .battle-raph-gym .battle-ground-disc.raph-disc { position:absolute; left:0; top:0; width:calc(var(--sprite-visible-size) * 1.65); height:calc(var(--sprite-visible-size) * .4); transform:translate(-50%,-58%); border:3px solid #ba975d; border-bottom:5px solid #5b675d; border-radius:50%; background:#80998b; box-shadow:0 4px 0 #122e3540,inset 0 3px 0 #d2b77e,inset 0 -3px 0 #58766a; }
 .game-root .game-stage .battle-raph-gym .battle-position-player .raph-disc { width:calc(var(--sprite-visible-size) * 1.9); height:calc(var(--sprite-visible-size) * .46); transform:translate(-50%,-84%); }
+
+/* Dedicated indoor gyms share the fighters' ground anchors on every viewport. */
+.game-root .game-stage .battle-dedicated-gym .battle-background { object-fit:fill; filter:none; image-rendering:pixelated; }
+.game-root .game-stage .battle-dedicated-gym .battle-atmosphere { background:none; }
+.game-root .game-stage .battle-dedicated-gym .battle-ground-disc.gym-disc {
+  position:absolute; left:0; top:0; width:calc(var(--sprite-visible-size) * 1.65); height:calc(var(--sprite-visible-size) * .4);
+  transform:translate(-50%,-58%); border:3px solid var(--gym-rim); border-bottom:5px solid var(--gym-edge); border-radius:50%;
+  background:var(--gym-ground); box-shadow:0 4px 0 #13253535,inset 0 3px 0 var(--gym-light),inset 0 -3px 0 var(--gym-edge);
+}
+.game-root .game-stage .battle-dedicated-gym .battle-position-player .gym-disc { width:calc(var(--sprite-visible-size) * 1.9); height:calc(var(--sprite-visible-size) * .46); transform:translate(-50%,-84%); }

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-lake': environment === 'lake' }]" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
+  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="gymBackground ? gymBackground.platform : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
     <battle-entrance v-if="entranceActive" :key="visualEpoch" :champion="entranceChampion" @portrait-ready="onEntrancePortraitReady" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
@@ -14,13 +14,14 @@
       <picture v-else-if="environment === 'lake'" class="battle-arena-background" data-battle-environment="lake"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/lake-mobile-v2.webp')"><img src="../../assets/battle/lake-wide-v2.webp" class="battle-background" alt=""></picture>
       <picture v-else-if="environment === 'lake-gym'" class="battle-arena-background" data-battle-environment="lake-gym"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/mounir-mobile-v1.webp')"><img src="../../assets/battle/mounir-wide-v1.webp" class="battle-background" alt=""></picture>
       <picture v-else-if="environment === 'raph-gym'" class="battle-arena-background" data-battle-environment="raph-gym"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/raph-mobile-v1.webp')"><img src="../../assets/battle/raph-wide-v1.webp" class="battle-background" alt=""></picture>
+      <picture v-else-if="gymBackground" class="battle-arena-background" :data-battle-environment="environment"><source v-if="mobile" media="(orientation: portrait)" :srcset="gymBackground.mobile"><img :src="gymBackground.wide" class="battle-background" alt=""></picture>
       <picture v-else-if="environment === 'cave'" class="battle-arena-background" data-battle-environment="cave"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/cave-mobile-v1.webp')"><img src="../../assets/battle/cave-wide-v1.webp" class="battle-background battle-cave-background" alt=""></picture>
       <picture v-else-if="environment === 'snow'" class="battle-arena-background" data-battle-environment="snow"><source v-if="mobile" media="(orientation: portrait)" :srcset="snowBackgrounds.mobile"><img :src="snowBackgrounds.wide" class="battle-background battle-snow-background" alt=""></picture>
       <picture v-else class="battle-arena-background"><source v-if="mobile" media="(orientation: portrait)" :srcset="raining ? rainBackgrounds.grassMobile : require('@/assets/battle/grass-mobile-v3.webp')"><img :src="raining ? rainBackgrounds.grassWide : require('@/assets/battle/back.webp')" class="battle-background" alt=""></picture>
       <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
-      <template v-if="challenge || mobile || environment === 'raph-gym' || environment === 'cave' || environment === 'lake-gym' || environment === 'lake' || environment === 'snow'">
+      <template v-if="challenge || mobile || gymBackground || environment === 'raph-gym' || environment === 'cave' || environment === 'lake-gym' || environment === 'lake' || environment === 'snow'">
         <div v-for="side in ['wild', 'player']" :key="`platform-${side}`" :class="['battle-platform', `battle-position-${side}`]" :data-battle-platform="side" aria-hidden="true">
-          <img v-if="environment === 'lake-gym'" src="../../assets/battle/mounir-platform-v1.webp" alt=""><span v-else-if="mobile || environment === 'raph-gym' || environment === 'cave' || environment === 'lake' || environment === 'snow'" :class="['battle-ground-disc', { 'arena-disc': challenge, 'raph-disc': environment === 'raph-gym', 'cave-disc': environment === 'cave', 'snow-disc': environment === 'snow', 'lake-disc': environment === 'lake' }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
+          <img v-if="environment === 'lake-gym'" src="../../assets/battle/mounir-platform-v1.webp" alt=""><span v-else-if="mobile || gymBackground || environment === 'raph-gym' || environment === 'cave' || environment === 'lake' || environment === 'snow'" :class="['battle-ground-disc', { 'arena-disc': challenge, 'gym-disc': Boolean(gymBackground), 'raph-disc': environment === 'raph-gym', 'cave-disc': environment === 'cave', 'snow-disc': environment === 'snow', 'lake-disc': environment === 'lake' }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
         </div>
       </template>
       <level-growth v-if="levelGrowthNotice" class="battle-level-growth" :growth="levelGrowthNotice" compact />
@@ -320,6 +321,24 @@ const SNOW_BACKGROUNDS = Object.freeze({
   mobile: require('@/assets/battle/snow-mobile-v1.webp'),
   wide: require('@/assets/battle/snow-wide-v1.webp')
 });
+const GYM_BACKGROUNDS = Object.freeze({
+  'hoze-gym': {
+    wide: require('@/assets/battle/hoze-wide-v1.webp'), mobile: require('@/assets/battle/hoze-mobile-v1.webp'),
+    platform: { '--gym-ground': '#d1ae70', '--gym-rim': '#a67f46', '--gym-edge': '#795c35', '--gym-light': '#efd39c' }
+  },
+  'ana-gym': {
+    wide: require('@/assets/battle/ana-wide-v1.webp'), mobile: require('@/assets/battle/ana-mobile-v1.webp'),
+    platform: { '--gym-ground': '#aabc9b', '--gym-rim': '#849b79', '--gym-edge': '#5b715b', '--gym-light': '#dedfc1' }
+  },
+  'wanda-gym': {
+    wide: require('@/assets/battle/wanda-wide-v1.webp'), mobile: require('@/assets/battle/wanda-mobile-v1.webp'),
+    platform: { '--gym-ground': '#858296', '--gym-rim': '#a18c74', '--gym-edge': '#514b65', '--gym-light': '#bab0c9' }
+  },
+  '7p-gym': {
+    wide: require('@/assets/battle/7p-wide-v1.webp'), mobile: require('@/assets/battle/7p-mobile-v1.webp'),
+    platform: { '--gym-ground': '#c3d9ef', '--gym-rim': '#92adcc', '--gym-edge': '#647e9c', '--gym-light': '#edf7ff' }
+  }
+});
 const preloadedBackgrounds = new Set();
 
 const MOVE_COLORS = {
@@ -436,6 +455,7 @@ export default {
   computed: {
     entranceActive() { return this.entrancePhase !== 'ready'; },
     raining() { return this.fieldState.weather === 'rain'; },
+    gymBackground() { return GYM_BACKGROUNDS[this.environment] || null; },
     rainBackgrounds() { return RAIN_BACKGROUNDS; },
     snowBackgrounds() { return SNOW_BACKGROUNDS; },
     environment() { return battleEnvironment(this.battleMapName, Boolean(this.challenge), this.fieldState.weather,this.encounterEnvironment); },
