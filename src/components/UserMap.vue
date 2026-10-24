@@ -215,9 +215,9 @@
           <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
-          <room-obstacle-action v-if="roomObstacleAction && !battle" :action="roomObstacleAction" :language="preferences.language" />
+          <room-obstacle-action v-if="roomObstacleAction && !battle" :key="roomObstacleAction.id" :action="roomObstacleAction" :language="preferences.language" />
           <div v-if="!roomObstacleAction && interactionNotice && interactionNoticeKind === 'gate' && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ interactionNotice }}</div>
-          <div v-if="nearbyRoomObstacle && !roomObstacleAction && !interactionNotice && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ preferences.language === 'en' ? 'A / Space · Clear the boards' : 'A / Espace · Dégager les planches' }}</div>
+          <div v-if="nearbyRoomObstacle && !roomObstacleAction && !interactionNotice && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ preferences.language === 'en' ? 'A / Space · Break the crystals' : 'A / Espace · Briser les cristaux' }}</div>
           <div v-if="mapLoading || mapLoadError || worldContextLost" class="world-loading" role="status" :class="{ 'has-error': mapLoadError }">
             <span>{{ mapLoadError || (preferences.language === 'en' ? 'Loading location…' : 'Chargement du lieu…') }}</span>
             <button v-if="mapLoadError" @click="loadMapImage">{{ preferences.language === 'en' ? 'Retry' : 'Réessayer' }}</button>
@@ -273,7 +273,7 @@
           >
             A
           </button>
-          <span>{{ textImageSequence.length ? (preferences.language === 'en' ? 'Continue' : 'Continuer') : (nearbyRoomObstacle ? (preferences.language === 'en' ? 'Clear boards' : 'Dégager') : (preferences.language === 'en' ? 'Interact' : 'Parler / agir')) }}</span>
+          <span>{{ textImageSequence.length ? (preferences.language === 'en' ? 'Continue' : 'Continuer') : (nearbyRoomObstacle ? (preferences.language === 'en' ? 'Strike' : 'Frapper') : (preferences.language === 'en' ? 'Interact' : 'Parler / agir')) }}</span>
           </div>
         </div>
         </div>
@@ -366,6 +366,7 @@
 import FishingPrompt from './world/FishingPrompt.vue';
 import { drawFishing } from '@/services/fishingRenderer';
 import RoomObstacleAction from './world/RoomObstacleAction.vue';
+import {roomStrikePose, drawRoomStrike} from '../services/roomObstacleRenderer';
 import { StoryGateRenderer } from '@/services/storyGateRenderer';
 import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset } from '@/services/npcFrames';
 import FlightTransition from './FlightTransition.vue';
@@ -554,6 +555,7 @@ export default {
         fromName: ''
       },
       roomObstacleAction: null,
+      pendingRoomEntry: null,
       roomObstacles: [],
       interactionNotice: '',
       interactionNoticeKind: '',
@@ -675,9 +677,14 @@ export default {
       return this.roomObstacles.find(o => o.map === this.map && o.locked
         && o.cells.some(p => Math.abs(p.x - x) + Math.abs(p.y - y) <= 1)) || null;
     },
+    roomEntryReady() {
+      return this.pendingRoomEntry && this.pendingRoomEntry[2]?.entryMap === this.map
+        && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map
+        && this.players[this.socket?.id]?.currentmap === this.map && !this.battle && !this.textImageSequence.length;
+    },
     movementBlocked() { return this.worldContextLost || this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
     movementSuspended() {
-      return !!this.roomObstacleAction || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
@@ -688,6 +695,11 @@ export default {
     }
   },
   watch: {
+    roomEntryReady(ready) {
+      if (!ready) return;
+      const sentences=this.pendingRoomEntry;this.pendingRoomEntry=null;
+      this.updateTextImageSequence(sentences[0],sentences[1]);this.endSentences=sentences[1];
+    },
     worldMusicState: { handler() { this.syncWorldMusic(); }, deep: true },
     placeAmbienceActive(active) { if (!active) this._placeAmbience?.suspend(); },
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
@@ -2278,7 +2290,8 @@ export default {
           player.direction = 'down';  // DÃ©finit la direction par dÃ©faut
         }
 
-        const animation = this.spriteAnimations[player.direction];
+        const strike=roomStrikePose(playerId===this.socket?.id&&this.roomObstacleAction?.map===this.map?this.roomObstacleAction:null,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+        const animation = this.spriteAnimations[strike.direction || player.direction];
 
         // VÃ©rifie si l'animation est valide
         if (animation) {
@@ -2302,6 +2315,7 @@ export default {
           if (sprite && playerSpriteSheet?.complete && playerSpriteSheet.naturalWidth && playerSpriteSheet.naturalHeight) {
             const pose=flightPose(playerId===this.socket?.id?this.flight:null,now,!this.preferences.animationsEnabled||this.worldWeatherReducedMotion);
             c.save();c.globalAlpha=pose.alpha;
+            c.translate(strike.x,strike.y);
             c.translate(player.x,player.y+10-pose.lift);c.scale(pose.scale,pose.scale);c.translate(-player.x,-player.y-10);
             c.drawImage(
               playerSpriteSheet,
@@ -2317,6 +2331,8 @@ export default {
         }
       }
 
+      if(!this.battle && !document.hidden && this.roomObstacleAction?.map===this.map)
+        drawRoomStrike(c,this.roomObstacleAction,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       // Dessiner les Ã©lÃ©ments de premier plan si nÃ©cessaire
       if (this.foregroundImage?.complete && this.foregroundImage.naturalWidth) {
         if (hasWindTrees(this.map) && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
@@ -2447,12 +2463,13 @@ export default {
     this.socket.on('fieldEffectState', (payload={})=>{this.repelSteps=Number(payload.repelSteps)||0;});
     this.socket.on('roomObstacleAction', (action = {}) => {
       clearTimeout(this._roomObstacleTimer);
-      this.roomObstacleAction = action.active && action.map === this.map ? action : null;
+      this.roomObstacleAction = action.map === this.map && (action.active || action.success)
+        ? {...action,startedAt:performance.now()} : null;
       this._storyGateRenderer?.work(this.roomObstacleAction);
       if (this.roomObstacleAction) this._roomObstacleTimer = setTimeout(() => {
         this.roomObstacleAction = null;
         this._storyGateRenderer?.work(null);
-      }, Math.min(8000, Number(action.duration) + 4000));
+      }, action.success ? 1100 : Math.min(8000, Number(action.duration) + 4000));
       this.drawPlayers();
     });
     this.socket.on('storyGatesState', (payload = {}) => {
@@ -2472,6 +2489,7 @@ export default {
     });
 
     this.socket.on('progressionNotice', (payload = {}) => {
+      if(payload.type==='room_obstacle')return; // Dedicated confirmation follows the last impact.
       this.showInteractionNotice(payload.message || 'Progression mise à jour.', 3800);
     });
 
@@ -2642,6 +2660,7 @@ export default {
     });
 
     this.socket.on('dialogue', (sentences) => {
+      if(sentences?.[2]?.entryMap){this.pendingRoomEntry=sentences;return;}
       if (sentences && sentences.length > 0) {
         this.updateTextImageSequence(sentences[0], sentences[1]);
         this.endSentences = sentences[1]
@@ -2695,6 +2714,7 @@ export default {
     });
 
     this.socket.on('newmap', ({ mapname, playersList }) => {
+      this.pendingRoomEntry=null;
       this.pc.visible=false;
       this.pauseMovementForMap();
       this.clearAllPlayers();
@@ -2755,6 +2775,8 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.pendingRoomEntry=null;
+      if(this.endSentences==='lucie_room_entry')this.textImageSequence=[];
       clearTimeout(this._roomObstacleTimer);
       this.roomObstacleAction = null;
       this._storyGateRenderer?.work(null);

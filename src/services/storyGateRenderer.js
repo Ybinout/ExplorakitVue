@@ -9,6 +9,7 @@ export class StoryGateRenderer {
       next.set(gate.id, {
         ...gate,
         workingAt: previous?.workingAt ?? null,
+        workAction: previous?.workAction ?? null,
         opening: previous?.locked && !gate.locked ? true : (!gate.locked && previous?.opening) || false,
         openedAt: previous?.locked && !gate.locked ? null : previous?.openedAt ?? null,
         pulseAt: previous?.pulseAt ?? null,
@@ -18,7 +19,11 @@ export class StoryGateRenderer {
     this.gates = next;
   }
   work(action) {
-    for (const gate of this.gates.values()) gate.workingAt = action?.active && action.id === gate.id ? performance.now() : null;
+    for (const gate of this.gates.values()) {
+      gate.workingAt = action?.active && action.id === gate.id ? (action.startedAt ?? performance.now()) : null;
+      if(gate.workingAt!==null)gate.workAction={...action,startedAt:gate.workingAt};
+      else if(gate.locked)gate.workAction=null;
+    }
   }
   pulse(id) { const gate = this.gates.get(id); if (gate?.locked) gate.pulsePending = true; }
   draw(ctx, map, now, animated = true) {
