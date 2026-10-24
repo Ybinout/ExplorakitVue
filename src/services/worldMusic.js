@@ -1,6 +1,9 @@
 // A map change never reloads an already selected track. All playheads survive
 // battles, mute, visibility changes and a return to another kind of location.
 export function worldMusicTrack(map) {
+  if (map === 'ville4_arene') return 'wanda-room';
+  if (map === 'ville5_arene') return 'sevenp-room';
+  if (map === 'route13' || map === 'route14') return 'snow';
   if (/^cave(?:\d|_|$)/.test(map)) return 'cave';
   if (/^ville5(?:_|$)/.test(map)) return 'snow';
   if (map==='ville_commerciale'||/^tour_(?:rdc|etage[123])$/.test(map)) return 'village';

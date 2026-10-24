@@ -361,7 +361,7 @@
 import FishingPrompt from './world/FishingPrompt.vue';
 import { drawFishing } from '@/services/fishingRenderer';
 import { StoryGateRenderer } from '@/services/storyGateRenderer';
-import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas } from '@/services/npcFrames';
+import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset } from '@/services/npcFrames';
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
 import { createMapSceneLoader } from '@/services/mapScene';
@@ -1420,8 +1420,9 @@ export default {
         if (!spriteSheet?.complete || !spriteSheet.naturalWidth || !spriteSheet.naturalHeight) continue;
 
         const { x, y, progress, moving } = this.pnjWorldPosition(pnj, now);
-        const drawX = Math.round(x - 32);
-        const drawY = Math.round(y - 42 - (moving ? Math.abs(Math.sin(progress * Math.PI * 3)) * 2 : 0));
+        const offset = npcRenderOffset(this.map, pnj);
+        const drawX = Math.round(x - 32 + offset.x);
+        const drawY = Math.round(y - 42 + offset.y - (moving ? Math.abs(Math.sin(progress * Math.PI * 3)) * 2 : 0));
         if (pnj.challengeLevel) {
           context.save(); context.fillStyle='#173e48'; context.strokeStyle='#c5ac6d';
           context.fillRect(drawX-10,drawY-24,84,20); context.strokeRect(drawX-10,drawY-24,84,20);
@@ -2283,7 +2284,7 @@ export default {
 
   },
   mounted() {
-    this._worldMusic = new WorldMusic({ village: require('@/assets/msc/village.mp3'), route: require('@/assets/msc/start.mp3'), cave: require('@/assets/msc/cave.mp3'), snow: require('@/assets/msc/snow.mp3') });
+    this._worldMusic = new WorldMusic({ village: require('@/assets/msc/village.mp3'), route: require('@/assets/msc/start.mp3'), cave: require('@/assets/msc/cave.mp3'), snow: require('@/assets/msc/snow.mp3'), 'wanda-room': require('@/assets/msc/areneWanda.mp3'), 'sevenp-room': require('@/assets/msc/arene7p.mp3') });
     window.addEventListener('pointerdown', this.syncWorldMusic);
     window.addEventListener('pointerup', this.syncWorldMusic);
     window.addEventListener('keydown', this.syncWorldMusic);

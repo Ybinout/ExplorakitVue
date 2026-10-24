@@ -35,3 +35,9 @@ export function drawNpcFrame(context, image, frame, x, y, size, actor) {
   context.drawImage(image, box.x, box.y, box.w, box.h,
     x + (size - box.w*scale)/2, y + size - box.h*scale, box.w*scale, box.h*scale);
 }
+
+// Visual alignment with the dais inlay; server tile interaction/collision stays unchanged.
+export function npcRenderOffset(map, actor) {
+  return map === 'ville5_arene' && actor.name === 'sevenp'
+    ? { x: 16, y: -24 } : { x: 0, y: 0 };
+}
