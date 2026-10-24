@@ -215,7 +215,9 @@
           <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
-          <div v-if="interactionNotice && interactionNoticeKind === 'gate' && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ interactionNotice }}</div>
+          <room-obstacle-action v-if="roomObstacleAction && !battle" :action="roomObstacleAction" :language="preferences.language" />
+          <div v-if="!roomObstacleAction && interactionNotice && interactionNoticeKind === 'gate' && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ interactionNotice }}</div>
+          <div v-if="nearbyRoomObstacle && !roomObstacleAction && !interactionNotice && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ preferences.language === 'en' ? 'A / Space · Clear the boards' : 'A / Espace · Dégager les planches' }}</div>
           <div v-if="mapLoading || mapLoadError || worldContextLost" class="world-loading" role="status" :class="{ 'has-error': mapLoadError }">
             <span>{{ mapLoadError || (preferences.language === 'en' ? 'Loading location…' : 'Chargement du lieu…') }}</span>
             <button v-if="mapLoadError" @click="loadMapImage">{{ preferences.language === 'en' ? 'Retry' : 'Réessayer' }}</button>
@@ -264,13 +266,14 @@
           <div class="mobile-action-group">
           <button
             class="mobile-action-a"
+            :disabled="!!roomObstacleAction"
             :aria-label="textImageSequence.length ? (preferences.language === 'en' ? 'Continue dialogue' : 'Continuer le dialogue') : (preferences.language === 'en' ? 'Interact' : 'Parler ou agir')"
             @pointerdown.stop.prevent="triggerMobileActionA"
             @click="activateMobileActionA"
           >
             A
           </button>
-          <span>{{ textImageSequence.length ? (preferences.language === 'en' ? 'Continue' : 'Continuer') : (preferences.language === 'en' ? 'Interact' : 'Parler / agir') }}</span>
+          <span>{{ textImageSequence.length ? (preferences.language === 'en' ? 'Continue' : 'Continuer') : (nearbyRoomObstacle ? (preferences.language === 'en' ? 'Clear boards' : 'Dégager') : (preferences.language === 'en' ? 'Interact' : 'Parler / agir')) }}</span>
           </div>
         </div>
         </div>
@@ -362,6 +365,7 @@
 <script>
 import FishingPrompt from './world/FishingPrompt.vue';
 import { drawFishing } from '@/services/fishingRenderer';
+import RoomObstacleAction from './world/RoomObstacleAction.vue';
 import { StoryGateRenderer } from '@/services/storyGateRenderer';
 import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset } from '@/services/npcFrames';
 import FlightTransition from './FlightTransition.vue';
@@ -433,6 +437,7 @@ const MOVEMENT_INTERPOLATION_MS = 175;
 
 export default {
   components: {
+    RoomObstacleAction,
     FlightTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
     JournalIcon, BagPanel, MachineItemUse, PokemonComputer,
@@ -545,6 +550,8 @@ export default {
         fromId: null,
         fromName: ''
       },
+      roomObstacleAction: null,
+      roomObstacles: [],
       interactionNotice: '',
       interactionNoticeKind: '',
       interactionNoticeTimer: null,
@@ -657,9 +664,16 @@ export default {
       if (!Array.isArray(this.bagItems)) return [];
       return this.bagItems.filter((item) => item.category === 'held' && Number(item.quantity) > 0);
     },
+    nearbyRoomObstacle() {
+      const player = this.players[this.socket?.id];
+      if (!player || this.isDrift) return null;
+      const x = Math.floor(player.x / 32), y = Math.floor(player.y / 32);
+      return this.roomObstacles.find(o => o.map === this.map && o.locked
+        && o.cells.some(p => Math.abs(p.x - x) + Math.abs(p.y - y) <= 1)) || null;
+    },
     movementBlocked() { return this.worldContextLost || this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
     movementSuspended() {
-      return !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.roomObstacleAction || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
@@ -2420,10 +2434,21 @@ export default {
     });
 
     this.socket.on('fieldEffectState', (payload={})=>{this.repelSteps=Number(payload.repelSteps)||0;});
+    this.socket.on('roomObstacleAction', (action = {}) => {
+      clearTimeout(this._roomObstacleTimer);
+      this.roomObstacleAction = action.active && action.map === this.map ? action : null;
+      this._storyGateRenderer?.work(this.roomObstacleAction);
+      if (this.roomObstacleAction) this._roomObstacleTimer = setTimeout(() => {
+        this.roomObstacleAction = null;
+        this._storyGateRenderer?.work(null);
+      }, Math.min(8000, Number(action.duration) + 4000));
+      this.drawPlayers();
+    });
     this.socket.on('storyGatesState', (payload = {}) => {
       if (this.isDrift) return;
       if (!this._storyGateRenderer) this._storyGateRenderer = new StoryGateRenderer();
       const opened = (payload.gates || []).some(g => !g.locked && this._storyGateRenderer.gates.get(g.id)?.locked && g.map === this.map);
+      this.roomObstacles = (payload.gates || []).filter(g => g.kind === 'barricade');
       this._storyGateRenderer.sync(payload.gates || []);
       if (opened && this.interactionNoticeKind === 'gate') this.showInteractionNotice(this.preferences.language === 'en' ? 'The passage is open!' : 'Le passage est ouvert !', 1800, 'gate');
       this.drawPlayers();
@@ -2719,6 +2744,9 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      clearTimeout(this._roomObstacleTimer);
+      this.roomObstacleAction = null;
+      this._storyGateRenderer?.work(null);
       this.cancelFishing(false);
       this.worldAudioConnected = false;
       this.syncWorldMusic();
@@ -2881,6 +2909,7 @@ export default {
     this._grassRustle?.destroy();
     this._snowFootprints?.destroy();
     this._dirtFootprints?.destroy();
+    clearTimeout(this._roomObstacleTimer);
     this._storyGateRenderer?.destroy();
     this._weatherMotionQuery?.removeEventListener?.('change', this._weatherMotionChange);
     this._mapLoadVersion = (this._mapLoadVersion || 0) + 1;

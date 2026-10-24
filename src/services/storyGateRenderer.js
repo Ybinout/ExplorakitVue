@@ -1,3 +1,4 @@
+import { drawRoomBarricade } from './roomObstacleRenderer.js';
 // Small pixel-art rope barriers. No image fetches, timers or world collision prediction.
 export class StoryGateRenderer {
   constructor() { this.gates = new Map(); }
@@ -7,6 +8,7 @@ export class StoryGateRenderer {
       const previous = this.gates.get(gate.id);
       next.set(gate.id, {
         ...gate,
+        workingAt: previous?.workingAt ?? null,
         opening: previous?.locked && !gate.locked ? true : (!gate.locked && previous?.opening) || false,
         openedAt: previous?.locked && !gate.locked ? null : previous?.openedAt ?? null,
         pulseAt: previous?.pulseAt ?? null,
@@ -14,6 +16,9 @@ export class StoryGateRenderer {
       });
     }
     this.gates = next;
+  }
+  work(action) {
+    for (const gate of this.gates.values()) gate.workingAt = action?.active && action.id === gate.id ? performance.now() : null;
   }
   pulse(id) { const gate = this.gates.get(id); if (gate?.locked) gate.pulsePending = true; }
   draw(ctx, map, now, animated = true) {
@@ -23,6 +28,7 @@ export class StoryGateRenderer {
       if (gate.pulsePending) { gate.pulseAt = now; gate.pulsePending = false; }
       const opening = gate.opening ? Math.min(1, (now - gate.openedAt) / 1100) : 0;
       if (!animated && gate.opening || opening >= 1) { gate.opening = false; continue; }
+      if (gate.kind === 'barricade') { drawRoomBarricade(ctx, gate, now, opening, animated); continue; }
       const age = gate.pulseAt === null ? Infinity : now - gate.pulseAt;
       const pulse = age < 900;
       const shake = animated && pulse ? Math.round(Math.sin(age / 38) * 3 * (1 - age / 900)) : 0;
