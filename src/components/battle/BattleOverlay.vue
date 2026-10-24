@@ -1173,7 +1173,13 @@ export default {
         if (maxX < minX || maxY < minY) return;
         const visibleHeight = Math.max(1, maxY - minY + 1);
         const visibleWidth = Math.max(1, maxX - minX + 1);
-        const visibleExtent = Math.max(visibleWidth, visibleHeight);
+        // Front artwork shares a canvas but deliberately gives large species
+        // more room. Normalizing every opaque extent erased that size difference.
+        // Keep small opponents unchanged; let larger artwork exceed the base size.
+        // The same denominator drives bounds/feedback and keeps the feet anchored.
+        const visibleExtent = side === 'wild'
+          ? Math.min(Math.max(visibleWidth, visibleHeight), Math.max(width, height) * 0.55)
+          : Math.max(visibleWidth, visibleHeight);
         const centerX = (minX + maxX + 1) / 2;
         this.$set(this.battleSpriteMetrics, side, {
           widthRatio: visibleWidth / visibleExtent,

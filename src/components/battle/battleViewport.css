@@ -49,7 +49,8 @@
 .game-root.is-mobile .game-stage .battle-challenge { flex-basis:100%; font-size:9px; }
 
 @media (orientation:portrait) and (max-height:600px) {
-  .game-root.is-mobile .game-stage .battle-action-shell { grid-template-rows:44px 92px 92px; }
+  /* Reserve more stage height for large opponents on short phones. Text remains scrollable. */
+  .game-root.is-mobile .game-stage .battle-action-shell { grid-template-rows:44px 60px 92px; }
   .game-root.is-mobile .game-stage .battle-result-fx { gap:2px; }
   .game-root.is-mobile .game-stage .battle-damage-text { font-size:22px; line-height:1; padding:1px 6px; border-width:1px; }
   .game-root.is-mobile .game-stage .battle-result-chip { padding:1px 4px; font-size:10px; line-height:1.15; }
