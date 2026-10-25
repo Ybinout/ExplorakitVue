@@ -4,6 +4,7 @@ export function worldMusicTrack(map) {
   if (map === 'ville1_arene') return 'mounir-room';
   if (map === 'ville_safe1_arene') return 'hoze-room';
   if (map === 'centre') return 'center';
+  if (map === 'route4_maison') return 'village';
   if (map === 'route2_maison') return 'lucie-room';
   if (map === 'ville3_arene') return 'ana-room';
   if (map === 'gen_arene5') return 'raph-room';

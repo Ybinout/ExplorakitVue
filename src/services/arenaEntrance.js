@@ -13,7 +13,7 @@ export function arenaChampion(mapName, encounterKind, trainerKey = null) {
     name: 'Aspha', city: 'Route 2', cityEn: 'Route 2', portrait: 'aspha-v1.png', accent: '#aec5bd', story: true,
     eyebrow: 'LE DÉFI D’ASPHA', eyebrowEn: 'ASPHA’S CHALLENGE', minimumMs: 3600, portraitMs: 2200
   };
-  if (mapName === 'ville4_maison2' && encounterKind === 'trainer') return {name:'Gwenn',city:'Rochebrume',cityEn:'Miststone',portrait:'gwenn-v1.png',accent:'#baa6d8',story:true,eyebrow:'LE DÉFI DE GWENN',eyebrowEn:'GWENN’S CHALLENGE',minimumMs:3600,portraitMs:2200};
+  if (mapName === 'route4_maison' && encounterKind === 'trainer') return {name:'Gwenn',city:'Route 4',cityEn:'Route 4',portrait:'gwenn-v1.png',accent:'#baa6d8',story:true,eyebrow:'LE DÉFI DE GWENN',eyebrowEn:'GWENN’S CHALLENGE',minimumMs:3600,portraitMs:2200};
   if (mapName === 'route2_maison' && encounterKind === 'trainer') return {
     name: 'Lucie', city: 'Sous l’emprise de l’Aube', cityEn: 'Under the Dawn’s influence',
     portrait: 'lucie-v1.png', accent: '#baa6d8', story: true,
