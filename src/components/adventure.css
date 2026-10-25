@@ -204,3 +204,12 @@
 }
 
 .game-root .team-order-status { margin:12px 0 0; color:var(--journal-muted); font-size:12px; min-height:18px; }
+
+/* A shop adds a third action: give its location a full row on narrow phones. */
+@media(max-width:420px) {
+  .game-root:not(.is-drift) .game-stage .world-toolbar:has(.location-shop-btn) { flex-wrap:wrap; row-gap:4px; }
+  .game-root:not(.is-drift) .game-stage .world-toolbar:has(.location-shop-btn) .game-header { flex-basis:100%; }
+  .game-root:not(.is-drift) .game-stage .location-banner:has(.location-shop-btn) { width:100%; max-width:100%; margin:0; }
+  .game-root:not(.is-drift) .game-stage .location-banner:has(.location-shop-btn) .location-copy { flex:1; }
+  .game-root:not(.is-drift) .game-stage .location-banner:has(.location-shop-btn) .location-name { white-space:nowrap; }
+}
