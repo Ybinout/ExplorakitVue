@@ -560,6 +560,8 @@ export default {
       },
       roomObstacleAction: null,
       pendingRoomEntry: null,
+      postBattleDialogue: null,
+      deferredBattleResult: null,
       roomObstacles: [],
       interactionNotice: '',
       interactionNoticeKind: '',
@@ -649,7 +651,7 @@ export default {
       return this.teamPokemons.find(p => p.currentHp > 0 && p.pendingMoves?.length);
     },
     evolutionVisible() { return Boolean(this.evolutionQueue.length && !this.pc.visible && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.trainerOffer && !this.textImageSequence.length && !this.evolutionBusy && !this.medicineBusy && !this.learningBusy && this.driftState?.phase !== 'selection'); },
-    learningVisible() { return Boolean(!this.evolutionQueue.length && !this.pc.visible && this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
+    learningVisible() { return Boolean(!this.textImageSequence.length && !this.evolutionQueue.length && !this.pc.visible && this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
     isColosseum() { return this.$route.name === 'ColosseumGame' || this.driftState?.mode === 'colosseum'; },
     driftLobbyPath() { return this.isColosseum ? '/colosseum' : '/drift'; },
     isDrift() { return ['DriftGame','ColosseumGame'].includes(this.$route.name); },
@@ -791,6 +793,7 @@ export default {
       if (this.pendingBattleResult !== result || this._isDestroyed || this._isBeingDestroyed) return;
       this.battleResult = result; this.pendingBattleResult = null;
       this.battle = false;
+      this.showPostBattleDialogue();
       this.loadTeamPokemons();
     },
     isBagConsumable(item) {
@@ -1996,10 +1999,17 @@ export default {
         return { text: sentence.text, image: images[sentence.imageName], portraitFrame: sentence.portraitFrame, typewriterMs: sentence.typewriterMs };
       });
     },
+    showPostBattleDialogue() {
+      if (!this.postBattleDialogue || this.battle || this.pendingBattleResult) return;
+      const sentences = this.postBattleDialogue; this.postBattleDialogue = null;
+      this.deferredBattleResult = this.battleResult; this.battleResult = null;
+      this.updateTextImageSequence(sentences[0], sentences[1]); this.endSentences = sentences[1];
+    },
     clearSequence() {
       // Remet Ã  zÃ©ro la sÃ©quence, ce qui cache le composant enfant
       this.socket.emit('onEndDialogue', this.endSentences);
       this.textImageSequence = [];
+      if (this.deferredBattleResult) { this.battleResult = this.deferredBattleResult; this.deferredBattleResult = null; }
     },
 
 
@@ -2680,6 +2690,7 @@ export default {
     });
 
     this.socket.on('dialogue', (sentences) => {
+      if (sentences?.[2]?.afterBattle) { this.postBattleDialogue = sentences; this.showPostBattleDialogue(); return; }
       if(sentences?.[2]?.entryMap){this.pendingRoomEntry=sentences;return;}
       if (sentences && sentences.length > 0) {
         this.updateTextImageSequence(sentences[0], sentences[1]);
@@ -2734,7 +2745,7 @@ export default {
     });
 
     this.socket.on('newmap', ({ mapname, playersList }) => {
-      this.pendingRoomEntry=null;
+      this.pendingRoomEntry=null; this.postBattleDialogue=null; this.deferredBattleResult=null;
       this.pc.visible=false;
       this.pauseMovementForMap();
       this.clearAllPlayers();
@@ -2796,7 +2807,7 @@ export default {
 
     this.socket.on('disconnect', () => {
       this.arenaTestState = {allowed:false}; this.arenaTestNotice = '';
-      this.pendingRoomEntry=null;
+      this.pendingRoomEntry=null; this.postBattleDialogue=null; this.deferredBattleResult=null;
       if(this.endSentences==='lucie_room_entry')this.textImageSequence=[];
       clearTimeout(this._roomObstacleTimer);
       this.roomObstacleAction = null;

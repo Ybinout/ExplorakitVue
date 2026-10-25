@@ -23,7 +23,7 @@ export default {
     },
     charPerStep: {
       type: Number,
-      default: 120, // Nombre de caractères à afficher à chaque appui sur la touche espace
+      default: 120, // Existing preference values map to slow, normal and instant reveal.
     },
     soundVolume: {
       type: Number,
@@ -43,7 +43,10 @@ export default {
     };
   },
   computed: {
-    typewriterMs() { return Math.max(0, Number(this.sequence[this.currentIndex]?.typewriterMs) || 0); },
+    typewriterMs() {
+      const authored = this.sequence[this.currentIndex]?.typewriterMs;
+      return authored != null ? Math.max(0, Number(authored) || 0) : this.charPerStep >= 10000 ? 0 : this.charPerStep < 120 ? 35 : 14;
+    },
     portraitFrame() { return this.sequence[this.currentIndex]?.portraitFrame; },
     currentText() {
       return this.sequence[this.currentIndex]?.text || '';
@@ -84,17 +87,8 @@ export default {
         return;
       }
       if (this.currentCharIndex < this.currentText.length) {
-        let nextCharIndex = this.currentCharIndex + this.charPerStep;
-
-        if (nextCharIndex < this.currentText.length) {
-          let nextSpaceIndex = this.currentText.lastIndexOf(' ', nextCharIndex);
-          if (nextSpaceIndex > this.currentCharIndex) {
-            nextCharIndex = nextSpaceIndex;
-          }
-        }
-
-        this.displayedText = this.currentText.slice(this.currentCharIndex, nextCharIndex);
-        this.currentCharIndex = nextCharIndex;
+        this.displayedText = this.currentText;
+        this.currentCharIndex = this.currentText.length;
       } else {
         this.advanceToNext();
       }
