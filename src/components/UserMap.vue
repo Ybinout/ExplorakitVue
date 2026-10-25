@@ -1496,7 +1496,7 @@ export default {
           context.fillStyle='#fff8df'; context.font='12px sans-serif'; context.textAlign='center';
           context.fillText(`Défi · N. ${pnj.challengeLevel}`,drawX+32,drawY-10); context.restore();
         }
-        const classicCustomSprite = ['aspha-pixel-v2.png', 'gwenn-pixel-v2.png', 'nrv-noz-pixel-v1.png', 'nrv-tom-pixel-v1.png', 'nrv-cry-pixel-v1.png'].includes(pnj.sprite);
+        const classicCustomSprite = ['aspha-pixel-v2.png', 'gwenn-pixel-v2.png', 'gwenn-pixel-v3.png', 'matthieu-pixel-v1.png', 'nrv-noz-pixel-v1.png', 'nrv-tom-pixel-v1.png', 'nrv-cry-pixel-v1.png'].includes(pnj.sprite);
         if (pnj.spriteFrame || usesClassicNpcAtlas(spriteSheet) || classicCustomSprite) {
           // Original pixels at 2x, cropped to one person; preserve the feet anchor.
           const size = classicCustomSprite ? spriteSheet.naturalWidth * 2 : npcWorldSize(spriteSheet);
