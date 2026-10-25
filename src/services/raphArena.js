@@ -20,6 +20,17 @@ export const RAPH_BANNERS = [
   [24,197,39,230], [57,197,72,230], [375,197,390,230], [408,197,423,230],
 ];
 const SKY = { x: 148, y: 0, w: 152, h: 49 };
+// The open floor only: stairs, column bases and walls remain in front of the
+// celestial projections. World coordinates follow the existing 448 × 320 map.
+export const RAPH_ASTRAL_FLOOR = [[102,104],[346,104],[346,259],[307,269],[141,269],[102,259]];
+const ROOM_METEORS = [
+  { start: [108,116], end: [331,211], phase: 0, period: 9200, duration: 2150, gold: false },
+  { start: [335,119], end: [131,232], phase: 2700, period: 10300, duration: 2350, gold: true },
+  { start: [122,164], end: [308,257], phase: 5300, period: 11100, duration: 2050, gold: false },
+  { start: [312,111], end: [149,203], phase: 7100, period: 12400, duration: 1900, gold: false },
+  { start: [111,202], end: [256,263], phase: 1800, period: 13700, duration: 1850, gold: true },
+  { start: [337,176], end: [191,254], phase: 4600, period: 11800, duration: 1950, gold: false },
+];
 const mod = (n, d) => ((n % d) + d) % d;
 const clamp = n => Math.max(0, Math.min(1, n));
 const inside = (x, y, points) => {
@@ -34,6 +45,41 @@ export function raphPillarStrength(timestamp, index = 0) {
   const t = mod(timestamp / 1000 - Math.floor(index / 2) * .45, 9);
   const pulse = (start, width) => t < start || t > start + width ? 0 : Math.sin((t - start) / width * Math.PI);
   return pulse(.4, 1.15) * .9 + pulse(2.2, .65) * .45;
+}
+function drawRoomMeteors(c, time) {
+  c.save();
+  c.beginPath();
+  RAPH_ASTRAL_FLOOR.forEach(([x,y], i) => i ? c.lineTo(x,y) : c.moveTo(x,y));
+  c.closePath();c.clip();
+  for (const [index, track] of ROOM_METEORS.entries()) {
+    const age = mod(time + track.phase, track.period);
+    if (age >= track.duration) continue;
+    const progress = age / track.duration;
+    const fade = clamp(progress * 8) * clamp((1-progress) * 5);
+    const vx = track.end[0]-track.start[0], vy = track.end[1]-track.start[1];
+    const length = Math.hypot(vx,vy), dx = vx/length, dy = vy/length;
+    const x = track.start[0]+vx*progress, y = track.start[1]+vy*progress;
+    const color = track.gold ? '#ffd68d' : '#a5dcff';
+    // Short, stepped trails rather than blur/shadow filters: crisp at mobile
+    // zoom and cheap to paint. The dim under-trail reflects on the tiles.
+    c.strokeStyle = color;c.lineCap = 'butt';c.globalAlpha = fade*.11;c.lineWidth = 4;
+    c.beginPath();c.moveTo(Math.round(x-dx*39),Math.round(y-dy*39));c.lineTo(Math.round(x),Math.round(y));c.stroke();
+    for (let n=17;n>=0;n--) {
+      c.globalAlpha = fade * (1-n/19) * .78;c.fillStyle = n<2 ? '#fff7df' : color;
+      const size = n<4 ? 2 : 1;
+      c.fillRect(Math.round(x-dx*n*2),Math.round(y-dy*n*2),size,size);
+    }
+    // A compact four-point glint, with no ring or global screen flash.
+    c.globalAlpha = fade*.95;c.fillStyle = '#fff9eb';
+    c.fillRect(Math.round(x)-2,Math.round(y),6,1);
+    c.fillRect(Math.round(x),Math.round(y)-2,1,6);
+    for (let n=0;n<4;n++) {
+      const lag = 10+n*7, side = (n%2 ? -1 : 1)*(2+Math.sin(time/180+index+n)*2);
+      c.globalAlpha = fade*(.32-n*.05);c.fillStyle = color;
+      c.fillRect(Math.round(x-dx*lag-dy*side),Math.round(y-dy*lag+dx*side),1,1);
+    }
+  }
+  c.restore();
 }
 export class RaphArenaRenderer {
   constructor(createCanvas = () => document.createElement('canvas')) { this.createCanvas = createCanvas; this.frames = 0; this.suspend(); }
@@ -98,6 +144,7 @@ export class RaphArenaRenderer {
     sky.restore();sky.save();sky.globalCompositeOperation='destination-in';sky.drawImage(this.skyMask,0,0);sky.restore();
     c.drawImage(this.sky,SKY.x*2,0);
     c.save();c.scale(2,2);
+    drawRoomMeteors(c,time);
     for(const[i,pillar]of SIDE_PILLARS.entries())drawPillarTremor(c,this.source,pillar,time,raphPillarStrength(time,i),i);
     c.restore();c.drawImage(this.repair,0,0);
     for(const[i,f]of this.flags.entries()) {
