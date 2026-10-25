@@ -7,6 +7,8 @@ const mod=(n,d)=>((n%d)+d)%d;
 const clamp=n=>Math.max(0,Math.min(1,n));
 export function clipAnaPetalFloor(c) {
   c.beginPath();ANA_PETAL_FLOOR.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();
+  c.clip();
+  c.beginPath();c.rect(0,0,448,320);
   for(const[x,y,w,h]of FIXTURES)c.rect(x,y,w,h);
   c.clip('evenodd');
 }
