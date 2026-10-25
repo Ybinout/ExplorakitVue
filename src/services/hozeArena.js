@@ -70,7 +70,7 @@ export class HozeArenaRenderer {
   constructor(createCanvas=()=>document.createElement('canvas')){this.createCanvas=createCanvas;this.frames=0;this.faultStartedAt=null;this.faultElapsed=0;this.suspend();}
   setCollapseState(state) {
     const next=state?.map===HOZE_MAP?state:null;
-    if(this.collapseState?.epoch!==next?.epoch){if(this.faultFloor){this.faultFloor.width=this.faultFloor.height=0;this.faultFloor=null;}this.faultStartedAt=null;this.faultElapsed=0;this.collapseElapsed=0;this.lastTime=-Infinity;}
+    if(this.collapseState?.epoch!==next?.epoch || this.collapseState?.revision!==next?.revision){if(this.faultFloor){this.faultFloor.width=this.faultFloor.height=0;this.faultFloor=null;}this.faultStartedAt=null;this.faultElapsed=0;this.collapseElapsed=0;this.lastTime=-Infinity;}
     this.collapseState=next;
   }
   surface(w,h){const c=this.createCanvas();c.width=w;c.height=h;return c;}
