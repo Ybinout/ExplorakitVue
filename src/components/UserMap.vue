@@ -2008,6 +2008,9 @@ export default {
       const sentences = this.postBattleDialogue; this.postBattleDialogue = null;
       this.deferredBattleResult = this.battleResult; this.battleResult = null;
       this.updateTextImageSequence(sentences[0], sentences[1]); this.endSentences = sentences[1];
+      // The world becomes visible before the recap is dismissed. Restore its
+      // backing store now, after the toolbar and mobile controls have returned.
+      this.$nextTick(this.restoreWorldView);
     },
     clearSequence() {
       // Remet Ã  zÃ©ro la sÃ©quence, ce qui cache le composant enfant
@@ -3829,7 +3832,6 @@ button:hover {
   position: fixed;
   inset: 0;
   background: rgb(0 0 0 / 74%);
-  backdrop-filter: blur(4px);
   z-index: 120;
 }
 
