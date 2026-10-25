@@ -374,6 +374,7 @@ import {WorldRenderBudget} from '../services/worldRenderBudget';
 import {WorldMovement, MOVEMENT_INPUT_MS, movementInputWait} from '../services/worldMovement';
 import {drawHozeCeiling} from '../services/hozeCollapse';
 import {roomStrikePose, drawRoomStrike} from '../services/roomObstacleRenderer';
+import {npcTeleportPose,drawNpcTeleport} from '../services/npcTeleport';
 import { StoryGateRenderer } from '@/services/storyGateRenderer';
 import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset, npcAppearance } from '@/services/npcFrames';
 import FlightTransition from './FlightTransition.vue';
@@ -1427,6 +1428,10 @@ export default {
       if ((payload.mapname || payload.mapname === '') && payload.mapname !== this.map) return;
       if (payload.map && payload.map !== this.map) return;
       const previous = new Map(this.pnjs.map(pnj => [pnj.name, pnj]));
+      if(payload.teleportReset)this._npcTeleport=null;
+      if(payload.teleport?.map===this.map && payload.teleport.from && payload.teleport.to) {
+        this._npcTeleport={...payload.teleport,duration:Math.max(200,Math.min(2000,Number(payload.teleport.duration)||960)),receivedAt:performance.now()};
+      }
       const rawPnjs = Array.isArray(payload?.pnjs) ? payload.pnjs : [];
       this.pnjs = rawPnjs.map(npcAppearance)
         .map((pnj) => ({
@@ -1471,11 +1476,17 @@ export default {
       if (!visiblePnjs.length) return;
 
       const idleFrame = this.spriteAnimations?.down?.[0] || { x: 0, y: 0 };
+      const teleport=this._npcTeleport?.map===this.map?this._npcTeleport:null;
+      const motion=this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion;
+      if(teleport)drawNpcTeleport(context,teleport,now,motion);
       for (const pnj of visiblePnjs) {
         const spriteSheet = this.ensurePnjSpriteSheet(pnj.sprite);
         if (!spriteSheet?.complete || !spriteSheet.naturalWidth || !spriteSheet.naturalHeight) continue;
 
-        const { x, y, progress, moving } = this.pnjWorldPosition(pnj, now);
+        let { x, y, progress, moving } = this.pnjWorldPosition(pnj, now);
+        const phase=teleport?.name===pnj.name?npcTeleportPose(teleport,now,motion):null;
+        if(phase){x=phase.x*32+16;y=phase.y*32+16-phase.lift;moving=false;}
+        context.save();if(phase)context.globalAlpha=phase.alpha;
         const offset = npcRenderOffset(this.map, pnj);
         const drawX = Math.round(x - 32 + offset.x);
         const drawY = Math.round(y - 42 + offset.y - (moving ? Math.abs(Math.sin(progress * Math.PI * 3)) * 2 : 0));
@@ -1491,6 +1502,7 @@ export default {
           const size = classicCustomSprite ? spriteSheet.naturalWidth * 2 : npcWorldSize(spriteSheet);
           const frame = pnj.spriteFrame || { columns: 1, rows: 1, index: 0 };
           drawNpcFrame(context, spriteSheet, frame, drawX + (64-size)/2, drawY + 52-size, size, pnj);
+          context.restore();
           continue;
         }
         const treatAsSpriteSheet =
@@ -1512,7 +1524,9 @@ export default {
         } else {
           context.drawImage(spriteSheet, drawX, drawY, this.spriteWidth, this.spriteHeight);
         }
+        context.restore();
       }
+      if(teleport&&now-teleport.receivedAt>=teleport.duration)this._npcTeleport=null;
     },
     async selectPlayerSprite(spriteName) {
       if (this.appearanceBusy) return;
@@ -2757,6 +2771,7 @@ export default {
     });
 
     this.socket.on('newmap', ({ mapname, playersList }) => {
+      this._npcTeleport=null;
       this._worldMovement?.clear();
       this.pendingRoomEntry=null; this.postBattleDialogue=null; this.deferredBattleResult=null;
       this.pc.visible=false;
@@ -2821,7 +2836,7 @@ export default {
 
     this.socket.on('disconnect', () => {
       this._worldMovement?.clear();
-      this.arenaTestState = {allowed:false}; this.arenaTestNotice = '';this.arenaCollapse=null;
+      this.arenaTestState = {allowed:false}; this.arenaTestNotice = '';this.arenaCollapse=null;this._npcTeleport=null;
       this.pendingRoomEntry=null; this.postBattleDialogue=null; this.deferredBattleResult=null;
       if(this.endSentences==='lucie_room_entry')this.textImageSequence=[];
       clearTimeout(this._roomObstacleTimer);
