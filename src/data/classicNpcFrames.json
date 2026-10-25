@@ -8,7 +8,8 @@
     "aspha": 32,
     "vendeur": 33,
     "infirmiere": 34,
-    "lucie": 35
+    "lucie": 35,
+    "mathilde": 36
   },
   "frames": [
     {
@@ -297,6 +298,14 @@
       "y": 548,
       "w": 21,
       "h": 22,
+      "pixels": 339
+    },
+    {
+      "name": "mathilde",
+      "x": 941,
+      "y": 802,
+      "w": 19,
+      "h": 24,
       "pixels": 339
     }
   ]

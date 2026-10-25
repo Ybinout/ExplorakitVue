@@ -8,6 +8,7 @@ export function classicNpcIndex(frame, actor = {}) {
   const name = String(actor.name || '').toLowerCase();
   if (name.startsWith('aspha')) return classic.roles.aspha;
   if (name.startsWith('lucie')) return classic.roles.lucie;
+  if (name === 'mathilde_pikapika') return classic.roles.mathilde;
   if (/infirm|nurse/.test(name)) return classic.roles.infirmiere;
   if (/vendeuse/.test(name)) return 0;
   if (/vendeur|shop/.test(name)) return classic.roles.vendeur;
