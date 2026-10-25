@@ -2,7 +2,7 @@
   <div class="badge-case-backdrop" @pointerdown.self="$emit('close')">
     <section class="badge-case" role="dialog" aria-modal="true" aria-labelledby="badge-case-title" @keydown.stop="handleKeydown" @keyup.stop>
       <header class="badge-case-header">
-        <div class="badge-case-brand"><journal-icon name="badges"/><div><p>{{ english ? 'TRAINER JOURNAL' : 'LE CARNET DU DRESSEUR' }}</p><h2 id="badge-case-title">{{ english ? 'Badges & seals' : 'Badges et sceaux' }}</h2></div></div>
+        <div class="badge-case-brand"><journal-icon name="badges"/><div><p>{{ english ? 'TRAINER JOURNAL' : 'LE CARNET DU DRESSEUR' }}</p><h2 id="badge-case-title">{{ english ? 'Gym Badges' : 'Badges d’arène' }}</h2></div></div>
         <button ref="close" class="badge-case-close" :aria-label="english ? 'Close' : 'Fermer'" @click="$emit('close')">×</button>
       </header>
       <div ref="scroll" class="badge-case-scroll" tabindex="0" role="region" :aria-label="english ? 'Badge collection' : 'Collection de badges'">
@@ -19,7 +19,7 @@
               <div class="badge-case-slot-top"><span>{{ String(index+1).padStart(2,'0') }}</span><span class="badge-case-status"><span aria-hidden="true">{{ badge.earned ? '✓' : '◇' }}</span> {{ badge.earned ? (english ? 'Collected' : 'Obtenu') : (english ? 'To discover' : 'À obtenir') }}</span></div>
               <div class="badge-case-display"><badge-emblem :badge-key="badge.key" /></div>
               <h4>{{ badge.name }}</h4><p class="badge-case-place">{{ places[badge.key] || (english ? 'Adventure' : 'Aventure') }}</p>
-              <p class="badge-case-caption">{{ badge.key === 'forest_badge' ? (english ? 'A milestone in your story.' : 'Une étape de ton histoire.') : (english ? 'A reminder of an arena challenge.' : 'Le souvenir d’un défi d’arène.') }}</p>
+              <p class="badge-case-caption">{{ english ? 'A reminder of an arena challenge.' : 'Le souvenir d’un défi d’arène.' }}</p>
             </article>
           </div>
           <p v-else class="badge-case-state">{{ english ? 'No badges to display yet.' : 'Aucun badge à afficher pour le moment.' }}</p>
@@ -32,7 +32,7 @@
 <script>
 import BadgeEmblem from './BadgeEmblem.vue';
 import JournalIcon from './JournalIcon.vue';
-const places = { summit_badge:'Blanchecime · 7p', lake_badge:'Ville du Lac · Mounir', dune_badge:'Valpierre · Hoze', bloom_badge:'Ocreville · Raphael', ore_badge:'Clairfontaine · Ana', tide_badge:'Rochebrume · Wanda', forest_badge:'Clairbois', crystal_badge:'Valpierre' };
+const places = { summit_badge:'Blanchecime · 7p', lake_badge:'Ville du Lac · Mounir', dune_badge:'Valpierre · Hoze', bloom_badge:'Ocreville · Raphael', ore_badge:'Clairfontaine · Ana', tide_badge:'Rochebrume · Wanda' };
 export default {
   name:'BadgesPanel', components:{BadgeEmblem,JournalIcon},
   props:{capture:{type:Object,default:null},badges:{type:Array,default:()=>[]},loading:Boolean,language:{type:String,default:'fr'}},
