@@ -2,7 +2,7 @@
   <div class="room-obstacle-action" :class="{'is-complete':action.success}" role="status" aria-live="polite">
     <span class="room-obstacle-label">{{ language === 'en' ? action.messageEn : action.message }}</span>
     <div v-if="!action.success" class="room-obstacle-progress">
-      <span>{{ stageLabel }}</span><span class="room-obstacle-hits" aria-hidden="true"><i v-for="n in 3" :key="n" :class="{hit:hits>=n}"></i></span>
+      <span>{{ stageLabel }}</span><span class="room-obstacle-hits" aria-hidden="true"><i v-for="n in totalHits" :key="n" :class="{hit:hits>=n}"></i></span>
     </div>
     <span v-else class="room-obstacle-confirm">✓ {{ language === 'en' ? 'Passage cleared' : 'Passage dégagé' }}</span>
   </div>
@@ -12,7 +12,12 @@ import {strikeState} from '../../services/roomObstacleRenderer';
 export default {
   props:{action:{type:Object,required:true},language:{type:String,default:'fr'}},
   data:()=>({hits:0}),
-  computed:{stageLabel(){return (this.language==='en'?['You brace yourself…','A crack appears…','The crystal gives way…','One last strike!']:['Tu prends ton élan…','Une fissure apparaît…','Le cristal se fend…','Le dernier coup !'])[this.hits];}},
+  computed:{
+    totalHits(){return strikeState(this.action,performance.now()).totalHits;},
+    stageLabel(){return (this.language==='en'
+      ?['You brace yourself…','A crack appears…','The crystals resist…','The crack widens…','One last strike!','The crystals give way!']
+      :['Tu prends ton élan…','Une fissure apparaît…','Les cristaux résistent…','La fissure s’étend…','Encore un coup !','Les cristaux cèdent !'])[Math.min(this.hits,5)];}
+  },
   mounted(){this._tick=setInterval(()=>{this.hits=strikeState(this.action,performance.now()).hits;},60);},
   beforeDestroy(){clearInterval(this._tick);}
 };

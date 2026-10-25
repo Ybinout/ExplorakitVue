@@ -1,11 +1,19 @@
 // Native pixel clusters: no new textures, animation loop, global shake or random per-frame noise.
-export const STRIKE_TIMES = [550, 1280, 2050];
+export const STRIKE_TIMES = [550, 1280, 2050, 2820, 3590];
+function actionStrikeTimes(action) {
+  const times=action?.strikeTimes,duration=Number(action?.duration);
+  if(Array.isArray(times)&&times.length>0&&times.length<=10&&times.every((t,i)=>Number.isFinite(t)&&t>0&&(!i||t>times[i-1])&&(!duration||t<duration)))return times;
+  // Older servers omit the timeline; fit all five impacts within their duration.
+  const scale=duration>0?Math.min(1,duration/4140):1;
+  return STRIKE_TIMES.map(t=>Math.round(t*scale));
+}
 export function strikeState(action, now) {
   const elapsed = action?.active ? Math.max(0, now - action.startedAt) : -1;
-  const hits = STRIKE_TIMES.filter(t => elapsed >= t).length;
-  const age = hits ? elapsed - STRIKE_TIMES[hits - 1] : Infinity;
-  const upcoming = STRIKE_TIMES.find(t => t > elapsed);
-  return {elapsed, hits, impact:age < 220 ? 1 - age / 220 : 0,
+  const times=actionStrikeTimes(action);
+  const hits = times.filter(t => elapsed >= t).length;
+  const age = hits ? elapsed - times[hits - 1] : Infinity;
+  const upcoming = times.find(t => t > elapsed);
+  return {elapsed, hits, totalHits:times.length, impact:age < 220 ? 1 - age / 220 : 0,
     anticipation:elapsed>=0 && upcoming != null && upcoming-elapsed<160 ? 1-(upcoming-elapsed)/160 : 0};
 }
 export function roomStrikePose(action, now, animated = true) {
@@ -43,7 +51,7 @@ export function drawRoomBarricade(ctx,gate,now,opening,animated) {
       polygon(ctx,'#242236',[[0,0],[0,-5],[8,-5],[8,-9],[19,-9],[19,-5],[32,-5],[32,2],[21,2],[21,-2],[11,-2],[11,2],[0,2]]);
       crystal(ctx,center,0,height,9+seed%4,impact>0?'#eee1ed':'#a58aac');
       if(seed%3!==0)crystal(ctx,seed%2?3:29,-1,18+seed%8,7,'#80678e');
-      if((state.hits&&distance<(state.hits===3?2.5:1.5))||opening) {
+      if((state.hits&&distance<(state.hits>=state.totalHits?2.5:1.5))||opening) {
         ctx.strokeStyle=impact>0?'#f4dfdc':'#ac8cbb';ctx.lineWidth=2;
         ctx.beginPath();ctx.moveTo(center-2,-height+12);ctx.lineTo(center+3,-height/2);ctx.lineTo(center-3,-11);ctx.lineTo(center+1,-4);ctx.stroke();
         if(state.hits>=2||opening){ctx.beginPath();ctx.moveTo(center+3,-height/2);ctx.lineTo(center+8,-height/2-4);ctx.stroke();}
