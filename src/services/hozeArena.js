@@ -2,12 +2,22 @@ import { SIDE_PILLARS } from './arenaPillars.js';
 // All geometry is authored in the 448 × 320 artwork, not inferred map-wide.
 export const HOZE_MAP = 'ville_safe1_arene';
 export const HOZE_PILLARS = SIDE_PILLARS;
-export const HOZE_FAULTS = [
-  { phase:0, path:[[139,125],[127,137],[130,148],[113,158],[102,154],[88,151],[77,160],[65,157],[51,169],[40,180],[24,177]], branches:[[3,[111,143],[97,136],[91,121]],[5,[85,137],[71,132],[59,117]],[8,[48,154],[35,147]]]},
-  { phase:1.4, path:[[137,218],[126,230],[111,227],[99,241],[84,244],[74,251],[55,246],[43,258],[24,253]], branches:[[2,[113,246],[123,255],[117,263]],[4,[86,226],[70,217],[55,211]],[6,[49,231],[36,226]]]},
-  { phase:.7, path:[[309,126],[321,137],[318,149],[335,160],[347,155],[362,151],[373,160],[386,157],[399,170],[410,182],[424,178]], branches:[[3,[337,143],[351,136],[358,120]],[5,[366,136],[380,131],[391,116]],[8,[400,154],[413,147]]]},
-  { phase:2.1, path:[[311,219],[322,231],[337,228],[349,242],[364,245],[375,252],[393,247],[406,259],[424,254]], branches:[[2,[336,246],[325,256],[331,263]],[4,[362,227],[377,217],[392,211]],[6,[399,232],[413,226]]]},
+// Eight long faults with connected side branches, reaching towards the crest.
+// Keep the central carpet, stairs and enclosing walls clear.
+const LEFT_FAULTS = [
+  { phase:0, path:[[202,111],[187,123],[175,119],[159,132],[145,127],[127,137],[130,148],[113,158],[102,154],[88,151],[77,160],[65,157],[51,169],[40,180],[28,177]], branches:[[3,[155,149],[166,158],[160,173]],[7,[111,143],[97,136],[91,119]],[9,[85,137],[71,132],[59,114]],[12,[48,154],[35,147]]]},
+  { phase:3, path:[[204,225],[190,235],[176,230],[159,242],[146,235],[126,246],[111,239],[99,252],[84,255],[74,263],[55,254],[43,265],[28,260]], branches:[[2,[173,212],[157,203],[147,187]],[5,[130,261],[142,269]],[8,[86,233],[70,224],[55,211]],[10,[49,238],[36,232]]]},
+  { phase:6, path:[[202,174],[187,184],[175,178],[161,189],[147,182],[130,193],[116,188],[100,200],[86,194],[71,207],[57,201],[43,214],[28,208]], branches:[[2,[172,159],[181,145]],[4,[148,201],[137,211],[142,224]],[7,[100,179],[111,169]],[9,[72,225],[61,236]]]},
+  { phase:9, path:[[118,106],[123,120],[112,132],[118,146],[108,162],[116,178],[107,194],[114,211],[104,226],[112,242],[102,256],[108,269]], branches:[[1,[139,114],[148,106]],[4,[94,164],[81,177]],[7,[129,212],[139,227]],[9,[94,243],[81,256]]]},
 ];
+export const HOZE_FAULTS = LEFT_FAULTS.flatMap(f => [f, {
+  phase: f.phase+1.5,
+  path: f.path.map(([x,y]) => [448-x,y]),
+  branches: f.branches.map(([start,...points]) => [start,...points.map(([x,y]) => [448-x,y])]),
+}]);
+export const HOZE_FAULT_DURATION_MS = 42000;
+export const HOZE_FAULT_COMPLETE_MS = HOZE_FAULT_DURATION_MS+10500;
+export const HOZE_FAULT_BANDS = [[27,104,182,167],[239,104,182,167]];
 const BANNERS = [[24,104,39,137],[57,104,72,137],[375,104,390,137],[408,104,423,137],
   [24,197,39,230],[57,197,72,230],[375,197,390,230],[408,197,423,230]];
 const mod = (n,d) => ((n%d)+d)%d, clamp = n => Math.max(0,Math.min(1,n));
@@ -17,23 +27,32 @@ const inside = (x,y,points) => {
   }return hit;
 };
 export function hozeFaultPose(timestamp,phase=0,motion=true) {
-  if(!motion)return{growth:.86,opacity:.6,shake:0,dust:0};
-  const t=mod(timestamp/1000-phase,14), opening=.5+.5*Math.sin(t/14*Math.PI*2);
-  return{growth:.72+opening*.28,opacity:.65+opening*.35,shake:1,dust:.22+opening*.55};
+  if(!motion)return{growth:1,opacity:.85,shake:0,dust:0};
+  const growth=clamp((timestamp-phase*1000)/HOZE_FAULT_DURATION_MS);
+  return{growth,opacity:.85,shake:1,dust:growth>0&&growth<1?.65:0};
 }
 export function hozePillarOffset(timestamp,index,row,height) {
   const t=timestamp/1000, sway=Math.sin(t*2.25+index*.83)*1.35+Math.sin(t*6.4+index*1.31)*.4;
   return Math.round(sway*Math.pow(1-row/(height-1),1.45)*2);
 }
+const pathLength = points => points.slice(1).reduce((total,p,i) => total+Math.hypot(p[0]-points[i][0],p[1]-points[i][1]),0);
+// Reveal by travelled distance, so long segments do not suddenly jump ahead.
+function visiblePath(points,amount) {
+  let remaining=pathLength(points)*clamp(amount);const visible=[points[0]];
+  for(let i=1;i<points.length&&remaining>0;i++) {
+    const a=points[i-1],b=points[i],length=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    if(remaining>=length){visible.push(b);remaining-=length;}
+    else{const mix=remaining/length;visible.push([a[0]+(b[0]-a[0])*mix,a[1]+(b[1]-a[1])*mix]);break;}
+  }
+  return visible;
+}
 function trace(c,points,amount) {
-  const segments=(points.length-1)*clamp(amount),end=Math.floor(segments);c.beginPath();c.moveTo(...points[0]);
-  for(let i=1;i<=end;i++)c.lineTo(...points[i]);
-  if(end<points.length-1){const a=points[end],b=points[end+1],mix=segments-end;c.lineTo(a[0]+(b[0]-a[0])*mix,a[1]+(b[1]-a[1])*mix);}c.stroke();
+  const visible=visiblePath(points,amount);if(visible.length<2)return;
+  c.beginPath();c.moveTo(...visible[0]);for(const point of visible.slice(1))c.lineTo(...point);c.stroke();
 }
 // Uneven opening with tapered ends, rather than a uniform outlined wire.
 function fracture(c,points,amount) {
-  const length=(points.length-1)*clamp(amount),last=Math.floor(length),visible=points.slice(0,last+1);
-  if(last<points.length-1){const a=points[last],b=points[last+1],f=length-last;visible.push([a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f]);}
+  const visible=visiblePath(points,amount);
   if(visible.length<2)return;
   const sides=[[],[]];
   for(let i=0;i<visible.length;i++) {
@@ -47,7 +66,7 @@ function fracture(c,points,amount) {
   c.fillStyle='#594332';shape();c.strokeStyle='#30271f';c.lineWidth=.55;trace(c,visible,1);
 }
 export class HozeArenaRenderer {
-  constructor(createCanvas=()=>document.createElement('canvas')){this.createCanvas=createCanvas;this.frames=0;this.suspend();}
+  constructor(createCanvas=()=>document.createElement('canvas')){this.createCanvas=createCanvas;this.frames=0;this.faultStartedAt=null;this.faultElapsed=0;this.suspend();}
   surface(w,h){const c=this.createCanvas();c.width=w;c.height=h;return c;}
   prepare(source) {
     this.suspend();
@@ -91,20 +110,28 @@ export class HozeArenaRenderer {
     if(!source?.complete||!source.naturalWidth)return;
     if(this.source!==source||!this.canvas)this.prepare(source);if(!this.context)return;
     const time=Number.isFinite(timestamp)?Math.max(0,timestamp):0;
+    // Retain this small clock across surface disposal (combat, hidden tab,
+    // map change). Finished cracks never shrink or restart during this session.
+    if(this.faultStartedAt===null)this.faultStartedAt=time;
+    this.faultElapsed=Math.max(this.faultElapsed,time-this.faultStartedAt,motion?0:HOZE_FAULT_COMPLETE_MS);
     if(this.lastTime===-Infinity||this.motion!==motion||motion&&(time<this.lastTime||time-this.lastTime>=50)) {
-      this.paint(time,motion);this.lastTime=time;this.motion=motion;this.frames++;
+      this.paint(time,motion,this.faultElapsed);this.lastTime=time;this.motion=motion;this.frames++;
     }target.drawImage(this.canvas,0,0,896,640);
   }
-  paint(time,motion) {
+  paint(time,motion,elapsed=time) {
     const c=this.context;c.clearRect(0,0,896,640);c.save();c.scale(2,2);c.imageSmoothingEnabled=false;
-    c.beginPath();c.rect(27,112,116,153);c.rect(305,112,116,153);c.clip();
+    c.beginPath();for(const band of HOZE_FAULT_BANDS)c.rect(...band);c.clip();
     for(const[i,f]of HOZE_FAULTS.entries()) {
-      const p=hozeFaultPose(time,f.phase,motion);c.save();c.lineJoin='bevel';c.lineCap='butt';
+      const p=hozeFaultPose(elapsed,f.phase,motion);c.save();c.lineJoin='bevel';c.lineCap='butt';
       c.globalAlpha=p.opacity*.9;fracture(c,f.path,p.growth);
       c.strokeStyle='#5c4835';c.lineWidth=.85;c.globalAlpha=p.opacity*.8;
-      for(const[start,...points]of f.branches)trace(c,[f.path[start],...points],clamp(p.growth*(f.path.length-1)-start));
-      if(motion)for(let n=0;n<10;n++){
-        const age=mod(time/2200+n/10+i*.13,1),point=f.path[1+n%(f.path.length-1)];
+      for(const[start,...points]of f.branches) {
+        const attachment=pathLength(f.path.slice(0,start+1))/pathLength(f.path);
+        trace(c,[f.path[start],...points],clamp((p.growth-attachment)/(1-attachment)));
+      }
+      if(motion&&p.dust)for(let n=0;n<6;n++){
+        const age=mod(time/2200+n/6+i*.13,1);
+        const point=visiblePath(f.path,Math.max(0,p.growth-age*.035)).at(-1);
         c.globalAlpha=p.dust*(1-age)*.55;c.fillStyle=n%2?'#c5a06b':'#f2dbb6';
         c.fillRect(Math.round(point[0]+age*8+Math.sin(n*7+age*4)*2),Math.round(point[1]-age*7),n%3?1:1.5,1);
       }c.restore();
@@ -116,7 +143,7 @@ export class HozeArenaRenderer {
     for(const[i,p]of this.pillars.entries()) {
       let start=0,dx=hozePillarOffset(time,i,0,p.h);
       for(let row=1;row<=p.h;row++) {
-        const next=hozePillarOffset(time,i,row,p.h);if(row<p.h&&next===dx)continue;
+        const next=hozePillarOffset(time,i,Math.min(row,p.h-1),p.h);if(row<p.h&&next===dx)continue;
         c.drawImage(p.texture,0,start,p.w,row-start,p.x+dx,p.y+start,p.w,row-start);start=row;dx=next;
       }
     }
