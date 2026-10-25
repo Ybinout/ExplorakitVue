@@ -2473,9 +2473,15 @@ export default {
         if (!this.teamDirty || this.battle || !state.alive) this.applyTeamPokemons(state.team || []);
         if ((!state.alive || !['exploration','selection'].includes(state.phase)) && (previousPhase !== state.phase || previousAlive !== state.alive)) { this.textImageSequence = []; this.isDriftPanelOpen = true; }
       });
+      this.socket.on('drift:movementState', state => {
+        if (!this.driftState || state.id !== this.driftState.id) return;
+        const steps = Number(state.repelSteps) || 0;
+        this.repelSteps = steps;
+        if (this.driftState.repelSteps !== steps) this.driftState.repelSteps = steps;
+      });
       this.socket.on('drift:lobby', lobby => { if (!lobby && this.driftState) this.$router.replace(this.driftLobbyPath); });
       this.socket.on('drift:replaced', () => { this.socket.disconnect(); this.$router.replace('/'); });
-      this.socket.on('connect', () => this.socket.emit('drift:enter', {}, response => { if (!response?.success) this.$router.replace(this.driftLobbyPath); }));
+      this.socket.on('connect', () => this.socket.emit('drift:enter', {movementPatches:1}, response => { if (!response?.success) this.$router.replace(this.driftLobbyPath); }));
     }
 
     this._worldClock = new WorldClock();
