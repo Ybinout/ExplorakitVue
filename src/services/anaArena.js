@@ -1,3 +1,4 @@
+import {drawAnaPetals} from './anaPetals.js';
 export const ANA_MAP = 'ville3_arene';
 // Fixed world positions: only opacity changes, never position, scale or rotation.
 // Keep stars inside the room, away from the opaque walls and stair outlines.
@@ -173,6 +174,7 @@ export class AnaArenaRenderer {
           c.drawImage(f.texture,0,start,f.w,row-start,f.x+dx,f.y+start,f.w,row-start);start=row;dx=next;
         }
       }
+      drawAnaPetals(c,time);
     }
     drawAnaStars(c,time,motion);
   }
