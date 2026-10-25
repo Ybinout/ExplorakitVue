@@ -1,6 +1,16 @@
 import atlas from '../data/townspeopleFrames.json';
 import classic from '../data/classicNpcFrames.json';
 
+const nrvSprites = Object.freeze({
+  nrv_noz: 'nrv-noz-pixel-v1.png', nrv_tom: 'nrv-tom-pixel-v1.png', nrv_cry: 'nrv-cry-pixel-v1.png'
+});
+// Appearance stays client-side: legacy servers and clients keep their valid atlas frames.
+export function npcAppearance(actor) {
+  return Object.hasOwn(nrvSprites, actor.name)
+    ? { ...actor, sprite: nrvSprites[actor.name], spriteFrame: { columns: 1, rows: 1, index: 0 } }
+    : actor;
+}
+
 export function usesClassicNpcAtlas(image) {
   return /(?:^|\/)6931(?:\.[a-z0-9]+)?\.png(?:[?#]|$)/i.test(String(image.src));
 }

@@ -372,7 +372,7 @@ import { drawFishing } from '@/services/fishingRenderer';
 import RoomObstacleAction from './world/RoomObstacleAction.vue';
 import {roomStrikePose, drawRoomStrike} from '../services/roomObstacleRenderer';
 import { StoryGateRenderer } from '@/services/storyGateRenderer';
-import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset } from '@/services/npcFrames';
+import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset, npcAppearance } from '@/services/npcFrames';
 import FlightTransition from './FlightTransition.vue';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
@@ -1427,7 +1427,7 @@ export default {
       if (payload.map && payload.map !== this.map) return;
       const previous = new Map(this.pnjs.map(pnj => [pnj.name, pnj]));
       const rawPnjs = Array.isArray(payload?.pnjs) ? payload.pnjs : [];
-      this.pnjs = rawPnjs
+      this.pnjs = rawPnjs.map(npcAppearance)
         .map((pnj) => ({
           ...pnj,
           fromX: payload.walking ? (previous.get(pnj.name)?.x ?? pnj.x) : pnj.x,
@@ -1483,7 +1483,7 @@ export default {
           context.fillStyle='#fff8df'; context.font='12px sans-serif'; context.textAlign='center';
           context.fillText(`Défi · N. ${pnj.challengeLevel}`,drawX+32,drawY-10); context.restore();
         }
-        const classicCustomSprite = ['aspha-pixel-v2.png', 'gwenn-pixel-v2.png'].includes(pnj.sprite);
+        const classicCustomSprite = ['aspha-pixel-v2.png', 'gwenn-pixel-v2.png', 'nrv-noz-pixel-v1.png', 'nrv-tom-pixel-v1.png', 'nrv-cry-pixel-v1.png'].includes(pnj.sprite);
         if (pnj.spriteFrame || usesClassicNpcAtlas(spriteSheet) || classicCustomSprite) {
           // Original pixels at 2x, cropped to one person; preserve the feet anchor.
           const size = classicCustomSprite ? spriteSheet.naturalWidth * 2 : npcWorldSize(spriteSheet);
