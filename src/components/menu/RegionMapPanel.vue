@@ -10,7 +10,7 @@
         <div class="region-location"><span class="you-dot"></span><span>{{ en ? 'You are here' : 'Tu es ici' }} <strong>{{ currentLabel }}</strong></span><button @click="showCurrent" :disabled="!currentNode">{{ en ? 'Locate me' : 'Me situer' }}</button></div>
         <div v-if="pokemon" class="habitat-heading" role="status">
           <img :src="`${$assetBase}img/pokemon/front/${pokemon.id}.png`" alt="" width="40" height="40">
-          <span v-if="habitat.kind === 'wild'">{{ en ? 'Wild encounters' : 'Rencontres sauvages' }}<small>{{ en ? 'Choose a marker or a location below.' : 'Choisis un repère ou un lieu ci-dessous.' }}</small></span>
+          <span v-if="habitat.kind === 'wild'">{{ en ? 'Wild encounters' : 'Rencontres sauvages' }}<small>{{ legendaryNote || (en ? 'Choose a marker or a location below.' : 'Choisis un repère ou un lieu ci-dessous.') }}</small></span>
           <span v-else-if="habitat.kind === 'evolution'">{{ en ? 'Obtained through evolution' : 'À obtenir par évolution' }}<small>{{ en ? 'The markers show where to catch its earlier forms.' : 'Les repères indiquent où capturer ses pré-évolutions.' }}</small></span>
           <span v-else>{{ en ? 'No known wild habitat' : 'Aucun habitat sauvage connu' }}<small>{{ en ? 'This species has no wild encounter in the current region.' : 'Cette espèce ne se rencontre pas dans la région actuelle.' }}</small></span>
         </div>
@@ -108,6 +108,7 @@ export default {
     surfaceStyle(){return {width:Math.max(this.viewport.width,this.layout.mapWidth)+'px',height:Math.max(this.viewport.height,this.layout.mapHeight)+'px'};},
     en(){return this.language==='en';},
     habitat(){return this.pokemon?.habitat || {kind:'unavailable',locations:[]};},
+    legendaryNote(){const rare=this.habitat.legendary;if(!rare)return '';const odds=Number(rare.oneIn).toLocaleString(this.en?'en-US':'fr-FR');return this.en?`1 in ${odds} chance of a legendary, then a draw among ${rare.poolSize} species.`:`1 chance sur ${odds} pour un légendaire, puis tirage parmi ${rare.poolSize} espèces.`;},
     locations(){return this.habitat.kind==='evolution' ? (this.habitat.ancestors || []).flatMap(a=>a.locations.map(l=>({...l,speciesId:a.speciesId}))) : this.habitat.locations || [];},
     currentNode(){return this.atlas?.nodes.find(n=>n.id===(this.currentRegion || this.atlas.aliases[this.currentMap]));},
     currentLabel(){return this.currentNode ? this.label(this.currentNode.id) : this.label(this.currentMap);},
