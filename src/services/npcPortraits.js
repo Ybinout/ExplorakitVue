@@ -4,6 +4,10 @@ import { classicNpcIndex } from './npcFrames';
 // Keep the server's legacy dialogue format and every champion portrait intact.
 // Resolve identity from the same role rules used by the actual world sprite.
 export function illustratedNpcPortrait(sentence, dialogueName = '') {
+  // Matthieu retains the legacy Route 8 encounter key in saved progression.
+  if (['gwenn_route8', 'gwenn_route8_locked', 'gwenn_route8_after'].includes(dialogueName)) {
+    return { ...sentence, imageName: 'matthieu-v1.png', portraitFrame: null };
+  }
   // Wayne has a dedicated monochrome illustration, including old a.png payloads.
   if (sentence.imageName === 'a.png') {
     return { ...sentence, imageName: 'wayne-eyepatch-v1.png', portraitFrame: null };
