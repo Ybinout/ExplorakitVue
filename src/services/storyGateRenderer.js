@@ -28,6 +28,7 @@ export class StoryGateRenderer {
   pulse(id) { const gate = this.gates.get(id); if (gate?.locked) gate.pulsePending = true; }
   draw(ctx, map, now, animated = true) {
     for (const gate of this.gates.values()) {
+      if (gate.kind === 'npc') continue;
       if (gate.map !== map || (!gate.locked && !gate.opening)) continue;
       if (gate.opening && gate.openedAt === null) gate.openedAt = now;
       if (gate.pulsePending) { gate.pulseAt = now; gate.pulsePending = false; }

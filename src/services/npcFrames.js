@@ -14,7 +14,7 @@ export function classicNpcIndex(frame, actor = {}) {
   return frame?.columns === 8 && frame.rows === 4 && Number.isInteger(frame.index)
     && frame.index >= 0 && frame.index < 32 ? frame.index : 20;
 }
-export function npcWorldSize(image) { return usesClassicNpcAtlas(image) ? 64 : 48; }
+export function npcWorldSize(image) { return usesClassicNpcAtlas(image) || String(image.src).includes('gwenn-pixel-v1') ? 64 : 48; }
 // The generated atlas has unequal row gutters. Grid division included neighbours'
 // feet. These source rectangles are for world pixel sprites only.
 export function npcFrame(image, frame, actor) {
@@ -38,6 +38,7 @@ export function drawNpcFrame(context, image, frame, x, y, size, actor) {
 
 // Visual alignment with the dais inlay; server tile interaction/collision stays unchanged.
 export function npcRenderOffset(map, actor) {
+  if (map === 'ville4_maison2' && actor.name === 'gwenn_rochebrume') return {x:16,y:0};
   const champions = { ville1_arene: 'moonpunch', ville_safe1_arene: 'hoze', gen_arene5: 'raphael', ville3_arene: 'ana', ville4_arene: 'wanda', ville5_arene: 'sevenp' };
   return Object.hasOwn(champions, map) && champions[map] === actor.name
     ? { x: 16, y: -24 } : { x: 0, y: 0 };

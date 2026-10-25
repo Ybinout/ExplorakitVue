@@ -9,6 +9,7 @@ const champions = {
   ville5_arene: { name: '7p', city: 'Blanchecime', cityEn: 'Whitepeak', portrait: '7ps.png', accent: '#b6dbef' }
 };
 export function arenaChampion(mapName, encounterKind) {
+  if (mapName === 'ville4_maison2' && encounterKind === 'trainer') return {name:'Gwenn',city:'Rochebrume',cityEn:'Miststone',portrait:'gwenn-v1.png',accent:'#baa6d8',story:true,eyebrow:'LE DÉFI DE GWENN',eyebrowEn:'GWENN’S CHALLENGE',minimumMs:3600,portraitMs:2200};
   if (mapName === 'route2_maison' && encounterKind === 'trainer') return {
     name: 'Lucie', city: 'Sous l’emprise de l’Aube', cityEn: 'Under the Dawn’s influence',
     portrait: 'lucie-v1.png', accent: '#baa6d8', story: true,

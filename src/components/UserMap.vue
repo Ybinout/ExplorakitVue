@@ -505,6 +505,7 @@ export default {
       map: "start",
       players: {},
       pnjs: [],
+      personalGateActors: [],
       pnjSpriteSources: {},
       pnjSpriteSheets: {},
       currentPlayer: { x: 512, y: 288, targetX: 512, targetY: 288 }, // Ajout de targetX et targetY,
@@ -1458,10 +1459,11 @@ export default {
       return actors;
     },
     drawPnjs(context, now = performance.now()) {
-      if (!Array.isArray(this.pnjs) || this.pnjs.length === 0) return;
+      const visiblePnjs = [...this.pnjs, ...this.personalGateActors.filter(p=>p.map===this.map)];
+      if (!visiblePnjs.length) return;
 
       const idleFrame = this.spriteAnimations?.down?.[0] || { x: 0, y: 0 };
-      for (const pnj of this.pnjs) {
+      for (const pnj of visiblePnjs) {
         const spriteSheet = this.ensurePnjSpriteSheet(pnj.sprite);
         if (!spriteSheet?.complete || !spriteSheet.naturalWidth || !spriteSheet.naturalHeight) continue;
 
@@ -2506,6 +2508,8 @@ export default {
       if (this.isDrift) return;
       if (!this._storyGateRenderer) this._storyGateRenderer = new StoryGateRenderer();
       const opened = (payload.gates || []).some(g => !g.locked && this._storyGateRenderer.gates.get(g.id)?.locked && g.map === this.map);
+      this.personalGateActors = (payload.gates || []).filter(g=>g.locked&&g.actor).map(g=>g.actor);
+      this.personalGateActors.forEach(p=>this.ensurePnjSpriteSheet(p.sprite));
       this.roomObstacles = (payload.gates || []).filter(g => g.kind === 'barricade');
       this._storyGateRenderer.sync(payload.gates || []);
       if (opened && this.interactionNoticeKind === 'gate') this.showInteractionNotice(this.preferences.language === 'en' ? 'The passage is open!' : 'Le passage est ouvert !', 1800, 'gate');
