@@ -18,6 +18,7 @@
       <picture v-else-if="environment === 'cave'" class="battle-arena-background" data-battle-environment="cave"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/cave-mobile-v1.webp')"><img src="../../assets/battle/cave-wide-v1.webp" class="battle-background battle-cave-background" alt=""></picture>
       <picture v-else-if="environment === 'snow'" class="battle-arena-background" data-battle-environment="snow"><source v-if="mobile" media="(orientation: portrait)" :srcset="snowBackgrounds.mobile"><img :src="snowBackgrounds.wide" class="battle-background battle-snow-background" alt=""></picture>
       <picture v-else class="battle-arena-background"><source v-if="mobile" media="(orientation: portrait)" :srcset="raining ? rainBackgrounds.grassMobile : require('@/assets/battle/grass-mobile-v3.webp')"><img :src="raining ? rainBackgrounds.grassWide : require('@/assets/battle/back.webp')" class="battle-background" alt=""></picture>
+      <battle-waterfalls v-if="!challenge && environment === 'lake-gym'" :animations-enabled="preferences.animationsEnabled" />
       <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
       <template v-if="challenge || mobile || gymBackground || environment === 'raph-gym' || environment === 'cave' || environment === 'lake-gym' || environment === 'lake' || environment === 'snow'">
         <div v-for="side in ['wild', 'player']" :key="`platform-${side}`" :class="['battle-platform', `battle-position-${side}`]" :data-battle-platform="side" aria-hidden="true">
@@ -301,6 +302,7 @@ import BattleMoveEffect from './BattleMoveEffect.vue';
 import BattlePersistentEffect from './BattlePersistentEffect.vue';
 import { moveVisual, persistentMoveVisuals, moveConnected } from '@/services/moveVisuals';
 import BattleRain from './BattleRain.vue';
+import BattleWaterfalls from './BattleWaterfalls.vue';
 import BattleSnow from './BattleSnow.vue';
 import BattleSandstorm from './BattleSandstorm.vue';
 import JournalIcon from '../menu/JournalIcon.vue';
@@ -378,7 +380,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleSnow, BattleSandstorm, JournalIcon },
+  components: { BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleWaterfalls, BattleSnow, BattleSandstorm, JournalIcon },
   props: {
     mobile: Boolean,
     daylight: { type: Object, default: () => ({ night: 0, warmth: 0, phase: 'day' }) },

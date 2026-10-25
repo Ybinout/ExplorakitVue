@@ -1,3 +1,4 @@
+import { WaterfallRenderer } from './waterfalls.js';
 // Pixel currents stay inside each mapped lake, never across its shoreline.
 const WIDTH = 448, HEIGHT = 320, FRAME_MS = 1000 / 15, CREST_COLOR = [190,235,255];
 const LAKES = {
@@ -98,8 +99,13 @@ export class VillageWaterRenderer {
       this.frames++;
     }
     target.drawImage(this.canvas, 0, 0, WIDTH * 2, HEIGHT * 2);
+    if (map === 'ville1_arene') {
+      this._waterfalls ||= new WaterfallRenderer(this.createCanvas);
+      this._waterfalls.draw(target,image,time,'hall',motion,WIDTH*2,HEIGHT*2);
+    }
   }
   suspend() {
+    this._waterfalls?.destroy(); this._waterfalls=null;
     if (this.canvas) { this.canvas.width = 0; this.canvas.height = 0; }
     this.canvas = null; this.context = null; this.source = null; this.map = null; this.colors = null;
     this.original = null; this.frame = null; this.output = null; this.mask = null; this.lastTime = -Infinity;
