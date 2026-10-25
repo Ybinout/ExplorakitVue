@@ -1,3 +1,4 @@
+import { HozeArenaRenderer, HOZE_MAP } from './hozeArena.js';
 import { villageWaterMask } from './villageWater.js';
 
 // Positions are authored in the 448 × 320 map artwork, never inferred from a colour
@@ -249,6 +250,13 @@ export class PlaceAmbienceRenderer {
       } // Lake effects fail closed; never spill onto land.
     }
   }
+  drawGround(target, source, map, timestamp, motion = true) {
+    if (this.destroyed || map !== HOZE_MAP) { this.hoze?.suspend(); return; }
+    if (this.map !== map || this.source !== source || !this.canvas) this.prepare(source, map);
+    if (!this.context) return;
+    if (!this.hoze) this.hoze = new HozeArenaRenderer(this.createCanvas);
+    this.hoze.draw(target, source, timestamp, motion);
+  }
   draw(target, source, map, timestamp, motion = true, wind = 0, daylight = { night: 0 }) {
     if (this.destroyed) return;
     if (!placeAmbienceProfile(map)) {
@@ -422,6 +430,7 @@ export class PlaceAmbienceRenderer {
     for (const [x, y] of p.flags || []) cloth(c, x, y, t, p.color, motion ? Math.max(0.5, wind) : 0);
   }
   suspend() {
+    this.hoze?.suspend();
     for (const key of ['canvas', 'water', 'waterMask']) {
       if (this[key]) {
         this[key].width = 0;

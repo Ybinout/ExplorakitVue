@@ -2298,6 +2298,11 @@ export default {
         } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
 
+      if (this.placeAmbienceActive && !document.hidden) {
+        if (!this._placeAmbience) this._placeAmbience = new PlaceAmbienceRenderer();
+        this._placeAmbience.drawGround(c, this.mapImage, this.map, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
+      }
+
       if (hasWindTrees(this.map,'background') && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
         if(!this._backgroundWind)this._backgroundWind=new ForegroundWindRenderer();
         this._backgroundWind.draw(c,this.mapImage,now,this.effectiveWorldWeather.wind,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion,this.map,'background');
