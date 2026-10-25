@@ -252,7 +252,7 @@ export class PlaceAmbienceRenderer {
       } // Lake effects fail closed; never spill onto land.
     }
   }
-  drawGround(target, source, map, timestamp, motion = true) {
+  drawGround(target, source, map, timestamp, motion = true, arenaState = null) {
     const key = map === HOZE_MAP ? 'hoze' : map === RAPH_MAP ? 'raph' : map === ANA_MAP ? 'ana' : null;
     if (this.destroyed || !key) { this.hoze?.suspend(); this.raph?.suspend(); this.ana?.suspend(); return; }
     if (this.map !== map || this.source !== source || !this.canvas) this.prepare(source, map);
@@ -261,6 +261,7 @@ export class PlaceAmbienceRenderer {
       const Renderer = key === 'hoze' ? HozeArenaRenderer : key === 'raph' ? RaphArenaRenderer : AnaArenaRenderer;
       this[key] = new Renderer(this.createCanvas);
     }
+    if(key==='hoze')this[key].setCollapseState(arenaState);
     this[key].draw(target, source, timestamp, motion);
   }
   draw(target, source, map, timestamp, motion = true, wind = 0, daylight = { night: 0 }) {

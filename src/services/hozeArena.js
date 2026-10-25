@@ -1,4 +1,5 @@
 import { SIDE_PILLARS } from './arenaPillars.js';
+import { sceneElapsed, drawCollapsedFloor } from './hozeCollapse.js';
 // All geometry is authored in the 448 × 320 artwork, not inferred map-wide.
 export const HOZE_MAP = 'ville_safe1_arene';
 export const HOZE_PILLARS = SIDE_PILLARS;
@@ -67,6 +68,11 @@ function fracture(c,points,amount) {
 }
 export class HozeArenaRenderer {
   constructor(createCanvas=()=>document.createElement('canvas')){this.createCanvas=createCanvas;this.frames=0;this.faultStartedAt=null;this.faultElapsed=0;this.suspend();}
+  setCollapseState(state) {
+    const next=state?.map===HOZE_MAP?state:null;
+    if(this.collapseState?.epoch!==next?.epoch){this.faultStartedAt=null;this.faultElapsed=0;this.collapseElapsed=0;this.lastTime=-Infinity;}
+    this.collapseState=next;
+  }
   surface(w,h){const c=this.createCanvas();c.width=w;c.height=h;return c;}
   prepare(source) {
     this.suspend();
@@ -113,12 +119,15 @@ export class HozeArenaRenderer {
     // Retain this small clock across surface disposal (combat, hidden tab,
     // map change). Finished cracks never shrink or restart during this session.
     if(this.faultStartedAt===null)this.faultStartedAt=time;
-    this.faultElapsed=Math.max(this.faultElapsed,time-this.faultStartedAt,motion?0:HOZE_FAULT_COMPLETE_MS);
-    if(this.lastTime===-Infinity||this.motion!==motion||motion&&(time<this.lastTime||time-this.lastTime>=50)) {
-      this.paint(time,motion,this.faultElapsed);this.lastTime=time;this.motion=motion;this.frames++;
+    const collapseElapsed=this.collapseState?Math.max(this.collapseElapsed||0,sceneElapsed(this.collapseState,time)):null;
+    this.collapseElapsed=collapseElapsed;
+    const collapseStage=this.collapseState?.holes.filter(h=>collapseElapsed>=h.atMs).length||0;
+    this.faultElapsed=Math.max(this.faultElapsed,collapseElapsed??time-this.faultStartedAt,motion?0:HOZE_FAULT_COMPLETE_MS);
+    if(this.lastTime===-Infinity||this.motion!==motion||this.collapseStage!==collapseStage||motion&&(time<this.lastTime||time-this.lastTime>=50)) {
+      this.paint(time,motion,this.faultElapsed,collapseElapsed);this.lastTime=time;this.motion=motion;this.collapseStage=collapseStage;this.frames++;
     }target.drawImage(this.canvas,0,0,896,640);
   }
-  paint(time,motion,elapsed=time) {
+  paint(time,motion,elapsed=time,collapseElapsed=null) {
     const c=this.context;c.clearRect(0,0,896,640);c.save();c.scale(2,2);c.imageSmoothingEnabled=false;
     c.beginPath();for(const band of HOZE_FAULT_BANDS)c.rect(...band);c.clip();
     for(const[i,f]of HOZE_FAULTS.entries()) {
@@ -138,6 +147,7 @@ export class HozeArenaRenderer {
     }c.restore();
     // Fissures live on the floor; they disappear beneath the actual fixtures.
     c.save();c.globalCompositeOperation='destination-out';c.drawImage(this.structures,0,0);c.restore();
+    if(this.collapseState){c.save();c.scale(2,2);drawCollapsedFloor(c,this.source,this.collapseState,collapseElapsed??sceneElapsed(this.collapseState,time),motion);c.restore();}
     if(!motion)return;
     c.drawImage(this.repair,0,0);
     for(const[i,p]of this.pillars.entries()) {

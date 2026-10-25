@@ -335,7 +335,7 @@ const GYM_BACKGROUNDS = Object.freeze({
     platform: { '--gym-ground': '#485268', '--gym-rim': '#747891', '--gym-edge': '#282d40', '--gym-light': '#9299b2' }
   },
   'hoze-gym': {
-    wide: require('@/assets/battle/hoze-wide-v1.webp'), mobile: require('@/assets/battle/hoze-mobile-v1.webp'),
+    wide: require('@/assets/battle/hoze-wide-v2.webp'), mobile: require('@/assets/battle/hoze-mobile-v2.webp'),
     platform: { '--gym-ground': '#d1ae70', '--gym-rim': '#a67f46', '--gym-edge': '#795c35', '--gym-light': '#efd39c' }
   },
   'ana-gym': {

@@ -370,6 +370,7 @@
 import FishingPrompt from './world/FishingPrompt.vue';
 import { drawFishing } from '@/services/fishingRenderer';
 import RoomObstacleAction from './world/RoomObstacleAction.vue';
+import {drawHozeCeiling} from '../services/hozeCollapse';
 import {roomStrikePose, drawRoomStrike} from '../services/roomObstacleRenderer';
 import { StoryGateRenderer } from '@/services/storyGateRenderer';
 import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset, npcAppearance } from '@/services/npcFrames';
@@ -561,6 +562,7 @@ export default {
         fromId: null,
         fromName: ''
       },
+      arenaCollapse: null,
       roomObstacleAction: null,
       pendingRoomEntry: null,
       postBattleDialogue: null,
@@ -2300,7 +2302,7 @@ export default {
 
       if (this.placeAmbienceActive && !document.hidden) {
         if (!this._placeAmbience) this._placeAmbience = new PlaceAmbienceRenderer();
-        this._placeAmbience.drawGround(c, this.mapImage, this.map, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
+        this._placeAmbience.drawGround(c, this.mapImage, this.map, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.arenaCollapse?.map===this.map?this.arenaCollapse:null);
       }
 
       if (hasWindTrees(this.map,'background') && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
@@ -2384,6 +2386,7 @@ export default {
 
       if(!this.battle && !document.hidden && this.roomObstacleAction?.map===this.map)
         drawRoomStrike(c,this.roomObstacleAction,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+      if(this.arenaCollapse?.map===this.map&&!this.battle&&!document.hidden)drawHozeCeiling(c,this.arenaCollapse,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       // Dessiner les Ã©lÃ©ments de premier plan si nÃ©cessaire
       if (this.foregroundImage?.complete && this.foregroundImage.naturalWidth) {
         if (hasWindTrees(this.map) && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
@@ -2512,6 +2515,7 @@ export default {
       this.loadPokedexState().catch((error) => console.error('Erreur actualisation Pokédex:', error));
     });
 
+    this.socket.on('arenaCollapseState',state=>{this.arenaCollapse=state?.map==='ville_safe1_arene'&&Array.isArray(state.holes)?{...state,receivedAt:performance.now()}:null;this.drawPlayers();});
     this.socket.on('fieldEffectState', (payload={})=>{this.repelSteps=Number(payload.repelSteps)||0;});
     this.socket.on('roomObstacleAction', (action = {}) => {
       clearTimeout(this._roomObstacleTimer);
@@ -2832,7 +2836,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
-      this.arenaTestState = {allowed:false}; this.arenaTestNotice = '';
+      this.arenaTestState = {allowed:false}; this.arenaTestNotice = '';this.arenaCollapse=null;
       this.pendingRoomEntry=null; this.postBattleDialogue=null; this.deferredBattleResult=null;
       if(this.endSentences==='lucie_room_entry')this.textImageSequence=[];
       clearTimeout(this._roomObstacleTimer);
