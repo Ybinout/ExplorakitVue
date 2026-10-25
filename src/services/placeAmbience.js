@@ -1,5 +1,6 @@
 import { RaphArenaRenderer, RAPH_MAP } from './raphArena.js';
 import { HozeArenaRenderer, HOZE_MAP } from './hozeArena.js';
+import { AnaArenaRenderer, ANA_MAP } from './anaArena.js';
 import { villageWaterMask } from './villageWater.js';
 
 // Positions are authored in the 448 × 320 map artwork, never inferred from a colour
@@ -252,11 +253,14 @@ export class PlaceAmbienceRenderer {
     }
   }
   drawGround(target, source, map, timestamp, motion = true) {
-    const key = map === HOZE_MAP ? 'hoze' : map === RAPH_MAP ? 'raph' : null;
-    if (this.destroyed || !key) { this.hoze?.suspend(); this.raph?.suspend(); return; }
+    const key = map === HOZE_MAP ? 'hoze' : map === RAPH_MAP ? 'raph' : map === ANA_MAP ? 'ana' : null;
+    if (this.destroyed || !key) { this.hoze?.suspend(); this.raph?.suspend(); this.ana?.suspend(); return; }
     if (this.map !== map || this.source !== source || !this.canvas) this.prepare(source, map);
     if (!this.context) return;
-    if (!this[key]) this[key] = key === 'hoze' ? new HozeArenaRenderer(this.createCanvas) : new RaphArenaRenderer(this.createCanvas);
+    if (!this[key]) {
+      const Renderer = key === 'hoze' ? HozeArenaRenderer : key === 'raph' ? RaphArenaRenderer : AnaArenaRenderer;
+      this[key] = new Renderer(this.createCanvas);
+    }
     this[key].draw(target, source, timestamp, motion);
   }
   draw(target, source, map, timestamp, motion = true, wind = 0, daylight = { night: 0 }) {
@@ -432,7 +436,7 @@ export class PlaceAmbienceRenderer {
     for (const [x, y] of p.flags || []) cloth(c, x, y, t, p.color, motion ? Math.max(0.5, wind) : 0);
   }
   suspend() {
-    this.hoze?.suspend(); this.raph?.suspend();
+    this.hoze?.suspend(); this.raph?.suspend(); this.ana?.suspend();
     for (const key of ['canvas', 'water', 'waterMask']) {
       if (this[key]) {
         this[key].width = 0;
