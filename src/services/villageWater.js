@@ -56,6 +56,8 @@ export class VillageWaterRenderer {
       this.colors = original.data;
       this.frame = this.context.createImageData(WIDTH, HEIGHT); this.output = new Uint32Array(this.frame.data.buffer); this.output.set(this.original);
       this.mask = villageWaterMask(original.data, map); this.source = image; this.map = map;
+      this.rowCurrent = new Float64Array(HEIGHT); this.columnCurrent = new Float64Array(WIDTH);
+      this.columnDrift = new Float64Array(WIDTH); this.columnWave = new Float64Array(WIDTH);
     } catch (_) { this.suspend(); }
   }
   draw(target, image, timestamp, motion = true, map = 'start') {
@@ -67,18 +69,27 @@ export class VillageWaterRenderer {
     if (time < this.lastTime || time - this.lastTime >= FRAME_MS) {
       this.lastTime = time;
       const seconds = time / 1000, visibleRipples = map === 'ville1' || map === 'ville3' || LAKES[map].ripples;
+      // These trigonometric terms depend on a row or column, not each water
+      // pixel. Reuse them without approximating the wave or changing its phase.
+      if (visibleRipples) {
+        for(let y=0;y<HEIGHT;y++)this.rowCurrent[y]=Math.sin(y*.24+seconds*1.1)*1.6;
+        for(let x=0;x<WIDTH;x++) {
+          this.columnCurrent[x]=Math.sin(x*.13+seconds*.7)*.4;
+          this.columnDrift[x]=Math.round(Math.sin(x*.09-seconds*.9)*.8)*WIDTH;
+          this.columnWave[x]=Math.sin(x*.09+seconds*.5)*.4;
+        }
+      }
       for (const index of this.mask.pixels) {
         const x = index % WIDTH, y = Math.floor(index / WIDTH);
         const offset = visibleRipples
-          ? Math.round(Math.sin(y * .24 + seconds * 1.1) * 1.6 + Math.sin(x * .13 + seconds * .7) * .4)
-            + Math.round(Math.sin(x * .09 - seconds * .9) * .8) * WIDTH
+          ? Math.round(this.rowCurrent[y] + this.columnCurrent[x]) + this.columnDrift[x]
           : Math.round(Math.sin(y * .24 + seconds * .8) * .75 + Math.sin(x * .13 + seconds * .5) * .2);
         const sample = this.mask.interior[index + offset] ? index + offset : index;
         this.output[index] = this.original[sample];
         if (visibleRipples) {
           // Moving crests read even on flat blue water; troughs stay gentle.
           // Compose only masked RGB pixels, preserving rocks, shore and alpha.
-          const wave = Math.sin(y * .56 + x * .12 - seconds * 1.8 + Math.sin(x * .09 + seconds * .5) * .4);
+          const wave = Math.sin(y * .56 + x * .12 - seconds * 1.8 + this.columnWave[x]);
           const crest = Math.max(0, (wave - .7) / .3) * .18;
           const trough = Math.max(0, (-wave - .85) / .15) * .035;
           for (let channel = 0; channel < 3; channel++) {
@@ -108,6 +119,7 @@ export class VillageWaterRenderer {
     this._waterfalls?.destroy(); this._waterfalls=null;
     if (this.canvas) { this.canvas.width = 0; this.canvas.height = 0; }
     this.canvas = null; this.context = null; this.source = null; this.map = null; this.colors = null;
+    this.rowCurrent = this.columnCurrent = this.columnDrift = this.columnWave = null;
     this.original = null; this.frame = null; this.output = null; this.mask = null; this.lastTime = -Infinity;
   }
   destroy() { this.suspend(); this.destroyed = true; }

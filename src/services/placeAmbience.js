@@ -141,14 +141,19 @@ const WIDTH = 448,
   HEIGHT = 320,
   FRAME_MS = 1000 / 20;
 const mod = (n, d) => ((n % d) + d) % d;
-function glow(c, x, y, radius, color, alpha = 0.25, squash = 1) {
+function glow(c, x, y, radius, color, alpha = 0.25, squash = 1, gradients = null) {
   c.save();
   c.translate(x, y);
   c.scale(1, squash);
-  const g = c.createRadialGradient(0, 0, 0, 0, 0, radius);
-  g.addColorStop(0, color);
-  g.addColorStop(0.25, color);
-  g.addColorStop(1, 'transparent');
+  const key = gradients && `${x}:${y}:${radius}:${color}:${squash}`;
+  let g = gradients?.get(key);
+  if (!g) {
+    g = c.createRadialGradient(0, 0, 0, 0, 0, radius);
+    g.addColorStop(0, color);
+    g.addColorStop(0.25, color);
+    g.addColorStop(1, 'transparent');
+    gradients?.set(key, g);
+  }
   c.globalAlpha = alpha;
   c.fillStyle = g;
   c.fillRect(-radius, -radius, radius * 2, radius * 2);
@@ -226,6 +231,13 @@ export class PlaceAmbienceRenderer {
     if (!this.context) {
       this.suspend();
       return;
+    }
+    if (this.profile.kind === 'hall' || this.profile.kind === 'summit') {
+      // This lighting never changes with the camera, weather or daylight.
+      this.lightingBase = this.createCanvas();
+      this.lightingBase.width = WIDTH; this.lightingBase.height = HEIGHT;
+      this.paintBase(this.lightingBase.getContext('2d'));
+      this.lanternGradients = new Map();
     }
     if (this.profile.kind === 'lake') {
       try {
@@ -309,11 +321,12 @@ export class PlaceAmbienceRenderer {
     const c = this.context,
       p = this.profile;
     c.clearRect(0, 0, WIDTH, HEIGHT);
-    this.paintBase(c);
+    if (this.lightingBase) c.drawImage(this.lightingBase, 0, 0);
+    else this.paintBase(c);
     if (p.kind === 'summit' || p.kind === 'hall') {
       for (const [x, y] of p.lanterns) {
         const strength = motion ? 0.21 + Math.sin(t * 1.7 + x) * 0.025 : 0.21;
-        glow(c, x, y, 16, p.lanternColor || '#ffd69b', strength);
+        glow(c, x, y, 16, p.lanternColor || '#ffd69b', strength, 1, this.lanternGradients);
       }
       // A few suspended motes inside the window's light, never across the HUD.
       if (motion) for (let n = 0; n < 12; n++) {
@@ -438,13 +451,14 @@ export class PlaceAmbienceRenderer {
   }
   suspend() {
     this.hoze?.suspend(); this.raph?.suspend(); this.ana?.suspend();
-    for (const key of ['canvas', 'water', 'waterMask']) {
+    for (const key of ['canvas', 'water', 'waterMask', 'lightingBase']) {
       if (this[key]) {
         this[key].width = 0;
         this[key].height = 0;
       }
       this[key] = null;
     }
+    this.lanternGradients?.clear(); this.lanternGradients = null;
     this.context = null;
     this.source = null;
     this.map = null;

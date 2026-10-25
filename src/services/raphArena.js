@@ -88,8 +88,10 @@ export class RaphArenaRenderer {
     this.suspend();
     try {
       this.source = source; this.canvas = this.surface(896,640); this.context = this.canvas.getContext('2d');
-      this.context.imageSmoothingEnabled = false; this.context.drawImage(source,0,0,896,640);
-      const original = this.context.getImageData(0,0,896,640), pixels = original.data;
+      this.context.imageSmoothingEnabled = false;
+      const sample=this.surface(896,640),reader=sample.getContext('2d',{willReadFrequently:true});
+      reader.imageSmoothingEnabled=false;reader.drawImage(source,0,0,896,640);
+      const pixels=reader.getImageData(0,0,896,640).data;sample.width=sample.height=0;
       this.repair = this.surface(896,640); const repair = this.repair.getContext('2d').createImageData(896,640);
       this.flags = RAPH_BANNERS.map(([left,top,right,bottom]) => {
         const x = left * 2, y = top * 2, w = (right-left)*2, h = (bottom-top)*2;

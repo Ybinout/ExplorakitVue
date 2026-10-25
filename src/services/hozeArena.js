@@ -70,7 +70,7 @@ export class HozeArenaRenderer {
   constructor(createCanvas=()=>document.createElement('canvas')){this.createCanvas=createCanvas;this.frames=0;this.faultStartedAt=null;this.faultElapsed=0;this.suspend();}
   setCollapseState(state) {
     const next=state?.map===HOZE_MAP?state:null;
-    if(this.collapseState?.epoch!==next?.epoch){this.faultStartedAt=null;this.faultElapsed=0;this.collapseElapsed=0;this.lastTime=-Infinity;}
+    if(this.collapseState?.epoch!==next?.epoch){if(this.faultFloor){this.faultFloor.width=this.faultFloor.height=0;this.faultFloor=null;}this.faultStartedAt=null;this.faultElapsed=0;this.collapseElapsed=0;this.lastTime=-Infinity;}
     this.collapseState=next;
   }
   surface(w,h){const c=this.createCanvas();c.width=w;c.height=h;return c;}
@@ -78,8 +78,12 @@ export class HozeArenaRenderer {
     this.suspend();
     try {
       this.source=source;this.canvas=this.surface(896,640);this.context=this.canvas.getContext('2d');
-      this.context.imageSmoothingEnabled=false;this.context.drawImage(source,0,0,896,640);
-      const original=this.context.getImageData(0,0,896,640).data;
+      this.context.imageSmoothingEnabled=false;
+      // Read pixels on a disposable CPU surface; keep the animated surface free
+      // of readback so drawing it does not require a CPU-to-GPU transfer per frame.
+      const sample=this.surface(896,640),reader=sample.getContext('2d',{willReadFrequently:true});
+      reader.imageSmoothingEnabled=false;reader.drawImage(source,0,0,896,640);
+      const original=reader.getImageData(0,0,896,640).data;sample.width=sample.height=0;
       this.repair=this.surface(896,640);this.structures=this.surface(896,640);
       const patch=this.repair.getContext('2d').createImageData(896,640),mask=this.structures.getContext('2d').createImageData(896,640);
       const mark=(x,y)=>{const j=(y*896+x)*4;mask.data[j+3]=255;};
@@ -104,7 +108,7 @@ export class HozeArenaRenderer {
         }
         // Fixed plinths also occlude the larger fractures below them.
         for(let py=(bottom-18)*2;py<(bottom+1)*2;py++)for(let px=(x-11)*2;px<(x+11)*2;px++)mark(px,py);
-        texture.getContext('2d').putImageData(data,0,0);return{x:left,y,w,h,texture};
+        texture.getContext('2d').putImageData(data,0,0);return{x:left,y,w,h,texture,flex:Float64Array.from({length:h},(_,row)=>Math.pow(1-row/(h-1),1.45))};
       });
       for(const[l,t,r,b]of BANNERS)for(let y=t*2;y<b*2;y++)for(let x=l*2;x<r*2;x++) {
         const j=(y*896+x)*4;if(original[j]>original[j+1]+8&&original[j]>original[j+2]+6)mark(x,y);
@@ -127,8 +131,8 @@ export class HozeArenaRenderer {
       this.paint(time,motion,this.faultElapsed,collapseElapsed);this.lastTime=time;this.motion=motion;this.collapseStage=collapseStage;this.frames++;
     }target.drawImage(this.canvas,0,0,896,640);
   }
-  paint(time,motion,elapsed=time,collapseElapsed=null) {
-    const c=this.context;c.clearRect(0,0,896,640);c.save();c.scale(2,2);c.imageSmoothingEnabled=false;
+  paintFaults(c,time,motion,elapsed) {
+    c.save();c.scale(2,2);c.imageSmoothingEnabled=false;
     c.beginPath();for(const band of HOZE_FAULT_BANDS)c.rect(...band);c.clip();
     for(const[i,f]of HOZE_FAULTS.entries()) {
       const p=hozeFaultPose(elapsed,f.phase,motion);c.save();c.lineJoin='bevel';c.lineCap='butt';
@@ -147,20 +151,34 @@ export class HozeArenaRenderer {
     }c.restore();
     // Fissures live on the floor; they disappear beneath the actual fixtures.
     c.save();c.globalCompositeOperation='destination-out';c.drawImage(this.structures,0,0);c.restore();
+  }
+  paint(time,motion,elapsed=time,collapseElapsed=null) {
+    const c=this.context;c.clearRect(0,0,896,640);
+    // Finished fractures are immutable. Only the columns and falling slabs need
+    // to keep being repainted after the opening sequence has completed.
+    if (!motion || elapsed>=HOZE_FAULT_COMPLETE_MS) {
+      if(!this.faultFloor) {
+        this.faultFloor=this.surface(896,640);
+        this.paintFaults(this.faultFloor.getContext('2d'),time,motion,elapsed);
+      }
+      c.drawImage(this.faultFloor,0,0);
+    } else this.paintFaults(c,time,motion,elapsed);
     if(this.collapseState){c.save();c.scale(2,2);drawCollapsedFloor(c,this.source,this.collapseState,collapseElapsed??sceneElapsed(this.collapseState,time),motion);c.restore();}
     if(!motion)return;
     c.drawImage(this.repair,0,0);
     for(const[i,p]of this.pillars.entries()) {
-      let start=0,dx=hozePillarOffset(time,i,0,p.h);
+      const t=time/1000,sway=Math.sin(t*2.25+i*.83)*1.35+Math.sin(t*6.4+i*1.31)*.4;
+      const offset=row=>Math.round(sway*p.flex[row]*2);
+      let start=0,dx=offset(0);
       for(let row=1;row<=p.h;row++) {
-        const next=hozePillarOffset(time,i,Math.min(row,p.h-1),p.h);if(row<p.h&&next===dx)continue;
+        const next=offset(Math.min(row,p.h-1));if(row<p.h&&next===dx)continue;
         c.drawImage(p.texture,0,start,p.w,row-start,p.x+dx,p.y+start,p.w,row-start);start=row;dx=next;
       }
     }
   }
   suspend() {
     for(const p of this.pillars||[]){p.texture.width=0;p.texture.height=0;}
-    for(const key of ['canvas','repair','structures']){if(this[key]){this[key].width=0;this[key].height=0;}this[key]=null;}
+    for(const key of ['canvas','repair','structures','faultFloor']){if(this[key]){this[key].width=0;this[key].height=0;}this[key]=null;}
     this.context=this.source=null;this.pillars=[];this.lastTime=-Infinity;this.motion=null;
   }
 }

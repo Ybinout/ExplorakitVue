@@ -2287,7 +2287,7 @@ export default {
       if (this.mapImage) {
         if (this.villageWaterActive && !document.hidden) {
           if (!this._villageWater) this._villageWater = new VillageWaterRenderer();
-          this._villageWater.draw(c, this.mapImage, performance.now(), this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
+          this._villageWater.draw(c, this.mapImage, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
         } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
 
@@ -2318,7 +2318,7 @@ export default {
 
       if (this.worldWeatherActive && !document.hidden) {
         if (!this._worldWeather) this._worldWeather = new WorldWeatherRenderer();
-        this._worldWeather.drawGround(c, performance.now(), this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
+        this._worldWeather.drawGround(c, now, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
       } else this._worldWeather?.suspend();
 
       if (!this.isDrift && !this.battle && !this.battleResult && !document.hidden) this._storyGateRenderer?.draw(c,this.map,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
@@ -2383,12 +2383,12 @@ export default {
       if (this.foregroundImage?.complete && this.foregroundImage.naturalWidth) {
         if (hasWindTrees(this.map) && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
           if (!this._foregroundWind) this._foregroundWind = new ForegroundWindRenderer();
-          this._foregroundWind.draw(c, this.foregroundImage, performance.now(), this.effectiveWorldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
+          this._foregroundWind.draw(c, this.foregroundImage, now, this.effectiveWorldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
         } else { this._foregroundWind?.suspend(); c.drawImage(this.foregroundImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
       if (this.worldWeatherActive && !document.hidden) {
         if (!this._worldWeather) this._worldWeather = new WorldWeatherRenderer();
-        this._worldWeather.draw(c, performance.now(), this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
+        this._worldWeather.draw(c, now, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
       } else this._worldWeather?.suspend();
       if (this.placeAmbienceActive && !document.hidden) {
         if (!this._placeAmbience) this._placeAmbience = new PlaceAmbienceRenderer();
