@@ -1,9 +1,7 @@
+import { SIDE_PILLARS, drawPillarTremor } from './arenaPillars.js';
 // Authored in the arena's 448 × 320 logical artwork. Never warp the whole map.
 export const HOZE_MAP = 'ville_safe1_arene';
-export const HOZE_PILLARS = Object.freeze([
-  [48, 81, 161], [81, 81, 161], [48, 174, 254], [81, 174, 254],
-  [367, 81, 161], [400, 81, 161], [367, 174, 254], [400, 174, 254],
-]);
+export const HOZE_PILLARS = SIDE_PILLARS;
 const FAULTS = [
   { x: 99, y: 131, sign: -1, phase: 0, path: [[0,0],[-5,5],[-3,10],[-10,15],[-8,21],[-15,27],[-13,34]], branches: [[2,[-12,8],[-17,13]],[4,[-1,22],[2,29]]] },
   { x: 100, y: 231, sign: -1, phase: 1.1, path: [[0,0],[-5,-4],[-4,-10],[-10,-15],[-8,-22],[-15,-27]], branches: [[2,[3,-12],[5,-19]],[4,[-17,-21],[-21,-25]]] },
@@ -54,18 +52,7 @@ export class HozeArenaRenderer {
     // banners and surrounding floor never move or reveal a rectangular cutout.
     if (motion) for (const [i, [x, top, bottom]] of HOZE_PILLARS.entries()) {
       const pose = hozeFaultPose(time, FAULTS[Math.floor(i / 2)].phase);
-      if (pose.shake < .015) continue;
-      c.save(); c.beginPath();
-      c.moveTo(x - 7, top + 3); c.lineTo(x + 7, top + 3); c.lineTo(x + 8, top + 12);
-      c.lineTo(x + 5, top + 21); c.lineTo(x + 5, bottom - 16); c.lineTo(x - 5, bottom - 16);
-      c.lineTo(x - 5, top + 21); c.lineTo(x - 8, top + 12); c.closePath(); c.clip();
-      for (let y = top; y < bottom - 14; y += 2) {
-        const weight = Math.sin((y - top) / (bottom - top) * Math.PI);
-        const dx = Math.round(Math.sin(time / 43 + i * 1.4 + y * .06) * pose.shake * weight * 2) / 2;
-        c.drawImage(source, (x - 12) / 448 * source.naturalWidth, y / 320 * source.naturalHeight,
-          24 / 448 * source.naturalWidth, 2 / 320 * source.naturalHeight, x - 12 + dx, y, 24, 2);
-      }
-      c.restore();
+      drawPillarTremor(c, source, [x, top, bottom], time, pose.shake, i);
     }
     for (const [i, f] of FAULTS.entries()) {
       const pose = hozeFaultPose(time, f.phase, motion); if (!pose.opacity) continue;
