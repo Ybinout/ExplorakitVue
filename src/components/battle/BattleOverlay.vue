@@ -21,7 +21,7 @@
       <battle-waterfalls v-if="!challenge && environment === 'lake-gym'" :animations-enabled="preferences.animationsEnabled" />
       <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
       <template v-if="challenge || mobile || gymBackground || environment === 'raph-gym' || environment === 'cave' || environment === 'lake-gym' || environment === 'lake' || environment === 'snow'">
-        <div v-for="side in ['wild', 'player']" :key="`platform-${side}`" :class="['battle-platform', `battle-position-${side}`]" :data-battle-platform="side" aria-hidden="true">
+        <div class="battle-platform battle-position-wild" data-battle-platform="wild" aria-hidden="true">
           <img v-if="environment === 'lake-gym'" src="../../assets/battle/mounir-platform-v1.webp" alt=""><span v-else-if="mobile || gymBackground || environment === 'raph-gym' || environment === 'cave' || environment === 'lake' || environment === 'snow'" :class="['battle-ground-disc', { 'arena-disc': challenge, 'gym-disc': Boolean(gymBackground), 'raph-disc': environment === 'raph-gym', 'cave-disc': environment === 'cave', 'snow-disc': environment === 'snow', 'lake-disc': environment === 'lake' }]" ></span><img v-else src="../../assets/battle/colosseum-platform.webp" alt="">
         </div>
       </template>
