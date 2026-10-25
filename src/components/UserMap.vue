@@ -1477,10 +1477,12 @@ export default {
           context.fillStyle='#fff8df'; context.font='12px sans-serif'; context.textAlign='center';
           context.fillText(`Défi · N. ${pnj.challengeLevel}`,drawX+32,drawY-10); context.restore();
         }
-        if (pnj.spriteFrame || usesClassicNpcAtlas(spriteSheet)) {
+        const classicCustomSprite = ['aspha-pixel-v2.png', 'gwenn-pixel-v2.png'].includes(pnj.sprite);
+        if (pnj.spriteFrame || usesClassicNpcAtlas(spriteSheet) || classicCustomSprite) {
           // Original pixels at 2x, cropped to one person; preserve the feet anchor.
-          const size = npcWorldSize(spriteSheet);
-          drawNpcFrame(context, spriteSheet, pnj.spriteFrame, drawX + (64-size)/2, drawY + 52-size, size, pnj);
+          const size = classicCustomSprite ? spriteSheet.naturalWidth * 2 : npcWorldSize(spriteSheet);
+          const frame = pnj.spriteFrame || { columns: 1, rows: 1, index: 0 };
+          drawNpcFrame(context, spriteSheet, frame, drawX + (64-size)/2, drawY + 52-size, size, pnj);
           continue;
         }
         const treatAsSpriteSheet =
