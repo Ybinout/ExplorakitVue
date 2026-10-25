@@ -370,6 +370,8 @@
 import FishingPrompt from './world/FishingPrompt.vue';
 import { drawFishing } from '@/services/fishingRenderer';
 import RoomObstacleAction from './world/RoomObstacleAction.vue';
+import {WorldRenderBudget} from '../services/worldRenderBudget';
+import {WorldMovement, MOVEMENT_INPUT_MS, movementInputWait} from '../services/worldMovement';
 import {drawHozeCeiling} from '../services/hozeCollapse';
 import {roomStrikePose, drawRoomStrike} from '../services/roomObstacleRenderer';
 import { StoryGateRenderer } from '@/services/storyGateRenderer';
@@ -440,9 +442,6 @@ import { getMapLocationLabel } from '@/services/mapLocations';
 import { WorldMusic } from '@/services/worldMusic';
 // import navBar from "./NavBar.vue"
 /* eslint-disable */
-
-const MOVEMENT_INPUT_INTERVAL_MS = 150;
-const MOVEMENT_INTERPOLATION_MS = 175;
 
 export default {
   components: {
@@ -716,7 +715,7 @@ export default {
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldNightActive(active) { if (!active) this._worldNight?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); } },
-    map() { this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); },
+    map() { this._worldRenderBudget?.reset(performance.now());this._worldMovement?.clear(); this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); },
     dirtFootprintsActive(active) { if (!active) this._dirtFootprints?.suspend(); },
     snowFootprintsActive(active) { if (!active) this._snowFootprints?.suspend(); },
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
@@ -1219,19 +1218,19 @@ export default {
       this.showMobileControls = mobile;
       this.$nextTick(this.resizeWorldViewport);
     },
-    resizeWorldViewport() {
+    resizeWorldViewport(redraw = true) {
       const canvas = this.$refs.monCanvas;
       const viewport = this.$refs.worldViewport;
       if (!canvas || !viewport) return;
       const width = Math.max(1, viewport.clientWidth);
       const height = Math.max(1, viewport.clientHeight);
-      const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
+      const pixelRatio = Math.min(2, window.devicePixelRatio || 1, this.showMobileControls ? this._worldRenderBudget?.ratio ?? 2 : 2);
       if (width === this.worldFrame.width && height === this.worldFrame.height && pixelRatio === this.worldFrame.pixelRatio
         && canvas.width === Math.round(width * pixelRatio)) return;
       this.worldFrame = { width, height, pixelRatio };
       canvas.width = Math.round(width * pixelRatio);
       canvas.height = Math.round(height * pixelRatio);
-      this.drawPlayers();
+      if(redraw !== false)this.drawPlayers();
     },
     restoreWorldView() {
       if (this._isDestroyed || this._isBeingDestroyed || document.hidden || this.worldContextLost) return;
@@ -1457,7 +1456,8 @@ export default {
       const actors = [];
       for (const [id, player] of Object.entries(this.players)) {
         if (player.currentmap !== this.map || player.inbattle || !this.getSpriteSheetForPlayer(player)?.complete) continue;
-        actors.push({ id: `player:${id}`, x: player.x, y: player.y });
+        const pose=this.visualPlayer(id,player,now);
+        actors.push({ id: `player:${id}`, x: pose.x, y: pose.y });
       }
       for (const pnj of this.pnjs) {
         if (!this.ensurePnjSpriteSheet(pnj.sprite)?.complete) continue;
@@ -2090,12 +2090,13 @@ export default {
     },
     drawHeldWorldFrame(context, canvas) {
       context.save(); context.setTransform(1, 0, 0, 1, 0, 0);
-      context.fillStyle = '#173c37'; context.fillRect(0, 0, canvas.width, canvas.height);
+      context.clearRect(0,0,canvas.width,canvas.height);
       const held = this._heldWorldFrame;
       if (held?.width && held?.height) {
         const scale = Math.max(canvas.width / held.width, canvas.height / held.height);
+        context.imageSmoothingEnabled=false;
         context.drawImage(held, (canvas.width - held.width * scale) / 2, (canvas.height - held.height * scale) / 2, held.width * scale, held.height * scale);
-      }
+      } else {context.fillStyle='#173c37';context.fillRect(0,0,canvas.width,canvas.height);}
       context.restore();
     },
     handleKeydown(e) {
@@ -2162,22 +2163,30 @@ export default {
       this.animationFrameId = null;
       this.lastAnimationTimestamp = null;
     },
-    startMovementLoop() {
+    startMovementLoop(delay = MOVEMENT_INPUT_MS) {
       if (this.movementIntervalId !== null) return;
-      this.movementIntervalId = window.setInterval(
-        this.updatePlayerPosition,
-        MOVEMENT_INPUT_INTERVAL_MS
-      );
+      this.movementIntervalId = window.setTimeout(() => {
+        this.movementIntervalId = null;
+        this.updatePlayerPosition();
+        this.startMovementLoop();
+      }, delay);
     },
     stopMovementLoop() {
       if (this.movementIntervalId === null) return;
-      window.clearInterval(this.movementIntervalId);
+      window.clearTimeout(this.movementIntervalId);
       this.movementIntervalId = null;
     },
     restartMovementInput() {
       this.stopMovementLoop();
+      const wait = movementInputWait(this._lastMovementSentAt, performance.now());
+      if (wait > 0) { this.startMovementLoop(wait); return; }
       this.updatePlayerPosition();
       this.startMovementLoop();
+    },
+    visualPlayer(id, player, now = performance.now()) {
+      if (!this._worldMovement) this._worldMovement = new WorldMovement();
+      const held = id === this.socket?.id && Object.values(this.keysPressed).some(Boolean) && !this.movementBlocked;
+      return this._worldMovement.sample(id, player, now, held);
     },
     animate(timestamp) {
       if (!this.$refs.monCanvas) {
@@ -2188,38 +2197,18 @@ export default {
       // Queue the next frame before drawing: one failed image/effect must not
       // leave a non-null frame ID that prevents the world from ever restarting.
       this.animationFrameId = window.requestAnimationFrame(this.animate);
-      if (this.worldContextLost) return;
-      const now = Number.isFinite(timestamp) ? timestamp : performance.now();
-      const frameDelta = this.lastAnimationTimestamp === null
-        ? 0
-        : Math.min(50, Math.max(0, now - this.lastAnimationTimestamp));
-      this.lastAnimationTimestamp = now;
-
-      for (const playerId in this.players) {
-        const player = this.players[playerId];
-
-        if (player.startTime && player.endTime) {
-          const t = (now - player.startTime) / (player.endTime - player.startTime);
-
-          if (t < 1) {
-            player.x = player.startX + t * (player.targetX - player.startX);
-            player.y = player.startY + t * (player.targetY - player.startY);
-            player.animationFrame += frameDelta / 90;
-          } else {
-            player.x = player.targetX;
-            player.y = player.targetY;
-            const isLocalPlayer = this.socket && playerId === this.socket.id;
-            player.isMoving = isLocalPlayer && Object.values(this.keysPressed).some(Boolean);
-            delete player.startX;
-            delete player.startY;
-            delete player.startTime;
-            delete player.endTime;
-          }
-        }
+      if (this.worldContextLost || document.hidden || this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible) {
+        this.lastAnimationTimestamp=null;this._worldRenderBudget?.reset();return;
       }
-
+      const now = Number.isFinite(timestamp) ? timestamp : performance.now();
+      const delta=this.lastAnimationTimestamp===null?0:Math.max(0,now-this.lastAnimationTimestamp);
+      this.lastAnimationTimestamp = now;
+      if(!this._worldRenderBudget)this._worldRenderBudget=new WorldRenderBudget(Math.min(2,window.devicePixelRatio||1));
+      if(this.showMobileControls&&this.worldFrame.pixelRatio!==Math.min(2,window.devicePixelRatio||1,this._worldRenderBudget.ratio))this.resizeWorldViewport(false);
+      const started=performance.now();
       try {
         this.drawPlayers();
+        this._worldRenderBudget.observe(now,performance.now()-started,delta,{mobile:this.showMobileControls,walking:Object.values(this.keysPressed).some(Boolean)&&!this.movementBlocked});
         this._worldRenderFailures = 0;
       } catch (error) {
         this._worldRenderFailures = (this._worldRenderFailures || 0) + 1;
@@ -2260,6 +2249,7 @@ export default {
 
         this.cancelFishing();
         this.socket.emit('playerAction', action);
+        this._lastMovementSentAt = performance.now();
 
         player.direction = this.getDirectionFromAction(action);  // Une fonction pour dÃ©terminer la direction
         player.isMoving = true;
@@ -2284,13 +2274,14 @@ export default {
       // Clear the canvas for the new render
       c.setTransform(1, 0, 0, 1, 0, 0);
       c.clearRect(0, 0, canvas.width, canvas.height);
-      const camera = getWorldCamera(this.worldFrame.width, this.worldFrame.height, me, this.showMobileControls);
+      const now = performance.now();
+      const camera = getWorldCamera(this.worldFrame.width, this.worldFrame.height, this.visualPlayer(this.socket.id,me,now), this.showMobileControls);
       const scale = camera.scale * this.worldFrame.pixelRatio;
       c.save();
       try {
       c.imageSmoothingEnabled = false;
       c.setTransform(scale, 0, 0, scale, -camera.x * scale, -camera.y * scale);
-      const now = performance.now();
+      const actors=this.grassRustleActive||this.dirtFootprintsActive||this.snowFootprintsActive?this.grassActors(now):[];
 
       // Fill the canvas with the map image
       if (this.mapImage) {
@@ -2312,17 +2303,17 @@ export default {
 
       if (this.grassRustleActive && !document.hidden) {
         if (!this._grassRustle) this._grassRustle = new GrassRustleRenderer();
-        this._grassRustle.draw(c, this.mapImage, this.map, this.grassActors(now), now);
+        this._grassRustle.draw(c, this.mapImage, this.map, actors, now);
       } else this._grassRustle?.suspend();
 
       if (this.dirtFootprintsActive && !document.hidden) {
         if (!this._dirtFootprints) this._dirtFootprints = new DirtFootprintsRenderer();
-        this._dirtFootprints.draw(c,this.mapImage,this.map,this.grassActors(now).map(a=>({...a,y:a.y+16})),now);
+        this._dirtFootprints.draw(c,this.mapImage,this.map,actors.map(a=>({...a,y:a.y+16})),now);
       } else this._dirtFootprints?.suspend();
 
       if (this.snowFootprintsActive && !document.hidden) {
         if (!this._snowFootprints) this._snowFootprints = new SnowFootprintsRenderer();
-        this._snowFootprints.draw(c,this.mapImage,this.map,this.grassActors(now).map(a=>({...a,y:a.y+16})),now);
+        this._snowFootprints.draw(c,this.mapImage,this.map,actors.map(a=>({...a,y:a.y+16})),now);
       } else this._snowFootprints?.suspend();
 
       if (this.worldWeatherActive && !document.hidden) {
@@ -2337,6 +2328,7 @@ export default {
       // Loop through all the players and draw them
       for (const playerId in this.players) {
         const player = this.players[playerId];
+        const position=this.visualPlayer(playerId,player,now);
 
         // DÃ©finit une direction par dÃ©faut si la direction actuelle est indÃ©finie
         if (!player.direction) {
@@ -2344,7 +2336,7 @@ export default {
         }
 
         const strike=roomStrikePose(playerId===this.socket?.id&&this.roomObstacleAction?.map===this.map?this.roomObstacleAction:null,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
-        const animation = this.spriteAnimations[strike.direction || player.direction];
+        const animation = this.spriteAnimations[strike.direction || position.direction];
 
         // VÃ©rifie si l'animation est valide
         if (animation) {
@@ -2360,7 +2352,7 @@ export default {
             continue;  // Ignore ce joueur si l'animation est invalide
           }
 
-          const currentFrame = Math.floor(player.animationFrame) % animation.length;
+          const currentFrame = Math.floor(position.frame) % animation.length;
           const sprite = animation[currentFrame];
           const playerSpriteSheet = this.getSpriteSheetForPlayer(player);
 
@@ -2369,11 +2361,11 @@ export default {
             const pose=flightPose(playerId===this.socket?.id?this.flight:null,now,!this.preferences.animationsEnabled||this.worldWeatherReducedMotion);
             c.save();c.globalAlpha=pose.alpha;
             c.translate(strike.x,strike.y);
-            c.translate(player.x,player.y+10-pose.lift);c.scale(pose.scale,pose.scale);c.translate(-player.x,-player.y-10);
+            c.translate(position.x,position.y+10-pose.lift);c.scale(pose.scale,pose.scale);c.translate(-position.x,-position.y-10);
             c.drawImage(
               playerSpriteSheet,
               sprite.x, sprite.y, this.spriteWidth, this.spriteHeight,
-              player.x - 32, player.y - 42, this.spriteWidth, this.spriteHeight  // DÃ©cale la position Y de 32 pixels
+              position.x - 32, position.y - 42, this.spriteWidth, this.spriteHeight  // DÃ©cale la position Y de 32 pixels
             );
             c.restore();
           } else {
@@ -2562,8 +2554,13 @@ export default {
 
     this.socket.on('playersList', (allPlayers) => {
       if (!this.isDrift) this.loadTeamPokemons();
-      console.log('Mise Ã  jour de la liste des joueurs:', allPlayers);
+
       if (!allPlayers[this.socket.id]) return;
+      if(this._worldMovement){
+        const now=performance.now();
+        for(const[id,next]of Object.entries(allPlayers)){const current=this.players[id];if(current&&(current.x!==next.x||current.y!==next.y))this._worldMovement.receive(id,current,next,now,true);}
+        for(const id of this._worldMovement.poses.keys())if(!allPlayers[id])this._worldMovement.remove(id);
+      }
       this.players = allPlayers;
       for (const id in this.players) {
         if (!this.players[id].direction) {
@@ -2712,7 +2709,7 @@ export default {
     });
 
     this.socket.on('playerLeft', ({ id }) => {
-      console.log('le player qui leave', id);
+      this._worldMovement?.remove(id);
 
       delete this.players[id]
       // this.drawPlayers();
@@ -2744,37 +2741,17 @@ export default {
 
     this.socket.on('playerMoved', ({ id, player }) => {
       if (player.currentmap && player.currentmap !== this.map) return;
-      console.log('il mouve uwu');
-      if (this.players[id]) {
-        const startX = this.players[id].x;
-        const startY = this.players[id].y;
-        this.players[id].startX = startX;
-        this.players[id].startY = startY;
-        this.players[id].targetX = player.x;
-        this.players[id].targetY = player.y;
-        if (player && player.sprite) {
-          this.$set(this.players[id], 'sprite', this.normalizeSpriteName(player.sprite));
-          this.ensureSpriteSheet(this.players[id].sprite);
-        }
-        const resolvedDirection = this.getDirectionFromDelta(
-          startX,
-          startY,
-          player.x,
-          player.y,
-          player.direction || this.players[id].direction || 'down'
-        );
-        this.$set(this.players[id], 'direction', resolvedDirection);
-        this.players[id].isMoving = true;
-        if (typeof this.players[id].animationFrame !== 'number') {
-          this.players[id].animationFrame = 0;
-        }
-        this.players[id].startTime = performance.now();
-        this.players[id].endTime = this.players[id].startTime + MOVEMENT_INTERPOLATION_MS;
-      }
-      // console.log('le player qui bouge :', this.players[id]);
+      const current=this.players[id];if(!current)return;
+      if(!this._worldMovement)this._worldMovement=new WorldMovement();
+      this._worldMovement.receive(id,current,player,performance.now());
+      current.x=player.x;current.y=player.y;
+      if(player.sprite&&current.sprite!==player.sprite){this.$set(current,'sprite',this.normalizeSpriteName(player.sprite));this.ensureSpriteSheet(current.sprite);}
+      this.$set(current,'direction',player.direction||current.direction||'down');
+      current.isMoving=Boolean(player.isMoving);
     });
 
     this.socket.on('newmap', ({ mapname, playersList }) => {
+      this._worldMovement?.clear();
       this.pendingRoomEntry=null; this.postBattleDialogue=null; this.deferredBattleResult=null;
       this.pc.visible=false;
       this.pauseMovementForMap();
@@ -2802,6 +2779,7 @@ export default {
     });
 
     this.socket.on('playerDisconnected', ({ id }) => {
+      this._worldMovement?.remove(id);
       this.$delete(this.players, id);
     });
 
@@ -2836,6 +2814,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this._worldMovement?.clear();
       this.arenaTestState = {allowed:false}; this.arenaTestNotice = '';this.arenaCollapse=null;
       this.pendingRoomEntry=null; this.postBattleDialogue=null; this.deferredBattleResult=null;
       if(this.endSentences==='lucie_room_entry')this.textImageSequence=[];
@@ -2991,6 +2970,7 @@ export default {
   ,
   beforeDestroy() {
     this.cancelFishing();
+    this._worldMovement?.clear();
     this._worldMusic?.destroy();
     window.removeEventListener('pointerdown', this.syncWorldMusic);
     window.removeEventListener('pointerup', this.syncWorldMusic);

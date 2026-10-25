@@ -42,6 +42,7 @@ export class GroundFootprintsRenderer{
             this.canvas=this.createCanvas();this.canvas.width=SOURCE_W;this.canvas.height=SOURCE_H;
             this.context=this.canvas.getContext('2d');if(!this.context)throw Error('Canvas unavailable');
             this.frame=this.context.createImageData(SOURCE_W,SOURCE_H);
+            this.framePixels=new Uint32Array(this.frame.data.buffer);this.dirty=[];
             this.depth=new Uint8Array(SOURCE_W*SOURCE_H);this.rim=new Uint8Array(SOURCE_W*SOURCE_H);
             this.source=image;this.map=map;
         }catch(_){this.suspend();}
@@ -93,7 +94,12 @@ export class GroundFootprintsRenderer{
         if(!this.marks.length&&!this.paintedPixels)return;
         if(now-this.lastTime>=FRAME_MS||now<this.lastTime){
             this.lastTime=now;this.marks=this.marks.filter(m=>footprintOpacity(now,m.born,(m.path?.distance||0)-(m.travelled||0))>0);
-            this.depth.fill(0);this.rim.fill(0);this.frame.data.fill(0);this.paintedPixels=0;
+            // Clear only the previously painted pixels. A short trail touches
+            // hundreds of pixels, not the entire 143,360-pixel map.
+            let minX=SOURCE_W,minY=SOURCE_H,maxX=-1,maxY=-1;
+            const include=i=>{const x=i%SOURCE_W,y=Math.floor(i/SOURCE_W);minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);};
+            for(const i of this.dirty){this.depth[i]=0;this.rim[i]=0;this.framePixels[i]=0;include(i);}
+            this.dirty=[];this.paintedPixels=0;
             for(const mark of this.marks){
                 const alpha=footprintOpacity(now,mark.born,(mark.path?.distance||0)-(mark.travelled||0)),cx=mark.x/2,cy=mark.y/2;
                 const brush=mark.kind==='step'?SOLES[mark.heading]:SCUFF;
@@ -103,17 +109,20 @@ export class GroundFootprintsRenderer{
                     const i=y*SOURCE_W+x;if(!this.mask[i])continue;
                     const fleck=(Math.imul(x,73856093)^Math.imul(y,19349663))>>>0;
                     const grain=.68+(fleck%8)*.04;
+                    const untouched=!this.depth[i]&&!this.rim[i];
                     if(point.core)this.depth[i]=Math.max(this.depth[i],Math.round(alpha*point.core*grain));
                     else if(fleck%5<3)this.rim[i]=Math.max(this.rim[i],Math.round(alpha*point.rim*grain));
+                    if(untouched&&(this.depth[i]||this.rim[i]))this.dirty.push(i);
                 }
             }
-            for(let i=0;i<this.mask.length;i++){
+            for(const i of this.dirty){
+                include(i);
                 const alpha=this.depth[i]||this.rim[i];if(!alpha)continue;
                 const pixel=i*4,bank=!this.depth[i],data=this.frame.data;
                 const color=bank?this.surface.rim:this.surface.core;
                 data[pixel]=color[0];data[pixel+1]=color[1];data[pixel+2]=color[2];data[pixel+3]=Math.round(alpha*(this.surface.opacity||1));this.paintedPixels++;
             }
-            this.context.putImageData(this.frame,0,0);
+            if(maxX>=minX)this.context.putImageData(this.frame,0,0,minX,minY,maxX-minX+1,maxY-minY+1);
             this.frames++;
         }
         if(this.marks.length)target.drawImage(this.canvas,0,0,WIDTH,HEIGHT);
@@ -121,7 +130,7 @@ export class GroundFootprintsRenderer{
     suspend(){
         this.actors.clear();this.marks=[];
         if(this.canvas){this.canvas.width=0;this.canvas.height=0;}
-        this.canvas=null;this.context=null;this.mask=null;this.frame=null;this.depth=null;this.rim=null;this.source=null;this.map=null;this.lastTime=-Infinity;this.paintedPixels=0;
+        this.canvas=null;this.context=null;this.mask=null;this.frame=null;this.framePixels=null;this.dirty=[];this.depth=null;this.rim=null;this.source=null;this.map=null;this.lastTime=-Infinity;this.paintedPixels=0;
     }
     destroy(){this.suspend();this.destroyed=true;}
 }
