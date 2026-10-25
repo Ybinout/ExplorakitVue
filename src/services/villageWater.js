@@ -1,6 +1,11 @@
 // Pixel currents stay inside each mapped lake, never across its shoreline.
 const WIDTH = 448, HEIGHT = 320, FRAME_MS = 1000 / 15, CREST_COLOR = [190,235,255];
 const LAKES = {
+  ville1_arene: {
+    bounds: { left: 29, right: 420, top: 68, bottom: 269 },
+    regions: [{ left: 29, right: 100, top: 68, bottom: 269 }, { left: 348, right: 420, top: 68, bottom: 269 }],
+    palette: 'mounir-basins', ripples: true,
+  },
   ville_safe1: { bounds: { left: 36, right: 108, top: 183, bottom: 238 }, colors: ['48,176,240', '64,184,240', '48,144,232', '48,160,232', '72,200,240'], ripples: true },
   gen_ville5: { bounds: { left: 372, right: 412, top: 103, bottom: 142 }, colors: ['48,176,240', '64,184,240', '48,144,232', '48,160,232', '72,200,240'], ripples: true },
   start: { bounds: { left: 54, right: 149, top: 245, bottom: 320 }, colors: ['81,145,177', '56,109,139', '53,87,100', '95,164,201'] },
@@ -12,11 +17,18 @@ export function hasVillageWater(map) { return Object.prototype.hasOwnProperty.ca
 export function villageWaterMask(data, map = 'start') {
   const profile = hasVillageWater(map) ? LAKES[map] : null;
   if (!profile) return { interior: new Uint8Array(WIDTH * HEIGHT), pixels: new Uint32Array(0) };
-  const POND = profile.bounds, WATER = new Set(profile.colors);
+  const POND = profile.bounds, WATER = new Set(profile.colors || []);
   const water = new Uint8Array(WIDTH * HEIGHT), interior = new Uint8Array(WIDTH * HEIGHT), pixels = [];
   for (let y = POND.top; y < POND.bottom; y++) for (let x = POND.left; x < POND.right; x++) {
     const index = y * WIDTH + x, i = index * 4;
-    if (data[i + 3] === 255 && WATER.has(`${data[i]},${data[i + 1]},${data[i + 2]}`)) water[index] = 1;
+    if (profile.regions && !profile.regions.some(r => x >= r.left && x < r.right && y >= r.top && y < r.bottom)) continue;
+    // The painted arena has a broad cyan palette. Restrict it to its two
+    // basins and reject blue stone, banners, lilies and bright crystal edges.
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    const matches = profile.palette === 'mounir-basins'
+      ? r < 100 && g > 75 && g < 195 && g - r > 55 && b >= g && b - g < 55
+      : WATER.has(`${r},${g},${b}`);
+    if (data[i + 3] === 255 && matches) water[index] = 1;
   }
   // Leave a fixed one-pixel margin around banks, rocks, highlights and plants.
   for (let y = POND.top + 1; y < POND.bottom - 1; y++) for (let x = POND.left + 1; x < POND.right - 1; x++) {

@@ -156,7 +156,8 @@ export class WorldWeatherRenderer {
       const p = this.particles[i + 80], x = mod(p.x * (WIDTH + 60) + displacement * (1 + p.depth * .4), WIDTH + 60) - 30;
       const y = mod(p.y * HEIGHT + time * (3 + wind * 3) + Math.sin(time * 2 + p.phase) * 12, HEIGHT);
       c.save();c.translate(x, y);c.rotate(p.phase + time * (1 + p.depth));c.globalAlpha = .38 + wind * .1;
-      c.fillStyle = wind>=2 ? (i%3?'#6d8b4e':'#b08446') : (i%3?'#b4c789':'#c99e62');c.beginPath();c.ellipse(0, 0, 2 + p.depth + wind*.2, 1 + p.depth * .5, 0, 0, Math.PI * 2);c.fill();c.restore();
+      const spray = map === 'ville1_arene';
+      c.fillStyle = spray ? '#b7e7f3' : wind>=2 ? (i%3?'#6d8b4e':'#b08446') : (i%3?'#b4c789':'#c99e62');c.beginPath();c.ellipse(0, 0, spray ? 1.4 : 2 + p.depth + wind*.2, spray ? .65 : 1 + p.depth * .5, 0, 0, Math.PI * 2);c.fill();c.restore();
     }
   }
 }
