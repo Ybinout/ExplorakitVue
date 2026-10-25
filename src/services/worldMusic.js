@@ -21,6 +21,13 @@ export function worldMusicTrack(map) {
   return null;
 }
 
+function worldMusicGain(map, track) {
+  // An event room can share a town's track while using a stronger mix.
+  if (map === 'route2_maison' || map === 'route4_maison' || /(?:^|_)arene\d*$/.test(map)) return 0.34;
+  if (['village', 'route', 'snow'].includes(track)) return 0.14;
+  return 0.22;
+}
+
 export class WorldMusic {
   constructor(sources, createAudio = src => new Audio(src)) {
     this.sources = sources;
@@ -42,7 +49,7 @@ export class WorldMusic {
       this.track = nextTrack;
     }
     this.active = Boolean(active);
-    this.volume = Math.max(0, Math.min(1, Number(volume) || 0)) * 0.22;
+    this.volume = Math.max(0, Math.min(1, Number(volume) || 0)) * worldMusicGain(map, nextTrack);
     this.sync();
   }
 
