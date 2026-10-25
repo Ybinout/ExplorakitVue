@@ -8,7 +8,11 @@ const champions = {
   ville4_arene: { name: 'Wanda', city: 'Rochebrume', cityEn: 'Miststone', portrait: 'wanda.png', accent: '#eaa5ac' },
   ville5_arene: { name: '7p', city: 'Blanchecime', cityEn: 'Whitepeak', portrait: '7ps.png', accent: '#b6dbef' }
 };
-export function arenaChampion(mapName, encounterKind) {
+export function arenaChampion(mapName, encounterKind, trainerKey = null) {
+  if (mapName === 'route2' && encounterKind === 'trainer' && trainerKey === 'aspha_route2') return {
+    name: 'Aspha', city: 'Route 2', cityEn: 'Route 2', portrait: 'aspha-v1.png', accent: '#aec5bd', story: true,
+    eyebrow: 'LE DÉFI D’ASPHA', eyebrowEn: 'ASPHA’S CHALLENGE', minimumMs: 3600, portraitMs: 2200
+  };
   if (mapName === 'ville4_maison2' && encounterKind === 'trainer') return {name:'Gwenn',city:'Rochebrume',cityEn:'Miststone',portrait:'gwenn-v1.png',accent:'#baa6d8',story:true,eyebrow:'LE DÉFI DE GWENN',eyebrowEn:'GWENN’S CHALLENGE',minimumMs:3600,portraitMs:2200};
   if (mapName === 'route2_maison' && encounterKind === 'trainer') return {
     name: 'Lucie', city: 'Sous l’emprise de l’Aube', cityEn: 'Under the Dawn’s influence',

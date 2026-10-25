@@ -38,6 +38,7 @@ export function drawNpcFrame(context, image, frame, x, y, size, actor) {
 
 // Visual alignment with the dais inlay; server tile interaction/collision stays unchanged.
 export function npcRenderOffset(map, actor) {
+  if (map === 'route2' && actor.name === 'aspha_route2') return {x:16,y:0};
   if (map === 'ville4_maison2' && actor.name === 'gwenn_rochebrume') return {x:16,y:0};
   const champions = { ville1_arene: 'moonpunch', ville_safe1_arene: 'hoze', gen_arene5: 'raphael', ville3_arene: 'ana', ville4_arene: 'wanda', ville5_arene: 'sevenp' };
   return Object.hasOwn(champions, map) && champions[map] === actor.name

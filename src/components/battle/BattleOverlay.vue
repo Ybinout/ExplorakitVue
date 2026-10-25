@@ -642,8 +642,8 @@ export default {
         : {airborne:'En vol',underground:'Sous terre',submerged:'Sous l’eau',vanished:'Disparu'};
       return labels[state] || '';
     },
-    arenaPortrait(kind = this.mapName === 'route2_maison' ? 'trainer' : 'arena') {
-      const champion = arenaChampion(this.mapName, kind);
+    arenaPortrait(kind = this.mapName === 'route2_maison' ? 'trainer' : 'arena', trainerKey = null) {
+      const champion = arenaChampion(this.mapName, kind, trainerKey);
       return champion ? { ...champion, src: require('@/assets/image/' + champion.portrait) } : null;
     },
     preloadArenaPortrait() {
@@ -655,13 +655,13 @@ export default {
     onEntrancePortraitReady() {
       if (this.entrancePhase === 'holding') this._entrancePortraitAt = performance.now();
     },
-    prepareEntrance(encounterKind = 'wild') {
+    prepareEntrance(encounterKind = 'wild', trainerKey = null) {
       this.cancelEntrance();
       this.battleMapName = this.mapName;
       this._entranceController = new AbortController();
       this._entranceStartedAt = performance.now();
       this._entrancePortraitAt = null;
-      this.entranceChampion = this.arenaPortrait(encounterKind);
+      this.entranceChampion = this.arenaPortrait(encounterKind, trainerKey);
       this.entrancePhase = 'holding';
     },
     cancelEntrance() {
