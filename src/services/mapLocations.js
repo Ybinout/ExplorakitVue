@@ -1,7 +1,7 @@
 const labels = {
   fr: {
     ville_commerciale:'Comptoirville',tour_rdc:'Grand Comptoir · 1 · Fournitures',tour_etage1:'Grand Comptoir · 2 · Entraînement',tour_etage2:'Grand Comptoir · 3 · Stratégie',tour_etage3:'Grand Comptoir · 4 · Baies',
-    route2_maison: 'Maison de Lucie', ville5: 'Blanchecime', ville5_arene: 'Arène de Blanchecime', ville5_shop: 'Boutique de Blanchecime',
+    route3_maison_nrv: 'Repaire NRV · Route 3', route2_maison: 'Maison de Lucie', ville5: 'Blanchecime', ville5_arene: 'Arène de Blanchecime', ville5_shop: 'Boutique de Blanchecime',
     ville5_maison1: 'Maison de Blanchecime', ville5_maison2: 'Maison de Blanchecime',
     ville4: 'Rochebrume', ville4_arene: 'Arène de Rochebrume · Wanda', ville4_shop: 'Boutique de Rochebrume',
     ville4_maison1: 'Maison de Rochebrume', ville4_maison2: 'Maison de Rochebrume', route4_maison: 'Maison de Gwenn · Route 4',
@@ -20,7 +20,7 @@ const labels = {
   },
   en: {
     ville_commerciale:'Market Town',tour_rdc:'Grand Store · 1 · Supplies',tour_etage1:'Grand Store · 2 · Training',tour_etage2:'Grand Store · 3 · Strategy',tour_etage3:'Grand Store · 4 · Berries',
-    route2_maison: 'Lucie’s House', ville5: 'Whitepeak', ville5_arene: 'Whitepeak Gym', ville5_shop: 'Whitepeak Shop',
+    route3_maison_nrv: 'NRV Hideout · Route 3', route2_maison: 'Lucie’s House', ville5: 'Whitepeak', ville5_arene: 'Whitepeak Gym', ville5_shop: 'Whitepeak Shop',
     ville5_maison1: 'Whitepeak House', ville5_maison2: 'Whitepeak House',
     ville4: 'Miststone', ville4_arene: 'Miststone Gym · Wanda', ville4_shop: 'Miststone Shop',
     ville4_maison1: 'Miststone House', ville4_maison2: 'Miststone House', route4_maison: 'Gwenn’s House · Route 4',

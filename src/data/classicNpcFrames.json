@@ -9,7 +9,10 @@
     "vendeur": 33,
     "infirmiere": 34,
     "lucie": 35,
-    "mathilde": 36
+    "mathilde": 36,
+    "nrv_noz": 37,
+    "nrv_tom": 10,
+    "nrv_cry": 38
   },
   "frames": [
     {
@@ -307,6 +310,22 @@
       "w": 19,
       "h": 24,
       "pixels": 339
+    },
+    {
+      "name": "nrv_noz",
+      "x": 367,
+      "y": 417,
+      "w": 17,
+      "h": 25,
+      "pixels": 336
+    },
+    {
+      "name": "nrv_cry",
+      "x": 654,
+      "y": 290,
+      "w": 17,
+      "h": 24,
+      "pixels": 308
     }
   ]
 }

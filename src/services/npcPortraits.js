@@ -16,6 +16,8 @@ export function illustratedNpcPortrait(sentence, dialogueName = '') {
       columns: asset.columns, rows: asset.rows, index: 15, rowBounds: asset.rowBounds
     } };
   }
+  const nrv = /^nrv_(noz|tom|cry)(?:_after)?$/.exec(dialogueName);
+  if (nrv) return { ...sentence, imageName: `nrv-${nrv[1]}-v1.png`, portraitFrame: null };
   let index;
   if (sentence.imageName === 'townspeople.png') {
     const actor = manifest.actors[dialogueName] || {};
