@@ -97,14 +97,14 @@
         </div>
         <p class="options-note">{{ tr('localOptions') }}</p>
         <section v-if="arenaTestState.allowed" class="arena-test-options" data-arena-admin aria-labelledby="arena-test-heading">
-          <h3 id="arena-test-heading">{{ preferences.language === 'en' ? 'Arena tests' : 'Tests des arènes' }}</h3>
-          <p>{{ preferences.language === 'en' ? 'Replay champions you have defeated. Your badges and progress stay saved; no extra rewards, XP or EVs.' : 'Rejoue les champions déjà battus. Tes badges et ta progression sont conservés, sans nouvelle récompense, XP ou EV.' }}</p>
+          <h3 id="arena-test-heading">{{ preferences.language === 'en' ? 'Story encounter tests' : 'Tests des rencontres' }}</h3>
+          <p>{{ preferences.language === 'en' ? 'Replay defeated champions, Gwenn, Lucie, Wayne, Aspha, Matthieu and Mathilde: entrance dialogue, battles, blocked passages and Lucie’s crystals. Badges and rewards stay saved; no extra rewards, XP or EVs.' : 'Rejoue les champions, Gwenn, Lucie, Wayne, Aspha, Matthieu et Mathilde déjà battus : accueils, dialogues, combats, passages bloqués et cristaux de Lucie. Badges et récompenses conservés, sans nouveau gain d’XP ou d’EV.' }}</p>
           <p class="arena-test-count">{{ arenaTestState.ready || 0 }} / {{ arenaTestState.unlocked || 0 }} {{ preferences.language === 'en' ? 'ready for a rematch' : 'prêts pour une revanche' }}</p>
           <button type="button" data-rearm-arenas :disabled="arenaTestBusy || !arenaTestAllowed || !arenaTestState.unlocked" @click="$emit('rearm-arenas')">
-            {{ preferences.language === 'en' ? (arenaTestBusy ? 'Reactivating…' : 'Reactivate champions') : (arenaTestBusy ? 'Réactivation…' : 'Réactiver les champions') }}
+            {{ preferences.language === 'en' ? (arenaTestBusy ? 'Resetting…' : 'Reset encounters') : (arenaTestBusy ? 'Réinitialisation…' : 'Réinitialiser les rencontres') }}
           </button>
           <p v-if="arenaTestNotice" role="status">{{ arenaTestNotice }}</p>
-          <p v-else-if="!arenaTestAllowed">{{ preferences.language === 'en' ? 'Finish your current action first.' : 'Termine ton action en cours avant de réactiver les arènes.' }}</p>
+          <p v-else-if="!arenaTestAllowed">{{ preferences.language === 'en' ? 'Finish your current action first.' : 'Termine ton action en cours avant de réinitialiser les rencontres.' }}</p>
         </section>
         <details class="debug-options" data-debug-options>
           <summary>{{ tr('debugTools') }}</summary>

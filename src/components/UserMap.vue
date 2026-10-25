@@ -1825,7 +1825,7 @@ export default {
         const response = await new Promise((resolve, reject) => this.socket.timeout(10000).emit('admin:rearmArenas', {}, (error, result) => error ? reject(new Error(this.tr('unstuckOffline'))) : resolve(result)));
         if (!response?.success) throw new Error(response?.message || (en ? 'Please try again.' : 'Réessaie dans un instant.'));
         this.arenaTestState = response.state;
-        this.arenaTestNotice = en ? `${response.count} champions ready. Talk to them to battle again.` : `${response.count} champions réactivés. Retourne leur parler pour les défier.`;
+        this.arenaTestNotice = en ? `${response.count} encounters reset. Re-enter their locations to replay the scenes.` : `${response.count} rencontres réinitialisées. Retourne sur place pour rejouer leurs scènes.`;
       } catch (error) { this.arenaTestNotice = error.message; }
       finally { this.arenaTestBusy = false; }
     },
