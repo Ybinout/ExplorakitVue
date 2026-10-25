@@ -4,3 +4,8 @@ export function battleMusicTrack(kind, mapName) {
   if (kind === 'trainer' && mapName === 'route2_maison') return 'lucie';
   return kind === 'arena' && Object.hasOwn(gymTracks, mapName) ? gymTracks[mapName] : kind;
 }
+
+// Only Wanda's actual challenge dialogue starts battle music before the fight.
+export function trainerPreludeMusicTrack(dialogueName, mapName) {
+  return dialogueName === 'champion_wanda' && mapName === 'ville4_arene' ? 'wanda' : null;
+}

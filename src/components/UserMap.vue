@@ -22,6 +22,7 @@
         :colosseum-challenge="isColosseum && driftState?.phase !== 'exploration' ? driftState?.colosseum?.next : null"
         @action="handleBattleAction"
         @request-bag="loadBagItems"
+        @music-prelude="onMusicPrelude"
       />
       <div class="game-shell" :inert="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? '' : null" :aria-hidden="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? 'true' : null">
         <div class="world-toolbar">
@@ -466,6 +467,7 @@ export default {
       fishing:null, fishingReceivedAt:0,
       mapWeather: null, worldWeatherReducedMotion: false, worldDaylight: daylightAt(Date.now()),
       worldAudioConnected: false,
+      trainerMusicPrelude: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
@@ -634,7 +636,7 @@ export default {
         map: this.map,
         volume: this.preferences.masterVolume / 100,
         // Keep playing while the next map decodes, including route → route.
-        active: this.worldAudioConnected && Boolean(this.renderedMap) && !this.battle && !this.battleResult
+        active: this.worldAudioConnected && Boolean(this.renderedMap) && !this.trainerMusicPrelude && !this.battle && !this.battleResult
           && !this.pendingBattleResult && !this.driftSpectator
           && (!this.isDrift || this.driftState?.phase === 'exploration')
       };
@@ -735,6 +737,10 @@ export default {
   },
 
   methods: {
+    onMusicPrelude(active) {
+      this.trainerMusicPrelude = Boolean(active);
+      this.syncWorldMusic();
+    },
     syncWorldMusic() {
       this._worldMusic?.update({ ...this.worldMusicState, active: this.worldMusicState.active && !document.hidden });
     },
@@ -2002,6 +2008,10 @@ export default {
         const sentence = illustratedNpcPortrait(original, dialogueName);
         return { text: sentence.text, image: images[sentence.imageName], portraitFrame: sentence.portraitFrame, typewriterMs: sentence.typewriterMs };
       });
+      if (!this.battle) {
+        if (this.worldAudioConnected) this.$refs.battleOverlay?.startTrainerPrelude(dialogueName, this.map);
+        if (dialogueName !== 'champion_wanda' || this.map !== 'ville4_arene') this.$refs.battleOverlay?.stopTrainerPrelude();
+      }
     },
     showPostBattleDialogue() {
       if (!this.postBattleDialogue || this.battle || this.pendingBattleResult) return;
@@ -2620,6 +2630,7 @@ export default {
     });
 
     this.socket.on('interactionRejected', (payload = {}) => {
+      this.$refs.battleOverlay?.stopTrainerPrelude();
       const message = payload.reason === 'trainer_team_unavailable'
         ? "Ce dresseur n'est pas prêt à combattre."
         : "Cette interaction n'est plus disponible. Rapproche-toi et réessaie.";
@@ -2706,6 +2717,7 @@ export default {
         this.endSentences = sentences[1]
       } else {
         this.textImageSequence = [];
+        this.$refs.battleOverlay?.stopTrainerPrelude();
       }
     });
 

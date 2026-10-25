@@ -293,7 +293,7 @@ import { arenaChampion } from '@/services/arenaEntrance';
 import { createBattlePresentation } from '@/services/battlePresentation';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
-import { battleMusicTrack } from '@/services/battleMusic';
+import { battleMusicTrack, trainerPreludeMusicTrack } from '@/services/battleMusic';
 import moveLearning from '@/data/moveLearning.json';
 import { localizeTypeName } from '@/services/pokemonTypes';
 import PotentialStar from '../PotentialStar.vue';
@@ -459,6 +459,7 @@ export default {
       soundEnabled: localStorage.getItem('battleSoundEnabled') !== 'false',
       music: null,
       musicKind: null,
+      musicPrelude: false,
       experienceNotice: '',
       levelGrowthNotice: null,
       experienceTimer: null,
@@ -582,12 +583,12 @@ export default {
     }
   },
   watch: {
-    mapName() { this.preloadSnowBackground(); this.preloadArenaPortrait(); },
+    mapName(map) { if (this.musicPrelude && map !== 'ville4_arene') this.stopMusic(); this.preloadSnowBackground(); this.preloadArenaPortrait(); },
     mobile() { this.preloadSnowBackground(); },
     audioVolume() { this.syncAudio(); },
     soundEnabled() { this.syncAudio(); },
     active(isActive) {
-      if (isActive) this.battleMapName = this.mapName;
+      if (isActive) { this.battleMapName = this.mapName; this.setMusicPrelude(false); }
       if (!isActive) { this._battleAudio?.stop(); this.stopMusic(); this.resetBattleUi(); }
     }
   },
@@ -721,10 +722,25 @@ export default {
       };
       return this._presentation.push(() => method==='updateBattleState' ? this.presentState(payload) : this[method](payload), delay);
     },
+    setMusicPrelude(active) {
+      if (this.musicPrelude === active) return;
+      this.musicPrelude = active;
+      this.$emit('music-prelude', active);
+    },
+    startTrainerPrelude(dialogueName, mapName) {
+      const kind = trainerPreludeMusicTrack(dialogueName, mapName);
+      if (!kind || this.active) return false;
+      this.battleMapName = mapName;
+      this.setMusicPrelude(true);
+      this.startMusic(kind);
+      return true;
+    },
+    stopTrainerPrelude() { if (this.musicPrelude) this.stopMusic(); },
     startMusic(kind) {
       kind = battleMusicTrack(kind, this.battleMapName);
+      if (this.musicPrelude && kind !== 'wanda') this.setMusicPrelude(false);
       if(this.musicKind===kind&&this.music){this.syncMusic();return;}
-      this.stopMusic();
+      this.stopMusic(true);
       this.musicKind = kind;
       const tracks = { mounir: require('@/assets/msc/mounir.mp3'), hoze: require('@/assets/msc/hoze.mp3'), lucie: require('@/assets/msc/lucie-combat.mp3'), ana: require('@/assets/msc/ana.mp3'), wanda: require('@/assets/msc/wanda.mp3'), '7p': require('@/assets/msc/7p.mp3'), raph: require('@/assets/msc/raph.mp3'), wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
       this.music = new Audio(tracks[kind] || tracks.wild);
@@ -734,7 +750,7 @@ export default {
     syncMusic() {
       if (!this.music) return;
       this.music.volume = this.audioVolume * 0.4;
-      if (!this.active || !this.soundEnabled || !this.audioVolume || document.hidden) this.music.pause();
+      if ((!this.active && !this.musicPrelude) || !this.soundEnabled || !this.audioVolume || document.hidden) this.music.pause();
       else if (this.music.paused) this.music.play().catch(() => {});
     },
     syncAudio() {
@@ -742,11 +758,12 @@ export default {
       this._battleAudio?.setVolume(this.soundEnabled && !document.hidden ? this.audioVolume : 0);
       this.syncMusic();
     },
-    resumeAudio() { this.unlockAudio(); if (this.active) this.syncMusic(); },
-    stopMusic() {
+    resumeAudio() { this.unlockAudio(); if (this.active || this.musicPrelude) this.syncMusic(); },
+    stopMusic(keepPrelude = false) {
       if (this.music) { this.music.pause(); this.music.removeAttribute('src'); this.music.load(); }
       this.music = null;
       this.musicKind = null;
+      if (!keepPrelude) this.setMusicPrelude(false);
     },
     updateExperience(payload) {
       const pokemon = payload?.pokemon;
