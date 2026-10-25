@@ -16,13 +16,9 @@ export function illustratedNpcPortrait(sentence, dialogueName = '') {
     return { ...sentence, imageName: 'lucie-v1.png', portraitFrame: null,
       typewriterMs: dialogueName === 'lucie_route2_locked' ? 0 : 45 };
   }
-  // Mathilde uses the supplied blonde world sprite. Until her dedicated splash
-  // is available, keep a blonde civilian illustration, including for old servers.
-  if (sentence.imageName === 'townspeople.png' && ['mathilde_pikapika', 'mathilde_pikapika_locked', 'mathilde_pikapika_after'].includes(dialogueName)) {
-    const asset = manifest.assets[0];
-    return { ...sentence, imageName: asset.imageName, portraitFrame: {
-      columns: asset.columns, rows: asset.rows, index: 15, rowBounds: asset.rowBounds
-    } };
+  // Keep Mathilde's illustration independent from her original world atlas crop.
+  if (['mathilde_pikapika', 'mathilde_pikapika_locked', 'mathilde_pikapika_after'].includes(dialogueName)) {
+    return { ...sentence, imageName: 'mathilde-v1.png', portraitFrame: null };
   }
   const nrv = /^nrv_(noz|tom|cry)(?:_after)?$/.exec(dialogueName);
   if (nrv) return { ...sentence, imageName: `nrv-${nrv[1]}-v1.png`, portraitFrame: null };
