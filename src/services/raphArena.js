@@ -20,17 +20,12 @@ export const RAPH_BANNERS = [
   [24,197,39,230], [57,197,72,230], [375,197,390,230], [408,197,423,230],
 ];
 const SKY = { x: 148, y: 0, w: 152, h: 49 };
-// The open floor only: stairs, column bases and walls remain in front of the
-// celestial projections. World coordinates follow the existing 448 × 320 map.
-export const RAPH_ASTRAL_FLOOR = [[102,104],[346,104],[346,259],[307,269],[141,269],[102,259]];
-const ROOM_METEORS = [
-  { start: [108,116], end: [331,211], phase: 0, period: 9200, duration: 2150, gold: false },
-  { start: [335,119], end: [131,232], phase: 2700, period: 10300, duration: 2350, gold: true },
-  { start: [122,164], end: [308,257], phase: 5300, period: 11100, duration: 2050, gold: false },
-  { start: [312,111], end: [149,203], phase: 7100, period: 12400, duration: 1900, gold: false },
-  { start: [111,202], end: [256,263], phase: 1800, period: 13700, duration: 1850, gold: true },
-  { start: [337,176], end: [191,254], phase: 4600, period: 11800, duration: 1950, gold: false },
-];
+// Existing copper inlays only, excluding the stairs, fixtures and architecture.
+export const RAPH_FLOOR_BANDS = [[96,101],[352,101],[352,249],[307,270],[141,270],[96,249]];
+const PODIUM = [[146,54],[302,54],[310,64],[310,76],[139,76],[139,64]];
+const FLOOR_FIXTURES = [[190,250,13,21],[245,250,13,21]];
+const EMBLEM = [[143,141],[224,132],[305,141],[288,183],[258,202],[224,218],[190,202],[160,183]];
+const BAND_BLUE = [105,190,232];
 const mod = (n, d) => ((n % d) + d) % d;
 const clamp = n => Math.max(0, Math.min(1, n));
 const inside = (x, y, points) => {
@@ -46,40 +41,17 @@ export function raphPillarStrength(timestamp, index = 0) {
   const pulse = (start, width) => t < start || t > start + width ? 0 : Math.sin((t - start) / width * Math.PI);
   return pulse(.4, 1.15) * .9 + pulse(2.2, .65) * .45;
 }
-function drawRoomMeteors(c, time) {
-  c.save();
-  c.beginPath();
-  RAPH_ASTRAL_FLOOR.forEach(([x,y], i) => i ? c.lineTo(x,y) : c.moveTo(x,y));
-  c.closePath();c.clip();
-  for (const [index, track] of ROOM_METEORS.entries()) {
-    const age = mod(time + track.phase, track.period);
-    if (age >= track.duration) continue;
-    const progress = age / track.duration;
-    const fade = clamp(progress * 8) * clamp((1-progress) * 5);
-    const vx = track.end[0]-track.start[0], vy = track.end[1]-track.start[1];
-    const length = Math.hypot(vx,vy), dx = vx/length, dy = vy/length;
-    const x = track.start[0]+vx*progress, y = track.start[1]+vy*progress;
-    const color = track.gold ? '#ffd68d' : '#a5dcff';
-    // Short, stepped trails rather than blur/shadow filters: crisp at mobile
-    // zoom and cheap to paint. The dim under-trail reflects on the tiles.
-    c.strokeStyle = color;c.lineCap = 'butt';c.globalAlpha = fade*.11;c.lineWidth = 4;
-    c.beginPath();c.moveTo(Math.round(x-dx*39),Math.round(y-dy*39));c.lineTo(Math.round(x),Math.round(y));c.stroke();
-    for (let n=17;n>=0;n--) {
-      c.globalAlpha = fade * (1-n/19) * .78;c.fillStyle = n<2 ? '#fff7df' : color;
-      const size = n<4 ? 2 : 1;
-      c.fillRect(Math.round(x-dx*n*2),Math.round(y-dy*n*2),size,size);
-    }
-    // A compact four-point glint, with no ring or global screen flash.
-    c.globalAlpha = fade*.95;c.fillStyle = '#fff9eb';
-    c.fillRect(Math.round(x)-2,Math.round(y),6,1);
-    c.fillRect(Math.round(x),Math.round(y)-2,1,6);
-    for (let n=0;n<4;n++) {
-      const lag = 10+n*7, side = (n%2 ? -1 : 1)*(2+Math.sin(time/180+index+n)*2);
-      c.globalAlpha = fade*(.32-n*.05);c.fillStyle = color;
-      c.fillRect(Math.round(x-dx*lag-dy*side),Math.round(y-dy*lag+dx*side),1,1);
-    }
-  }
-  c.restore();
+export function raphBandStrength(timestamp, group = 0) {
+  const phase = .5 - .5 * Math.cos(timestamp / 9000 * Math.PI * 2 + group * Math.PI);
+  return .88 * phase * phase * (3 - 2 * phase);
+}
+function floorBandGroup(x,y,r,g,b) {
+  const open = inside(x,y,RAPH_FLOOR_BANDS) || inside(x,y,PODIUM)
+    || (x>=96&&x<102 || x>=346&&x<352) && y>=79 && y<249;
+  if(!open || FLOOR_FIXTURES.some(([l,t,w,h])=>x>=l&&x<l+w&&y>=t&&y<t+h))return -1;
+  if(!(r>145 && g>90 && b>55 && r>g+16 && g>b+12 && r-g<92 && g-b<70))return -1;
+  const innerRing=((x-224)/58)**2+((y-172)/51)**2<=1;
+  return y>=100 && (x>=201&&x<=247 || innerRing || inside(x,y,EMBLEM)) ? 1 : 0;
 }
 export class RaphArenaRenderer {
   constructor(createCanvas = () => document.createElement('canvas')) { this.createCanvas = createCanvas; this.frames = 0; this.suspend(); }
@@ -92,6 +64,27 @@ export class RaphArenaRenderer {
       const sample=this.surface(896,640),reader=sample.getContext('2d',{willReadFrequently:true});
       reader.imageSmoothingEnabled=false;reader.drawImage(source,0,0,896,640);
       const pixels=reader.getImageData(0,0,896,640).data;sample.width=sample.height=0;
+      // Tint textures are prepared once, cropped to the actual inlays. Preserve
+      // their luminance/texture, then only blend opacity in the 20 Hz painter.
+      const groups = [[],[]];
+      for(let y=0;y<640;y++)for(let x=0;x<896;x++) {
+        const i=(y*896+x)*4;if(pixels[i+3]!==255)continue;
+        const group=floorBandGroup((x+.5)/2,(y+.5)/2,pixels[i],pixels[i+1],pixels[i+2]);
+        if(group>=0)groups[group].push(y*896+x);
+      }
+      this.bands=groups.map(indices=>{
+        if(!indices.length)throw Error('Missing authored floor inlays');
+        let left=896,right=0,top=640,bottom=0;
+        for(const index of indices){const x=index%896,y=Math.floor(index/896);left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);}
+        const w=right-left+1,h=bottom-top+1,texture=this.surface(w,h),data=texture.getContext('2d').createImageData(w,h);
+        for(const index of indices) {
+          const x=index%896,y=Math.floor(index/896),i=index*4,j=((y-top)*w+x-left)*4;
+          const luminance=(pixels[i]*.2126+pixels[i+1]*.7152+pixels[i+2]*.0722)/176;
+          for(let channel=0;channel<3;channel++)data.data[j+channel]=Math.min(255,Math.round(BAND_BLUE[channel]*luminance));
+          data.data[j+3]=255;
+        }
+        texture.getContext('2d').putImageData(data,0,0);return{x:left,y:top,w,h,texture,pixels:indices.length};
+      });
       this.repair = this.surface(896,640); const repair = this.repair.getContext('2d').createImageData(896,640);
       this.flags = RAPH_BANNERS.map(([left,top,right,bottom]) => {
         const x = left * 2, y = top * 2, w = (right-left)*2, h = (bottom-top)*2;
@@ -145,8 +138,10 @@ export class RaphArenaRenderer {
     }
     sky.restore();sky.save();sky.globalCompositeOperation='destination-in';sky.drawImage(this.skyMask,0,0);sky.restore();
     c.drawImage(this.sky,SKY.x*2,0);
+    for(const[group,band]of this.bands.entries()) {
+      c.save();c.globalAlpha=raphBandStrength(time,group);c.drawImage(band.texture,band.x,band.y);c.restore();
+    }
     c.save();c.scale(2,2);
-    drawRoomMeteors(c,time);
     for(const[i,pillar]of SIDE_PILLARS.entries())drawPillarTremor(c,this.source,pillar,time,raphPillarStrength(time,i),i);
     c.restore();c.drawImage(this.repair,0,0);
     for(const[i,f]of this.flags.entries()) {
@@ -162,8 +157,9 @@ export class RaphArenaRenderer {
     }
   }
   suspend() {
+    for(const band of this.bands||[]){band.texture.width=0;band.texture.height=0;}
     for(const flag of this.flags||[]){flag.texture.width=0;flag.texture.height=0;}
     for(const key of ['canvas','repair','sky','skyMask']){if(this[key]){this[key].width=0;this[key].height=0;}this[key]=null;}
-    this.context=this.source=null;this.flags=[];this.lastTime=-Infinity;this.motion=null;this.skyPixels=0;
+    this.context=this.source=null;this.flags=[];this.bands=[];this.lastTime=-Infinity;this.motion=null;this.skyPixels=0;
   }
 }
