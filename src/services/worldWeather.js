@@ -11,7 +11,7 @@ export function normalizeWorldWeather(value = {}) {
   return { wind: level(value?.wind), rain: level(value?.rain), ...(sand ? { sand } : {}), ...(snow ? { snow } : {}) };
 }
 export function worldWeatherEnabled(map, { hidden = false, battle = false, loading = false } = {}) {
-  return (['gen_route8','ville4', 'ville5', 'route5', 'route6', 'route12', 'route13', 'route14'].includes(map) || Object.prototype.hasOwnProperty.call(rainGround, map)) && !hidden && !battle && !loading;
+  return (['ville_safe1_arene','gen_route8','ville4', 'ville5', 'route5', 'route6', 'route12', 'route13', 'route14'].includes(map) || Object.prototype.hasOwnProperty.call(rainGround, map)) && !hidden && !battle && !loading;
 }
 export function mapWorldWeather(map, climate) {
   return worldWeatherEnabled(map) && climate?.map === map && ['rain', 'sandstorm', 'snow', 'wind'].includes(climate.kind)
@@ -141,23 +141,27 @@ export class WorldWeatherRenderer {
       }
     }
     if (!wind || sand) return;
+    const stoneDust = map === 'ville_safe1_arene';
+    c.save();
+    if(stoneDust){c.beginPath();c.moveTo(48,150);c.lineTo(848,150);c.lineTo(848,520);c.lineTo(520,568);c.lineTo(376,568);c.lineTo(48,520);c.closePath();c.clip();}
     const speed = [0, 38, 100, 205][wind];
     const displacement = speed * (.85 * time - .15 / .75 * Math.cos(time * .75));
     // Sparse moving air streaks and small leaves show wind without hiding the map.
     for (let i = 0; i < this.budget.gusts; i++) {
       const p = this.particles[160 + i], phase = mod(time * .12 + p.depth, 1);
-      const opacity = Math.sin(phase * Math.PI) ** 2 * (.07 + wind * .07);
+      const opacity = Math.sin(phase * Math.PI) ** 2 * (.07 + wind * .07) * (stoneDust ? 1.6 : 1);
       const x = mod(p.x * (WIDTH + 260) + time * speed * 1.8, WIDTH + 260) - 180;
       const y = p.y * HEIGHT + Math.sin(time + p.phase) * 10;
-      c.strokeStyle = `rgba(56,87,85,${opacity*.6})`; c.lineWidth = 2 + wind * .35;
-      c.beginPath();c.moveTo(x, y);c.bezierCurveTo(x + 35, y - 7, x + 65, y + 6, x + 110 + wind * 12, y - 2);c.stroke();c.strokeStyle=`rgba(244,251,235,${opacity})`;c.lineWidth=.8+wind*.25;c.stroke();
+      c.strokeStyle = stoneDust ? `rgba(122,91,51,${opacity*.55})` : `rgba(56,87,85,${opacity*.6})`; c.lineWidth = 2 + wind * .35;
+      c.beginPath();c.moveTo(x, y);c.bezierCurveTo(x + 35, y - 7, x + 65, y + 6, x + 110 + wind * 12, y - 2);c.stroke();c.strokeStyle=stoneDust ? `rgba(255,242,204,${opacity})` : `rgba(244,251,235,${opacity})`;c.lineWidth=.8+wind*.25;c.stroke();
     }
     for (let i = 0; i < this.budget.leaves; i++) {
       const p = this.particles[i + 80], x = mod(p.x * (WIDTH + 60) + displacement * (1 + p.depth * .4), WIDTH + 60) - 30;
       const y = mod(p.y * HEIGHT + time * (3 + wind * 3) + Math.sin(time * 2 + p.phase) * 12, HEIGHT);
-      c.save();c.translate(x, y);c.rotate(p.phase + time * (1 + p.depth));c.globalAlpha = .38 + wind * .1;
+      c.save();c.translate(x, y);c.rotate(p.phase + time * (1 + p.depth));c.globalAlpha = stoneDust ? .85 + wind * .08 : .38 + wind * .1;
       const spray = map === 'ville1_arene';
-      c.fillStyle = spray ? '#b7e7f3' : wind>=2 ? (i%3?'#6d8b4e':'#b08446') : (i%3?'#b4c789':'#c99e62');c.beginPath();c.ellipse(0, 0, spray ? 1.4 : 2 + p.depth + wind*.2, spray ? .65 : 1 + p.depth * .5, 0, 0, Math.PI * 2);c.fill();c.restore();
+      c.fillStyle = stoneDust ? (i%3?'#b18858':'#f8edc9') : spray ? '#b7e7f3' : wind>=2 ? (i%3?'#6d8b4e':'#b08446') : (i%3?'#b4c789':'#c99e62');c.beginPath();c.ellipse(0, 0, stoneDust ? 1.8+p.depth*.6 : spray ? 1.4 : 2 + p.depth + wind*.2, stoneDust ? .8 : spray ? .65 : 1 + p.depth * .5, 0, 0, Math.PI * 2);c.fill();c.restore();
     }
+    c.restore();
   }
 }
