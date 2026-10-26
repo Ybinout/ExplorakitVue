@@ -5075,7 +5075,7 @@
       "type": "Bug",
       "category": "status",
       "power": null,
-      "powerKind": "special_case",
+      "powerKind": "status",
       "accuracy": null,
       "pp": 20,
       "description": "Déploie une toile visqueuse autour de l’ennemi qui ralentit la Vitesse de tout adversaire entrant au combat."
@@ -5121,7 +5121,7 @@
       "category": "status",
       "power": null,
       "powerKind": "status",
-      "accuracy": 25,
+      "accuracy": null,
       "pp": 25,
       "description": "Diffuse des particules saturées d’électricité qui transforment les capacités de type Normal en capacités de type Électrik."
     },

@@ -33,6 +33,8 @@
       <battle-sandstorm v-else-if="fieldState.weather === 'sandstorm'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
       <div v-else class="battle-weather-layer" aria-hidden="true"></div>
       <div class="battle-terrain-layer" aria-hidden="true"></div>
+      <battle-field-effects :state="fieldModel" :changes="fieldFx.changes" :nonce="fieldFx.nonce" :language="preferences.language" :animations-enabled="preferences.animationsEnabled" />
+      <battle-field-side v-for="side in ['player','opponent']" :key="side" :class="side==='player'?'battle-position-player':'battle-position-wild'" :state="fieldModel" :side="side" :pokemon="side==='player'?currentPokemon:opponent" :changes="fieldFx.changes.filter(e=>e.scope===side)" :nonce="fieldFx.nonce" :animations-enabled="preferences.animationsEnabled" />
       <span v-if="weatherLabel" class="battle-weather-indicator" :class="`battle-weather-${fieldState.weather}`" :data-battle-weather="fieldState.weather" role="img" :aria-label="weatherLabel" :title="weatherLabel"><journal-icon :name="`weather-${fieldState.weather}`" /></span>
       <battle-send-out v-for="entry in sendOuts" :key="entry.uuid" :side="entry.side" :style="sendOutPosition(entry.side)" />
 
@@ -187,7 +189,6 @@
           <p v-if="conditionNotice" class="battle-condition-notice" data-battle-condition-notice>{{ conditionNotice }}</p>
           <p v-if="transitionLabel && !trainerSpeech" class="battle-transition-label" data-battle-transition>{{ transitionLabel }}</p>
           <div v-if="driftNotices.length" class="battle-drift-notices" data-battle-drift-effects><p v-for="notice in driftNotices" :key="notice.side">✧ {{ notice.side==='player' ? 'Tes Drifts' : 'Drifts adverses' }} · {{ notice.text }}</p></div>
-          <p v-if="fieldLabel" class="battle-field-label">{{ fieldLabel }}</p>
         </div>
 
       <button
@@ -207,7 +208,6 @@
           <p v-if="conditionNotice" class="battle-condition-notice" data-battle-condition-notice>{{ conditionNotice }}</p>
           <p v-if="transitionLabel && !trainerSpeech" class="battle-transition-label" data-battle-transition>{{ transitionLabel }}</p>
           <div v-if="driftNotices.length" class="battle-drift-notices" data-battle-drift-effects><p v-for="notice in driftNotices" :key="notice.side">✧ {{ notice.side==='player' ? 'Tes Drifts' : 'Drifts adverses' }} · {{ notice.text }}</p></div>
-          <p v-if="fieldLabel" class="battle-field-label">{{ fieldLabel }}</p>
         </div>
         <div v-if="trainerSpeech" class="battle-text-box battle-trainer-speech" data-trainer-speech role="status" aria-live="polite">
           <strong>{{ trainerSpeech.name }}</strong><p>{{ trainerSpeech.text }}</p>
@@ -299,6 +299,9 @@ import moveLearning from '@/data/moveLearning.json';
 import { localizeTypeName } from '@/services/pokemonTypes';
 import PotentialStar from '../PotentialStar.vue';
 import BattleConditions from './BattleConditions.vue';
+import BattleFieldEffects from './BattleFieldEffects.vue';
+import BattleFieldSide from './BattleFieldSide.vue';
+import { normalizeBattleField, battleFieldChanges, hasBattleFieldVisual } from '@/services/battleField';
 import BattleMoveEffect from './BattleMoveEffect.vue';
 import BattlePersistentEffect from './BattlePersistentEffect.vue';
 import { moveVisual, persistentMoveVisuals, moveConnected } from '@/services/moveVisuals';
@@ -385,7 +388,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleWaterfalls, BattleSnow, BattleSandstorm, JournalIcon },
+  components: { BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleWaterfalls, BattleSnow, BattleSandstorm, JournalIcon },
   props: {
     mobile: Boolean,
     daylight: { type: Object, default: () => ({ night: 0, warmth: 0, phase: 'day' }) },
@@ -435,7 +438,7 @@ export default {
       resultTimer: null,
       criticalFx: { side: null, nonce: 0 }, criticalTimer: null, pendingCritical: null,
       battleMoveFx: {
-        visible: false, actor: 'player', moveName: '', moveType: 'Normal', damageClass: 'status', nonce: 0, family:'status', stage:'windup', travelMs:0, result:null, prepare:false, moveTarget:'opponent'
+        visible: false, actor: 'player', moveName: '', moveType: 'Normal', damageClass: 'status', nonce: 0, family:'status', stage:'windup', travelMs:0, result:null, prepare:false, moveTarget:'opponent', fieldMove:false
       },
       movePath: { startX: 180, startY: 390, targetX: 700, targetY: 220 },
       resultFx: { visible: false, actor: 'opponent', labels: [], nonce: 0 },
@@ -461,6 +464,7 @@ export default {
         player: { visible: false, hit: false, amount: 0, kind: 'damage', nonce: 0, critical: false }
       },
       fieldState: { weather: null, terrain: null },
+      fieldModel: normalizeBattleField(), fieldInitialized: false, fieldFx: {changes:[],nonce:0},
       soundEnabled: localStorage.getItem('battleSoundEnabled') !== 'false',
       music: null,
       musicKind: null,
@@ -489,7 +493,7 @@ export default {
     rainBackgrounds() { return RAIN_BACKGROUNDS; },
     snowBackgrounds() { return SNOW_BACKGROUNDS; },
     environment() { return battleEnvironment(this.battleMapName, Boolean(this.challenge), this.fieldState.weather,this.encounterEnvironment); },
-    hasAnnouncements() { if (this.replacementChoice) return false; return this.notice || this.transitionLabel || this.conditionNotice || this.driftNotices.length || this.fieldLabel || (this.captureFx.visible && this.captureFx.message); },
+    hasAnnouncements() { if (this.replacementChoice) return false; return this.notice || this.transitionLabel || this.conditionNotice || this.driftNotices.length || (this.captureFx.visible && this.captureFx.message); },
     resultSide() { return this.resultFx.visible ? (this.resultFx.actor === 'opponent' ? 'wild' : 'player') : null; },
     currentPokemon() {
       return this.player?.equipe?.pokemons?.[0] || null;
@@ -739,6 +743,7 @@ export default {
         if (!this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
         if (method === 'playMoveAnimation') return 300;
         if (method === 'playDriftEffects') return 650;
+        if (method === 'updateFieldState' && !this._pendingBattleField && this.fieldFx.changes.length) return 700;
         if (method === 'playMoveResult') return this.battleMoveFx.visible ? 0 : this.resultFx.visible ? 1150 : 250;
         return 0;
       };
@@ -978,6 +983,9 @@ export default {
         if (epoch !== this.visualEpoch) return;
         move.stage = connected ? (move.damageClass === 'status' ? 'aura' : 'impact') : 'miss';
       }
+      if (this._pendingBattleField) {
+        const field=this._pendingBattleField;this._pendingBattleField=null;this.applyFieldState(field);
+      }
       const healing = [];
       // Settle damage on the Pokémon that received it before removing its sprite.
       let hpChanged = false;
@@ -1125,6 +1133,17 @@ export default {
       }
     },
     updateFieldState(payload = {}) {
+      // Field moves/clearing take effect at impact, together with the HP frame.
+      if (this.battleMoveFx.visible && this.battleMoveFx.result && !this.battleMoveFx.prepare && ['windup','travel'].includes(this.battleMoveFx.stage)) {
+        this._pendingBattleField=payload;return;
+      }
+      this.applyFieldState(payload);
+    },
+    applyFieldState(payload = {}) {
+      const next = normalizeBattleField(payload);
+      this.fieldFx = {changes:this.fieldInitialized?battleFieldChanges(this.fieldModel,next,this.preferences.language):[],nonce:this.fieldFx.nonce+1};
+      this.fieldModel=next;
+      this.fieldInitialized=true;
       this.fieldState.weather = typeof payload.weather === 'string' ? payload.weather : payload.weather?.kind || null;
       this.fieldState.terrain = typeof payload.terrain === 'string' ? payload.terrain : payload.terrain?.kind || null;
     },
@@ -1290,7 +1309,7 @@ export default {
       this.movePath.groundY = this.getSpriteGeometry(targetSide).bottomY - 4;
       Object.assign(this.battleMoveFx, moveVisual(payload), {
         actor, moveName:payload.moveName || '', moveType:payload.moveType || 'Normal', damageClass,
-        visible:true, nonce:this.battleMoveFx.nonce+1, stage:'windup', result:null, prepare:payload.phase==='prepare', moveTarget:payload.moveTarget || 'opponent'
+        visible:true, nonce:this.battleMoveFx.nonce+1, stage:'windup', result:null, prepare:payload.phase==='prepare', moveTarget:payload.moveTarget || 'opponent', fieldMove:hasBattleFieldVisual(payload.moveName)
       });
       this._battleAudio?.move({ damageClass, moveType: payload.moveType || 'Normal' });
     },
@@ -1497,6 +1516,7 @@ export default {
     },
     setEncounterEnvironment(environment) { this.encounterEnvironment=environment==='lake'?'lake':null; },
     resetBattleUi() {
+      this._pendingBattleField=null;
       this.encounterEnvironment=null;
       this._presentation?.cancel();
       this.usableMoveIndexes = null;
@@ -1528,6 +1548,7 @@ export default {
       ['wild', 'player'].forEach((side) => {
         Object.assign(this.attackFx[side], { visible: false, hit: false, amount: 0, kind: 'damage' });
       });
+      this.fieldModel=normalizeBattleField();this.fieldInitialized=false;this.fieldFx={changes:[],nonce:0};
       this.fieldState.weather = null;
       this.fieldState.terrain = null;
     }

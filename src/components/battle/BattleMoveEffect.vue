@@ -32,7 +32,7 @@
         <circle :cy="(n%2 ? 1:-1)*9" r="5" fill="#a4f0ad"/><circle :cy="(n%2 ? 1:-1)*9" r="2" fill="#f5ffe3"/>
       </g>
     </g>
-    <g v-if="fx.stage === 'aura'" :transform="`translate(${path.targetX} ${path.targetY})`" fill="none" stroke="currentColor" stroke-width="3">
+    <g v-if="fx.stage === 'aura' && !fx.fieldMove" :transform="`translate(${path.targetX} ${path.targetY})`" fill="none" stroke="currentColor" stroke-width="3">
       <circle r="30" class="move-impact-ring"/><ellipse rx="40" ry="12" class="move-contact"/>
     </g>
     <g v-if="fx.stage === 'miss'" :transform="`translate(${path.targetX} ${path.targetY})`" class="move-dissipate" fill="none" stroke="currentColor" opacity=".5">
