@@ -49,6 +49,7 @@
 
       <template v-else-if="active === 'options'">
         <div class="option-list">
+          <fullscreen-options v-if="desktop" :state="fullscreen" :language="preferences.language" @toggle="$emit('toggle-fullscreen')" />
           <controller-options :preferences="preferences" @update="$emit('update-preferences', $event)" />
           <fieldset class="theme-options">
             <legend>{{ tr('interfaceColor') }}</legend>
@@ -126,11 +127,14 @@ import PokedexPanel from './PokedexPanel.vue';
 import AdventureGuide from './AdventureGuide.vue';
 import BadgesPanel from './BadgesPanel.vue';
 import ControllerOptions from './ControllerOptions.vue';
+import FullscreenOptions from './FullscreenOptions.vue';
 
 export default {
   name: 'GameInfoPanels',
-  components: { RegionMapPanel, PokedexPanel, AdventureGuide, BadgesPanel, ControllerOptions },
+  components: { RegionMapPanel, PokedexPanel, AdventureGuide, BadgesPanel, ControllerOptions, FullscreenOptions },
   props: {
+    desktop: Boolean,
+    fullscreen: { type: Object, default: () => ({ active: false, supported: false, busy: false, error: '' }) },
     currentMap: String, currentRegion: String, flightAllowed: Boolean,
     arenaTestState: {type:Object,default:()=>({allowed:false})}, arenaTestBusy:Boolean, arenaTestAllowed:Boolean, arenaTestNotice:{type:String,default:''},
     recoveryBusy: Boolean, recoveryAllowed: Boolean, recoveryNotice: {type:String,default:''},

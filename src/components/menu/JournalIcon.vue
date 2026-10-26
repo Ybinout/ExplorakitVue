@@ -6,6 +6,7 @@
 
 <script>
 const paths = {
+  fullscreen: 'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5',
   minimap: 'm3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16',
   menu: 'M4 6h16M4 12h16M4 18h16',
   quit: 'M10 4H4v16h6m4-12 4 4-4 4m-5-4h12',

@@ -1,4 +1,18 @@
 /* The canvas uses world coordinates; its viewport is measured by ResizeObserver. */
+/* Fullscreen keeps the world ratio and fits the actual mode-specific header. */
+.game-root.is-fullscreen:not(.is-mobile) {
+  display:grid; place-items:center; width:100%; height:100%; padding:0;
+  overflow:hidden; background:#081420;
+}
+.game-root.is-fullscreen:not(.is-mobile) .game-layout { width:100%; }
+.game-root.is-fullscreen:not(.is-mobile) .game-stage {
+  width:var(--game-fullscreen-width,896px); max-width:100%; margin:0 auto;
+}
+.game-root.is-fullscreen:not(.is-mobile) .game-stage .battle {
+  inset:var(--game-fullscreen-toolbar-height,64px) 0 0; height:auto; min-height:0;
+}
+.game-root.is-fullscreen::backdrop { background:#081420; }
+
 /* Desktop dialogue follows the game canvas, including when the page scrolls. */
 .game-root:not(.is-mobile) .dialogue-layer { position:absolute; inset:0; }
 .game-root:not(.is-mobile) .dialogue-layer .dialogue-shell { height:100%; padding:16px 18px; }

@@ -1,5 +1,5 @@
 <template>
-  <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift, 'is-mobile': showMobileControls }]">
+  <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift, 'is-mobile': showMobileControls, 'is-fullscreen': fullscreenState.active }]">
     <!-- <navBar></navBar> -->
     <div class="game-layout">
       <div class="game-stage" ref="gameStage">
@@ -185,6 +185,7 @@
           <p class="team-order-status" role="status">{{ teamSaving ? tr('saving') : teamOrderNotice || tr('orderAutoSave') }}</p>
         </div>
         <game-info-panels
+          :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @toggle-fullscreen="toggleGameFullscreen"
           :flight-allowed="!isDrift" @fly="flyToTown"
           :active="activeInfoPanel"
           :current-map="map" :current-region="players[socket?.id]?.regionLocation"
@@ -440,6 +441,7 @@ import ShopPanel from './shop/ShopPanel.vue';
 import TextWithImage from './TextWithImage.vue';
 import { loadGamePreferences, saveGamePreferences } from '@/services/gamePreferences';
 import { GAMEPAD_EVENT } from '@/services/gamepad';
+import { attachGameFullscreen } from '@/services/gameFullscreen';
 import { localizeAbilityName, translate } from '@/services/i18n';
 import { getMapLocationLabel } from '@/services/mapLocations';
 import { WorldMusic } from '@/services/worldMusic';
@@ -467,6 +469,7 @@ export default {
   },
   data() {
     return {
+      fullscreenState: { active: false, supported: false, desktop: false, busy: false, error: '' },
       fishing:null, fishingReceivedAt:0,
       mapWeather: null, worldWeatherReducedMotion: false, worldDaylight: daylightAt(Date.now()),
       worldAudioConnected: false,
@@ -1213,6 +1216,18 @@ export default {
         message
       });
       this.chatDraft = '';
+    },
+    async toggleGameFullscreen() {
+      if (!this._fullscreen || this.fullscreenState.busy) return;
+      this.releaseAllMovementKeys();
+      this.fullscreenState = { ...this.fullscreenState, busy: true, error: '' };
+      try { await this._fullscreen.toggle(); }
+      catch (_) {
+        if (!this._isBeingDestroyed && !this._isDestroyed) this.fullscreenState.error = this.preferences.language === 'en'
+          ? 'Fullscreen could not be opened. Please try again.' : 'Impossible de changer d’affichage. Réessaie en cliquant sur le bouton.';
+      } finally {
+        if (!this._isBeingDestroyed && !this._isDestroyed) this.fullscreenState.busy = false;
+      }
     },
     updateMobileControlsVisibility() {
       const mobile = window.innerWidth <= 920 || window.matchMedia('(pointer: coarse)').matches;
@@ -2491,6 +2506,11 @@ export default {
     window.addEventListener('keydown', this.syncWorldMusic);
     document.addEventListener('visibilitychange', this.syncWorldMusic);
     this._detachPopupLayout = attachGamePopupLayout(this.$el, this.$refs.gameStage);
+    this._fullscreen = attachGameFullscreen(this.$el, this.$el.querySelector('.world-toolbar'), state => {
+      this.fullscreenState = { ...this.fullscreenState, ...state };
+      this.releaseAllMovementKeys();
+      this.$nextTick(this.resizeWorldViewport);
+    });
     document.body.classList.add("in-world");
     this._weatherMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     this._weatherMotionChange = () => { this.worldWeatherReducedMotion = Boolean(this._weatherMotionQuery?.matches); };
@@ -3068,6 +3088,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    this._fullscreen?.destroy();
     clearTimeout(this._lucieDepartureTimer);
     this.cancelFishing();
     this._worldMovement?.clear();
