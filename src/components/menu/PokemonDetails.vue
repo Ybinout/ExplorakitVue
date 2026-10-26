@@ -14,6 +14,7 @@
           <experience-bar :pokemon="pokemon" detailed />
           <p class="companion-next">Prochain niveau : {{ progress.remaining }} XP</p>
           <div class="companion-traits"><span>Nature <strong>{{ nature.label }}</strong></span><small>{{ nature.effect }}</small><span>Talent <strong>{{ abilityName }}</strong></span><span>Potentiel <potential-star :value="pokemon.k" /></span></div>
+          <p class="companion-ability-description" data-ability-description>{{ abilityDescription }}</p>
           <p v-if="abilityNotice" class="evolution-help" data-ability-notice>{{ abilityNotice }}</p>
         </div>
         <div class="companion-training">
@@ -36,12 +37,14 @@
           <p class="companion-tip">{{ mode === 'ev' ? `Entraînement : ${effortTotal} / 510. Les adversaires vaincus améliorent progressivement tes statistiques.` : mode === 'iv' ? 'Les IV sont innés. Le potentiel multiplie leur contribution aux statistiques ; il ne modifie pas les EV.' : 'Les statistiques combinent espèce, niveau, nature, IV, potentiel et entraînement. Les effets temporaires du combat sont exclus.' }}</p>
         </div>
       </div>
-      <section v-if="readOnly" class="companion-pc-moves" aria-labelledby="companion-moves-title">
+      <section class="companion-pc-moves" aria-labelledby="companion-moves-title">
         <h3 id="companion-moves-title">Capacités</h3>
-        <p v-if="!pokemon.moveDetails?.length" class="evolution-help">Aucune capacité apprise.</p>
-        <article v-for="(move,index) in pokemon.moveDetails || []" :key="`${index}-${move.name}`" :data-companion-move="move.name">
-          <div><strong>{{ moveName(move.name) }}</strong><span>{{ typeName(move.type) }} · {{ moveClass(move.damageClass) }}</span></div>
-          <dl><div><dt>Puissance</dt><dd>{{ move.power>0?move.power:'—' }}</dd></div><div><dt>Précision</dt><dd>{{ move.accuracy>0?`${move.accuracy} %`:'—' }}</dd></div><div><dt>PP</dt><dd>{{ move.pp }} / {{ move.maxPp }}</dd></div></dl>
+        <p class="evolution-help">Les dégâts réels dépendent des statistiques, des types et des effets en combat.</p>
+        <p v-if="!moves.length" class="evolution-help">Aucune capacité apprise.</p>
+        <article v-for="(move,index) in moves" :key="`${index}-${move.name}`" :data-companion-move="move.name" :style="typeStyle(move.type)">
+          <div class="companion-move-heading"><strong>{{ moveName(move.name) }}</strong><div><span class="companion-move-type">{{ typeName(move.type) || 'Type inconnu' }}</span><span class="companion-move-class">{{ moveClass(move.damageClass) }}</span></div></div>
+          <dl><div><dt>{{ move.fixedDamage ? 'Dégâts fixes' : 'Puissance' }}</dt><dd>{{ move.powerLabel }}</dd></div><div><dt>Précision</dt><dd>{{ move.accuracy>0?`${move.accuracy} %`:'—' }}</dd></div><div><dt>PP</dt><dd>{{ move.pp ?? '—' }} / {{ move.maxPp ?? '—' }}</dd></div></dl>
+          <p class="companion-move-description" data-move-description>{{ move.description }}</p>
         </article>
         <p v-if="pokemon.heldItemName" class="evolution-help">Objet tenu : <strong>{{ pokemon.heldItemName }}</strong></p>
       </section>
@@ -69,8 +72,11 @@ import PotentialStar from '../PotentialStar.vue';
 import PokemonPortrait from '../PokemonPortrait.vue';
 import ExperienceBar from '../ExperienceBar.vue';
 import { experienceProgress } from '@/services/pokemonProgress';
-import { localizeTypeName } from '@/services/pokemonTypes';
+import { localizeTypeName, typeBadgeStyle } from '@/services/pokemonTypes';
 import { localizeAbilityName, localizeMoveName } from '@/services/i18n';
+import { createPokemonReference } from '@/services/pokemonReference';
+import referenceData from '@/data/pokemonReference.fr.json';
+const reference=createPokemonReference(referenceData);
 const stats = [
   { key: 'hp', label: 'PV', full: 'Points de vie' }, { key: 'attack', label: 'ATQ', full: 'Attaque' },
   { key: 'defense', label: 'DÉF', full: 'Défense' }, { key: 'speed', label: 'VIT', full: 'Vitesse' },
@@ -95,6 +101,8 @@ export default {
     progress() { return experienceProgress(this.pokemon); },
     hpPercent() { return Math.min(100, this.pokemon.currentHp / this.pokemon.maxHp * 100); },
     abilityName() { return localizeAbilityName(this.pokemon.passiveAbility, 'fr') || '—'; },
+    abilityDescription() { return reference.abilityDescription(this.pokemon.passiveAbility); },
+    moves() { return reference.moves(this.pokemon); },
     abilityNotice() {
       const name=this.pokemon.passiveAbility;
       if(['Battery','Friend Guard','Healer','Minus','Plus','Receiver','Symbiosis','Telepathy'].includes(name))return 'Ce talent agit sur les alliés en combat double. Les modes actuels se jouent en un contre un.';
@@ -120,6 +128,7 @@ export default {
   beforeDestroy() { this.previousFocus?.focus?.(); },
   methods: {
     moveName(name){return localizeMoveName(name,'fr');},typeName:localizeTypeName,
+    typeStyle:typeBadgeStyle,
     moveClass(value){return {physical:'Physique',special:'Spéciale',status:'Statut'}[value] || '—';},
     point(index, ratio) { const angle = -Math.PI / 2 + index * Math.PI / 3; return { x: 160 + Math.cos(angle) * 85 * ratio, y: 140 + Math.sin(angle) * 85 * ratio }; },
     polygon(ratios) { return ratios.map((ratio, index) => { const p = this.point(index, ratio); return `${p.x},${p.y}`; }).join(' '); },
@@ -141,8 +150,19 @@ export default {
 };
 </script>
 <style scoped>
-.companion-pc-moves{padding:4px 26px 24px;border-top:1px solid var(--journal-border)}.companion-pc-moves h3{font:24px Georgia,serif;color:var(--journal-heading)}.companion-pc-moves article{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--journal-border)}.companion-pc-moves article>div{min-width:0}.companion-pc-moves article strong{font-size:13px;color:var(--journal-heading)}.companion-pc-moves article span{display:block;font-size:11px;color:var(--journal-muted);margin-top:4px}.companion-pc-moves dl{display:flex;gap:18px;margin:0;flex:none}.companion-pc-moves dt{font-size:9px;color:var(--journal-muted)}.companion-pc-moves dd{margin:4px 0 0;font-size:12px;text-align:right}.companion-heading>div{min-width:0}.companion-heading h2{overflow-wrap:anywhere}
-@media(max-width:540px){.companion-pc-moves{padding:4px 18px 18px}.companion-pc-moves article{flex-wrap:wrap;gap:10px}.companion-pc-moves dl{width:100%;justify-content:space-between}.companion-pc-moves dd{text-align:left}}
+/* Learned moves are shared by team and PC sheets. */
+.companion-pc-moves{padding:4px 26px 24px;border-top:1px solid var(--journal-border)}
+.companion-pc-moves h3{font:24px Georgia,serif;color:var(--journal-heading);margin:20px 0 8px}
+.companion-pc-moves article{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 18px;margin-top:12px;padding:15px;border:1px solid var(--journal-border);border-left:4px solid var(--pokemon-type-color);border-radius:10px;background:var(--journal-card)}
+.companion-move-heading{min-width:0;align-self:center}.companion-move-heading strong{font-size:14px;color:var(--journal-heading);overflow-wrap:anywhere}.companion-move-heading>div{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:7px}
+.companion-move-type{display:inline-block;padding:3px 9px;border-radius:5px;background:var(--pokemon-type-color);color:var(--pokemon-type-ink);font-size:10px;font-weight:bold}
+.companion-move-class{font-size:11px;color:var(--journal-muted)}
+.companion-pc-moves dl{display:flex;align-items:center;gap:18px;margin:0}.companion-pc-moves dt{font-size:10px;color:var(--journal-muted)}.companion-pc-moves dd{margin:4px 0 0;font-size:13px;text-align:right;color:var(--journal-heading);font-weight:bold}
+.companion-move-description{grid-column:1 / -1;margin:0;padding-top:10px;border-top:1px solid var(--journal-border);font-size:12px;line-height:1.65;color:var(--journal-ink)}
+.companion-ability-description{grid-column:1 / -1;margin:12px 0 0;padding:10px 12px;border-left:3px solid var(--journal-accent);background:var(--journal-soft);color:var(--journal-ink);font-size:12px;line-height:1.65}
+.companion-identity>[data-ability-notice]{grid-column:1 / -1}
+.companion-heading>div{min-width:0}.companion-heading h2{overflow-wrap:anywhere}
+@media(max-width:540px){.companion-pc-moves{padding:4px 18px 18px}.companion-pc-moves article{grid-template-columns:minmax(0,1fr);gap:12px;padding:13px}.companion-pc-moves dl{justify-content:space-between;gap:10px}.companion-pc-moves dd{text-align:left}}
 
 .companion-evolutions{padding:4px 26px 24px;border-top:1px solid var(--journal-border)}
 .companion-evolutions h3{font:24px Georgia,serif;margin:20px 0 10px}.evolution-help{font-size:12px;line-height:1.6;color:var(--journal-muted)}
