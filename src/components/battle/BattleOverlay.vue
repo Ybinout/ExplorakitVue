@@ -823,7 +823,7 @@ export default {
       return localizeAbilityName(name, this.preferences.language);
     },
     getPokemonSprite(pokemon, side) {
-      const id = Number.parseInt(pokemon?.__battle?.illusion?.id || pokemon?.__battle?.formSpriteId || pokemon?.data?.id, 10);
+      const id = Number.parseInt(pokemon?.__battle?.illusion?.id || pokemon?.__battle?.transformSpriteId || pokemon?.__battle?.formSpriteId || pokemon?.data?.id, 10);
       if (!Number.isInteger(id) || id <= 0) return '';
       const folder = side === 'back' ? 'back' : 'front';
       return `${process.env.BASE_URL}img/pokemon/${folder}/${id}.png`;
