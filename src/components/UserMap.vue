@@ -398,7 +398,7 @@ import DriftRunPanel from "./drift/DriftRunPanel.vue";
 import ExpeditionTrainerOffer from "./drift/ExpeditionTrainerOffer.vue";
 import RiftSpectatorPanel from "./drift/RiftSpectatorPanel.vue";
 import DriftGlyph from "./drift/DriftGlyph.vue";
-import { createGameSocket, createDriftSocket, isSessionConnectionFailure } from "@/services/realtime";
+import { createGameSocket, createDriftSocket, isSessionConnectionFailure, bindSessionReplacement } from "@/services/realtime";
 import {
   getDirectionFromAction,
   getDirectionFromDelta,
@@ -2565,6 +2565,7 @@ export default {
     }
 
     this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token);
+    bindSessionReplacement(this.socket, () => this.$router.replace({path:'/connexion',query:{reason:'session-replaced'}}));
     if (this.isDrift) {
       this.driftClockTimer = setInterval(() => { this.driftClock = Date.now(); }, 250);
       this.socket.on('drift:bootstrap', payload => { this.driftCatalogue = payload.catalogue; });
@@ -2606,7 +2607,6 @@ export default {
         if (this.driftState.repelSteps !== steps) this.driftState.repelSteps = steps;
       });
       this.socket.on('drift:lobby', lobby => { if (!lobby && this.driftState) this.$router.replace(this.driftLobbyPath); });
-      this.socket.on('drift:replaced', () => { this.socket.disconnect(); this.$router.replace('/'); });
       this.socket.on('connect', () => this.socket.emit('drift:enter', {movementPatches:1}, response => { if (!response?.success) this.$router.replace(this.driftLobbyPath); }));
     }
 

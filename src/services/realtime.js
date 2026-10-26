@@ -3,6 +3,19 @@ import { io } from 'socket.io-client';
 const socketOrigin = process.env.VUE_APP_SOCKET_URL
   || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
 
+export function bindSessionReplacement(socket, onReplaced) {
+  let replaced = false;
+  const stop = () => {
+    if (replaced) return;
+    replaced = true;
+    socket.disconnect();
+    // Tabs share localStorage: clearing it here would log out the new tab too.
+    onReplaced();
+  };
+  socket.on('session:replaced', stop);
+  socket.on('drift:replaced', stop);
+}
+
 export function createGameSocket(token) {
   return io(socketOrigin, {
     path: `${process.env.BASE_URL || '/'}socket.io`,

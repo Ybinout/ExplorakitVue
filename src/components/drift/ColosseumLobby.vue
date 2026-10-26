@@ -33,7 +33,7 @@ import ColosseumDefeat from './ColosseumDefeat.vue';
 import LeaveExpedition from './LeaveExpedition.vue';
 import api from '@/services/api';
 import { getSession } from '@/services/session';
-import { createDriftSocket, getDriftConnectionFailure } from '@/services/realtime';
+import { createDriftSocket, getDriftConnectionFailure, bindSessionReplacement } from '@/services/realtime';
 import RankProgress from '../social/RankProgress.vue';
 import RankBadge from '../social/RankBadge.vue';
 import DriftGlyph from './DriftGlyph.vue';
@@ -43,6 +43,7 @@ export default {
   computed:{ durationLabel() { return this.durationMinutes === 30 ? '30 minutes' : '1 heure'; }, foreignLobby() { return this.lobby && this.lobby.mode !== 'colosseum'; }, activeRun() { return this.lobby?.mode === 'colosseum' && !['lobby','results'].includes(this.lobby.phase); } },
   mounted() {
     this.loadRanking();this.socket=createDriftSocket(getSession()?.token);
+    bindSessionReplacement(this.socket, () => this.$router.replace({path:'/connexion',query:{reason:'session-replaced'}}));
     this.socket.on('connect',()=>{this.connected=true;this.connectionFailed=false;this.error='';});
     this.socket.on('disconnect',()=>{this.connected=false;this.loaded=false;});
     this.socket.on('connect_error',e=>{this.connectionFailed=true;this.error=getDriftConnectionFailure(e).message;});

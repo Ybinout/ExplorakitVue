@@ -8,6 +8,9 @@
       <p v-if="$route.query.reason === 'session-expired'" class="session-notice" role="alert" data-session-expired>
         Ta session a expiré ou n’est plus valide. Reconnecte-toi pour reprendre ta partie.
       </p>
+      <p v-if="$route.query.reason === 'session-replaced'" class="session-notice" role="alert" data-session-replaced>
+        Ton compte vient de se connecter ailleurs. Cette session a été déconnectée.
+      </p>
 
       <form @submit.prevent="login">
         <label>

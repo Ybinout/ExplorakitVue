@@ -152,7 +152,7 @@
 import { clearSession, getSession } from '@/services/session';
 import LeaveExpedition from './LeaveExpedition.vue';
 import api from '@/services/api';
-import { createDriftSocket, getDriftConnectionFailure } from '@/services/realtime';
+import { createDriftSocket, getDriftConnectionFailure, bindSessionReplacement } from '@/services/realtime';
 import RiftRankSummary from '../social/RiftRankSummary.vue';
 import RiftCollection from './RiftCollection.vue';
 import DriftGlyph from './DriftGlyph.vue';
@@ -196,6 +196,7 @@ export default {
     this.loadProfile();
     this.loadHistory();
     this.socket = createDriftSocket(getSession()?.token);
+    bindSessionReplacement(this.socket, () => this.$router.replace({path:'/connexion',query:{reason:'session-replaced'}}));
     this.socket.on('connect', () => { this.connected = true; this.bootstrapped = false; this.connectionFailed = false; this.connectionFailureKind = ''; this.error = ''; });
     this.socket.on('disconnect', () => { this.connected = false; this.bootstrapped = false; this.listLoaded = false; this.publicLobbies = []; });
     this.socket.on('connect_error', error => {
