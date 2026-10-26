@@ -270,7 +270,7 @@
           <div class="mobile-action-group">
           <button
             class="mobile-action-a"
-            :disabled="!!roomObstacleAction"
+            :disabled="!!roomObstacleAction || !!lucieDeparture"
             :aria-label="textImageSequence.length ? (preferences.language === 'en' ? 'Continue dialogue' : 'Continuer le dialogue') : (preferences.language === 'en' ? 'Interact' : 'Parler ou agir')"
             @pointerdown.stop.prevent="triggerMobileActionA"
             @click="activateMobileActionA"
@@ -374,6 +374,7 @@ import {WorldRenderBudget} from '../services/worldRenderBudget';
 import {WorldMovement, MOVEMENT_INPUT_MS, movementInputWait} from '../services/worldMovement';
 import {drawHozeCeiling} from '../services/hozeCollapse';
 import {roomStrikePose, drawRoomStrike} from '../services/roomObstacleRenderer';
+import {departurePose, drawDeparture} from '../services/lucieDeparture';
 import {npcTeleportPose,drawNpcTeleport} from '../services/npcTeleport';
 import { StoryGateRenderer } from '@/services/storyGateRenderer';
 import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset, npcAppearance } from '@/services/npcFrames';
@@ -564,6 +565,7 @@ export default {
       },
       arenaCollapse: null,
       roomObstacleAction: null,
+      lucieDeparture: null,
       pendingRoomEntry: null,
       postBattleDialogue: null,
       deferredBattleResult: null,
@@ -695,7 +697,7 @@ export default {
     },
     movementBlocked() { return this.worldContextLost || this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
     movementSuspended() {
-      return !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
@@ -1060,7 +1062,7 @@ export default {
       this.$nextTick(() => this.$refs.teamToggle?.focus());
     },
     toggleMenu() {
-      if(this.flight)return;
+      if(this.flight || this.lucieDeparture)return;
       this.isMenuOpen = !this.isMenuOpen;
     },
     getStoredUserId() {
@@ -1478,6 +1480,8 @@ export default {
       const idleFrame = this.spriteAnimations?.down?.[0] || { x: 0, y: 0 };
       const teleport=this._npcTeleport?.map===this.map?this._npcTeleport:null;
       const motion=this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion;
+      const departure=this.lucieDeparture?.map===this.map?this.lucieDeparture:null;
+      if(departure)drawDeparture(context,departure,now,motion);
       if(teleport)drawNpcTeleport(context,teleport,now,motion);
       for (const pnj of visiblePnjs) {
         const spriteSheet = this.ensurePnjSpriteSheet(pnj.sprite);
@@ -1487,6 +1491,10 @@ export default {
         const phase=teleport?.name===pnj.name?npcTeleportPose(teleport,now,motion):null;
         if(phase){x=phase.x*32+16;y=phase.y*32+16-phase.lift;moving=false;}
         context.save();if(phase)context.globalAlpha=phase.alpha;
+        if(departure && pnj.name==='lucie_route2') {
+          const pose=departurePose(departure,now,motion),cx=departure.x*32+16,cy=departure.y*32+34;
+          context.globalAlpha=pose.alpha;context.translate(cx,cy+pose.drop);context.rotate(pose.rotation);context.scale(pose.scale,pose.scale);context.translate(-cx,-cy);
+        }
         const offset = npcRenderOffset(this.map, pnj);
         const drawX = Math.round(x - 32 + offset.x);
         const drawY = Math.round(y - 42 + offset.y - (moving ? Math.abs(Math.sin(progress * Math.PI * 3)) * 2 : 0));
@@ -1496,7 +1504,7 @@ export default {
           context.fillStyle='#fff8df'; context.font='12px sans-serif'; context.textAlign='center';
           context.fillText(`Défi · N. ${pnj.challengeLevel}`,drawX+32,drawY-10); context.restore();
         }
-        const playerBasedSprite = pnj.sprite === 'gwenn-pixel-v4.png' || pnj.sprite === 'matthieu-pixel-v2.png';
+        const playerBasedSprite = ['gwenn-pixel-v4.png','matthieu-pixel-v2.png','lucie-pixel-v3.png'].includes(pnj.sprite);
         const classicCustomSprite = playerBasedSprite || ['aspha-pixel-v2.png', 'gwenn-pixel-v2.png', 'gwenn-pixel-v3.png', 'matthieu-pixel-v1.png', 'nrv-noz-pixel-v1.png', 'nrv-tom-pixel-v1.png', 'nrv-cry-pixel-v1.png'].includes(pnj.sprite);
         if (pnj.spriteFrame || usesClassicNpcAtlas(spriteSheet) || classicCustomSprite) {
           // Original pixels at 2x, cropped to one person; preserve the feet anchor.
@@ -1915,6 +1923,7 @@ export default {
       } finally { this.quitting = false; }
     },
     async handleMenuAction(actionKey) {
+      if(this.lucieDeparture)return;
       if(this.flight)return;
       this.isMenuOpen = false;
       if (["drifts","contracts"].includes(actionKey)) { this.closeLegacyPanels(); this.driftPanelTab=actionKey; this.releaseAllMovementKeys(); this.isDriftPanelOpen = true; return; }
@@ -2044,7 +2053,16 @@ export default {
       // Remet Ã  zÃ©ro la sÃ©quence, ce qui cache le composant enfant
       this.socket.emit('onEndDialogue', this.endSentences);
       this.textImageSequence = [];
-      if (this.deferredBattleResult) { this.battleResult = this.deferredBattleResult; this.deferredBattleResult = null; }
+      if (this.deferredBattleResult) {
+        if(this.endSentences==='lucie_route2_after'){
+          this._lucieDepartureResult=this.deferredBattleResult;
+          // Older servers or a rejected dialogue must still release the recap.
+          clearTimeout(this._lucieDepartureTimer);
+          this._lucieDepartureTimer=setTimeout(()=>{if(!this.lucieDeparture&&this._lucieDepartureResult){this.battleResult=this._lucieDepartureResult;this._lucieDepartureResult=null;}},2500);
+        }
+        else this.battleResult = this.deferredBattleResult;
+        this.deferredBattleResult = null;
+      }
     },
 
 
@@ -2521,6 +2539,17 @@ export default {
       }
     });
 
+    this.socket.on('lucieDeparture', scene=>{
+      clearTimeout(this._lucieDepartureTimer);
+      this.lucieDeparture=scene.active&&scene.map===this.map?{...scene,startedAt:performance.now()}:null;
+      if(this.lucieDeparture){
+        this.releaseAllMovementKeys();this.isMenuOpen=false;this.isTeamPanelOpen=false;this.interactionNotice='';
+        this._lucieDepartureTimer=setTimeout(()=>{this.lucieDeparture=null;if(this._lucieDepartureResult){this.battleResult=this._lucieDepartureResult;this._lucieDepartureResult=null;}},scene.duration+1000);
+      }
+      else if(this._lucieDepartureResult){this.battleResult=this._lucieDepartureResult;this._lucieDepartureResult=null;}
+      this.drawPlayers();
+    });
+
     this.socket.on('pokedexState', (payload = {}) => {
       this.pokedexState = payload;
     });
@@ -2773,6 +2802,7 @@ export default {
     });
 
     this.socket.on('newmap', ({ mapname, playersList }) => {
+      clearTimeout(this._lucieDepartureTimer);this.lucieDeparture=null;this._lucieDepartureResult=null;
       this._npcTeleport=null;
       this._worldMovement?.clear();
       this.pendingRoomEntry=null; this.postBattleDialogue=null; this.deferredBattleResult=null;
@@ -2837,6 +2867,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      clearTimeout(this._lucieDepartureTimer);this.lucieDeparture=null;this._lucieDepartureResult=null;
       this._worldMovement?.clear();
       this.arenaTestState = {allowed:false}; this.arenaTestNotice = '';this.arenaCollapse=null;this._npcTeleport=null;
       this.pendingRoomEntry=null; this.postBattleDialogue=null; this.deferredBattleResult=null;
@@ -2992,6 +3023,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    clearTimeout(this._lucieDepartureTimer);
     this.cancelFishing();
     this._worldMovement?.clear();
     this._worldMusic?.destroy();
