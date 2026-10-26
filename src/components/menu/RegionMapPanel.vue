@@ -17,7 +17,7 @@
         <div class="map-scroll" ref="mapScroll" :class="{dragging}" tabindex="0" :aria-label="en ? 'Regional map. Zoom with + and −; move with arrow keys.' : 'Carte régionale. Zoome avec + et − ; déplace avec les flèches.'"
           @wheel.prevent="wheelZoom" @pointerdown.prevent="beginPointer" @pointermove="movePointer" @pointerup="endPointer" @pointercancel="endPointer" @lostpointercapture="endPointer" @click.capture="mapClick">
           <div class="map-surface" :style="surfaceStyle">
-          <svg class="region-art" :style="artStyle" :viewBox="`0 0 ${atlas.width} ${atlas.height}`" role="img" :aria-label="en ? 'Towns, routes and your position' : 'Villes, routes et ta position'">
+          <svg class="region-art" :style="artStyle" :viewBox="`0 0 ${atlas.width} ${atlas.height}`" role="group" :aria-label="en ? 'Towns, routes and your position' : 'Villes, routes et ta position'">
             <defs>
               <pattern id="region-sea" width="32" height="28" patternUnits="userSpaceOnUse"><rect width="32" height="28" fill="#369fb1"/><path d="M2 20h10v2H2M20 7h8v2h-8" fill="#66bdc1" opacity=".4"/></pattern>
               <pattern id="region-forest" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M6 2h4v3h3v6H3V5h3" fill="#73ae64"/><path d="M3 10h10v2H3M7 12h2v2H7" fill="#5b995a"/></pattern>
@@ -40,7 +40,7 @@
                 <path :d="edge.path" fill="none" :stroke="edge.cave ? '#7e8765' : '#d1aa65'" stroke-width="10"/>
                 <path :d="edge.path" fill="none" :stroke="edge.cave ? '#d0c2a1' : '#f4db8b'" stroke-width="6" :stroke-dasharray="edge.cave ? '5 3' : null"/>
               </g>
-              <g v-for="node in atlas.nodes" :key="node.id" :data-map-node="node.id" class="map-node" @click="selected = node.id">
+              <g v-for="node in atlas.nodes" :key="node.id" :data-map-node="node.id" class="map-node" role="button" tabindex="0" :aria-label="label(node.id)" :aria-pressed="selected === node.id" @click="selected = node.id" @keydown.enter.prevent="selected = node.id" @keydown.space.prevent="selected = node.id">
                 <title>{{ label(node.id) }}</title>
                 <rect :x="node.x-12" :y="node.y-12" width="24" height="24" fill="transparent"/>
                 <rect v-if="node.kind === 'town'" :x="node.x-7" :y="node.y-6" width="14" height="12" fill="#f7f0c5" stroke="#94745b" stroke-width="1"/>
@@ -79,8 +79,10 @@
             <strong>{{ en ? 'Flight Module' : 'Module Vol' }}</strong>
             <p>{{ flight?.unlocked ? (en ? 'Choose a visited town, then take flight.' : 'Choisis une ville visitée, puis prends ton envol.') : (en ? 'Wanda will give you this module after your victory.' : 'Wanda te remettra ce module après ta victoire.') }}</p>
           </div>
-          <label for="region-place">{{ pokemon ? (en ? 'Habitats' : 'Localisations') : (en ? 'Explore the map' : 'Explorer la carte') }}</label>
-          <select id="region-place" v-model="selected" @change="centerOn(selectedNode)"><option value="">{{ en ? 'Choose a location' : 'Choisir un lieu' }}</option><option v-for="node in selectableNodes" :key="node.id" :value="node.id">{{ label(node.id) }}</option></select>
+          <template v-if="pokemon">
+            <label for="region-place">{{ en ? 'Habitats' : 'Localisations' }}</label>
+            <select id="region-place" v-model="selected" @change="centerOn(selectedNode)"><option value="">{{ en ? 'Choose a location' : 'Choisir un lieu' }}</option><option v-for="node in selectableNodes" :key="node.id" :value="node.id">{{ label(node.id) }}</option></select>
+          </template>
           <div v-if="selectedNode" class="place-detail" aria-live="polite"><strong>{{ label(selectedNode.id) }}</strong><span v-if="selectedNode.id === currentNode?.id" class="here-label">{{ en ? 'You are here' : 'Tu es ici' }}</span><p v-for="(entry,i) in selectedHabitats" :key="i">{{ methodLabel(entry.method) }}<template v-if="entry.level"> · {{ en ? 'Lv.' : 'Niv.' }} {{ entry.level.min }}–{{ entry.level.max }}</template><template v-if="entry.speciesId"> · {{ speciesName(entry.speciesId) }}</template></p></div>
 
         </div>
@@ -187,6 +189,7 @@ export default {
 };
 </script>
 <style scoped>
+.map-node:focus-visible{outline:none}.map-node:focus-visible>rect:first-of-type{stroke:#fff7cf;stroke-width:2}
 .flight-actionbar{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-top:1px solid var(--journal-border);background:var(--journal-card)}.flight-actionbar small{display:block;color:var(--journal-muted);font-size:10px;margin-bottom:4px}.flight-actionbar strong{font-size:13px}
 
 .flight-module{padding:12px;background:var(--journal-soft);border:1px solid var(--journal-border);border-radius:10px;margin-bottom:12px}.flight-module p,.flight-unvisited{font-size:12px;line-height:1.5;margin:6px 0;color:var(--journal-muted)}.region-panel .flight-button{min-width:130px;background:var(--journal-accent);color:var(--journal-paper);font-weight:700}

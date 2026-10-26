@@ -123,7 +123,10 @@ export function navigateGamepad(root, detail) {
   if (detail.action === 'confirm') {
     let active = document.activeElement;
     if (!nodes.includes(active) || (isBackControl(active) && !active.classList.contains('gamepad-focus'))) { active = nodes[0]; focusControl(active, root); }
-    if (active && !active.matches('input:not([type="checkbox"]):not([type="radio"]), textarea, select')) active.click();
+    if (active && !active.matches('input:not([type="checkbox"]):not([type="radio"]), textarea, select')) {
+      if (typeof active.click === 'function') active.click();
+      else active.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    }
   } else if (detail.action === 'back' || detail.action === 'menu') {
     const target = scope.contains(document.activeElement) ? document.activeElement : scope;
     const event = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true });
