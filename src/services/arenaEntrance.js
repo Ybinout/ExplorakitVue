@@ -12,7 +12,7 @@ export function arenaChampion(mapName, encounterKind, trainerKey = null) {
   if (mapName === 'ville1' && encounterKind === 'trainer' && ['town_lina', 'town_bastien'].includes(trainerKey)) {
     const maria = trainerKey === 'town_lina';
     return { name: maria ? 'Maria' : 'Clément', city: 'Ville du Lac', cityEn: 'Lake Town',
-      portrait: maria ? 'maria-v1.png' : 'clement-v1.png', accent: '#aec5bd', story: true,
+      portrait: maria ? 'maria-v2.png' : 'clement-v2.png', accent: '#aec5bd', story: true,
       eyebrow: maria ? 'LE DÉFI DE MARIA' : 'LE DÉFI DE CLÉMENT', eyebrowEn: maria ? 'MARIA’S CHALLENGE' : 'CLÉMENT’S CHALLENGE',
       minimumMs: 3600, portraitMs: 2200 };
   }
