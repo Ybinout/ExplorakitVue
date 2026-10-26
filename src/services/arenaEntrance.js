@@ -9,6 +9,10 @@ const champions = {
   ville5_arene: { name: '7p', city: 'Blanchecime', cityEn: 'Whitepeak', portrait: '7ps.png', accent: '#b6dbef' }
 };
 export function arenaChampion(mapName, encounterKind, trainerKey = null) {
+  if(mapName==='professor_lab'&&encounterKind==='trainer'&&trainerKey==='professor_story')return{
+    name:'Le Professeur',city:'Laboratoire secret',cityEn:'Secret Laboratory',portrait:'prof.png',accent:'#ab9ad6',story:true,
+    eyebrow:'LE DERNIER FACE-À-FACE',eyebrowEn:'THE FINAL CONFRONTATION',minimumMs:4400,portraitMs:2600
+  };
   if (mapName === 'start' && encounterKind === 'trainer' && trainerKey === 'dia1') return {
     name: 'Wayne', city: 'Village du départ', cityEn: 'Starting Village', portrait: 'wayne-eyepatch-v1.png', accent: '#aec5bd', story: true,
     eyebrow: 'LE DÉFI DE WAYNE', eyebrowEn: 'WAYNE’S CHALLENGE', minimumMs: 3600, portraitMs: 2200

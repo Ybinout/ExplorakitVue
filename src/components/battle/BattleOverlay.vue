@@ -326,6 +326,10 @@ const SNOW_BACKGROUNDS = Object.freeze({
   wide: require('@/assets/battle/snow-wide-v1.webp')
 });
 const GYM_BACKGROUNDS = Object.freeze({
+  'professor-lab': {
+    wide: require('@/assets/battle/professor-lab-wide-v1.png'), mobile: require('@/assets/battle/professor-lab-mobile-v1.png'),
+    platform: { '--gym-ground': '#454961', '--gym-rim': '#9989b6', '--gym-edge': '#252335', '--gym-light': '#a7b0cf' }
+  },
   'gwenn-house': {
     wide: require('@/assets/battle/gwenn-house-wide-v1.webp'), mobile: require('@/assets/battle/gwenn-house-mobile-v1.webp'),
     platform: { '--gym-ground': '#555064', '--gym-rim': '#9b87a5', '--gym-edge': '#302b3b', '--gym-light': '#c1abc5' }
