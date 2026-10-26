@@ -1,5 +1,5 @@
 <template>
-  <aside v-if="!installation.installed" class="install-card" data-pwa-install>
+  <aside v-if="mobile && !installation.installed" class="install-card" data-pwa-install>
     <div class="install-row"><span class="install-icon" aria-hidden="true">✧</span><div><strong>Ton aventure, à portée de main.</strong><p>Installe le jeu pour l’ouvrir sans la barre d’adresse.</p></div><button :disabled="busy" :aria-expanded="help ? 'true' : 'false'" aria-controls="install-help" @click="install">{{ busy ? 'Installation…' : 'Installer le jeu' }} <span aria-hidden="true">↗</span></button></div>
     <div v-if="help" id="install-help" class="install-help" role="status"><p v-if="ios"><strong>Sur iPhone ou iPad :</strong> ouvre ce site dans Safari, touche Partager puis « Sur l’écran d’accueil ». Active « Ouvrir comme app web » si cette option est proposée.</p><p v-else><strong>Dans le menu de ton navigateur :</strong> choisis « Installer l’application » ou « Ajouter à l’écran d’accueil ». Si l’option manque, ouvre ce site dans Chrome ou Safari.</p><p>Lance ensuite <strong>RiftMon depuis son icône</strong>. Une connexion internet reste nécessaire pour jouer.</p></div>
   </aside>
@@ -8,7 +8,11 @@
 import { installation } from '@/services/pwa';
 export default {
   name:'PwaInstall',
-  data(){ return { installation,help:false,busy:false,ios:/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) }; },
+  data(){
+    const ios=/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const mobile=ios || /Android/i.test(navigator.userAgent) || navigator.userAgentData?.mobile === true;
+    return { installation,help:false,busy:false,ios,mobile };
+  },
   methods:{ async install(){
     const prompt=this.installation.prompt;
     if(!prompt){this.help=!this.help;return;}
