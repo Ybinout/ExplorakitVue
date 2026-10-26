@@ -16,7 +16,8 @@ export const HOZE_FAULTS = LEFT_FAULTS.flatMap(f => [f, {
   path: f.path.map(([x,y]) => [448-x,y]),
   branches: f.branches.map(([start,...points]) => [start,...points.map(([x,y]) => [448-x,y])]),
 }]);
-export const HOZE_FAULT_DURATION_MS = 42000;
+// Include the last staggered fault in the 30-second opening budget.
+export const HOZE_FAULT_DURATION_MS = 19500;
 export const HOZE_FAULT_COMPLETE_MS = HOZE_FAULT_DURATION_MS+10500;
 export const HOZE_FAULT_BANDS = [[27,104,182,167],[239,104,182,167]];
 const BANNERS = [[24,104,39,137],[57,104,72,137],[375,104,390,137],[408,104,423,137],
