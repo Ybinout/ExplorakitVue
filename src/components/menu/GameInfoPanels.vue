@@ -49,6 +49,7 @@
 
       <template v-else-if="active === 'options'">
         <div class="option-list">
+          <controller-options :preferences="preferences" @update="$emit('update-preferences', $event)" />
           <fieldset class="theme-options">
             <legend>{{ tr('interfaceColor') }}</legend>
             <div class="theme-colors">
@@ -124,10 +125,11 @@ import RegionMapPanel from './RegionMapPanel.vue';
 import PokedexPanel from './PokedexPanel.vue';
 import AdventureGuide from './AdventureGuide.vue';
 import BadgesPanel from './BadgesPanel.vue';
+import ControllerOptions from './ControllerOptions.vue';
 
 export default {
   name: 'GameInfoPanels',
-  components: { RegionMapPanel, PokedexPanel, AdventureGuide, BadgesPanel },
+  components: { RegionMapPanel, PokedexPanel, AdventureGuide, BadgesPanel, ControllerOptions },
   props: {
     currentMap: String, currentRegion: String, flightAllowed: Boolean,
     arenaTestState: {type:Object,default:()=>({allowed:false})}, arenaTestBusy:Boolean, arenaTestAllowed:Boolean, arenaTestNotice:{type:String,default:''},

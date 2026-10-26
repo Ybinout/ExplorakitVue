@@ -8,7 +8,9 @@ export const DEFAULT_GAME_PREFERENCES = Object.freeze({
   animationsEnabled: true,
   language: 'fr',
   themeColor: 'blue',
-  themeMode: 'light'
+  themeMode: 'light',
+  controllerEnabled: true,
+  controllerLayout: 'standard'
 });
 
 export function normalizeGamePreferences(value = {}) {
@@ -23,7 +25,9 @@ export function normalizeGamePreferences(value = {}) {
     animationsEnabled: value.animationsEnabled !== false,
     language: ['fr', 'en'].includes(value.language) ? value.language : DEFAULT_GAME_PREFERENCES.language,
     themeColor: GAME_THEME_COLORS.includes(value.themeColor) ? value.themeColor : 'blue',
-    themeMode: GAME_THEME_MODES.includes(value.themeMode) ? value.themeMode : 'light'
+    themeMode: GAME_THEME_MODES.includes(value.themeMode) ? value.themeMode : 'light',
+    controllerEnabled: value.controllerEnabled !== false,
+    controllerLayout: value.controllerLayout === 'nintendo' ? 'nintendo' : 'standard'
   };
 }
 
@@ -40,5 +44,6 @@ export function saveGamePreferences(value) {
   const normalized = normalizeGamePreferences(value);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
   applyGameTheme(normalized);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('riftmon:preferences', { detail: normalized }));
   return normalized;
 }

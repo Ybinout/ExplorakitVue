@@ -5,12 +5,14 @@
 </template>
 
 <script>
-
+import { startGamepadControls } from './services/gamepad';
+import { loadGamePreferences } from './services/gamePreferences';
 
 export default {
   name: 'App',
-  components: {
-  }
+  mounted() { this._gamepad = startGamepadControls(this.$el, loadGamePreferences()); },
+  beforeDestroy() { this._gamepad?.destroy(); },
+  watch: { '$route'() { this._gamepad?.reset(); } }
 }
 </script>
 
@@ -29,6 +31,12 @@ body {
 button,
 input {
   font: inherit;
+}
+
+#app .gamepad-focus:focus {
+  outline: 3px solid var(--journal-accent, #397da4);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px var(--journal-paper, #edf5fc);
 }
 
 #app {

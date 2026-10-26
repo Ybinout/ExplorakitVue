@@ -439,6 +439,7 @@ import GameInfoPanels from './menu/GameInfoPanels.vue';
 import ShopPanel from './shop/ShopPanel.vue';
 import TextWithImage from './TextWithImage.vue';
 import { loadGamePreferences, saveGamePreferences } from '@/services/gamePreferences';
+import { GAMEPAD_EVENT } from '@/services/gamepad';
 import { localizeAbilityName, translate } from '@/services/i18n';
 import { getMapLocationLabel } from '@/services/mapLocations';
 import { WorldMusic } from '@/services/worldMusic';
@@ -1263,12 +1264,13 @@ export default {
       const player = this.players[this.socket.id];
       if (!player) return;
 
-      if (!this.keysPressed.z && !this.keysPressed.q && !this.keysPressed.s && !this.keysPressed.d) {
+      if (!this._gamepadDirection && !this.keysPressed.z && !this.keysPressed.q && !this.keysPressed.s && !this.keysPressed.d) {
         player.isMoving = false;
         player.animationFrame = 0;
       }
     },
     releaseAllMovementKeys() {
+      this._gamepadDirection = null;
       const gesture = this._touchGesture;
       this._touchGesture = null;
       if (gesture) {
@@ -2133,6 +2135,47 @@ export default {
       } else {context.fillStyle='#173c37';context.fillRect(0,0,canvas.width,canvas.height);}
       context.restore();
     },
+    handleGamepad(event) {
+      const { action, direction } = event.detail;
+      const consume = () => event.preventDefault();
+      if (action === 'direction' && !direction) {
+        this._gamepadDirection = null; this.syncPlayerIdleState(); consume(); return;
+      }
+      if (this.flight || this.lucieDeparture || this.roomObstacleAction || this.quitting) { consume(); return; }
+      if (this.textImageSequence.length && !this.battleResult && !this.driftSpectator) {
+        consume(); if (action === 'confirm') this.triggerMobileActionA(); return;
+      }
+      if (this.battle && !this.battleResult && !this.evolutionVisible && !this.learningVisible) {
+        const overlay = this.$refs.battleOverlay;
+        if (action === 'back') { consume(); if (!overlay?.replacementChoice) overlay?.closePanels(); }
+        else if (action === 'menu') consume();
+        else if (['team', 'bag'].includes(action)) {
+          consume();
+          if (overlay?.canChooseAction && !overlay.replacementChoice) {
+            if (action === 'bag') overlay.openBag(); else overlay.setPanel('pokemon');
+          }
+        }
+        return;
+      }
+      if (this.fishing && action === 'back') { consume(); this.cancelFishing(); return; }
+      if (this.fishing && action === 'confirm') { consume(); this.fishingAction(); return; }
+      // Panels own their focus. Their arrows must never leak into world movement.
+      if (this.movementSuspended) return;
+      if (this.mapLoading || this.mapLoadError || this.worldContextLost) { consume(); return; }
+      if (document.activeElement?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (action === 'direction') {
+        consume();
+        const next = { up: 'z', left: 'q', down: 's', right: 'd' }[direction];
+        if (next !== this._gamepadDirection) {
+          const moving = this._gamepadDirection || Object.values(this.keysPressed).some(Boolean);
+          this._gamepadDirection = next;
+          if (!moving) this.restartMovementInput();
+        }
+      } else if (action === 'confirm') { consume(); this.triggerMobileActionA(); }
+      else if (action === 'menu') { consume(); this.toggleMenu(); }
+      else if (action === 'team' || action === 'bag') { consume(); this.handleMenuAction(action === 'team' ? 'pokemon' : 'bag'); }
+      else if (action === 'back') consume();
+    },
     handleKeydown(e) {
       if(this.flight){e.preventDefault();return;}
       if(this.fishing && e.key==='Escape'){e.preventDefault();this.cancelFishing();return;}
@@ -2166,7 +2209,7 @@ export default {
       const directionKey = this.getMovementKey(e);
       if (directionKey) {
         e.preventDefault();
-        const wasMoving = Object.values(this.keysPressed).some(Boolean);
+        const wasMoving = this._gamepadDirection || Object.values(this.keysPressed).some(Boolean);
         this.keysPressed[directionKey] = true;
         if (!wasMoving) this.restartMovementInput();
       }
@@ -2219,7 +2262,7 @@ export default {
     },
     visualPlayer(id, player, now = performance.now()) {
       if (!this._worldMovement) this._worldMovement = new WorldMovement();
-      const held = id === this.socket?.id && Object.values(this.keysPressed).some(Boolean) && !this.movementBlocked;
+      const held = id === this.socket?.id && (this._gamepadDirection || Object.values(this.keysPressed).some(Boolean)) && !this.movementBlocked;
       return this._worldMovement.sample(id, player, now, held);
     },
     animate(timestamp) {
@@ -2242,7 +2285,7 @@ export default {
       const started=performance.now();
       try {
         this.drawPlayers();
-        this._worldRenderBudget.observe(now,performance.now()-started,delta,{mobile:this.showMobileControls,walking:Object.values(this.keysPressed).some(Boolean)&&!this.movementBlocked});
+        this._worldRenderBudget.observe(now,performance.now()-started,delta,{mobile:this.showMobileControls,walking:!!(this._gamepadDirection||Object.values(this.keysPressed).some(Boolean))&&!this.movementBlocked});
         this._worldRenderFailures = 0;
       } catch (error) {
         this._worldRenderFailures = (this._worldRenderFailures || 0) + 1;
@@ -2276,6 +2319,7 @@ export default {
       if (this.keysPressed.q) action = 'move_q';
       if (this.keysPressed.s) action = 'move_s';
       if (this.keysPressed.d) action = 'move_d';
+      if (this._gamepadDirection) action = `move_${this._gamepadDirection}`;
 
       if (action && !this.lock) {
         const player = this.players[this.socket.id];
@@ -2984,6 +3028,7 @@ export default {
     // autoConnect disabled. Both worlds connect after registering listeners.
     this.socket.connect();
     window.addEventListener('keydown', this.handleKeydown);
+    window.addEventListener(GAMEPAD_EVENT, this.handleGamepad);
     window.addEventListener('keyup', this.handleKeyup);
     window.addEventListener('mousedown', this.handleOutsideMenuClick);
     window.addEventListener('resize', this.updateMobileControlsVisibility);
@@ -3054,6 +3099,7 @@ export default {
     this.stopMovementLoop();
     this.stopGameLoop();
     window.removeEventListener('keydown', this.handleKeydown);
+    window.removeEventListener(GAMEPAD_EVENT, this.handleGamepad);
     window.removeEventListener('keyup', this.handleKeyup);
     window.removeEventListener('mousedown', this.handleOutsideMenuClick);
     window.removeEventListener('resize', this.updateMobileControlsVisibility);
