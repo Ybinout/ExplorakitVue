@@ -6,7 +6,7 @@
       <g v-for="(count,kind) in {spikes:hazards.spikes,toxicSpikes:hazards.toxicSpikes}" :key="kind" :data-hazard="count?kind:null" :class="kind==='spikes'?'field-spikes':'field-toxic'">
         <path v-for="i in count*3" :key="i" :transform="`translate(${26+((i*53)%186)},${112+(i%3)*7})`" d="M-7 2L0-12L3-2L8 1L0 4Z" />
       </g>
-      <g v-if="screens.reflectTurns || screens.lightScreenTurns || screens.safeguardTurns || screens.wideGuardTurns || screens.quickGuardTurns || screens.matBlockTurns || screens.craftyShieldTurns" class="field-screen" :style="{color:screens.lightScreenTurns?'#f6e3a2':screens.safeguardTurns?'#9be5c3':'#a5c7ff'}"><path d="M32 125V34L116 14L207 33V125L116 106Z M116 14V106" /><path class="field-screen-glint" d="M45 71L94 27M137 91L194 47" /></g>
+      <g v-if="screens.auroraVeilTurns || screens.reflectTurns || screens.lightScreenTurns || screens.safeguardTurns || screens.wideGuardTurns || screens.quickGuardTurns || screens.matBlockTurns || screens.craftyShieldTurns" class="field-screen" :style="{color:screens.lightScreenTurns?'#f6e3a2':screens.safeguardTurns?'#9be5c3':'#a5c7ff'}"><path d="M32 125V34L116 14L207 33V125L116 106Z M116 14V106" /><path class="field-screen-glint" d="M45 71L94 27M137 91L194 47" /></g>
       <g v-if="screens.tailwindTurns" class="field-wind"><path d="M20 80Q80 57 160 72T224 63M15 93Q100 72 180 88T230 79M42 52Q114 34 195 48" /></g>
       <g v-if="screens.mistTurns" class="field-mist"><path d="M18 107Q80 88 221 112M13 119Q112 99 229 123" /></g>
       <g v-if="screens.luckyChantTurns" class="field-chant"><path d="M38 69v14m-7-7h14M192 42v14m-7-7h14M183 95v10m-5-5h10" /></g>

@@ -14,6 +14,7 @@ const SCREENS = {
   quickGuardTurns:['Prévention','Quick Guard','screen','#b1d4ef','Protège ce camp des capacités prioritaires, pendant ce tour.'],
   matBlockTurns:['Tatamigaeshi','Mat Block','screen','#b1d4ef','Protège ce camp des attaques offensives, pendant ce tour.'],
   craftyShieldTurns:['Vigilance','Crafty Shield','screen','#b1d4ef','Protège ce camp des capacités de statut adverses, pendant ce tour.'],
+  auroraVeilTurns:['Voile Aurore','Aurora Veil','screen','#c4e6fa','Réduit les dégâts physiques et spéciaux ; se pose sous la grêle. Ne se cumule pas avec les autres écrans.'],
   reflectTurns:['Protection','Reflect','screen','#a9c5f8','Réduit les dégâts physiques, sauf les critiques et Infiltration.'],
   lightScreenTurns:['Mur Lumière','Light Screen','screen','#f4e3a3','Réduit les dégâts spéciaux, sauf les critiques et Infiltration.'],
   safeguardTurns:['Rune Protect','Safeguard','screen','#a7e0cc','Protège des altérations de statut et de la confusion.'],

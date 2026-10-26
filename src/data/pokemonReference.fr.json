@@ -4499,7 +4499,7 @@
       "type": "Psychic",
       "category": "special",
       "power": 20,
-      "powerKind": "standard",
+      "powerKind": "special_case",
       "accuracy": 100,
       "pp": 10,
       "description": "Le lanceur attaque l’ennemi avec une force accumulée. Plus les stats du lanceur sont augmentées, plus le coup est efficace."
@@ -5511,6 +5511,195 @@
       "accuracy": 95,
       "pp": 5,
       "description": "Le Pokémon transforme la puissance de la terre et attaque la cible avec une lame acérée."
+    },
+    "Origin Pulse": {
+      "type": "Water",
+      "category": "special",
+      "power": 110,
+      "powerKind": "standard",
+      "accuracy": 85,
+      "pp": 10,
+      "description": "D’innombrables rayons lumineux d’un bleu étincelant s’abattent sur la cible."
+    },
+    "Precipice Blades": {
+      "type": "Ground",
+      "category": "physical",
+      "power": 120,
+      "powerKind": "standard",
+      "accuracy": 85,
+      "pp": 10,
+      "description": "Le Pokémon transforme la puissance de la terre et attaque la cible avec une lame acérée."
+    },
+    "Dragon Ascent": {
+      "type": "Flying",
+      "category": "physical",
+      "power": 120,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 5,
+      "description": "Le Pokémon s’abat à toute vitesse sur la cible depuis les hautes couches de l’atmosphère. Baisse la Défense et la Défense Spéciale du lanceur."
+    },
+    "First Impression": {
+      "type": "Bug",
+      "category": "physical",
+      "power": 90,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 10,
+      "description": "Une capacité très puissante, mais qui ne fonctionne qu’au premier tour."
+    },
+    "High Horsepower": {
+      "type": "Ground",
+      "category": "physical",
+      "power": 95,
+      "powerKind": "standard",
+      "accuracy": 95,
+      "pp": 10,
+      "description": "Le lanceur attaque violemment en utilisant tout son poids."
+    },
+    "Strength Sap": {
+      "type": "Grass",
+      "category": "status",
+      "power": null,
+      "powerKind": "status",
+      "accuracy": 100,
+      "pp": 10,
+      "description": "Rend au lanceur une quantité de PV équivalente à la stat d’Attaque de la cible, puis baisse celle-ci."
+    },
+    "Toxic Thread": {
+      "type": "Poison",
+      "category": "status",
+      "power": null,
+      "powerKind": "status",
+      "accuracy": 100,
+      "pp": 20,
+      "description": "Tisse un fil imprégné de venin. Empoisonne la cible et baisse sa Vitesse."
+    },
+    "Laser Focus": {
+      "type": "Normal",
+      "category": "status",
+      "power": null,
+      "powerKind": "status",
+      "accuracy": null,
+      "pp": 30,
+      "description": "Le lanceur se concentre pour être sûr de porter un coup critique au tour suivant."
+    },
+    "Throat Chop": {
+      "type": "Dark",
+      "category": "physical",
+      "power": 80,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 15,
+      "description": "Inflige une douleur tellement violente à la cible qu’elle ne peut plus émettre de sons pendant deux tours."
+    },
+    "Psychic Terrain": {
+      "type": "Psychic",
+      "category": "status",
+      "power": null,
+      "powerKind": "status",
+      "accuracy": null,
+      "pp": 10,
+      "description": "Pendant cinq tours, les Pokémon au sol ne peuvent plus subir d’attaques prioritaires et la puissance des capacités de type Psy augmente."
+    },
+    "Lunge": {
+      "type": "Bug",
+      "category": "physical",
+      "power": 80,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 15,
+      "description": "Le lanceur se jette sur la cible de toutes ses forces pour lui infliger des dégâts et baisser son Attaque."
+    },
+    "Power Trip": {
+      "type": "Dark",
+      "category": "physical",
+      "power": 20,
+      "powerKind": "special_case",
+      "accuracy": 100,
+      "pp": 10,
+      "description": "Ivre de puissance, le lanceur attaque de toutes ses forces. Plus ses stats ont été augmentées, plus la puissance de l’attaque est élevée."
+    },
+    "Burn Up": {
+      "type": "Fire",
+      "category": "special",
+      "power": 130,
+      "powerKind": "special_case",
+      "accuracy": 100,
+      "pp": 5,
+      "description": "Le Pokémon se consume et les flammes de son corps infligent des dégâts élevés à la cible. Le lanceur perd le type Feu."
+    },
+    "Smart Strike": {
+      "type": "Steel",
+      "category": "physical",
+      "power": 70,
+      "powerKind": "standard",
+      "accuracy": null,
+      "pp": 10,
+      "description": "Le lanceur transperce la cible avec sa corne effilée. Touche toujours l’ennemi."
+    },
+    "Dragon Hammer": {
+      "type": "Dragon",
+      "category": "physical",
+      "power": 90,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 15,
+      "description": "Le lanceur utilise son corps comme un véritable marteau pour écraser la cible."
+    },
+    "Brutal Swing": {
+      "type": "Dark",
+      "category": "physical",
+      "power": 60,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 20,
+      "description": "Le lanceur pivote pour prendre de l’élan et infliger des dégâts."
+    },
+    "Aurora Veil": {
+      "type": "Ice",
+      "category": "status",
+      "power": null,
+      "powerKind": "status",
+      "accuracy": null,
+      "pp": 20,
+      "description": "Réduit les dégâts causés par les capacités physiques et spéciales durant cinq tours. Ne peut être utilisé que lorsqu’il grêle."
+    },
+    "Psychic Fangs": {
+      "type": "Psychic",
+      "category": "physical",
+      "power": 85,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 10,
+      "description": "Le lanceur mord la cible avec ses pouvoirs psychiques. Brise aussi les barrières comme Mur Lumière et Protection."
+    },
+    "Stomping Tantrum": {
+      "type": "Ground",
+      "category": "physical",
+      "power": 75,
+      "powerKind": "special_case",
+      "accuracy": 100,
+      "pp": 10,
+      "description": "Le lanceur attaque en utilisant sa frustration. S’il a utilisé une capacité qui a échoué au tour précédent, la puissance de Trépignement est doublée."
+    },
+    "Liquidation": {
+      "type": "Water",
+      "category": "physical",
+      "power": 85,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 10,
+      "description": "Le lanceur utilise la force de l’eau pour attaquer. Peut aussi baisser la Défense de la cible."
+    },
+    "Tearful Look": {
+      "type": "Normal",
+      "category": "status",
+      "power": null,
+      "powerKind": "status",
+      "accuracy": null,
+      "pp": 20,
+      "description": "Le lanceur jette un regard plein de larmes à la cible. Celle-ci perd toute velléité de combat et voit son Attaque et son Attaque Spéciale baisser."
     }
   },
   "abilities": {
