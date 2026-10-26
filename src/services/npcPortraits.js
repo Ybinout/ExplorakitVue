@@ -6,7 +6,7 @@ import { classicNpcIndex } from './npcFrames';
 export function illustratedNpcPortrait(sentence, dialogueName = '') {
   // Matthieu retains the legacy Route 8 encounter key in saved progression.
   if (['gwenn_route8', 'gwenn_route8_locked', 'gwenn_route8_after'].includes(dialogueName)) {
-    return { ...sentence, imageName: 'matthieu-v1.png', portraitFrame: null };
+    return { ...sentence, imageName: 'matthieu-v2.png', portraitFrame: null };
   }
   // Wayne has a dedicated monochrome illustration, including old a.png payloads.
   if (sentence.imageName === 'a.png') {

@@ -14,7 +14,7 @@ export function arenaChampion(mapName, encounterKind, trainerKey = null) {
     eyebrow: 'LE DÉFI DE MATHILDE', eyebrowEn: 'MATHILDE’S CHALLENGE', minimumMs: 3600, portraitMs: 2200
   };
   if (mapName === 'gen_route8' && encounterKind === 'trainer' && trainerKey === 'gwenn_route8') return {
-    name: 'Matthieu', city: 'Route 8', cityEn: 'Route 8', portrait: 'matthieu-v1.png', accent: '#aec5bd', story: true,
+    name: 'Matthieu', city: 'Route 8', cityEn: 'Route 8', portrait: 'matthieu-v2.png', accent: '#aec5bd', story: true,
     eyebrow: 'LE DÉFI DE MATTHIEU', eyebrowEn: 'MATTHIEU’S CHALLENGE', minimumMs: 3600, portraitMs: 2200
   };
   if (mapName === 'route2' && encounterKind === 'trainer' && trainerKey === 'aspha_route2') return {
