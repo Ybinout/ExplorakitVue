@@ -14,7 +14,7 @@
       <p v-if="loading" class="empty" role="status">Ouverture du carnet…</p>
       <template v-else-if="tab==='profil' && profile">
         <section class="profile-heading" :style="profile.frame ? {borderColor:profile.frame} : {}" data-trainer-profile>
-          <span class="portrait" aria-hidden="true"><span :style="{backgroundImage:`url(${spriteImage(profile.sprite)})`}" /></span>
+          <span class="portrait" aria-hidden="true"><span :style="{backgroundImage:`url(${spriteImage(profile.sprite,profile.spritePalette)})`}" /></span>
           <div><p class="eyebrow">{{ targetId===userId ? 'TON PROFIL' : 'LE DRESSEUR' }}</p><h2>{{ profile.username }}</h2><p v-if="profile.title">{{ profile.title }}</p></div>
           <friend-actions :relationship="profile.relationship" :busy="busy" @action="act(profile.id,$event)" />
         </section>
@@ -76,15 +76,23 @@ import { getSession } from '@/services/session';
 import RankProgress from './RankProgress.vue';
 import RankBadge from './RankBadge.vue';
 import FriendActions from './FriendActions.vue';
+import { loadBaseTrainerSheet, trainerPalettePreview } from '@/services/trainerPalette';
 const sprites = require.context('@/assets', false, /^\.\/sprite\d*\.png$/);
 export default {
   name:'TrainerCommunity',components:{ColosseumDefeat,RankBadge,RankProgress,FriendActions},
-  data(){return {userId:Number(getSession()?.id),profile:null,friends:{accepted:[],incoming:[],outgoing:[]},loading:false,busy:false,error:'',notice:'',request:0,searchRequest:0,query:'',results:[],searched:false,searching:false,offset:0,hasMore:false,rankingMode:'rift',ranking:[],personal:null,rules:{eloThresholds:[0,1200,1400,1600,1800],colosseumThresholds:[]},rankKeys:['bronze','silver','gold','platinum','diamond'],rankNames:['Bronze','Argent','Or','Platine','Diamant'],rankingModes:[{key:'rift',label:'Rift multijoueur'},{key:'30',label:'Colosseum · 30 min'},{key:'60',label:'Colosseum · 1 h'}]};},
+  data(){return {paletteReadyRevision:0,userId:Number(getSession()?.id),profile:null,friends:{accepted:[],incoming:[],outgoing:[]},loading:false,busy:false,error:'',notice:'',request:0,searchRequest:0,query:'',results:[],searched:false,searching:false,offset:0,hasMore:false,rankingMode:'rift',ranking:[],personal:null,rules:{eloThresholds:[0,1200,1400,1600,1800],colosseumThresholds:[]},rankKeys:['bronze','silver','gold','platinum','diamond'],rankNames:['Bronze','Argent','Or','Platine','Diamant'],rankingModes:[{key:'rift',label:'Rift multijoueur'},{key:'30',label:'Colosseum · 30 min'},{key:'60',label:'Colosseum · 1 h'}]};},
   computed:{personalLeague(){return (this.rankingMode==='rift'?this.personal?.rift?.rank:this.personal?.league)||{key:'unranked',name:'Non classé'};},personalValue(){return Number(this.rankingMode==='rift'?this.personal?.rift?.rating:this.personal?.score)||0;},tab(){if(this.$route.name==='Rankings')return 'classement';return this.$route.params.id?'profil':['amis','classement','recherche'].includes(this.$route.query.onglet)?this.$route.query.onglet:'profil';},targetId(){return Number(this.$route.params.id || this.userId);},friendGroups(){return [{key:'incoming',title:'Demandes reçues',entries:this.friends.incoming},{key:'accepted',title:'Tes amis',entries:this.friends.accepted},{key:'outgoing',title:'Demandes envoyées',entries:this.friends.outgoing}];}},
   watch:{'$route':{immediate:true,handler(){this.rankingMode=['rift','30','60'].includes(this.$route.query.mode)?this.$route.query.mode:'rift';this.notice='';this.searchRequest++;this.searching=false;this.load();}}},
   beforeDestroy(){this.request++;this.searchRequest++;},
   methods:{
-    spriteImage(name){const key='./'+name;return sprites.keys().includes(key)?sprites(key):sprites('./sprite.png');},
+    spriteImage(name,palette){
+      void this.paletteReadyRevision;
+      const key='./'+name,src=sprites.keys().includes(key)?sprites(key):sprites('./sprite.png');
+      if(name!=='sprite.png'||!palette)return src;
+      if(this._paletteBaseImage)return trainerPalettePreview(this._paletteBaseImage,palette);
+      if(!this._paletteLoading){this._paletteLoading=true;loadBaseTrainerSheet(src).then(image=>{if(this._isDestroyed)return;this._paletteBaseImage=image;this.paletteReadyRevision++;}).catch(()=>{this._paletteLoading=false;});}
+      return src;
+    },
     selectRanking(mode){if(this.rankingMode===mode)return;this.$router.push({path:'/classements',query:{mode}});},
     number(n){return Number(n || 0).toLocaleString('fr-FR');},
     async load(){const request=++this.request;this.loading=true;this.error='';this.profile=null;if(this.tab==='classement'){this.ranking=[];this.personal=null;}

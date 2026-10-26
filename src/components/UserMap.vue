@@ -104,7 +104,7 @@
               :data-appearance="spriteOption.key"
               @click="selectPlayerSprite(spriteOption.key)"
             >
-              <span class="appearance-preview" aria-hidden="true" :style="{ backgroundImage: `url(${spriteOption.src})` }"></span>
+              <span class="appearance-preview" aria-hidden="true" :style="{ backgroundImage: `url(${appearancePreview(spriteOption)})` }"></span>
               <span class="appearance-label">{{ spriteOption.label }}</span>
             </button>
           </div>
@@ -440,6 +440,7 @@ import GameInfoPanels from './menu/GameInfoPanels.vue';
 import ShopPanel from './shop/ShopPanel.vue';
 import TextWithImage from './TextWithImage.vue';
 import { loadGamePreferences, saveGamePreferences } from '@/services/gamePreferences';
+import { trainerPaletteKey, normalizeTrainerPalette, themedTrainerSheet, trainerPalettePreview } from '@/services/trainerPalette';
 import { GAMEPAD_EVENT } from '@/services/gamepad';
 import { attachGameFullscreen } from '@/services/gameFullscreen';
 import { localizeAbilityName, translate } from '@/services/i18n';
@@ -597,6 +598,7 @@ export default {
 
       spriteSheet: null,
       spriteSheets: {},
+      trainerPaletteRevision: 0,
       availableSprites: [],
       selectedSprite: 'sprite.png',
       appearanceBusy: false,
@@ -1388,6 +1390,7 @@ export default {
       const spriteOption = this.availableSprites.find((option) => option.key === normalizedSprite);
       const spriteSource = spriteOption ? spriteOption.src : require('@/assets/sprite.png');
       const image = new Image();
+      image.onload=()=>{this.trainerPaletteRevision++;};
       image.src = spriteSource;
       this.$set(this.spriteSheets, normalizedSprite, image);
       return image;
@@ -1396,6 +1399,7 @@ export default {
       if (!player) return;
       const normalizedSprite = this.normalizeSpriteName(player.sprite);
       this.$set(player, 'sprite', normalizedSprite);
+      this.$set(player,'spritePalette',normalizeTrainerPalette(player.spritePalette));
       this.ensureSpriteSheet(normalizedSprite);
     },
     getSpriteSheetForPlayer(player) {
@@ -1408,7 +1412,30 @@ export default {
         this.ensureSpriteSheet(resolvedSprite);
       }
 
-      return this.spriteSheets[resolvedSprite] || this.spriteSheet;
+      const image=this.spriteSheets[resolvedSprite] || this.spriteSheet;
+      return normalizedSprite==='sprite.png'?themedTrainerSheet(image,player?.spritePalette):image;
+    },
+    appearancePreview(option) {
+      void this.trainerPaletteRevision;
+      if(option.key!=='sprite.png')return option.src;
+      return trainerPalettePreview(this.ensureSpriteSheet('sprite.png'),this.players[this.socket?.id]?.spritePalette);
+    },
+    syncTrainerPalette() {
+      this._trainerPaletteWanted=trainerPaletteKey(this.preferences);this.flushTrainerPalette();
+    },
+    async flushTrainerPalette() {
+      if(this._trainerPaletteWriting || !this._trainerPaletteWanted || !this.socket?.connected || !this.players[this.socket.id])return;
+      const palette=this._trainerPaletteWanted,socket=this.socket,id=socket.id;
+      if(this.players[id].spritePalette===palette){this._trainerPaletteWanted=null;return;}
+      this._trainerPaletteWriting=true;let retry=false;
+      try {
+        const response=await new Promise((resolve,reject)=>socket.timeout(5000).emit('setTrainerPalette',{palette},(error,value)=>error?reject(error):resolve(value)));
+        if(!response?.success)throw Error(response?.message||'Couleur indisponible.');
+        if(socket.connected&&socket.id===id&&this.players[id])this.$set(this.players[id],'spritePalette',response.palette);
+        if(this._trainerPaletteWanted===palette)this._trainerPaletteWanted=null;
+        retry=true;
+      } catch(error){if(!this._isDestroyed&&socket.connected)this.showInteractionNotice('Couleur non enregistrée. Réessaie dans les options.');}
+      finally{this._trainerPaletteWriting=false;if(retry&&this._trainerPaletteWanted&&!this._isDestroyed)this.flushTrainerPalette();}
     },
     loadPnjSpriteSources() {
       const pnjContext = require.context('@/assets/pnj', false, /\.(png|jpe?g|webp)$/);
@@ -1822,7 +1849,9 @@ export default {
       this.progressionState = response?.data || this.progressionState;
     },
     updatePreferences(nextPreferences) {
+      const previous=trainerPaletteKey(this.preferences);
       this.preferences = saveGamePreferences(nextPreferences);
+      if(previous!==trainerPaletteKey(this.preferences) || this._trainerPaletteWanted)this.syncTrainerPalette();
       if (this.preferences.masterVolume > 0) {
         this.$refs.battleOverlay?.unlockAudio();
       }
@@ -2585,6 +2614,8 @@ export default {
     this._detachWorldClock = bindWorldClock(this.socket, this._worldClock, value => { this.worldDaylight = value; });
     this.socket.on("connect", () => {
       this.worldAudioConnected = true;
+      this._trainerPaletteSyncOnEnter=true;
+      if(this.players[this.socket.id]){this._trainerPaletteSyncOnEnter=false;this.syncTrainerPalette();}
       console.log(`ConnectÃ© au serveur en tant qu'utilisateur ${userId}`);
       this.saveState = {
         ...this.saveState,
@@ -2688,6 +2719,7 @@ export default {
 
       const me = this.players[this.socket.id];
       if (me) {
+        if(this._trainerPaletteSyncOnEnter){this._trainerPaletteSyncOnEnter=false;this.syncTrainerPalette();}
         const normalizedSprite = this.normalizeSpriteName(me.sprite);
         this.selectedSprite = normalizedSprite;
         this.ensureSpriteSheet(normalizedSprite);
@@ -2905,6 +2937,15 @@ export default {
       this.$set(this.players[data.id], 'animationFrame', typeof data.player.animationFrame === 'number' ? data.player.animationFrame : 0);
       this.hydratePlayerSprite(this.players[data.id]);
       // console.log('la liste des joueurs:', this.players);
+    });
+
+    this.socket.on('playerPaletteUpdated', ({id,palette})=>{
+      const key=normalizeTrainerPalette(palette);if(!key||!this.players[id])return;
+      this.$set(this.players[id],'spritePalette',key);
+      if(id===this.socket.id&&!this._trainerPaletteWriting&&!this._trainerPaletteWanted){
+        const [themeColor,themeMode]=key.split('-');
+        this.preferences=saveGamePreferences({...this.preferences,themeColor,themeMode});
+      }
     });
 
     this.socket.on('playerAppearanceUpdated', ({ id, sprite }) => {
