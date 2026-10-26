@@ -692,8 +692,8 @@ export default {
       if (this.entranceChampion && !document.hidden) {
         // Give a late-loading portrait a readable moment too, within a bounded
         // wait. This stays in the presentation queue ahead of turn controls.
-        const minimumMs = this.reducedMotion() ? 1200 : (this.entranceChampion.minimumMs || 2800);
-        const portraitMs = this.reducedMotion() ? 900 : (this.entranceChampion.portraitMs || 1600);
+        const minimumMs = (this.reducedMotion() ? 1200 : (this.entranceChampion.minimumMs || 2800)) + 1000;
+        const portraitMs = (this.reducedMotion() ? 900 : (this.entranceChampion.portraitMs || 1600)) + 1000;
         const visibleFor = this._entrancePortraitAt == null ? Infinity : performance.now() - this._entrancePortraitAt;
         await entranceDelay(Math.max(minimumMs - elapsed, portraitMs - visibleFor), signal);
         // A portrait can finish just after the asset timeout, while the title

@@ -9,6 +9,10 @@ const champions = {
   ville5_arene: { name: '7p', city: 'Blanchecime', cityEn: 'Whitepeak', portrait: '7ps.png', accent: '#b6dbef' }
 };
 export function arenaChampion(mapName, encounterKind, trainerKey = null) {
+  if (mapName === 'start' && encounterKind === 'trainer' && trainerKey === 'dia1') return {
+    name: 'Wayne', city: 'Village du départ', cityEn: 'Starting Village', portrait: 'wayne-eyepatch-v1.png', accent: '#aec5bd', story: true,
+    eyebrow: 'LE DÉFI DE WAYNE', eyebrowEn: 'WAYNE’S CHALLENGE', minimumMs: 3600, portraitMs: 2200
+  };
   if (mapName === 'ville_safe1' && encounterKind === 'trainer' && trainerKey === 'mathilde_pikapika') return {
     name: 'Mathilde', city: 'Valpierre', cityEn: 'Valpierre', portrait: 'mathilde-v1.png', accent: '#e2cf8b', story: true,
     eyebrow: 'LE DÉFI DE MATHILDE', eyebrowEn: 'MATHILDE’S CHALLENGE', minimumMs: 3600, portraitMs: 2200
