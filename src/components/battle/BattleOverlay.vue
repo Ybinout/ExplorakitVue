@@ -294,6 +294,7 @@ import { createBattlePresentation } from '@/services/battlePresentation';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
 import { battleMusicTrack, trainerPreludeMusicTrack } from '@/services/battleMusic';
+import { SequencedMusic } from '@/services/sequencedMusic';
 import moveLearning from '@/data/moveLearning.json';
 import { localizeTypeName } from '@/services/pokemonTypes';
 import PotentialStar from '../PotentialStar.vue';
@@ -587,7 +588,12 @@ export default {
     }
   },
   watch: {
-    mapName(map) { if (this.musicPrelude && map !== 'ville4_arene') this.stopMusic(); this.preloadSnowBackground(); this.preloadArenaPortrait(); },
+    mapName(map) {
+      if (this.musicPrelude && map !== this.battleMapName) this.stopMusic();
+      if (map !== 'route4_maison') this.disposeTrainerSequence();
+      else this.preloadTrainerSequence();
+      this.preloadSnowBackground(); this.preloadArenaPortrait();
+    },
     mobile() { this.preloadSnowBackground(); },
     audioVolume() { this.syncAudio(); },
     soundEnabled() { this.syncAudio(); },
@@ -597,6 +603,7 @@ export default {
     }
   },
   mounted() {
+    this.preloadTrainerSequence();
     this.preloadSnowBackground();
     this.preloadArenaPortrait();
     // Warm the two matching weather variants before a battle, sharing the browser cache.
@@ -623,6 +630,7 @@ export default {
     this._presentation?.cancel();
     this.cancelExperience();
     this.stopMusic();
+    this.disposeTrainerSequence();
     clearTimeout(this.experienceTimer);
     window.removeEventListener('pointerdown', this.resumeAudio);
     window.removeEventListener('pointerup', this.resumeAudio);
@@ -632,6 +640,16 @@ export default {
     this._battleAudio?.dispose();
   },
   methods: {
+    preloadTrainerSequence() {
+      if (this.mapName !== 'route4_maison') return null;
+      this._trainerSequence ||= new SequencedMusic({intro:require('@/assets/msc/gwenn-intro.mp3'),loop:require('@/assets/msc/gwenn-loop.mp3')});
+      this._trainerSequence.prepare().catch(()=>{});
+      return this._trainerSequence;
+    },
+    disposeTrainerSequence() {
+      if (this.music === this._trainerSequence && this.music) this.stopMusic();
+      this._trainerSequence?.dispose();this._trainerSequence=null;
+    },
     preloadSnowBackground() {
       if (battleEnvironment(this.mapName) !== 'snow') return;
       const src = SNOW_BACKGROUNDS[this.mobile && window.matchMedia('(orientation: portrait)').matches ? 'mobile' : 'wide'];
@@ -742,10 +760,13 @@ export default {
     stopTrainerPrelude() { if (this.musicPrelude) this.stopMusic(); },
     startMusic(kind) {
       kind = battleMusicTrack(kind, this.battleMapName);
-      if (this.musicPrelude && kind !== 'wanda') this.setMusicPrelude(false);
+      if (this.musicPrelude && !['wanda','gwenn'].includes(kind)) this.setMusicPrelude(false);
       if(this.musicKind===kind&&this.music){this.syncMusic();return;}
       this.stopMusic(true);
       this.musicKind = kind;
+      if (kind === 'gwenn') {
+        this.music=this.preloadTrainerSequence();this.syncMusic();return;
+      }
       const tracks = { mounir: require('@/assets/msc/mounir.mp3'), hoze: require('@/assets/msc/hoze.mp3'), lucie: require('@/assets/msc/lucie-combat.mp3'), ana: require('@/assets/msc/ana.mp3'), wanda: require('@/assets/msc/wanda.mp3'), '7p': require('@/assets/msc/7p.mp3'), raph: require('@/assets/msc/raph.mp3'), wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
       this.music = new Audio(tracks[kind] || tracks.wild);
       this.music.loop = true;
@@ -762,9 +783,17 @@ export default {
       this._battleAudio?.setVolume(this.soundEnabled && !document.hidden ? this.audioVolume : 0);
       this.syncMusic();
     },
-    resumeAudio() { this.unlockAudio(); if (this.active || this.musicPrelude) this.syncMusic(); },
+    resumeAudio() {
+      this.unlockAudio();
+      if(this.soundEnabled && this.audioVolume)this._trainerSequence?.unlock().catch(()=>{});
+      if (this.active || this.musicPrelude) this.syncMusic();
+    },
     stopMusic(keepPrelude = false) {
-      if (this.music) { this.music.pause(); this.music.removeAttribute('src'); this.music.load(); }
+      if (this.music) {
+        this.music.pause();
+        if(this.music === this._trainerSequence)this.music.currentTime=0;
+        else {this.music.removeAttribute('src');this.music.load();}
+      }
       this.music = null;
       this.musicKind = null;
       if (!keepPrelude) this.setMusicPrelude(false);
