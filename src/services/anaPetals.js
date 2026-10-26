@@ -2,7 +2,7 @@
 // aisle stays readable; lamps, columns, stairs and the windows are excluded.
 export const ANA_PETAL_FLOOR = [[104,102],[344,102],[344,248],[307,269],[141,269],[104,248]];
 const FIXTURES = [[190,255,14,20],[244,255,14,20]];
-const COLOURS = ['#e6a1a3','#f4c6b7','#fff0d0'];
+const COLOURS = ['#ec9eb8','#f6c0d1','#f4d6dc'];
 const mod=(n,d)=>((n%d)+d)%d;
 const clamp=n=>Math.max(0,Math.min(1,n));
 export function clipAnaPetalFloor(c) {
@@ -14,7 +14,7 @@ export function clipAnaPetalFloor(c) {
 }
 export function anaPetalPoses(timestamp) {
   const time=Number.isFinite(timestamp)?Math.max(0,timestamp):0,poses=[];
-  for(let gust=0;gust<3;gust++)for(let i=0;i<9;i++) {
+  for(let gust=0;gust<3;gust++)for(let i=0;i<15;i++) {
     const age=mod(time+gust*6000-i*280,18000);if(age>11000)continue;
     const t=age/11000,phase=i*.83+gust,swirl=Math.sin(t*Math.PI)**2,direction=gust===1?-1:1;
     const travel=t+.035*Math.sin(t*Math.PI*2+phase);
@@ -23,7 +23,7 @@ export function anaPetalPoses(timestamp) {
     const y=[145,224,177][gust]+(i%4)*5-Math.sin(t*Math.PI)*(13+i%3*5)+Math.sin(orbit)*8*swirl;
     const alpha=clamp(t*7)*clamp((1-t)*7)*(.64+.18*Math.sin(time/1700+gust));
     poses.push({x,y,lift:3+swirl*(5+i%3*2),angle:phase+time/(2400+i*90)+Math.sin(time/700+phase)*.65,
-      flip:.22+.78*Math.abs(Math.cos(time/410+phase)),size:1.35+(i%3)*.3,alpha,colour:COLOURS[(i+gust)%3]});
+      flip:.22+.78*Math.abs(Math.cos(time/410+phase)),size:1.6+(i%3)*.3,alpha,colour:COLOURS[(i+gust)%3]});
   }
   return poses;
 }
