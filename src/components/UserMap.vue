@@ -1496,12 +1496,14 @@ export default {
           context.fillStyle='#fff8df'; context.font='12px sans-serif'; context.textAlign='center';
           context.fillText(`Défi · N. ${pnj.challengeLevel}`,drawX+32,drawY-10); context.restore();
         }
-        const classicCustomSprite = ['aspha-pixel-v2.png', 'gwenn-pixel-v2.png', 'gwenn-pixel-v3.png', 'matthieu-pixel-v1.png', 'nrv-noz-pixel-v1.png', 'nrv-tom-pixel-v1.png', 'nrv-cry-pixel-v1.png'].includes(pnj.sprite);
+        const playerBasedSprite = pnj.sprite === 'gwenn-pixel-v4.png' || pnj.sprite === 'matthieu-pixel-v2.png';
+        const classicCustomSprite = playerBasedSprite || ['aspha-pixel-v2.png', 'gwenn-pixel-v2.png', 'gwenn-pixel-v3.png', 'matthieu-pixel-v1.png', 'nrv-noz-pixel-v1.png', 'nrv-tom-pixel-v1.png', 'nrv-cry-pixel-v1.png'].includes(pnj.sprite);
         if (pnj.spriteFrame || usesClassicNpcAtlas(spriteSheet) || classicCustomSprite) {
           // Original pixels at 2x, cropped to one person; preserve the feet anchor.
           const size = classicCustomSprite ? spriteSheet.naturalWidth * 2 : npcWorldSize(spriteSheet);
           const frame = pnj.spriteFrame || { columns: 1, rows: 1, index: 0 };
-          drawNpcFrame(context, spriteSheet, frame, drawX + (64-size)/2, drawY + 52-size, size, pnj);
+          // Player-based cells preserve the player's transparent padding and feet.
+          drawNpcFrame(context, spriteSheet, frame, drawX + (64-size)/2, drawY + (playerBasedSprite ? 64 : 52)-size, size, pnj);
           context.restore();
           continue;
         }
