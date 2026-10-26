@@ -8,6 +8,7 @@
 </template>
 <script>
 const designs = {
+  violence_badge:{color:'#655064',path:'m26 53 5-21 8 7 5-16 10 27-12 9-16-6Zm4-25 5-5m16 30 5 5M38 43l4 5'},
   summit_badge: { color: '#849fb5', path: 'm23 54 12-29 8 17 6-11 10 23H23Zm7-15 5 4 5-4m3 8 6-4 5 4M29 59h22' },
   lake_badge: { color: '#6baac4', path: 'M40 19c-4 8-12 15-12 23a12 12 0 0 0 24 0c0-8-8-15-12-23Zm-6 24c0 4 2 6 6 7M25 59c5-4 10 4 15 0s10 4 15 0' },
   dune_badge: { color: '#c69b4e', path: 'm25 47 9-17 8 12 6-8 9 16H25Zm4 8h22M48 24h1' },

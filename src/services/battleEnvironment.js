@@ -1,5 +1,6 @@
 export function battleEnvironment(mapName, colosseum = false, weather = null, encounter = null) {
   if (colosseum) return 'colosseum';
+  if (mapName === 'void_arena') return 'void-arena';
   if (mapName === 'professor_lab') return 'professor-lab';
   if (mapName === 'route4_maison' || mapName === 'route3_maison_nrv') return 'gwenn-house';
   if (mapName === 'route2_maison') return 'lucie-house';

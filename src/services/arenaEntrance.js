@@ -9,6 +9,7 @@ const champions = {
   ville5_arene: { name: '7p', city: 'Blanchecime', cityEn: 'Whitepeak', portrait: '7ps.png', accent: '#b6dbef' }
 };
 export function arenaChampion(mapName, encounterKind, trainerKey = null) {
+  if(mapName==='void_arena'&&encounterKind==='void'&&trainerKey==='professor_final')return{name:'Le Professeur',city:'Arène oubliée',cityEn:'Forgotten Arena',portrait:'prof.png',accent:'#8b7c9c',story:true,eyebrow:'LE DERNIER SILENCE',eyebrowEn:'THE LAST SILENCE',minimumMs:3600,portraitMs:2200};
   if (mapName === 'ville1' && encounterKind === 'trainer' && ['town_lina', 'town_bastien'].includes(trainerKey)) {
     const maria = trainerKey === 'town_lina';
     return { name: maria ? 'Maria' : 'Clément', city: 'Ville du Lac', cityEn: 'Lake Town',

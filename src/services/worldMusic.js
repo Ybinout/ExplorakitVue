@@ -1,7 +1,7 @@
 // Adjacent maps sharing a theme keep playing. Returning from a different theme
 // starts at the beginning; battle, mute and visibility pauses preserve position.
 export function worldMusicTrack(map) {
-  if (map === 'professor_lab') return 'lucie-room';
+  if (map === 'professor_lab' || map === 'void_arena') return 'lucie-room';
   if (map === 'ville1_arene') return 'mounir-room';
   if (map === 'ville_safe1_arene') return 'hoze-room';
   if (map === 'centre') return 'center';
@@ -25,7 +25,7 @@ export function worldMusicTrack(map) {
 
 function worldMusicGain(map, track) {
   // An event room can share a town's track while using a stronger mix.
-  if (map === 'professor_lab' || map === 'route2_maison') return 0.5;
+  if (map === 'professor_lab' || map === 'route2_maison' || map === 'void_arena') return 0.5;
   if (map === 'route4_maison' || /(?:^|_)arene\d*$/.test(map)) return 0.34;
   if (['village', 'route', 'snow'].includes(track)) return 0.14;
   return 0.22;

@@ -1,6 +1,6 @@
 const labels = {
   fr: {
-    professor_lab:'Laboratoire du Professeur',
+    void_arena:'Arène oubliée', professor_lab:'Laboratoire du Professeur',
     ville_commerciale:'Comptoirville',tour_rdc:'Grand Comptoir · 1 · Fournitures',tour_etage1:'Grand Comptoir · 2 · Entraînement',tour_etage2:'Grand Comptoir · 3 · Stratégie',tour_etage3:'Grand Comptoir · 4 · Baies',
     route3_maison_nrv: 'Repaire NRV · Route 3', route2_maison: 'Maison de Lucie', ville5: 'Blanchecime', ville5_arene: 'Arène de Blanchecime', ville5_shop: 'Boutique de Blanchecime',
     ville5_maison1: 'Maison de Blanchecime', ville5_maison2: 'Maison de Blanchecime',
@@ -20,7 +20,7 @@ const labels = {
     gen_arene5: 'Arène d’Ocreville · Raphael'
   },
   en: {
-    professor_lab:'Professor’s Laboratory',
+    void_arena:'Forgotten Arena', professor_lab:'Professor’s Laboratory',
     ville_commerciale:'Market Town',tour_rdc:'Grand Store · 1 · Supplies',tour_etage1:'Grand Store · 2 · Training',tour_etage2:'Grand Store · 3 · Strategy',tour_etage3:'Grand Store · 4 · Berries',
     route3_maison_nrv: 'NRV Hideout · Route 3', route2_maison: 'Lucie’s House', ville5: 'Whitepeak', ville5_arene: 'Whitepeak Gym', ville5_shop: 'Whitepeak Shop',
     ville5_maison1: 'Whitepeak House', ville5_maison2: 'Whitepeak House',

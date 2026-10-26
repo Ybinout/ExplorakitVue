@@ -4,5 +4,5 @@ export function flightPose(flight,now,reduced=false){
   if(flight.phase==='loading')return{alpha:0,scale:1,lift:0};
   const t=Math.min(1,Math.max(0,(now-flight.startedAt)/650));
   const visible=flight.phase==='arrival'?t:1-t;
-  return{alpha:reduced?1:visible,scale:reduced?1:.45+.55*visible,lift:reduced?0:30*(1-visible)};
+  return{alpha:reduced?1:visible,scale:reduced?1:.45+.55*visible,lift:reduced||flight.kind==='void'?0:30*(1-visible)};
 }

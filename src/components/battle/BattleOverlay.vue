@@ -1,5 +1,5 @@
 <template>
-  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle, ...daylightStyle}" :data-place-light="placeLight ? environment : null" :data-day-phase="outdoorLighting ? daylight.phase : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
+  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-void-arena':environment==='void-arena', 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle, ...daylightStyle}" :data-place-light="placeLight ? environment : null" :data-day-phase="outdoorLighting ? daylight.phase : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
     <battle-entrance v-if="entranceActive" :key="visualEpoch" :champion="entranceChampion" @portrait-ready="onEntrancePortraitReady" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
@@ -49,7 +49,7 @@
         :key="`opponent-${getPokemonBattleKey(opponent)}`"
         :class="[
           'battle-sprite-anchor',
-          'battle-sprite-wild',
+          'battle-sprite-wild', { 'battle-human':opponent.storyActor==='professor' },
           'battle-position-wild',
           {
             'battle-fainted': Number(opponent.currentHp)<=0 && !transitionFx.wild,
@@ -99,8 +99,8 @@
       >
         <div class="battle-status-top">
           <span class="battle-status-name">{{ opponent.__battle?.illusion?.name || opponent.truename || opponent.name }}</span>
-          <span class="battle-status-lvl">lv.{{ opponent.level }}</span>
-          <potential-star :value="opponent.k" :language="preferences.language" />
+          <span v-if="!opponent.storyActor" class="battle-status-lvl">lv.{{ opponent.level }}</span>
+          <potential-star v-if="!opponent.storyActor" :value="opponent.k" :language="preferences.language" />
           <span
             v-if="opponentStatus"
             :class="['battle-status-ailment', `status-${opponentStatus.key}`]"
@@ -277,7 +277,7 @@
 
       <div class="battle-main-actions">
         <button class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
-        <button class="battle-main-btn action-bag" :disabled="!canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
+        <button v-if="!opponent?.storyActor" class="battle-main-btn action-bag" :disabled="!canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
         <button class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
         <button class="battle-main-btn action-flee" :disabled="!canChooseAction || replacementChoice" @click="submitAction({ action: 'flee' }, tr('fleeing'))">{{ tr('flee') }}</button>
       </div>
@@ -330,6 +330,7 @@ const SNOW_BACKGROUNDS = Object.freeze({
   wide: require('@/assets/battle/snow-wide-v1.webp')
 });
 const GYM_BACKGROUNDS = Object.freeze({
+  'void-arena':{wide:require('@/assets/battle/void-arena-wide-v1.webp'),mobile:require('@/assets/battle/void-arena-mobile-v1.webp'),platform:{'--gym-ground':'#454450','--gym-rim':'#77717e','--gym-edge':'#24222e','--gym-light':'#a19aa7'}},
   'professor-lab': {
     wide: require('@/assets/battle/professor-lab-wide-v1.png'), mobile: require('@/assets/battle/professor-lab-mobile-v1.png'),
     platform: { '--gym-ground': '#454961', '--gym-rim': '#9989b6', '--gym-edge': '#252335', '--gym-light': '#a7b0cf' }
@@ -772,7 +773,7 @@ export default {
       if (kind === 'gwenn') {
         this.music=this.preloadTrainerSequence();this.syncMusic();return;
       }
-      const tracks = { mounir: require('@/assets/msc/mounir.mp3'), hoze: require('@/assets/msc/hoze.mp3'), lucie: require('@/assets/msc/lucie-combat.mp3'), ana: require('@/assets/msc/ana.mp3'), wanda: require('@/assets/msc/wanda.mp3'), '7p': require('@/assets/msc/7p.mp3'), raph: require('@/assets/msc/raph.mp3'), wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
+      const tracks = { void:require('@/assets/msc/lucie-maison.mp3'), mounir: require('@/assets/msc/mounir.mp3'), hoze: require('@/assets/msc/hoze.mp3'), lucie: require('@/assets/msc/lucie-combat.mp3'), ana: require('@/assets/msc/ana.mp3'), wanda: require('@/assets/msc/wanda.mp3'), '7p': require('@/assets/msc/7p.mp3'), raph: require('@/assets/msc/raph.mp3'), wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
       this.music = new Audio(tracks[kind] || tracks.wild);
       this.music.loop = true;
       this.syncMusic();
@@ -861,6 +862,7 @@ export default {
       return localizeAbilityName(name, this.preferences.language);
     },
     getPokemonSprite(pokemon, side) {
+      if(pokemon?.storyActor==='professor')return require('@/assets/battle/professor-final-v1.png');
       const id = Number.parseInt(pokemon?.__battle?.illusion?.id || pokemon?.__battle?.transformSpriteId || pokemon?.__battle?.formSpriteId || pokemon?.data?.id, 10);
       if (!Number.isInteger(id) || id <= 0) return '';
       const folder = side === 'back' ? 'back' : 'front';
@@ -1557,6 +1559,9 @@ export default {
 </script>
 
 <style scoped>
+.battle-human .battle-sprite{image-rendering:auto}
+.battle-void-arena .battle-background{filter:brightness(.82)}
+
 /* Static lighting never touches the HUD, action queue, sprite geometry or weather rules. */
 .battle[data-place-light] .battle-scene::after {
   content:''; position:absolute; inset:0; z-index:2; pointer-events:none;

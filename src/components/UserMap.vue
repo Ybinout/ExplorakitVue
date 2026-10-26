@@ -70,7 +70,8 @@
         </div>
         <bag-panel v-if="isBagOpen" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
-              <machine-item-use v-if="item.category==='machine'" :key="item.key" :item="item" :team="teamPokemons" :busy="medicineBusy || teamLoading" :allowed="canUseBagItem(item)" @use="useBagMachine" />
+              <button v-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="!item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
+              <machine-item-use v-else-if="item.category==='machine'" :key="item.key" :item="item" :team="teamPokemons" :busy="medicineBusy || teamLoading" :allowed="canUseBagItem(item)" @use="useBagMachine" />
               <template v-else-if="isBagConsumable(item)">
                 <select data-medicine-target :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
                   <option value="">Choisir un Pokémon…</option>
@@ -216,7 +217,8 @@
           @buy="buyShopItem"
         />
         <div class="world-viewport" ref="worldViewport">
-          <flight-transition v-if="flight" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" />
+          <void-transition v-if="flight?.kind==='void'" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" />
+          <flight-transition v-else-if="flight" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" />
           <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
@@ -380,6 +382,7 @@ import {npcTeleportPose,drawNpcTeleport} from '../services/npcTeleport';
 import { StoryGateRenderer } from '@/services/storyGateRenderer';
 import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset, npcAppearance } from '@/services/npcFrames';
 import FlightTransition from './FlightTransition.vue';
+import VoidTransition from './VoidTransition.vue';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
@@ -452,7 +455,7 @@ import { WorldMusic } from '@/services/worldMusic';
 export default {
   components: {
     RoomObstacleAction,
-    FlightTransition,
+    FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
     JournalIcon, BagPanel, MachineItemUse, PokemonComputer,
     BattleResultPanel,
@@ -480,7 +483,7 @@ export default {
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
       repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{},
       endSentences: null,
-      flight: null,
+      flight: null, voidEnding:null,
       textImageSequence: [],
       socket: null,
       animationFrameId: null,
@@ -814,7 +817,7 @@ export default {
       this.loadTeamPokemons();
     },
     isBagConsumable(item) {
-      return Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse || item.category==='evolution') && !(this.isDrift && item.revive));
+      return !item.voidTravel && Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse || item.category==='evolution') && !(this.isDrift && item.revive));
     },
     canUseBagItem(item) { return (item.category==='machine' || item.category==='evolution' || item.fieldUse?.effort || item.fieldUse?.ivReroll || item.fieldUse?.effortReset) && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
     canReceiveMedicine(item, pokemon) {
@@ -1548,14 +1551,14 @@ export default {
           context.fillStyle='#fff8df'; context.font='12px sans-serif'; context.textAlign='center';
           context.fillText(`Défi · N. ${pnj.challengeLevel}`,drawX+32,drawY-10); context.restore();
         }
-        const playerBasedSprite = ['gwenn-pixel-v4.png','matthieu-pixel-v2.png','lucie-pixel-v3.png','professor-pixel-v1.png','clement-pixel-v1.png','clement-pixel-v2.png'].includes(pnj.sprite);
+        const playerBasedSprite = ['professor-ko-pixel-v1.png','gwenn-pixel-v4.png','matthieu-pixel-v2.png','lucie-pixel-v3.png','professor-pixel-v1.png','clement-pixel-v1.png','clement-pixel-v2.png'].includes(pnj.sprite);
         const classicCustomSprite = playerBasedSprite || ['aspha-pixel-v2.png', 'gwenn-pixel-v2.png', 'gwenn-pixel-v3.png', 'matthieu-pixel-v1.png', 'nrv-noz-pixel-v1.png', 'nrv-tom-pixel-v1.png', 'nrv-cry-pixel-v1.png'].includes(pnj.sprite);
         if (pnj.spriteFrame || usesClassicNpcAtlas(spriteSheet) || classicCustomSprite) {
           // Original pixels at 2x, cropped to one person; preserve the feet anchor.
           const size = classicCustomSprite ? spriteSheet.naturalWidth * 2 : npcWorldSize(spriteSheet);
           const frame = pnj.spriteFrame || { columns: 1, rows: 1, index: 0 };
           // Player-based cells preserve the player's transparent padding and feet.
-          drawNpcFrame(context, spriteSheet, frame, drawX + (64-size)/2, drawY + (playerBasedSprite ? 64 : 52)-size, size, pnj);
+          drawNpcFrame(context, spriteSheet, frame, drawX + (64-size)/2, drawY + (playerBasedSprite ? 64 : 52)-size-(pnj.sprite==='professor-ko-pixel-v1.png'?12:0), size, pnj);
           context.restore();
           continue;
         }
@@ -1870,18 +1873,19 @@ export default {
         this.menuDataLoading = false;
       }
     },
-    async flyToTown(map) {
+    async flyToTown(map,{kind='flight',event='flyToTown'}={}) {
       if(this.flight||this.isDrift||this.battle||this.battleResult||!this.socket?.connected)return;
-      this.releaseAllMovementKeys();this.closeInfoPanel();this.isMenuOpen=false;
+      this.releaseAllMovementKeys();this.closeInfoPanel();this.isMenuOpen=false;if(kind==='void')this.isBagOpen=false;
       const reduced=!this.preferences.animationsEnabled||this.worldWeatherReducedMotion;
       const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       const alive=()=>!this._isDestroyed&&!this._isBeingDestroyed;
-      this.flight={phase:'departure',startedAt:performance.now(),label:getMapLocationLabel(map,this.preferences.language)};
+      const origin=()=>{const p=this.players[this.socket?.id],camera=getWorldCamera(this.worldFrame.width,this.worldFrame.height,p,this.showMobileControls);return{x:((p?.x||448)-camera.x)*camera.scale/this.worldFrame.width*100,y:((p?.y||320)-camera.y)*camera.scale/this.worldFrame.height*100};};
+      this.flight={kind,origin:origin(),phase:'departure',startedAt:performance.now(),label:kind==='void'?'':getMapLocationLabel(map,this.preferences.language)};
       try {
         if(!reduced)await wait(650);
         if(!alive())return;
         this.flight={...this.flight,phase:'loading',startedAt:performance.now()};
-        const response=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('flyToTown',{map},(error,result)=>error?reject(new Error('Connexion interrompue. Vérifie ta position après reconnexion.')):resolve(result)));
+        const response=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit(event,{map},(error,result)=>error?reject(new Error('Connexion interrompue. Vérifie ta position après reconnexion.')):resolve(result)));
         if(!response?.success)throw new Error(response?.message||'Vol indisponible.');
         const deadline=performance.now()+16000;
         while(alive()&&(this.mapLoading||this.renderedMap!==map||this.map!==map)){
@@ -1889,7 +1893,7 @@ export default {
           await wait(50);
         }
         if(!alive())return;
-        this.flight={...this.flight,phase:'arrival',startedAt:performance.now()};
+        this.flight={...this.flight,origin:origin(),phase:'arrival',startedAt:performance.now()};
         if(!reduced)await wait(650);
       } catch(error) { if(alive())this.showInteractionNotice(error.message); }
       finally { if(alive()){this.flight=null;this.drawPlayers();} }
@@ -2412,6 +2416,7 @@ export default {
         } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
 
+      if(this.map==='void_arena'){c.fillStyle='rgba(4,2,10,.18)';c.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);}
       if (this.placeAmbienceActive && !document.hidden) {
         if (!this._placeAmbience) this._placeAmbience = new PlaceAmbienceRenderer();
         this._placeAmbience.drawGround(c, this.mapImage, this.map, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.arenaCollapse?.map===this.map?this.arenaCollapse:null);
@@ -2447,6 +2452,10 @@ export default {
         if (!this._worldNight) this._worldNight = new WorldNightRenderer();
         this._worldNight.drawGround(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.mapImage);
       } else this._worldNight?.suspend();
+      if(this.map==='professor_lab' && this.voidEnding?.available && !this.voidEnding.found){
+        // Deliberately small and unlit: no marker, sparkle, text or proximity hint.
+        c.save();c.fillStyle='#11151d';c.fillRect(523,139,11,7);c.fillStyle='#444553';c.fillRect(525,139,7,4);c.fillStyle='#767181';c.fillRect(526,139,2,1);c.restore();
+      }
       drawPokemonComputers(c,this.worldDevices,this.map);
       this.drawPnjs(c, now);
 
@@ -2629,6 +2638,7 @@ export default {
     });
 
     this.socket.on('adminArenaState', state => { this.arenaTestState = state?.allowed === true ? state : {allowed:false}; });
+    this.socket.on('voidEndingState',state=>{this.voidEnding=state;});
     this.socket.on('flightState', state=>this.$set(this.progressionState,'flight',state));
     this.socket.on('progressionState', (payload = {}) => {
       this.progressionState = payload;
