@@ -2443,6 +2443,10 @@ export default {
       } else this._worldWeather?.suspend();
 
       if (!this.isDrift && !this.battle && !this.battleResult && !document.hidden) this._storyGateRenderer?.draw(c,this.map,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+      if (this.worldNightActive && !document.hidden) {
+        if (!this._worldNight) this._worldNight = new WorldNightRenderer();
+        this._worldNight.drawGround(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.mapImage);
+      } else this._worldNight?.suspend();
       drawPokemonComputers(c,this.worldDevices,this.map);
       this.drawPnjs(c, now);
 

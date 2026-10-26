@@ -46,16 +46,16 @@ export class WorldNightRenderer {
     this.createCanvas = createCanvas; this.paints = 0; this.frames = 0; this.destroyed = false;
   }
   surface(w = W, h = H) { const c = this.createCanvas(); c.width = w; c.height = h; return c; }
-  draw(target, map, now, daylight, weather = {}, motion = true, source = null) {
-    if (this.destroyed) return;
-    if (!outdoorMap(map) || (daylight.night < .001 && daylight.warmth < .001)) { this.suspend(); return; }
+  prepare(map, now, daylight, weather = {}, motion = true, source = null) {
+    if (this.destroyed) return false;
+    if (!outdoorMap(map) || (daylight.night < .001 && daylight.warmth < .001)) { this.suspend(); return false; }
     if (map !== this.map || source !== this.source) {
       this.suspend(); this.map = map; this.source = source; this.readWindows(source);
     }
     if (!this.canvas) {
-      this.canvas = this.surface(); this.base = this.surface();
+      this.canvas = this.surface(); this.base = this.surface(); this.fixtures = this.surface();
       this.context = this.canvas.getContext('2d');
-      if (!this.context || !this.base.getContext('2d')) { this.suspend(); return; }
+      if (!this.context || !this.base.getContext('2d') || !this.fixtures.getContext('2d')) { this.suspend(); return; }
     }
     const key = [Math.round(daylight.night * 1000), Math.round(daylight.warmth * 1000), Math.round(daylight.lamps * 1000)].join(':');
     const animated = motion && sites(map).length && !weather.snow && !weather.sand && !(weather.rain >= 3 || weather.wind >= 3);
@@ -73,7 +73,15 @@ export class WorldNightRenderer {
       }
       c.globalAlpha = 1; this.lastTime = now; this.settings = settings; this.frames++;
     }
-    target.drawImage(this.canvas, 0, 0, 896, 640);
+    return true;
+  }
+  // Window panes, bulbs and reflected warm light belong to the scenery. Draw
+  // them before all actors; only the ambient veil/fireflies pass above sprites.
+  drawGround(target, ...args) {
+    if (this.prepare(...args)) target.drawImage(this.fixtures, 0, 0, 896, 640);
+  }
+  draw(target, ...args) {
+    if (this.prepare(...args)) target.drawImage(this.canvas, 0, 0, 896, 640);
   }
   readWindows(source) {
     this.glass = [];
@@ -96,8 +104,8 @@ export class WorldNightRenderer {
     } catch (_) { this.glass = []; } finally { sample.width = sample.height = 0; }
   }
   paintLighting(light) {
-    const c = this.base.getContext('2d'), p = townLights[this.map] || {};
-    c.clearRect(0, 0, W, H);
+    const c = this.base.getContext('2d'), lamps = this.fixtures.getContext('2d'), p = townLights[this.map] || {};
+    c.clearRect(0, 0, W, H); lamps.clearRect(0, 0, W, H);
     // A readable blue hour, never a black veil. The game UI is outside this canvas.
     const shade = c.createLinearGradient(0, 0, 0, H);
     const darkness = (p.snow || /route1[34]$/.test(this.map) ? .4 : .48) * light.night;
@@ -112,22 +120,22 @@ export class WorldNightRenderer {
     for (const [x, y, r] of p.lamps || []) {
       c.save(); c.globalCompositeOperation = 'destination-out';
       glow(c, x, y + 14, r, '#fff', .75 * light.lamps); c.restore();
-      glow(c, x, y + 28, r, '#ffc678', .15 * light.lamps, .45);
-      glow(c, x, y, 10, '#ffcf85', .48 * light.lamps);
-      c.globalAlpha = light.lamps * .88; c.fillStyle = '#ffe7ad'; c.fillRect(x - 2, y - 1, 4, 3); c.globalAlpha = 1;
+      glow(lamps, x, y + 28, r, '#ffc678', .15 * light.lamps, .45);
+      glow(lamps, x, y, 10, '#ffcf85', .48 * light.lamps);
+      lamps.globalAlpha = light.lamps * .88; lamps.fillStyle = '#ffe7ad'; lamps.fillRect(x - 2, y - 1, 4, 3); lamps.globalAlpha = 1;
     }
     for (const [x, y, w, h] of p.windows || []) {
       const cx = x + w / 2, cy = y + h / 2;
       c.save(); c.globalCompositeOperation = 'destination-out'; glow(c, cx, cy + h, 19, '#fff', .46 * light.lamps); c.restore();
-      glow(c, cx, cy, Math.max(12, w), '#ffcf87', .24 * light.lamps);
+      glow(lamps, cx, cy, Math.max(12, w), '#ffcf87', .24 * light.lamps);
     }
-    c.globalAlpha = light.lamps * .8; c.fillStyle = '#ffdfa2';
-    for (const [x, y, w, h] of this.glass || []) c.fillRect(x, y, w, h);
-    c.globalAlpha = 1;
+    lamps.globalAlpha = light.lamps * .8; lamps.fillStyle = '#ffdfa2';
+    for (const [x, y, w, h] of this.glass || []) lamps.fillRect(x, y, w, h);
+    lamps.globalAlpha = 1;
     this.paints++;
   }
   suspend() {
-    for (const key of ['canvas', 'base', 'spark']) { if (this[key]) this[key].width = this[key].height = 0; this[key] = null; }
+    for (const key of ['canvas', 'base', 'fixtures', 'spark']) { if (this[key]) this[key].width = this[key].height = 0; this[key] = null; }
     this.context = null; this.map = null; this.source = null; this.glass = null; this.lightKey = null; this.settings = null; this.lastTime = null;
   }
   destroy() { this.suspend(); this.destroyed = true; }

@@ -7,7 +7,7 @@ export const smooth = value => { const x = Math.max(0, Math.min(1, value)); retu
 // No seasonal sunrise simulation: the schedule stays predictable for players.
 const keys = [
   [0, 1, 0], [6, 1, 0], [7, .32, .7], [8, 0, 0],
-  [18, 0, 0], [19, .16, 1], [20, .65, .32], [21, 1, 0], [24, 1, 0],
+  [17, 0, 0], [17.5, .4, 1], [18, 1, 0], [24, 1, 0],
 ];
 export function daylightAt(timestamp) {
   const parts = formatter.formatToParts(new Date(Number.isFinite(timestamp) ? timestamp : Date.now()));
@@ -17,7 +17,7 @@ export function daylightAt(timestamp) {
   const mix = smooth((hour - a[0]) / (b[0] - a[0]));
   const night = a[1] + (b[1] - a[1]) * mix, warmth = a[2] + (b[2] - a[2]) * mix;
   return { night, warmth, lamps: smooth((night - .08) / .72),
-    phase: hour < 6 || hour >= 21 ? 'night' : hour < 8 ? 'dawn' : hour < 18 ? 'day' : 'dusk' };
+    phase: hour < 6 || hour >= 18 ? 'night' : hour < 8 ? 'dawn' : hour < 17 ? 'day' : 'dusk' };
 }
 export class WorldClock {
   constructor(wall = Date.now(), monotonic = performance.now()) {
