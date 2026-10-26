@@ -1504,7 +1504,7 @@ export default {
           context.fillStyle='#fff8df'; context.font='12px sans-serif'; context.textAlign='center';
           context.fillText(`Défi · N. ${pnj.challengeLevel}`,drawX+32,drawY-10); context.restore();
         }
-        const playerBasedSprite = ['gwenn-pixel-v4.png','matthieu-pixel-v2.png','lucie-pixel-v3.png','professor-pixel-v1.png'].includes(pnj.sprite);
+        const playerBasedSprite = ['gwenn-pixel-v4.png','matthieu-pixel-v2.png','lucie-pixel-v3.png','professor-pixel-v1.png','clement-pixel-v1.png'].includes(pnj.sprite);
         const classicCustomSprite = playerBasedSprite || ['aspha-pixel-v2.png', 'gwenn-pixel-v2.png', 'gwenn-pixel-v3.png', 'matthieu-pixel-v1.png', 'nrv-noz-pixel-v1.png', 'nrv-tom-pixel-v1.png', 'nrv-cry-pixel-v1.png'].includes(pnj.sprite);
         if (pnj.spriteFrame || usesClassicNpcAtlas(spriteSheet) || classicCustomSprite) {
           // Original pixels at 2x, cropped to one person; preserve the feet anchor.
@@ -2568,7 +2568,7 @@ export default {
       if (this.roomObstacleAction) this._roomObstacleTimer = setTimeout(() => {
         this.roomObstacleAction = null;
         this._storyGateRenderer?.work(null);
-      }, action.success ? 1100 : Math.min(8000, Number(action.duration) + 4000));
+      }, action.success ? 1100 : Math.min(20000, (Number(action.duration) || 0) + 4000));
       this.drawPlayers();
     });
     this.socket.on('storyGatesState', (payload = {}) => {

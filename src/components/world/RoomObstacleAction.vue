@@ -16,7 +16,7 @@ export default {
     totalHits(){return strikeState(this.action,performance.now()).totalHits;},
     stageLabel(){return (this.language==='en'
       ?['You brace yourself…','A crack appears…','The crystals resist…','The crack widens…','One last strike!','The crystals give way!']
-      :['Tu prends ton élan…','Une fissure apparaît…','Les cristaux résistent…','La fissure s’étend…','Encore un coup !','Les cristaux cèdent !'])[Math.min(this.hits,5)];}
+      :['Tu prends ton élan…','Une fissure apparaît…','Les cristaux résistent…','La fissure s’étend…','Encore un coup !','Les cristaux cèdent !'])[this.hits>=this.totalHits?5:this.hits===this.totalHits-1?4:Math.ceil(this.hits*3/Math.max(1,this.totalHits-1))];}
   },
   mounted(){this._tick=setInterval(()=>{this.hits=strikeState(this.action,performance.now()).hits;},60);},
   beforeDestroy(){clearInterval(this._tick);}
