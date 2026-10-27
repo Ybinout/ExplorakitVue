@@ -383,6 +383,7 @@ import { StoryGateRenderer } from '@/services/storyGateRenderer';
 import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset, npcAppearance } from '@/services/npcFrames';
 import FlightTransition from './FlightTransition.vue';
 import VoidTransition from './VoidTransition.vue';
+import { drawVoidTeleporter } from '@/services/voidTeleporter';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
@@ -2452,10 +2453,7 @@ export default {
         if (!this._worldNight) this._worldNight = new WorldNightRenderer();
         this._worldNight.drawGround(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.mapImage);
       } else this._worldNight?.suspend();
-      if(this.map==='professor_lab' && this.voidEnding?.available && !this.voidEnding.found){
-        // Deliberately small and unlit: no marker, sparkle, text or proximity hint.
-        c.save();c.fillStyle='#11151d';c.fillRect(523,139,11,7);c.fillStyle='#444553';c.fillRect(525,139,7,4);c.fillStyle='#767181';c.fillRect(526,139,2,1);c.restore();
-      }
+      drawVoidTeleporter(c, this.map, this.voidEnding);
       drawPokemonComputers(c,this.worldDevices,this.map);
       this.drawPnjs(c, now);
 
@@ -2638,7 +2636,7 @@ export default {
     });
 
     this.socket.on('adminArenaState', state => { this.arenaTestState = state?.allowed === true ? state : {allowed:false}; });
-    this.socket.on('voidEndingState',state=>{this.voidEnding=state;});
+    this.socket.on('voidEndingState',state=>{this.voidEnding=state;this.drawPlayers();});
     this.socket.on('flightState', state=>this.$set(this.progressionState,'flight',state));
     this.socket.on('progressionState', (payload = {}) => {
       this.progressionState = payload;
