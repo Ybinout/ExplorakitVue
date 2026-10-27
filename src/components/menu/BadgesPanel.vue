@@ -10,16 +10,16 @@
         <template v-else>
           <div class="badge-case-summary">
             <div><p class="badge-case-eyebrow">{{ english ? 'YOUR JOURNEY, ONE VICTORY AT A TIME' : 'LES SOUVENIRS DE TES VICTOIRES' }}</p><h3>{{ complete ? (english ? 'A complete collection' : 'Un étui au complet') : (english ? 'Every badge tells a story' : 'Chaque badge raconte une étape') }}</h3><p>{{ english ? 'Discover the towns and progress through the story to complete your collection.' : 'Explore les villes et avance dans l’histoire pour compléter ta collection.' }}</p></div>
-            <div class="badge-case-count" :aria-label="`${earned} / ${badges.length}`"><strong>{{ earned }}<span> / {{ badges.length }}</span></strong><small>{{ english ? 'collected' : 'obtenus' }}</small></div>
+            <div class="badge-case-count" :aria-label="`${earned} / ${total}`"><strong>{{ earned }}<span> / {{ total }}</span></strong><small>{{ english ? 'collected' : 'obtenus' }}</small></div>
           </div>
           <div v-if="capture" class="badge-capture-info" data-badge-capture><strong>{{ english ? 'Capture tier' : 'Palier de capture' }} · Niv. {{ capture.comfortableLevel }}</strong><p>{{ english ? 'Above this level, captures remain possible but become much harder. Each badge raises your tier.' : 'Au-delà de ce niveau, les captures restent possibles mais deviennent beaucoup plus difficiles. Chaque badge relève ton palier.' }}</p><small v-if="capture.nextComfortableLevel>capture.comfortableLevel">{{ english ? 'Next badge' : 'Prochain badge' }} : Niv. {{ capture.nextComfortableLevel }}</small></div>
-          <div class="badge-case-track" role="progressbar" :aria-label="english ? 'Badge collection' : 'Collection de badges'" :aria-valuenow="earned" aria-valuemin="0" :aria-valuemax="Math.max(1,badges.length)"><span :style="{width: percent + '%'}"></span></div>
+          <div class="badge-case-track" role="progressbar" :aria-label="english ? 'Badge collection' : 'Collection de badges'" :aria-valuenow="earned" aria-valuemin="0" :aria-valuemax="Math.max(1,total)"><span :style="{width: percent + '%'}"></span></div>
           <div v-if="badges.length" class="badge-case-grid" role="list">
-            <article v-for="(badge,index) in badges" :key="badge.key" :class="['badge-case-slot',{ 'is-earned': badge.earned }]" :data-badge-key="badge.key" :data-badge-earned="Boolean(badge.earned)" role="listitem">
-              <div class="badge-case-slot-top"><span>{{ String(index+1).padStart(2,'0') }}</span><span class="badge-case-status"><span aria-hidden="true">{{ badge.earned ? '✓' : '◇' }}</span> {{ badge.earned ? (english ? 'Collected' : 'Obtenu') : (english ? 'To discover' : 'À obtenir') }}</span></div>
-              <div class="badge-case-display"><badge-emblem :badge-key="badge.key" /></div>
+            <article v-for="(badge,index) in badges" :key="badge.key" :class="['badge-case-slot',{ 'is-earned': badge.earned, 'is-cracked':badge.cracked }]" :data-badge-key="badge.key" :data-badge-earned="Boolean(badge.earned)" :data-badge-cracked="Boolean(badge.cracked)" role="listitem">
+              <div class="badge-case-slot-top"><span>{{ String(index+1).padStart(2,'0') }}</span><span class="badge-case-status"><span aria-hidden="true">{{ badge.earned ? '✓' : badge.cracked ? '╱' : '◇' }}</span> {{ badge.earned ? (english ? 'Collected' : 'Obtenu') : badge.cracked ? (english ? 'Cracked' : 'Fissuré') : (english ? 'To discover' : 'À obtenir') }}</span></div>
+              <div class="badge-case-display"><badge-emblem :badge-key="badge.key" :cracked="Boolean(badge.cracked)" /></div>
               <h4>{{ badge.name }}</h4><p class="badge-case-place">{{ places[badge.key] || (english ? 'Adventure' : 'Aventure') }}</p>
-              <p class="badge-case-caption">{{ english ? 'A reminder of an arena challenge.' : 'Le souvenir d’un défi d’arène.' }}</p>
+              <p class="badge-case-caption">{{ badge.cracked ? (english ? 'The other outcome of this encounter was chosen.' : 'L’autre issue de cette rencontre a été choisie.') : badge.description || (english ? 'A reminder of an arena challenge.' : 'Le souvenir d’un défi d’arène.') }}</p>
             </article>
           </div>
           <p v-else class="badge-case-state">{{ english ? 'No badges to display yet.' : 'Aucun badge à afficher pour le moment.' }}</p>
@@ -32,11 +32,11 @@
 <script>
 import BadgeEmblem from './BadgeEmblem.vue';
 import JournalIcon from './JournalIcon.vue';
-const places = { summit_badge:'Blanchecime · 7p', lake_badge:'Ville du Lac · Mounir', dune_badge:'Valpierre · Hoze', bloom_badge:'Ocreville · Raphael', ore_badge:'Clairfontaine · Ana', tide_badge:'Rochebrume · Wanda' };
+const places = { violence_badge:'Arène oubliée · Le Professeur', pardon_badge:'Arène oubliée · Le Professeur', summit_badge:'Blanchecime · 7p', lake_badge:'Ville du Lac · Mounir', dune_badge:'Valpierre · Hoze', bloom_badge:'Ocreville · Raphael', ore_badge:'Clairfontaine · Ana', tide_badge:'Rochebrume · Wanda' };
 export default {
   name:'BadgesPanel', components:{BadgeEmblem,JournalIcon},
   props:{capture:{type:Object,default:null},badges:{type:Array,default:()=>[]},loading:Boolean,language:{type:String,default:'fr'}},
-  computed:{english(){return this.language==='en';},places(){return places;},earned(){return this.badges.filter(b=>b.earned).length;},percent(){return this.badges.length?this.earned/this.badges.length*100:0;},complete(){return this.badges.length>0&&this.earned===this.badges.length;}},
+  computed:{english(){return this.language==='en';},places(){return places;},total(){return new Set(this.badges.map(b=>b.exclusiveGroup||b.key)).size;},earned(){return this.badges.filter(b=>b.earned).length;},percent(){return this.total?Math.min(100,this.earned/this.total*100):0;},complete(){return this.total>0&&this.earned===this.total;}},
   mounted(){this.$refs.close.focus({preventScroll:true});},
   methods:{handleKeydown(event){
     if(event.key==='Escape'){event.preventDefault();this.$emit('close');}
@@ -49,4 +49,5 @@ export default {
 @media(max-width:700px){.badge-case-backdrop{padding:8px}.badge-case{max-height:calc(100dvh - 16px);border-radius:16px}.badge-case-header{padding:16px;gap:8px}.badge-case-brand{gap:10px}.badge-case-brand>.journal-icon{width:30px;height:30px}.badge-case-brand h2{font-size:21px}.badge-case-brand p{font-size:8px}.badge-case-scroll{padding:18px 14px}.badge-case-summary{gap:12px;align-items:flex-start}.badge-case-summary h3{font-size:18px}.badge-case-eyebrow{font-size:8px;line-height:1.5}.badge-case-count strong{font-size:32px}.badge-case-count strong span{font-size:17px}.badge-case-summary p:not(.badge-case-eyebrow){font-size:11px}.badge-case-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.badge-case-slot{padding:11px 8px}.badge-case-slot-top{font-size:8px}.badge-case-display{padding:12px 0 10px}.badge-case-slot h4{font-size:12px}.badge-case-caption{font-size:9px}.badge-case-footer{padding:12px 16px}}
 @media(max-height:500px) and (min-width:701px){.badge-case-backdrop{padding:8px}.badge-case{max-height:calc(100dvh - 16px)}.badge-case-header{padding:12px 20px}.badge-case-scroll{padding:16px 20px}.badge-case-summary h3{font-size:18px}.badge-case-summary p:not(.badge-case-eyebrow){font-size:11px}.badge-case-footer{padding:9px 20px}}
 .badge-capture-info{margin-top:18px;padding:12px 14px;border-left:3px solid var(--journal-progress);border-radius:6px;background:var(--journal-soft);color:var(--journal-ink);font-size:12px;line-height:1.5}.badge-capture-info p{margin:6px 0;color:var(--journal-muted)}.badge-capture-info small{color:var(--journal-accent)}
+.badge-case-slot.is-cracked .badge-case-display{filter:grayscale(.8);opacity:.7}.is-cracked .badge-case-status{color:var(--journal-muted)}
 </style>

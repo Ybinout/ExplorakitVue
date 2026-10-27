@@ -14,7 +14,7 @@ const CONDITIONS = {
   aquaRing:['Anneau Hydro','heal','+'], ingrain:['Racines','heal','+'],
   magnetRiseTurns:['Lévitation','charge','↑'], healBlockTurns:['Anti-Soin','status','!']
 };
-const AILMENTS = { burn:'Brûlure', poison:'Poison', badly_poison:'Poison grave', paralyze:'Paralysie', sleep:'Sommeil', freeze:'Gel' };
+const AILMENTS = { burn:'Brûlure', poison:'Poison', badly_poison:'Poison grave', paralyze:'Paralysie', sleep:'Sommeil', freeze:'Gel', corrupted:'Corruption' };
 function stage(pokemon,key) { return Math.max(-6,Math.min(6,Math.trunc(Number(pokemon?.__battle?.statStages?.[key]) || 0))); }
 export function battleConditions(pokemon) {
   const result = [];

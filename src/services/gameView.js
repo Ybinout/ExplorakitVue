@@ -9,7 +9,8 @@ export function getBattleStatus(rawStatus) {
     sleep: { key: 'sleep', code: 'SLP', label: 'Sommeil' },
     freeze: { key: 'freeze', code: 'FRZ', label: 'Gel' },
     confusion: { key: 'confusion', code: 'CNF', label: 'Confusion' },
-    infatuation: { key: 'infatuation', code: 'INF', label: 'Attirance' }
+    infatuation: { key: 'infatuation', code: 'INF', label: 'Attirance' },
+    corrupted: { key: 'corrupted', code: 'Corrompu', label: 'Corruption' }
   };
   if (normalizedStatus === 'normal') return null;
   return statusMap[normalizedStatus] || {

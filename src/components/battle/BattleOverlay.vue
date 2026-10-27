@@ -1833,6 +1833,7 @@ export default {
 .status-other {
   background: linear-gradient(145deg, #7f92a8, #516274);
 }
+.status-corrupted{background:#7446a5;color:#fff0ff;border:1px solid #c7a0ed;font-size:10px;letter-spacing:.02em;box-shadow:0 0 7px #9c57d24d;white-space:nowrap}
 
 .battle-damage-text {
   position: static;

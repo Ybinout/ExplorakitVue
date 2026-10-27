@@ -123,3 +123,7 @@
 @media (orientation:landscape) and (max-height:340px) {
   .game-root.is-mobile .mobile-action-group > span { display:none; }
 }
+
+/* Scientific journals use the full dialogue frame, without a speaker portrait. */
+.game-root .dialogue-layer .is-journal .text-with-image { align-items:stretch; }
+.game-root .dialogue-layer .is-journal .text { white-space:pre-wrap; }

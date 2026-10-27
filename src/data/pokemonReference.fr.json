@@ -5700,6 +5700,15 @@
       "accuracy": null,
       "pp": 20,
       "description": "Le lanceur jette un regard plein de larmes à la cible. Celle-ci perd toute velléité de combat et voit son Attaque et son Attaque Spéciale baisser."
+    },
+    "Purify": {
+      "type": "Poison",
+      "category": "status",
+      "power": null,
+      "powerKind": "status",
+      "accuracy": null,
+      "pp": 20,
+      "description": "Soigne le problème de statut de la cible, puis rend au lanceur la moitié de ses PV maximum. Échoue si la cible n’a aucun problème de statut."
     }
   },
   "abilities": {

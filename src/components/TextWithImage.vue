@@ -3,7 +3,7 @@
     <div class="text-with-image">
       
       <div class="text" role="button" tabindex="0" aria-label="Continuer le dialogue" @click="continueText" @keydown.enter.stop.prevent="continueText" @keydown.space.stop.prevent="continueText"><span v-if="typewriterMs" class="dialogue-reserved" aria-hidden="true">{{ currentText }}</span><span class="dialogue-visible">{{ displayedText }}</span></div>
-      <div class="texts">
+      <div v-if="currentImageSrc" class="texts">
         <atlas-portrait v-if="portraitFrame" :src="currentImageSrc" :frame="portraitFrame" />
         <img v-else class="imagetoto" :src="currentImageSrc" alt="Illustration" />
       </div>

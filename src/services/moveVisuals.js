@@ -1,5 +1,6 @@
 // Presentation-only families. Canonical move names stay independent of localisation.
 const groups = {
+  purify: ['Purify'],
   bite: ['Bite','Crunch','Fire Fang','Ice Fang','Thunder Fang','Poison Fang','Psychic Fangs','Hyper Fang','Super Fang','Psychic Fangs'],
   claw: ['Scratch','Slash','Night Slash','Shadow Claw','Dragon Claw','Metal Claw','Fury Swipes','Crush Claw','Razor Shell','Cut','X-Scissor','Psycho Cut','Air Slash','Air Cutter','Fury Cutter','Aerial Ace'],
   punch: ['Pound','Mega Punch','Fire Punch','Ice Punch','Thunder Punch','Mach Punch','Bullet Punch','Shadow Punch','Dynamic Punch','Focus Punch','Power-Up Punch','Sky Uppercut','Hammer Arm','Meteor Mash','Comet Punch','Dizzy Punch','Double Hit','Karate Chop','Cross Chop','Close Combat','Brick Break','Force Palm'],

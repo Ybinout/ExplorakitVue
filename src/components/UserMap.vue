@@ -355,6 +355,7 @@
       <div v-if="textImageSequence.length > 0 && !battleResult && !driftSpectator" class="dialogue-backdrop"></div>
       <div v-if="textImageSequence.length > 0 && !battleResult && !driftSpectator" class="dialogue-layer">
         <TextWithImage
+          :class="{ 'is-journal': endSentences.startsWith('void_journal_') }"
           :sequence="textImageSequence"
           :char-per-step="preferences.textSpeed"
           :sound-volume="preferences.masterVolume / 100 * 0.5"
@@ -385,6 +386,7 @@ import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset, npcAp
 import FlightTransition from './FlightTransition.vue';
 import VoidTransition from './VoidTransition.vue';
 import { drawVoidTeleporter } from '@/services/voidTeleporter';
+import { drawVoidJournals } from '@/services/voidJournals';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
@@ -2471,6 +2473,7 @@ export default {
         this._worldNight.drawGround(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.mapImage);
       } else this._worldNight?.suspend();
       drawVoidTeleporter(c, this.map, this.voidEnding);
+      drawVoidJournals(c, this.map, this.voidEnding);
       drawPokemonComputers(c,this.worldDevices,this.map);
       this.drawPnjs(c, now);
 

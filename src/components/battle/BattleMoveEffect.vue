@@ -32,7 +32,10 @@
         <circle :cy="(n%2 ? 1:-1)*9" r="5" fill="#a4f0ad"/><circle :cy="(n%2 ? 1:-1)*9" r="2" fill="#f5ffe3"/>
       </g>
     </g>
-    <g v-if="fx.stage === 'aura' && !fx.fieldMove" :transform="`translate(${path.targetX} ${path.targetY})`" fill="none" stroke="currentColor" stroke-width="3">
+    <g v-if="fx.family==='purify' && ['travel','aura'].includes(fx.stage)" :transform="`translate(${path.targetX} ${path.targetY})`" class="move-purify">
+      <path v-for="n in 9" :key="n" d="M0 -9 4 0 0 9 -4 0Z" :fill="n%2?'#e7d6ff':'#a5d3c5'" :style="{'--px':`${(n%3-1)*24}px`,'--py':`${Math.floor(n/3)*12-12}px`,'--delay':`${(n-1)*30}ms`}" />
+    </g>
+    <g v-if="fx.stage === 'aura' && !fx.fieldMove && fx.family!=='purify'" :transform="`translate(${path.targetX} ${path.targetY})`" fill="none" stroke="currentColor" stroke-width="3">
       <circle r="30" class="move-impact-ring"/><ellipse rx="40" ry="12" class="move-contact"/>
     </g>
     <g v-if="fx.stage === 'miss'" :transform="`translate(${path.targetX} ${path.targetY})`" class="move-dissipate" fill="none" stroke="currentColor" opacity=".5">
@@ -63,6 +66,8 @@ export default {
 .move-ground-wave{animation:move-ground .5s var(--delay) ease-out both;transform-origin:center;transform-box:fill-box}
 .move-energy{animation:move-flight .36s var(--delay) ease-in-out both}.move-return{opacity:.95}
 .move-dissipate,.move-spark{animation:move-fade .45s ease-out both}
+.move-purify path{animation:move-purify .65s var(--delay) ease-out both}
+@keyframes move-purify{from{transform:translate(var(--px),var(--py)) scale(.5);opacity:0}20%{opacity:1}to{transform:translate(var(--px),calc(var(--py) - 65px)) scale(.1);opacity:0}}
 @keyframes move-flight{from{transform:translate(var(--sx),var(--sy));opacity:.2}20%{opacity:1}to{transform:translate(var(--tx),var(--ty));opacity:1}}
 @keyframes move-beam{from{stroke-dashoffset:1;opacity:.2}to{stroke-dashoffset:0;opacity:1}}
 @keyframes move-contact{0%{transform:scale(.3);opacity:0}20%{transform:scale(1.12);opacity:1}to{transform:scale(.85);opacity:0}}
