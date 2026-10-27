@@ -18,6 +18,7 @@ export function buildBattleResult(payload = {}, mode = 'adventure') {
   }
   return {
     outcome, mode, reason: data.reason || '', battleType: data.battleType || '',
+    escapeActor: ['player','opponent'].includes(data.escapeActor) ? data.escapeActor : null,
     experience: Array.isArray(summary.experience) ? summary.experience.filter(entry => entry && Number(entry.xpGained) > 0) : [],
     money: Number.isFinite(Number(summary.money)) ? Math.max(0, Number(summary.money)) : 0,
     loot: Array.isArray(summary.loot) ? summary.loot.filter(item => typeof item === 'string' && item) : [],

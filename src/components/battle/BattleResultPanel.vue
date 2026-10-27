@@ -110,8 +110,9 @@ export default {
       if (this.gameMode === 'colosseum') return 'Colosseum';
       return this.gameMode === 'rift' || this.result.mode === 'drift' ? 'Rift' : 'Aventure';
     },
-    title() { return { victory: 'Victoire', defeat: 'Défaite', captured: 'Capture réussie', fled: 'Combat quitté', draw: 'Match nul', interrupted: 'Combat interrompu' }[this.outcome]; },
+    title() { if(this.outcome==='fled'&&this.result.escapeActor==='opponent')return 'Le Pokémon sauvage a fui';return { victory: 'Victoire', defeat: 'Défaite', captured: 'Capture réussie', fled: 'Combat quitté', draw: 'Match nul', interrupted: 'Combat interrompu' }[this.outcome]; },
     description() {
+      if(this.outcome==='fled'&&this.result.escapeActor)return this.result.escapeActor==='opponent'?'Il s’est échappé avec Téléport.':'Ton Pokémon s’est échappé avec Téléport.';
       if (this.outcome === 'victory') return ['fled', 'forfeit', 'opponent_disconnected'].includes(this.result.reason) ? 'Tu remportes le duel par forfait adverse.' : '';
       if (this.outcome === 'defeat') return ['forfeit', 'opponent_disconnected'].includes(this.result.reason) ? 'Le duel se termine sur ton forfait.' : 'Ton équipe a été vaincue.';
       if (['captured', 'fled', 'draw'].includes(this.outcome)) return '';
