@@ -12,7 +12,8 @@
     "mathilde": 36,
     "nrv_noz": 37,
     "nrv_tom": 10,
-    "nrv_cry": 38
+    "nrv_cry": 38,
+    "professor_fan": 39
   },
   "frames": [
     {
@@ -326,6 +327,14 @@
       "w": 17,
       "h": 24,
       "pixels": 308
+    },
+    {
+      "name": "professor_fan",
+      "x": 1036,
+      "y": 417,
+      "w": 18,
+      "h": 25,
+      "pixels": 339
     }
   ]
 }
