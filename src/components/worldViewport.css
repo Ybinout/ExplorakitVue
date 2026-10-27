@@ -127,3 +127,10 @@
 /* Scientific journals use the full dialogue frame, without a speaker portrait. */
 .game-root .dialogue-layer .is-journal .text-with-image { align-items:stretch; }
 .game-root .dialogue-layer .is-journal .text { white-space:pre-wrap; }
+
+.mirror-scene-veil{position:absolute;inset:0;z-index:45;background:#07040e;pointer-events:auto}
+.mirror-scene-veil.closing{animation:mirror-sleep var(--mirror-duration) ease-in both}
+.mirror-scene-veil.awakening{animation:mirror-wake var(--mirror-duration) ease-out both}
+@keyframes mirror-sleep{0%,55%{opacity:0}90%,100%{opacity:1}}
+@keyframes mirror-wake{from{opacity:1}to{opacity:0}}
+@media(prefers-reduced-motion:reduce){.mirror-scene-veil.closing{animation-timing-function:linear}}

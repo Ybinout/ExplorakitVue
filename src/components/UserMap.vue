@@ -220,6 +220,7 @@
         <div class="world-viewport" ref="worldViewport">
           <void-transition v-if="flight?.kind==='void'" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" />
           <flight-transition v-else-if="flight" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" />
+          <div v-if="mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase)" :key="mirrorScene.id" class="mirror-scene-veil" :class="mirrorScene.phase" :style="{'--mirror-duration':mirrorScene.duration+'ms'}" :data-mirror-phase="mirrorScene.phase" aria-busy="true"></div>
           <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
@@ -274,7 +275,7 @@
           <div class="mobile-action-group">
           <button
             class="mobile-action-a"
-            :disabled="!!roomObstacleAction || !!lucieDeparture"
+            :disabled="!!roomObstacleAction || !!lucieDeparture || !!mirrorScene || mirrorRift?.stage==='won'"
             :aria-label="textImageSequence.length ? (preferences.language === 'en' ? 'Continue dialogue' : 'Continuer le dialogue') : (preferences.language === 'en' ? 'Interact' : 'Parler ou agir')"
             @pointerdown.stop.prevent="triggerMobileActionA"
             @click="activateMobileActionA"
@@ -387,6 +388,8 @@ import FlightTransition from './FlightTransition.vue';
 import VoidTransition from './VoidTransition.vue';
 import { drawVoidTeleporter } from '@/services/voidTeleporter';
 import { drawVoidJournals } from '@/services/voidJournals';
+import {drawMirrorGround,drawMirrorClone,mirrorScenePose} from '@/services/mirrorRiftRenderer';
+import {BattleAudio} from '@/services/battleAudio';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
@@ -487,7 +490,7 @@ export default {
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
       repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{},
       endSentences: null,
-      flight: null, voidEnding:null,
+      flight: null, voidEnding:null, mirrorRift:null, mirrorScene:null,
       textImageSequence: [],
       socket: null,
       animationFrameId: null,
@@ -710,8 +713,10 @@ export default {
         && this.players[this.socket?.id]?.currentmap === this.map && !this.flight && !this.battle && !this.textImageSequence.length;
     },
     movementBlocked() { return this.worldContextLost || this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
+    mirrorWakeReady(){return this.mirrorRift?.stage==='won'&&!this.battle&&!this.battleResult&&!this.pendingBattleResult&&!this.mapLoading&&this.mirrorScene?.phase!=='closing';},
+    mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     movementSuspended() {
-      return !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
@@ -722,6 +727,11 @@ export default {
     }
   },
   watch: {
+    mirrorAwakeningReady(ready){if(ready){this.mirrorScene={...this.mirrorScene,phase:'awakening',startedAt:performance.now()};clearTimeout(this._mirrorSceneTimer);this._mirrorSceneTimer=setTimeout(()=>{this.mirrorScene=null;},this.mirrorScene.duration);}},
+    mirrorWakeReady(ready){
+      clearInterval(this._mirrorWakeTimer);
+      if(ready){this.socket?.emit('mirrorRiftWake');this._mirrorWakeTimer=setInterval(()=>{if(this.mirrorWakeReady)this.socket?.emit('mirrorRiftWake');},1000);}
+    },
     roomEntryReady(ready) {
       if (!ready) return;
       const sentences=this.pendingRoomEntry;this.pendingRoomEntry=null;
@@ -736,7 +746,7 @@ export default {
     dirtFootprintsActive(active) { if (!active) this._dirtFootprints?.suspend(); },
     snowFootprintsActive(active) { if (!active) this._snowFootprints?.suspend(); },
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
-    mapLoadError(error) { if (error) this.releaseAllMovementKeys(); },
+    mapLoadError(error) { if (error) {this.releaseAllMovementKeys();this.mirrorScene=null;} },
     evolutionLookupKey() { this.loadEvolutionOptions(); },
     selectedPokemonUuid() { this.evolutionNotice = ''; },
     movementSuspended(blocked) { if (blocked) { this.cancelFishing(); this.releaseAllMovementKeys(); } },
@@ -1364,7 +1374,7 @@ export default {
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
+    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { this._mirrorAudio?.stop(); this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       if(this.flight)return;
@@ -1873,6 +1883,7 @@ export default {
     updatePreferences(nextPreferences) {
       const previous=trainerPaletteKey(this.preferences);
       this.preferences = saveGamePreferences(nextPreferences);
+      this._mirrorAudio?.setVolume(this.preferences.masterVolume/100*.3);
       if(previous!==trainerPaletteKey(this.preferences) || this._trainerPaletteWanted)this.syncTrainerPalette();
       if (this.preferences.masterVolume > 0) {
         this.$refs.battleOverlay?.unlockAudio();
@@ -2146,6 +2157,11 @@ export default {
       this.socket.emit(event,{id:this.fishing.id});
     },
     espace() {
+      if(this.mirrorScene||this.mirrorRift?.stage==='won')return;
+      if(this.map==='route2_maison'&&this.mirrorRift?.unlocked){
+        if(!this._mirrorAudio)this._mirrorAudio=new BattleAudio();
+        this._mirrorAudio.setVolume(this.preferences.masterVolume/100*.3);this._mirrorAudio.unlock();
+      }
       if(this.fishing){this.fishingAction();return;}
       if (this.pc.visible || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       console.log('espace');
@@ -2425,7 +2441,9 @@ export default {
       c.save();
       try {
       c.imageSmoothingEnabled = false;
-      c.setTransform(scale, 0, 0, scale, -camera.x * scale, -camera.y * scale);
+      const mirrorMotion=this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion;
+      const shake=mirrorScenePose(this.mirrorScene?.map===this.map?this.mirrorScene:null,now,mirrorMotion);
+      c.setTransform(scale, 0, 0, scale, (-camera.x+shake.shakeX)*scale, (-camera.y+shake.shakeY)*scale);
       const actors=this.grassRustleActive||this.dirtFootprintsActive||this.snowFootprintsActive?this.grassActors(now):[];
 
       // Fill the canvas with the map image
@@ -2474,8 +2492,10 @@ export default {
       } else this._worldNight?.suspend();
       drawVoidTeleporter(c, this.map, this.voidEnding);
       drawVoidJournals(c, this.map, this.voidEnding);
+      if(this.map!=='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion);
       drawPokemonComputers(c,this.worldDevices,this.map);
       this.drawPnjs(c, now);
+      drawMirrorClone(c,this.map,this.mirrorRift,this.mirrorScene,now,this.mirrorRift?.appearance?.sprite?this.ensureSpriteSheet(this.mirrorRift.appearance.sprite):null,mirrorMotion);
 
       // Loop through all the players and draw them
       for (const playerId in this.players) {
@@ -2538,6 +2558,7 @@ export default {
           this._foregroundWind.draw(c, this.foregroundImage, now, this.effectiveWorldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
         } else { this._foregroundWind?.suspend(); c.drawImage(this.foregroundImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
+      if(this.map==='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion);
       if (this.worldWeatherActive && !document.hidden) {
         if (!this._worldWeather) this._worldWeather = new WorldWeatherRenderer();
         this._worldWeather.draw(c, now, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
@@ -2595,7 +2616,7 @@ export default {
       return;
     }
 
-    this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token);
+    this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token,{mirrorRift:true});
     bindSessionReplacement(this.socket, () => this.$router.replace({path:'/connexion',query:{reason:'session-replaced'}}));
     if (this.isDrift) {
       this.driftClockTimer = setInterval(() => { this.driftClock = Date.now(); }, 250);
@@ -2657,6 +2678,24 @@ export default {
 
     this.socket.on('adminArenaState', state => { this.arenaTestState = state?.allowed === true ? state : {allowed:false}; });
     this.socket.on('voidEndingState',state=>{this.voidEnding=state;this.drawPlayers();});
+    this.socket.on('mirrorRiftState',state=>{this.mirrorRift=state;this.drawPlayers();});
+    this.socket.on('mirrorRiftScene',scene=>{
+      clearTimeout(this._mirrorSceneTimer);
+      this.mirrorScene=scene?.active===false?null:{...scene,phase:scene.phase==='awakening'?'waiting':scene.phase,startedAt:performance.now()};
+      if(this.mirrorScene){
+        this.releaseAllMovementKeys();
+        if(this._mirrorAudio&&!document.hidden){
+          this._mirrorAudio.stop();
+          if(['opening','closing'].includes(scene.phase)){
+            this._mirrorAudio.tone(54,scene.duration/1000,{endFrequency:42,volume:.4});
+            [0,.7,1.9,3.1].forEach((delay,i)=>this._mirrorAudio.noise(.7,150+i*90,{delay,endFrequency:70,volume:.25}));
+          }else if(scene.phase==='emerging')this._mirrorAudio.tone(130,2,{endFrequency:320,volume:.14});
+        }
+        if(!['closing','awakening'].includes(scene.phase))this._mirrorSceneTimer=setTimeout(()=>{this.mirrorScene=null;},scene.duration+5000);
+        if(scene.phase==='closing')this._mirrorSceneTimer=setTimeout(()=>{this.mirrorScene=null;},scene.duration+15000);
+      }
+      this.drawPlayers();
+    });
     this.socket.on('flightState', state=>this.$set(this.progressionState,'flight',state));
     this.socket.on('progressionState', (payload = {}) => {
       this.progressionState = payload;
@@ -3008,6 +3047,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      clearTimeout(this._mirrorSceneTimer);clearInterval(this._mirrorWakeTimer);this.mirrorScene=null;this._mirrorAudio?.stop();
       this.flight=null;
       clearTimeout(this._lucieDepartureTimer);this.lucieDeparture=null;this._lucieDepartureResult=null;
       this._worldMovement?.clear();
@@ -3166,6 +3206,8 @@ export default {
   }
   ,
   beforeDestroy() {
+    clearTimeout(this._mirrorSceneTimer);clearInterval(this._mirrorWakeTimer);
+    this._mirrorAudio?.dispose();
     this._fullscreen?.destroy();
     clearTimeout(this._lucieDepartureTimer);
     this.cancelFishing();
