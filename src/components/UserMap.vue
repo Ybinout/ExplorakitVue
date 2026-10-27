@@ -2114,7 +2114,7 @@ export default {
       // Mettre Ã  jour `textImageSequence` avec les sentences reÃ§ues du serveur
       this.textImageSequence = sentences.map(original => {
         const sentence = illustratedNpcPortrait(original, dialogueName);
-        return { text: sentence.text, image: images[sentence.imageName], portraitFrame: sentence.portraitFrame, typewriterMs: sentence.typewriterMs };
+        return { text: sentence.text, image: images[sentence.imageName], portraitFrame: sentence.portraitFrame, typewriterMs: sentence.typewriterMs, narration: sentence.narration === true };
       });
       if (!this.battle) {
         if (!this.worldAudioConnected || !this.$refs.battleOverlay?.startTrainerPrelude(dialogueName, this.map)) this.$refs.battleOverlay?.stopTrainerPrelude();

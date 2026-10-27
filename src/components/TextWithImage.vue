@@ -1,8 +1,8 @@
 <template>
-  <div class="dialogue-shell" :class="{ 'is-cinematic': typewriterMs > 0 }">
+  <div class="dialogue-shell" :class="{ 'is-cinematic': typewriterMs > 0, 'is-narration': isNarration }">
     <div class="text-with-image">
       
-      <div class="text" role="button" tabindex="0" aria-label="Continuer le dialogue" @click="continueText" @keydown.enter.stop.prevent="continueText" @keydown.space.stop.prevent="continueText"><span v-if="typewriterMs" class="dialogue-reserved" aria-hidden="true">{{ currentText }}</span><span class="dialogue-visible">{{ displayedText }}</span></div>
+      <div class="text" role="button" tabindex="0" aria-label="Continuer le dialogue" @click="continueText" @keydown.enter.stop.prevent="continueText" @keydown.space.stop.prevent="continueText"><span v-if="typewriterMs" class="dialogue-reserved" aria-hidden="true">{{ currentText }}</span><component :is="isNarration ? 'em' : 'span'" class="dialogue-visible">{{ displayedText }}</component></div>
       <div v-if="currentImageSrc" class="texts">
         <atlas-portrait v-if="portraitFrame" :src="currentImageSrc" :frame="portraitFrame" />
         <img v-else class="imagetoto" :src="currentImageSrc" alt="Illustration" />
@@ -43,6 +43,7 @@ export default {
     };
   },
   computed: {
+    isNarration() { return this.sequence[this.currentIndex]?.narration === true; },
     typewriterMs() {
       const authored = this.sequence[this.currentIndex]?.typewriterMs;
       return authored != null ? Math.max(0, Number(authored) || 0) : this.charPerStep >= 10000 ? 0 : this.charPerStep < 120 ? 35 : 14;
@@ -142,6 +143,8 @@ export default {
 </script>
 
 <style scoped>
+.is-narration .dialogue-reserved { font-style:italic; }
+.is-narration .dialogue-visible { font-style:italic; }
 .is-cinematic .text { display:grid; }
 .is-cinematic .dialogue-reserved,.is-cinematic .dialogue-visible { grid-area:1 / 1; }
 .dialogue-reserved { visibility:hidden; pointer-events:none; }
