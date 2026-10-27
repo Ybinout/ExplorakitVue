@@ -8,10 +8,12 @@ export const BAG_POCKETS = Object.freeze([
   {key:'berries',name:'Baies',en:'Berries',hint:'À consommer ou à faire tenir.',enHint:'Use them or give them to a Pokémon.'},
   {key:'held',name:'Objets tenus',en:'Held items',hint:'À équiper depuis le menu Pokémon.',enHint:'Equip these from the Pokémon menu.'},
   {key:'evolution',name:'Évolution',en:'Evolution',hint:'Une nouvelle forme pour un compagnon compatible.',enHint:'A new form for a compatible companion.'},
+  {key:'treasures',name:'Trésors',en:'Treasures',hint:'Des trouvailles à revendre dans les boutiques.',enHint:'Finds to sell at any shop.'},
   {key:'key',name:'Objets clés',en:'Key items',hint:'Les souvenirs et indices de ton aventure.',enHint:'Clues and keepsakes from your adventure.'},
   {key:'other',name:'Autres',en:'Other',hint:'Le reste de ton équipement.',enHint:'The rest of your equipment.'}
 ]);
 export function bagPocket(item) {
+  if(item.category==='treasure')return 'treasures';
   if(item.category==='machine')return 'machines';
   if(item.category==='ball')return 'balls';
   if(item.category==='heal')return 'medicine';

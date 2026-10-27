@@ -215,6 +215,7 @@
           :language="preferences.language"
           @close="closeShop"
           @buy="buyShopItem"
+          @sell="sellShopItem"
         />
         <div class="world-viewport" ref="worldViewport">
           <void-transition v-if="flight?.kind==='void'" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" />
@@ -1020,6 +1021,7 @@ export default {
             insufficient_funds: 'You do not have enough money.',
             not_in_shop: 'You must be inside a shop.',
             invalid_quantity: 'Invalid quantity.',
+            not_enough_items: 'You no longer have enough of this item.',item_not_sellable:'The shop does not buy this item.',money_limit:'You cannot receive more money.',
             badge_required: 'Earn the indicated Gym Badge to purchase this item.',
             item_unavailable: 'This item is unavailable at this stage or in this shop.',inventory_busy:'Another action is in progress.',
             battle_active: 'The shop is unavailable during battle.'
@@ -1029,6 +1031,7 @@ export default {
             insufficient_funds: "Tu n'as pas assez d'argent.",
             not_in_shop: 'Tu dois être dans une boutique.',
             invalid_quantity: 'Quantité invalide.',
+            not_enough_items: 'Tu ne possèdes plus assez de cet objet.',item_not_sellable:'La boutique ne rachète pas cet objet.',money_limit:'Tu ne peux plus recevoir d’argent.',
             badge_required: "Obtiens le badge indiqué pour acheter cet article.",
             item_unavailable: "Cet objet n’est pas disponible à ce stade ou dans cette boutique.",inventory_busy:"Une autre action est en cours.",
             battle_active: 'La boutique est indisponible pendant un combat.'
@@ -1065,6 +1068,18 @@ export default {
         if (payload.progression) this.progressionState = payload.progression;
         const boughtItem = this.shop.catalog.find((item) => item.key === itemKey);
         this.showInteractionNotice(`${boughtItem?.name || itemKey} ×${quantity}`);
+      });
+    },
+    sellShopItem({itemKey,quantity}){
+      if(!this.socket?.connected||this.shop.loading)return;
+      const name=this.bagItems.find(i=>i.key===itemKey)?.name||itemKey;
+      this.shop.loading=true;this.shop.error='';
+      this.socket.emit('sellShopItem',{itemKey,quantity},(payload={})=>{
+        this.shop.loading=false;
+        if(!payload.success){this.shop.error=payload.message||this.getShopError(payload.reason);return;}
+        this.applyBagItems(payload.items);this.shop.money=Number(payload.money)||0;
+        if(payload.progression)this.progressionState=payload.progression;
+        this.showInteractionNotice(`${name} ×${payload.quantity} · +${payload.totalPrice} ₽`);
       });
     },
 
