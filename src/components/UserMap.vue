@@ -703,7 +703,7 @@ export default {
     roomEntryReady() {
       return this.pendingRoomEntry && this.pendingRoomEntry[2]?.entryMap === this.map
         && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map
-        && this.players[this.socket?.id]?.currentmap === this.map && !this.battle && !this.textImageSequence.length;
+        && this.players[this.socket?.id]?.currentmap === this.map && !this.flight && !this.battle && !this.textImageSequence.length;
     },
     movementBlocked() { return this.worldContextLost || this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
     movementSuspended() {
