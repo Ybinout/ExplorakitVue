@@ -656,6 +656,7 @@ export default {
       };
     },
     placeAmbienceActive() { return Boolean(placeAmbienceProfile(this.map)) && !(this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible || this.mapLoading || this.mapLoadError || this.renderedMap !== this.map); },
+    wandaArenaSpeaking() { return this.map==='ville4_arene' && this.textImageSequence.length>0 && ['arena_entry:champion_wanda','champion_wanda','champion_wanda_locked','champion_wanda_after'].includes(this.endSentences); },
     villageWaterActive() { return hasVillageWater(this.map) && !(this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible || this.mapLoading || this.mapLoadError || this.renderedMap !== this.map); },
     worldNightActive() { return outdoorMap(this.map) && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
     effectiveWorldWeather() { return mapWorldWeather(this.map, this.mapWeather); },
@@ -2421,7 +2422,7 @@ export default {
       if(this.map==='void_arena'){c.fillStyle='rgba(4,2,10,.18)';c.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);}
       if (this.placeAmbienceActive && !document.hidden) {
         if (!this._placeAmbience) this._placeAmbience = new PlaceAmbienceRenderer();
-        this._placeAmbience.drawGround(c, this.mapImage, this.map, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.arenaCollapse?.map===this.map?this.arenaCollapse:null);
+        this._placeAmbience.drawGround(c, this.mapImage, this.map, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.arenaCollapse?.map===this.map?this.arenaCollapse:null, this.wandaArenaSpeaking);
       }
 
       if (hasWindTrees(this.map,'background') && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
