@@ -1874,19 +1874,20 @@ export default {
         this.menuDataLoading = false;
       }
     },
-    async flyToTown(map,{kind='flight',event='flyToTown'}={}) {
+    async flyToTown(map,{kind='flight',event='flyToTown',departureReady=null}={}) {
       if(this.flight||this.isDrift||this.battle||this.battleResult||!this.socket?.connected)return;
       this.releaseAllMovementKeys();this.closeInfoPanel();this.isMenuOpen=false;if(kind==='void')this.isBagOpen=false;
       const reduced=!this.preferences.animationsEnabled||this.worldWeatherReducedMotion;
       const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-      const alive=()=>!this._isDestroyed&&!this._isBeingDestroyed;
+      const socket=this.socket,epoch=this._flightEpoch=(this._flightEpoch||0)+1;
+      const alive=()=>!this._isDestroyed&&!this._isBeingDestroyed&&this.flight?.epoch===epoch&&this.socket===socket&&socket.connected;
       const origin=()=>{const p=this.players[this.socket?.id],camera=getWorldCamera(this.worldFrame.width,this.worldFrame.height,p,this.showMobileControls);return{x:((p?.x||448)-camera.x)*camera.scale/this.worldFrame.width*100,y:((p?.y||320)-camera.y)*camera.scale/this.worldFrame.height*100};};
-      this.flight={kind,origin:origin(),phase:'departure',startedAt:performance.now(),label:kind==='void'?'':getMapLocationLabel(map,this.preferences.language)};
+      this.flight={epoch,kind,origin:origin(),phase:'departure',startedAt:performance.now(),label:kind==='void'?'':getMapLocationLabel(map,this.preferences.language)};
       try {
         if(!reduced)await wait(650);
         if(!alive())return;
         this.flight={...this.flight,phase:'loading',startedAt:performance.now()};
-        const response=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit(event,{map},(error,result)=>error?reject(new Error('Connexion interrompue. Vérifie ta position après reconnexion.')):resolve(result)));
+        const response=departureReady?(departureReady(),{success:true}):await new Promise((resolve,reject)=>socket.timeout(10000).emit(event,{map},(error,result)=>error?reject(new Error('Connexion interrompue. Vérifie ta position après reconnexion.')):resolve(result)));
         if(!response?.success)throw new Error(response?.message||'Vol indisponible.');
         const deadline=performance.now()+16000;
         while(alive()&&(this.mapLoading||this.renderedMap!==map||this.map!==map)){
@@ -1897,7 +1898,7 @@ export default {
         this.flight={...this.flight,origin:origin(),phase:'arrival',startedAt:performance.now()};
         if(!reduced)await wait(650);
       } catch(error) { if(alive())this.showInteractionNotice(error.message); }
-      finally { if(alive()){this.flight=null;this.drawPlayers();} }
+      finally { if(this.flight?.epoch===epoch){this.flight=null;if(!this._isDestroyed&&!this._isBeingDestroyed)this.drawPlayers();} }
     },
     async rearmArenas() {
       if (this.isDrift || !this.arenaTestState.allowed || this.arenaTestBusy) return;
@@ -2908,6 +2909,11 @@ export default {
       current.isMoving=Boolean(player.isMoving);
     });
 
+    this.socket.on('voidExit', (_payload, ready) => {
+      if(this.map!=='void_arena'){if(typeof ready==='function')ready();return;}
+      this.flyToTown('professor_lab',{kind:'void',departureReady:()=>{if(typeof ready==='function')ready();}});
+    });
+
     this.socket.on('newmap', ({ mapname, playersList }) => {
       clearTimeout(this._lucieDepartureTimer);this.lucieDeparture=null;this._lucieDepartureResult=null;
       this._npcTeleport=null;
@@ -2983,6 +2989,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.flight=null;
       clearTimeout(this._lucieDepartureTimer);this.lucieDeparture=null;this._lucieDepartureResult=null;
       this._worldMovement?.clear();
       this.arenaTestState = {allowed:false}; this.arenaTestNotice = '';this.arenaCollapse=null;this._npcTeleport=null;
