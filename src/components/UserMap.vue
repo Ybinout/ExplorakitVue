@@ -72,7 +72,7 @@
           </button>
         </div>
         </div>
-        <bag-panel v-if="isBagOpen" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
+        <bag-panel v-if="isBagOpen" :inert="trainingFeedback?'':null" :aria-hidden="trainingFeedback?'true':null" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
               <button v-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="!item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
               <machine-item-use v-else-if="item.category==='machine'" :key="item.key" :item="item" :team="teamPokemons" :busy="medicineBusy || teamLoading" :allowed="canUseBagItem(item)" @use="useBagMachine" />
@@ -95,6 +95,7 @@
               <small v-else-if="isDrift && item.revive" class="bag-use-hint">Les K.O. sont définitifs dans ce mode.</small>
           </template>
         </bag-panel>
+        <training-feedback v-if="trainingFeedback" :entry="trainingFeedback" :busy="medicineBusy" @close="trainingFeedback=null" @confirm="confirmIvReroll"/>
         <pokemon-computer v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
         <div v-if="isAppearancePanelOpen" class="appearance-panel" ref="appearancePanel">
           <div class="appearance-title"><span><small>RiftMon</small>{{ tr('appearance') }}</span><button class="panel-close" :aria-label="tr('close')" @click="isAppearancePanelOpen = false">×</button></div>
@@ -402,6 +403,7 @@ import { createMapSceneLoader } from '@/services/mapScene';
 import { moveTouchGesture } from '@/services/touchMovement';
 import JournalIcon from './menu/JournalIcon.vue';
 import BagPanel from './menu/BagPanel.vue';
+import TrainingFeedback from './menu/TrainingFeedback.vue';
 import MachineItemUse from './menu/MachineItemUse.vue';
 import moveLearningData from '@/data/moveLearning.json';
 import PokemonComputer from './menu/PokemonComputer.vue';
@@ -470,7 +472,7 @@ export default {
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    JournalIcon, BagPanel, MachineItemUse, PokemonComputer,
+    JournalIcon, BagPanel, TrainingFeedback, MachineItemUse, PokemonComputer,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -494,7 +496,7 @@ export default {
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
-      repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{},
+      repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{}, trainingFeedback:null,
       endSentences: null,
       flight: null, voidEnding:null, mirrorRift:null, mirrorScene:null, openingScene:null,
       textImageSequence: [],
@@ -731,7 +733,7 @@ export default {
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     movementSuspended() {
       return !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
-        || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
+        || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
@@ -942,21 +944,38 @@ export default {
       } catch(error) { this.bagError=error.message; }
       finally { this.medicineBusy=false; }
     },
-    async useBagMedicine(item) {
-      const pokemonUuid = this.medicineTargets[item.key];
+    confirmIvReroll() {
+      const entry=this.trainingFeedback;
+      if(entry?.kind!=='confirm'||this.medicineBusy)return;
+      const item=this.bagItems.find(i=>i.key===entry.itemKey);
+      this.trainingFeedback=null;
+      if(item)this.useBagMedicine(item,{stat:entry.stat,before:entry.before},entry.pokemonUuid);
+    },
+    async useBagMedicine(item, ivConfirmation=null, targetUuid=null) {
+      const pokemonUuid = targetUuid || this.medicineTargets[item.key];
       const pokemon = this.teamPokemons.find(p => p.uuid === pokemonUuid);
-      if (this.medicineBusy || !this.canUseBagItem(item) || !this.canReceiveMedicine(item, pokemon)) return;
+      if (this.trainingFeedback || this.medicineBusy || !this.canUseBagItem(item) || !this.canReceiveMedicine(item, pokemon)) return;
+      const stat=item.fieldUse?.ivReroll;
+      if(stat && pokemon.iv?.[stat]>=26 && !ivConfirmation){
+        this.trainingFeedback={kind:'confirm',pokemonUuid,itemKey:item.key,pokemonName:pokemon.name,stat,before:pokemon.iv[stat]};
+        return;
+      }
       this.medicineNotice = ''; this.bagError = '';
       if (!this.socket?.connected) { this.bagError = 'Reconnecte-toi pour utiliser un objet.'; return; }
       this.medicineBusy = true;
       try {
         const event = item.category === 'evolution' ? (this.isDrift ? 'drift:evolve' : 'useEvolutionStone') : (this.isDrift ? 'drift:heal' : 'useMedicine');
-        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(event, { itemKey: item.key, pokemonUuid,quantity:item.fieldUse?.effort?.amount>0?Math.min(Number(this.medicineQuantities[item.key])||1,item.quantity):1 }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
+        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(event, { itemKey: item.key, pokemonUuid,ivConfirmation,quantity:item.fieldUse?.effort?.amount>0?Math.min(Number(this.medicineQuantities[item.key])||1,item.quantity):1 }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
+        if(response?.ivConfirmationRequired){
+          this.trainingFeedback={kind:'confirm',itemKey:item.key,pokemonName:pokemon.name,...response.ivConfirmationRequired};
+          return;
+        }
         if (!response?.success) throw new Error(response?.message || 'Utilisation impossible.');
         if (response.items) this.applyBagItems(response.items);
         if (response.equipe) this.applyTeamPokemons(response.equipe.pokemons);
         this.$set(this.medicineQuantities,item.key,1);
         this.medicineNotice = response.trainingChange?this.trainingNotice(response.trainingChange,pokemon.name,response.consumed):response.evolution ? `${pokemon.name} a évolué en ${response.evolution.name} !` : `${item.name} utilisée sur ${pokemon.name}. Soin sauvegardé.`;
+        if(response.trainingChange)this.trainingFeedback={kind:'result',pokemonName:pokemon.name,itemName:item.name,change:response.trainingChange,quantity:response.consumed || 1};
       } catch (error) { this.bagError = error.message; }
       finally { this.medicineBusy = false; }
     },
@@ -2093,7 +2112,7 @@ export default {
       this.closeLegacyPanels();
     },
     handleOutsideMenuClick(event) {
-      if (this.evolutionVisible || this.selectedPokemonUuid) return;
+      if (this.trainingFeedback || this.evolutionVisible || this.selectedPokemonUuid) return;
       const header = this.$refs.gameHeader;
       const bagPanel = this.$refs.bagPanel?.$el;
       const appearancePanel = this.$refs.appearancePanel;
@@ -2294,7 +2313,7 @@ export default {
       if(this.flight){e.preventDefault();return;}
       if(this.fishing && e.key==='Escape'){e.preventDefault();this.cancelFishing();return;}
       if(this.fishing && (e.code==='Space' || e.code==='KeyA') && !e.ctrlKey && !e.metaKey && !e.altKey){e.preventDefault();if(!e.repeat)this.fishingAction();return;}
-      if (this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) { this.releaseAllMovementKeys(); return; }
+      if (this.trainingFeedback || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) { this.releaseAllMovementKeys(); return; }
       if (this.isDriftPanelOpen) { if (e.key === "Escape") this.isDriftPanelOpen = false; return; }
       if (this.selectedPokemonUuid) return;
       if (e.key === 'Escape' && this.shop.visible) {e.preventDefault();this.closeShop();return;}
