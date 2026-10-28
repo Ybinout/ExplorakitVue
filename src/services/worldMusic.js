@@ -25,8 +25,12 @@ export function worldMusicTrack(map) {
 
 function worldMusicGain(map, track) {
   // An event room can share a town's track while using a stronger mix.
-  if (map === 'professor_lab' || map === 'route2_maison' || map === 'void_arena') return 0.5;
-  if (map === 'route4_maison' || /(?:^|_)arene\d*$/.test(map)) return 0.34;
+  if (map === 'professor_lab' || map === 'route2_maison' || map === 'void_arena') return 0.7;
+  // These tracks have especially quiet introductions compared with the town.
+  if (track === 'ana-room') return 0.85;
+  if (track === 'mounir-room' || track === 'raph-room') return 0.65;
+  if (/(?:^|_)arene\d*$/.test(map)) return 0.55;
+  if (map === 'route4_maison') return 0.34;
   if (['village', 'route', 'snow'].includes(track)) return 0.14;
   return 0.22;
 }
