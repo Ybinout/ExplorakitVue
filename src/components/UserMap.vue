@@ -1,14 +1,17 @@
 <template>
   <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift, 'is-mobile': showMobileControls, 'is-fullscreen': fullscreenState.active }]">
+    <div v-if="mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase)" :key="mirrorScene.id" class="mirror-scene-veil" :class="mirrorScene.phase" :style="{'--mirror-duration':mirrorScene.duration+'ms'}" :data-mirror-phase="mirrorScene.phase" role="status" aria-live="polite" aria-busy="true">
+      <span v-if="mirrorScene.phase === 'closing'" class="mirror-ending-title">{{ preferences.language === 'en' ? 'The End' : 'Fin' }}</span>
+    </div>
     <!-- <navBar></navBar> -->
-    <div class="game-layout">
+    <div class="game-layout" :inert="mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase) ? '' : null">
       <div class="game-stage" ref="gameStage">
       <fishing-prompt v-if="fishing && !battle" :state="fishing" @start="fishingAction" @cancel="cancelFishing()" />
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
       <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
       <starter-choice v-if="isDrift && driftState?.phase==='selection'" :choices="driftState.starterChoices" :seconds="Math.max(0,Math.ceil((driftState.selectionEndsAt-driftClock-driftOffset)/1000))" :busy="starterBusy" :error="starterError" @choose="chooseStarter" @cancel="cancelStarter" />
       <move-learning-panel v-if="learningVisible" :key="learningPokemon.pendingMoves[0].id" :pokemon="learningPokemon" :busy="learningBusy" :error="learningError" @choose="chooseLearnedMove" @later="learningDeferred = true" />
-      <battle-result-panel v-if="battleResult" :result="battleResult" :game-mode="isColosseum ? 'colosseum' : isDrift ? 'rift' : 'adventure'" :exploration-active="isDrift && driftState?.phase === 'exploration'" @continue="dismissBattleResult" />
+      <battle-result-panel v-if="battleResult && !mirrorVictoryReady" :result="battleResult" :game-mode="isColosseum ? 'colosseum' : isDrift ? 'rift' : 'adventure'" :exploration-active="isDrift && driftState?.phase === 'exploration'" @continue="dismissBattleResult" />
       <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
       <drift-run-panel v-show="!learningVisible && !evolutionVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
@@ -220,7 +223,6 @@
         <div class="world-viewport" ref="worldViewport">
           <void-transition v-if="flight?.kind==='void'" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" />
           <flight-transition v-else-if="flight" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" />
-          <div v-if="mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase)" :key="mirrorScene.id" class="mirror-scene-veil" :class="mirrorScene.phase" :style="{'--mirror-duration':mirrorScene.duration+'ms'}" :data-mirror-phase="mirrorScene.phase" aria-busy="true"></div>
           <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
@@ -720,6 +722,7 @@ export default {
         && this.players[this.socket?.id]?.currentmap === this.map && !this.flight && !this.battle && !this.textImageSequence.length;
     },
     movementBlocked() { return this.worldContextLost || this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
+    mirrorVictoryReady(){return !this.isDrift&&this.mirrorRift?.stage==='won'&&this.battleResult?.outcome==='victory'&&!this.battle&&!this.pendingBattleResult;},
     mirrorWakeReady(){return this.mirrorRift?.stage==='won'&&!this.battle&&!this.battleResult&&!this.pendingBattleResult&&!this.mapLoading&&this.mirrorScene?.phase!=='closing';},
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     movementSuspended() {
@@ -734,6 +737,9 @@ export default {
     }
   },
   watch: {
+    // Only a server-confirmed mirror victory proceeds straight into the epilogue.
+    // The battle presentation has finished before its result becomes available.
+    mirrorVictoryReady(ready){if(ready)this.dismissBattleResult();},
     mirrorAwakeningReady(ready){if(ready){this.mirrorScene={...this.mirrorScene,phase:'awakening',startedAt:performance.now()};clearTimeout(this._mirrorSceneTimer);this._mirrorSceneTimer=setTimeout(()=>{this.mirrorScene=null;},this.mirrorScene.duration);}},
     mirrorWakeReady(ready){
       clearInterval(this._mirrorWakeTimer);
