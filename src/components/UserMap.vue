@@ -225,7 +225,7 @@
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
           <room-obstacle-action v-if="displayedRoomObstacleAction && !battle" :key="displayedRoomObstacleAction.id" :action="displayedRoomObstacleAction" :language="preferences.language" />
-          <div v-if="mirrorScene?.phase === 'opening' && mirrorScene.map === map" class="mirror-opening-caption" :class="{'is-reduced': !preferences.animationsEnabled || worldWeatherReducedMotion}" role="status" aria-live="polite"><em>{{ preferences.language === 'en' ? 'Something is happening…' : 'Il se passe quelque chose…' }}</em></div>
+          <div v-if="mirrorScene?.phase === 'opening' && mirrorScene.map === map" class="mirror-opening-caption" :class="{'is-reduced': !preferences.animationsEnabled || worldWeatherReducedMotion}" role="status" aria-live="polite"><em>{{ preferences.language === 'en' ? 'A mechanism has been activated…' : 'Un mécanisme vient d’être actionné…' }}</em></div>
           <div v-if="!displayedRoomObstacleAction && interactionNotice && interactionNoticeKind === 'gate' && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ interactionNotice }}</div>
           <div v-if="nearbyRoomObstacle && !displayedRoomObstacleAction && !interactionNotice && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ preferences.language === 'en' ? 'A / Space · Break the crystals' : 'A / Espace · Briser les cristaux' }}</div>
           <div v-if="mapLoading || mapLoadError || worldContextLost" class="world-loading" role="status" :class="{ 'has-error': mapLoadError }">
