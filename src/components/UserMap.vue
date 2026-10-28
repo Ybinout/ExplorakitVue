@@ -2494,7 +2494,7 @@ export default {
       } else this._worldNight?.suspend();
       drawVoidTeleporter(c, this.map, this.voidEnding);
       drawVoidJournals(c, this.map, this.voidEnding);
-      if(this.map!=='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion);
+      if(this.map!=='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
       drawPokemonComputers(c,this.worldDevices,this.map);
       this.drawPnjs(c, now);
       drawMirrorClone(c,this.map,this.mirrorRift,this.mirrorScene,now,this.mirrorRift?.appearance?.sprite?this.ensureSpriteSheet(this.mirrorRift.appearance.sprite):null,mirrorMotion);
@@ -2560,7 +2560,7 @@ export default {
           this._foregroundWind.draw(c, this.foregroundImage, now, this.effectiveWorldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
         } else { this._foregroundWind?.suspend(); c.drawImage(this.foregroundImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
-      if(this.map==='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion);
+      if(this.map==='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
       if (this.worldWeatherActive && !document.hidden) {
         if (!this._worldWeather) this._worldWeather = new WorldWeatherRenderer();
         this._worldWeather.draw(c, now, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);

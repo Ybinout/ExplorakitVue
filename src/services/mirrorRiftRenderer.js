@@ -3,9 +3,9 @@ const smooth=n=>{const t=clamp(n);return t*t*(3-2*t);};
 const TAU=Math.PI*2;
 // One small native-resolution texture, refreshed at 30 Hz in the existing world loop.
 const SIZE=384,HALF=SIZE/2;
-let surface=null,surfaceKey='';
+let surface=null,surfaceKey='',surfaceSource=null;
 const motes=Array.from({length:64},(_,i)=>({phase:(i*.61803398875)%1,angle:(i*i*.713+i*2.13)%TAU,radius:108+i%7*7,size:i%9===0?3:2}));
-export function releaseMirrorEffects(){if(surface){surface.width=surface.height=0;surface=null;}surfaceKey='';}
+export function releaseMirrorEffects(){if(surface){surface.width=surface.height=0;surface=null;}surfaceKey='';surfaceSource=null;}
 export function riftCenter(state){return{x:(state?.rift?.x??13)*32+16,y:(state?.rift?.y??10)*32+16};}
 const violetSheets=new WeakMap();
 export function violetTrainerSheet(source){
@@ -40,28 +40,38 @@ function jaggedHole(c){
   for(const[x,y]of[[-67,-29],[-49,-31],[-30,-43],[-13,-38],[8,-47],[30,-37],[48,-38],[57,-24],[72,-20],[77,-3],[69,12],[72,25],[51,29],[38,42],[19,39],[2,48],[-15,40],[-33,44],[-48,30],[-64,29],[-62,15],[-78,8]])c.lineTo(x,y);
   c.closePath();
 }
-function floorDamage(c,spread=1,motion=true){
+// The authored rows are 11 source pixels high (22 world pixels), not the old
+// thin invented strips. Sample the existing boards, including grain and joints.
+export function mirrorFloorBoards(center,spread=1){
+  const boards=[];
+  for(let row=0;row<4;row++)for(const side of [-1,1]){
+    const width=side===1&&row>=2?80:96,height=22;
+    const x=center.x+(side===-1?-96:0),y=center.y-46+row*22;
+    boards.push({x,y,width,height,dx:side*Math.round(smooth((spread-row*.025)/.9)*8)});
+  }
+  return boards;
+}
+function floorDamage(c,center,spread=1,motion=true,source=null){
   const open=Math.max(.02,spread);
   c.save();
   c.strokeStyle='#151421';c.lineWidth=2;
   for(let i=0;i<9;i++){
     const a=i*2.399,dx=Math.cos(a),dy=Math.sin(a)*.62,reach=(74+i%3*11)*(.16+.84*open);
     c.beginPath();c.moveTo(dx*12,dy*12);c.lineTo(dx*reach*.64+Math.sin(i)*5,dy*reach*.64);c.lineTo(dx*reach,dy*reach+Math.sin(i*7)*5);c.stroke();
-    if(open>.4){c.beginPath();c.moveTo(dx*reach*.65,dy*reach*.65);c.lineTo(dx*reach*.9+9,dy*reach*.8-6);c.stroke();}
   }
+  for(const [i,b]of mirrorFloorBoards(center,open).entries()){
+    const x=b.x-center.x+b.dx,y=b.y-center.y+(motion&&open<.98?Math.sin(open*22+i)*open:0);
+    c.fillStyle='#141a29';c.fillRect(x,y+2,b.width,b.height);
+    if(source?.complete&&source.naturalWidth){
+      const ratio=source.naturalWidth/896;
+      c.drawImage(source,b.x*ratio,b.y*ratio,b.width*ratio,b.height*ratio,Math.round(x),Math.round(y),b.width,b.height);
+    }else{
+      c.fillStyle='#2e3c58';c.fillRect(x,y,b.width,b.height);c.fillStyle='#232f47';c.fillRect(x,y,b.width,2);
+    }
+  }
+  // Cut the growing hole after the boards: their original dimensions remain
+  // coherent, with only their torn outer ends visible beyond the opening.
   c.save();c.scale(open,Math.max(.035,open));jaggedHole(c);c.fillStyle='#080a14';c.fill();c.strokeStyle='#1c1d2c';c.lineWidth=5;c.stroke();c.strokeStyle='#676577';c.lineWidth=1.5;c.stroke();c.restore();
-  for(let i=0;i<14;i++){
-    const side=i%2?-1:1,row=Math.floor(i/2)-3,spreadRow=smooth((open-Math.abs(row)*.055)/.8);
-    const y=row*13,edge=Math.sqrt(1-Math.pow(y/56,2))*66;
-    const x=side*(edge*(.2+.8*spreadRow)+12+(i%3)*3);
-    c.save();c.translate(x,y);c.rotate(side*(.03+(i%3)*.045)*spreadRow);c.scale(side,1);
-    if(motion&&open<.98)c.translate(0,Math.sin(open*22+i)*spreadRow*1.8);
-    c.fillStyle='#171a29';c.fillRect(-13,-2,36,10);
-    c.beginPath();c.moveTo(-18,-5);c.lineTo(23,-5);c.lineTo(23,5);c.lineTo(-17,5);c.lineTo(-9,1);c.lineTo(-17,-1);c.closePath();
-    c.fillStyle=i%3?'#3e4559':'#4b5063';c.fill();
-    c.strokeStyle='#646c7d';c.lineWidth=1;c.beginPath();c.moveTo(-14,-4);c.lineTo(22,-4);c.stroke();
-    c.strokeStyle='#293043';c.beginPath();c.moveTo(-6,1);c.lineTo(18,1);c.stroke();c.restore();
-  }
   c.restore();
 }
 function orbitPoint(m,p,clock){
@@ -108,15 +118,16 @@ function drawVortex(c,clock,strength,motion){
   }
   c.restore();
 }
-function renderTexture(state,scene,now,motion){
+function renderTexture(state,scene,now,motion,source){
+  if(surfaceSource!==source){surfaceKey='';surfaceSource=source;}
   const frame=Math.floor(now/(1000/30)),tick=motion&&(state.stage!=='complete'||scene)?frame:0;
   const pose=mirrorScenePose(scene,frame*(1000/30),motion),phase=scene?.phase||'',key=[tick,phase,Math.round(pose.t*240),state.stage,motion].join(':');
   if(!surface){surface=document.createElement('canvas');surface.width=surface.height=SIZE;}
   if(surfaceKey===key)return surface;
-  surfaceKey=key;const c=surface.getContext('2d');c.clearRect(0,0,SIZE,SIZE);c.save();c.translate(HALF,HALF);
+  surfaceKey=key;const c=surface.getContext('2d');c.imageSmoothingEnabled=false;c.clearRect(0,0,SIZE,SIZE);c.save();c.translate(HALF,HALF);
   const opening=phase==='opening',spread=opening?pose.spread:1;
   c.globalAlpha=opening?smooth(pose.t/.11):1;
-  floorDamage(c,motion?spread:1,motion);c.globalAlpha=1;
+  floorDamage(c,riftCenter(state),motion?spread:1,motion,source);c.globalAlpha=1;
   if(state.stage!=='complete'){
     c.save();const growth=motion?pose.spread:phase==='closing'?1-smooth(pose.t):1;
     c.scale(Math.max(.002,growth),Math.max(.002,growth));
@@ -130,7 +141,7 @@ function renderTexture(state,scene,now,motion){
   }
   c.restore();return surface;
 }
-export function drawMirrorGround(c,map,state,scene,now,motion=true){
+export function drawMirrorGround(c,map,state,scene,now,motion=true,source=null){
   if(!state?.ruined){releaseMirrorEffects();return;}
   if(map==='route2'){
     releaseMirrorEffects();
@@ -147,7 +158,10 @@ export function drawMirrorGround(c,map,state,scene,now,motion=true){
   }
   if(map!=='route2_maison'){releaseMirrorEffects();return;}
   const activeScene=scene?.map===map?scene:null,center=riftCenter(state);
-  c.drawImage(renderTexture(state,activeScene,now,motion),Math.round(center.x-HALF),Math.round(center.y-HALF));
+  // Protect the actual tables and their shadows, never paint floor onto props.
+  c.save();c.beginPath();c.rect(center.x-HALF,center.y-HALF,SIZE,SIZE);
+  c.rect(256,350,66,70);c.rect(516,350,60,70);c.clip('evenodd');
+  c.drawImage(renderTexture(state,activeScene,now,motion,source),Math.round(center.x-HALF),Math.round(center.y-HALF));c.restore();
 }
 export function drawMirrorClone(c,map,state,scene,now,source,motion=true){
   if(map!=='route2_maison'||state?.stage!=='clone')return;

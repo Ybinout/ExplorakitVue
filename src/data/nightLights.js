@@ -1,7 +1,7 @@
 // Authored against the final map + foreground, at 448 × 320. Only existing
 // lantern heads / panes emit light; no colour-based selection across the map.
 export const townLights = {
-  route2: { windows: [[258,114,9,7],[269,114,8,7]] },
+  // Lucie's abandoned house stays dark, including before the secret ending.
   route3: { windows: [[90,162,9,7],[101,162,8,7],[218,162,9,7],[229,162,8,7],
     [388,211,12,7],[405,211,12,7]] },
   route4: { windows: [[104,16,16,9],[184,16,16,9],[264,16,16,9],[197,276,11,7],[212,276,11,7]] },
