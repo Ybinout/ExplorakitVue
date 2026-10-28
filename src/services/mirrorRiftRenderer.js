@@ -51,6 +51,15 @@ export function mirrorFloorBoards(center,spread=1){
   }
   return boards;
 }
+// Clip each authored plank at its own splintered end. Keeping the fragments
+// above the void makes the permanent damage readable after the vortex closes.
+const brokenEnds=[[[3,4],[-2,9],[6,13],[-3,18],[1,22]],[[-2,3],[5,7],[0,12],[-5,16],[2,22]],[[6,5],[-3,8],[2,14],[-1,19],[3,22]],[[1,3],[-5,10],[4,13],[-2,17],[-2,22]]];
+function brokenBoard(c,width,height,side,cut,index){
+  const edge=side<0?width-cut:cut,outside=side<0?0:width;
+  c.beginPath();c.moveTo(outside,0);c.lineTo(edge,0);
+  for(const[dx,y]of brokenEnds[index%4])c.lineTo(edge+dx*side*clamp(cut/16),y);
+  c.lineTo(outside,height);c.closePath();
+}
 function floorDamage(c,center,spread=1,motion=true,source=null){
   const open=Math.max(.02,spread);
   c.save();
@@ -59,19 +68,36 @@ function floorDamage(c,center,spread=1,motion=true,source=null){
     const a=i*2.399,dx=Math.cos(a),dy=Math.sin(a)*.62,reach=(74+i%3*11)*(.16+.84*open);
     c.beginPath();c.moveTo(dx*12,dy*12);c.lineTo(dx*reach*.64+Math.sin(i)*5,dy*reach*.64);c.lineTo(dx*reach,dy*reach+Math.sin(i*7)*5);c.stroke();
   }
+  c.save();c.scale(open,Math.max(.035,open));jaggedHole(c);c.fillStyle='#080a14';c.fill();c.strokeStyle='#1c1d2c';c.lineWidth=5;c.stroke();c.strokeStyle='#676577';c.lineWidth=1.5;c.stroke();c.restore();
   for(const [i,b]of mirrorFloorBoards(center,open).entries()){
-    const x=b.x-center.x+b.dx,y=b.y-center.y+(motion&&open<.98?Math.sin(open*22+i)*open:0);
-    c.fillStyle='#141a29';c.fillRect(x,y+2,b.width,b.height);
+    const side=i%2===0?-1:1,row=Math.floor(i/2);
+    const cut=(side<0?[28,44,36,30]:[25,38,45,28])[row]*open;
+    const x=b.x-center.x+b.dx,y=b.y-center.y+Math.round((row-1.5)*2*open)+(motion&&open<.98?Math.sin(open*22+i)*open:0);
+    c.save();c.translate(Math.round(x),Math.round(y));
+    c.save();c.translate(0,4*open);brokenBoard(c,b.width,b.height,side,cut,i);c.fillStyle='#0e1420';c.fill();c.restore();
+    c.save();brokenBoard(c,b.width,b.height,side,cut,i);c.clip();
     if(source?.complete&&source.naturalWidth){
       const ratio=source.naturalWidth/896;
-      c.drawImage(source,b.x*ratio,b.y*ratio,b.width*ratio,b.height*ratio,Math.round(x),Math.round(y),b.width,b.height);
+      c.drawImage(source,b.x*ratio,b.y*ratio,b.width*ratio,b.height*ratio,0,0,b.width,b.height);
     }else{
-      c.fillStyle='#2e3c58';c.fillRect(x,y,b.width,b.height);c.fillStyle='#232f47';c.fillRect(x,y,b.width,2);
+      c.fillStyle='#2e3c58';c.fillRect(0,0,b.width,b.height);c.fillStyle='#232f47';c.fillRect(0,0,b.width,2);
     }
+    c.restore();
+    c.globalAlpha*=open;
+    brokenBoard(c,b.width,b.height,side,cut,i);c.strokeStyle='#121a29';c.lineWidth=2;c.stroke();
+    const edge=side<0?b.width-cut:cut;
+    c.beginPath();c.moveTo(edge,0);for(const[dx,y]of brokenEnds[i%4])c.lineTo(edge+dx*side*clamp(cut/16),y);
+    c.strokeStyle='#657287';c.lineWidth=1.5;c.stroke();
+    c.beginPath();c.moveTo(side<0?2:b.width-2,1);c.lineTo(edge,1);c.strokeStyle='#65748d';c.lineWidth=1;c.stroke();
+    c.restore();
   }
-  // Cut the growing hole after the boards: their original dimensions remain
-  // coherent, with only their torn outer ends visible beyond the opening.
-  c.save();c.scale(open,Math.max(.035,open));jaggedHole(c);c.fillStyle='#080a14';c.fill();c.strokeStyle='#1c1d2c';c.lineWidth=5;c.stroke();c.strokeStyle='#676577';c.lineWidth=1.5;c.stroke();c.restore();
+  // Small static splinters settle beside the tear and remain on return visits.
+  c.globalAlpha*=open;
+  for(const[x,y,w,h]of[[-102,-30,11,3],[-91,17,8,4],[-72,49,13,3],[84,-43,10,3],[97,7,9,4],[66,48,12,3]]){
+    c.fillStyle='#111825';c.fillRect(x,y+2,w,h);
+    c.beginPath();c.moveTo(x,y);c.lineTo(x+w,y+1);c.lineTo(x+3,y+h);c.closePath();c.fillStyle='#68758a';c.fill();
+    c.fillStyle='#93a0ae';c.fillRect(x+2,y,Math.max(2,w-5),1);
+  }
   c.restore();
 }
 function orbitPoint(m,p,clock){
