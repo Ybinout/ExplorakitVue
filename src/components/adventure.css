@@ -213,3 +213,7 @@
   .game-root:not(.is-drift) .game-stage .location-banner:has(.location-shop-btn) .location-copy { flex:1; }
   .game-root:not(.is-drift) .game-stage .location-banner:has(.location-shop-btn) .location-name { white-space:nowrap; }
 }
+
+.game-root .nearby-social{position:absolute;right:12px;bottom:14px;z-index:22;display:flex;align-items:center;flex-wrap:wrap;gap:6px;max-width:220px;min-height:44px;padding:9px 12px;border:1px solid var(--journal-border);border-radius:10px;background:var(--journal-paper);color:var(--journal-ink);box-shadow:0 3px 9px #142f3620;font:12px var(--journal-font);cursor:pointer}.game-root .nearby-social small{font-size:9px;color:var(--journal-muted)}.game-root .nearby-social span{overflow-wrap:anywhere}.game-root .bag-held-actions{display:grid;gap:8px;margin-top:12px;border-top:1px solid var(--journal-border);padding-top:12px}.game-root .bag-held-actions select{width:100%;min-height:44px;font:12px var(--journal-font);padding:8px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);color:var(--journal-ink)}
+
+.game-root .social-menu-alert{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:12px;background:var(--journal-accent);color:var(--journal-on-accent);font:700 10px var(--journal-font)}

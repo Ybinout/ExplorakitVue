@@ -35,6 +35,7 @@
           <button ref="menuToggle" class="menu-toggle-btn" :class="{ 'has-contract-reward': readyContractCount > 0 }" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
             <journal-icon name="menu" />
             {{ tr('menu') }}
+            <span v-if="socialAlertCount" class="social-menu-alert" data-social-notification :aria-label="`${socialAlertCount} notification${socialAlertCount>1?'s':''} du carnet d’amis`">{{ socialAlertCount>99?'99+':socialAlertCount }}</span>
             <span v-if="readyContractCount" class="contract-reward-dot" data-contract-alert role="status" :aria-label="`${readyContractCount} récompense${readyContractCount > 1 ? 's' : ''} de contrat disponible${readyContractCount > 1 ? 's' : ''}`">{{ readyContractCount }}</span>
           </button>
           <button ref="teamToggle" class="team-toggle-btn" data-menu-action="pokemon" :aria-expanded="isTeamPanelOpen" aria-controls="pokemon-team-panel" @click="handleMenuAction('pokemon')">
@@ -58,6 +59,7 @@
               <journal-icon :name="item.key==='contracts'?'progress':item.key" /><span>{{ menuItemLabel(item) }}</span>
               <small v-if="item.key==='contracts' && readyContractCount" class="contract-reward-label">{{ readyContractCount }} à récupérer</small>
             </button>
+            <button class="menu-dropdown-item" data-menu-action="friends" @click="openFriends()"><journal-icon name="friends"/><span>Amis</span><small v-if="socialAlertCount" class="contract-reward-label" data-social-alert>{{ socialAlertCount }}</small></button>
             <button class="menu-dropdown-item" data-menu-action="minimap" @click="handleMenuAction('minimap')"><journal-icon name="minimap" /><span>Minimap</span></button>
             <button class="menu-dropdown-item" data-menu-action="quit" :disabled="quitting" @click="quitGame"><journal-icon name="quit" /><span>{{ quitting ? tr('saving') : tr('saveAndQuit') }}</span><small>Accueil</small></button>
             <small v-if="isDrift" class="menu-quit-hint">Le temps continue hors du jeu. Une déconnexion prolongée compte comme un abandon.</small>
@@ -72,7 +74,7 @@
           </button>
         </div>
         </div>
-        <bag-panel v-if="isBagOpen" :inert="trainingFeedback?'':null" :aria-hidden="trainingFeedback?'true':null" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
+        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid?'':null" :aria-hidden="trainingFeedback || heldPickerUuid?'true':null" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
               <button v-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="!item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
               <machine-item-use v-else-if="item.category==='machine'" :key="item.key" :item="item" :team="teamPokemons" :busy="medicineBusy || teamLoading" :allowed="canUseBagItem(item)" @use="useBagMachine" />
@@ -93,8 +95,14 @@
                 <small v-else-if="!canUseBagConsumables" class="bag-use-hint">Disponible pendant l’exploration, hors combat.</small>
               </template>
               <small v-else-if="isDrift && item.revive" class="bag-use-hint">Les K.O. sont définitifs dans ce mode.</small>
+              <div v-if="item.category==='held'" class="bag-held-actions">
+                <label class="bag-use-hint">Faire tenir à<select data-bag-held-target :value="heldTargets[item.key] || ''" :disabled="teamSaving || teamLoading || !!battle" @change="$set(heldTargets,item.key,$event.target.value)"><option value="">Choisir un Pokémon…</option><option v-for="p in teamPokemons.filter(p=>!p.isEgg)" :key="p.uuid" :value="p.uuid" :disabled="p.heldItem===item.key">{{ p.name }}{{ p.heldItem?' · '+heldItemName(p.heldItem):'' }}</option></select></label>
+                <button class="bag-use-button" data-bag-give-held :disabled="teamSaving || teamLoading || !!battle || !teamPokemons.some(p=>p.uuid===heldTargets[item.key] && !p.isEgg && p.heldItem!==item.key)" @click="giveBagHeldItem(item)">{{ teamSaving?'Attribution…':'Faire tenir' }}</button>
+              </div>
           </template>
         </bag-panel>
+        <game-friends-panel v-if="friendsOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
+        <held-item-picker v-if="heldPickerPokemon" :pokemon="heldPickerPokemon" :items="heldBagItems" :busy="teamSaving" :error="teamError" @close="heldPickerUuid=null" @equip="equipPickedHeldItem"/>
         <training-feedback v-if="trainingFeedback" :entry="trainingFeedback" :busy="medicineBusy" @close="trainingFeedback=null" @confirm="confirmIvReroll"/>
         <pokemon-computer v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
         <div v-if="isAppearancePanelOpen" class="appearance-panel" ref="appearancePanel">
@@ -153,18 +161,7 @@
                   {{ tr('hp') }} {{ pokemon.currentHp }} / {{ pokemon.maxHp }}
                 </div>
                 <div class="team-row-meta">{{ tr('ability') }} : {{ localizedAbility(pokemon.passiveAbility) || tr('noAbility') }}</div>
-                <select
-                  class="team-held-item-select"
-                  :aria-label="`${preferences.language === 'en' ? 'Held item' : 'Objet tenu'} · ${pokemon.name}`"
-                  :value="pokemon.heldItem || ''"
-                  :disabled="teamSaving"
-                  @change="equipHeldItem(pokemon, $event.target.value)"
-                >
-                  <option value="">{{ tr('noHeldItem') }}</option>
-                  <option v-for="item in heldItemChoices(pokemon)" :key="item.key" :value="item.key">
-                    {{ item.name }}{{ item.quantity ? ` (x${item.quantity})` : '' }}
-                  </option>
-                </select>
+                <button class="team-held-item-select" data-open-held-picker :disabled="teamSaving || battle" @click="openHeldPicker(pokemon)">{{ pokemon.heldItem ? (heldItemName(pokemon.heldItem)+' · Changer') : '＋ Donner un objet' }}</button>
                 <p v-if="pokemon.heldItem" class="team-item-description">{{ heldDescription(pokemon.heldItem) }}</p>
                 <p v-if="pokemon.riftFainted" class="team-item-description">Sauvé par un talisman · K.O. jusqu’à un soin hors combat.</p>
               </div>
@@ -194,6 +191,7 @@
           :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @toggle-fullscreen="toggleGameFullscreen"
           :flight-allowed="!isDrift" @fly="flyToTown"
           :active="activeInfoPanel"
+          :group-members="(socialState.group?.members || []).filter(p=>p.id!==Number(currentUserId))"
           :current-map="map" :current-region="players[socket?.id]?.regionLocation"
           :recovery-busy="positionRecoveryBusy" :recovery-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && driftState?.phase === 'exploration' && !driftState?.storagePaused && !driftState?.recoveryWaiting))" :recovery-notice="positionRecoveryNotice"
           @recover-position="recoverPosition"
@@ -225,6 +223,7 @@
         <div class="world-viewport" ref="worldViewport">
           <void-transition v-if="flight?.kind==='void'" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" />
           <flight-transition v-else-if="flight" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" />
+          <button v-if="nearbySocialTrainer" class="nearby-social" data-nearby-social @pointerdown.stop @click.stop="openNearbySocial"><journal-icon name="friends"/><span>{{ nearbySocialTrainer.username || 'Dresseur' }}</span><small>Amis / Message</small></button>
           <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
@@ -241,7 +240,7 @@
           @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
           @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture">
         <div
-          v-if="showMobileControls && !pc.visible && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
+          v-if="showMobileControls && !friendsOpen && !heldPickerUuid && !pc.visible && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
           <div class="mobile-dpad" :inert="textImageSequence.length ? '' : null" :aria-hidden="textImageSequence.length ? 'true' : null" aria-label="Pad directionnel"
@@ -299,6 +298,7 @@
             <div class="interaction-title">{{ tr('interaction') }}</div>
             <div class="interaction-text">{{ tr('withPlayer', { name: interactionChoice.targetName }) }}</div>
             <div class="interaction-actions">
+              <button v-if="players[interactionChoice.targetId]?.userId" class="interaction-btn" data-nearby-friend :disabled="socialActionBusy || ['friends','outgoing'].includes(interactionFriend?.relationship)" @click="addInteractionFriend">{{ interactionFriend?.relationship==='friends'?'✓ Amis':interactionFriend?.relationship==='outgoing'?'Demande envoyée':interactionFriend?.relationship==='incoming'?'Accepter en ami':'Ajouter en ami' }}</button>
               <button class="interaction-btn" @click="sendPlayerInteractionChoice('chat')">{{ tr('chat') }}</button>
               <button
                 class="interaction-btn"
@@ -404,6 +404,9 @@ import { moveTouchGesture } from '@/services/touchMovement';
 import JournalIcon from './menu/JournalIcon.vue';
 import BagPanel from './menu/BagPanel.vue';
 import TrainingFeedback from './menu/TrainingFeedback.vue';
+import HeldItemPicker from './menu/HeldItemPicker.vue';
+import GameFriendsPanel from './social/GameFriendsPanel.vue';
+import socialGame from '@/services/socialGame';
 import MachineItemUse from './menu/MachineItemUse.vue';
 import moveLearningData from '@/data/moveLearning.json';
 import PokemonComputer from './menu/PokemonComputer.vue';
@@ -467,12 +470,13 @@ import { WorldMusic } from '@/services/worldMusic';
 /* eslint-disable */
 
 export default {
+  mixins:[socialGame],
   components: {
     AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    JournalIcon, BagPanel, TrainingFeedback, MachineItemUse, PokemonComputer,
+    JournalIcon, BagPanel, TrainingFeedback, HeldItemPicker, GameFriendsPanel, MachineItemUse, PokemonComputer,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -496,7 +500,7 @@ export default {
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
-      repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{}, trainingFeedback:null,
+      repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{}, trainingFeedback:null, heldTargets:{}, heldPickerUuid:null,
       endSentences: null,
       flight: null, voidEnding:null, mirrorRift:null, mirrorScene:null, openingScene:null,
       textImageSequence: [],
@@ -704,6 +708,7 @@ export default {
     isShopMap() {
       return ['tour_rdc','tour_etage1','tour_etage2','tour_etage3','ville_safe1_shop', 'ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1', 'gen_shop_route10', 'ville3_shop', 'ville4_shop', 'ville5_shop'].includes(this.map);
     },
+    heldPickerPokemon(){return this.teamPokemons.find(p=>p.uuid===this.heldPickerUuid)||null;},
     heldBagItems() {
       if (!Array.isArray(this.bagItems)) return [];
       return this.bagItems.filter((item) => item.category === 'held' && Number(item.quantity) > 0);
@@ -733,7 +738,7 @@ export default {
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     movementSuspended() {
       return !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
-        || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
+        || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
@@ -1726,6 +1731,15 @@ export default {
       if (hpPercent > 20) return 'hp-mid';
       return 'hp-low';
     },
+    heldItemName(key){return heldItemDefinitions[key]?.name || this.bagItems.find(i=>i.key===key)?.name || key;},
+    async openHeldPicker(pokemon){this.heldPickerUuid=pokemon.uuid;this.teamError='';await this.loadBagItems();},
+    async equipPickedHeldItem(key){const result=await this.equipHeldItem(this.heldPickerPokemon,key);if(result)this.heldPickerUuid=null;},
+    async giveBagHeldItem(item){
+      const pokemon=this.teamPokemons.find(p=>p.uuid===this.heldTargets[item.key]);
+      if(!pokemon||pokemon.isEgg||pokemon.heldItem===item.key||!this.heldBagItems.some(i=>i.key===item.key))return;
+      const result=await this.equipHeldItem(pokemon,item.key);
+      if(result){this.medicineNotice=`${item.name} confié à ${pokemon.name}.`;}else this.bagError=this.teamError;
+    },
     heldDescription(key) { return heldItemDefinitions[key]?.description || ''; },
     heldItemChoices(pokemon) {
       const choices = [...this.heldBagItems];
@@ -1764,6 +1778,7 @@ export default {
         }
         pokemon.heldItem = result.heldItem || null;
         this.applyBagItems(result.items);
+        return result;
       } catch (error) {
         this.teamError = error?.response?.data?.message || error?.message || "Impossible d'equiper cet objet.";
         await this.loadTeamPokemons();
@@ -1901,6 +1916,7 @@ export default {
       return this.tr('save');
     },
     closeLegacyPanels() {
+      this.friendsOpen=false;this.heldPickerUuid=null;
       this.pc.visible=false;
       this.isBagOpen = false;
       this.isAppearancePanelOpen = false;
@@ -2112,7 +2128,7 @@ export default {
       this.closeLegacyPanels();
     },
     handleOutsideMenuClick(event) {
-      if (this.trainingFeedback || this.evolutionVisible || this.selectedPokemonUuid) return;
+      if (this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.selectedPokemonUuid) return;
       const header = this.$refs.gameHeader;
       const bagPanel = this.$refs.bagPanel?.$el;
       const appearancePanel = this.$refs.appearancePanel;
@@ -2313,7 +2329,7 @@ export default {
       if(this.flight){e.preventDefault();return;}
       if(this.fishing && e.key==='Escape'){e.preventDefault();this.cancelFishing();return;}
       if(this.fishing && (e.code==='Space' || e.code==='KeyA') && !e.ctrlKey && !e.metaKey && !e.altKey){e.preventDefault();if(!e.repeat)this.fishingAction();return;}
-      if (this.trainingFeedback || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) { this.releaseAllMovementKeys(); return; }
+      if (this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) { this.releaseAllMovementKeys(); return; }
       if (this.isDriftPanelOpen) { if (e.key === "Escape") this.isDriftPanelOpen = false; return; }
       if (this.selectedPokemonUuid) return;
       if (e.key === 'Escape' && this.shop.visible) {e.preventDefault();this.closeShop();return;}
@@ -2668,6 +2684,7 @@ export default {
     }
 
     this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token,{mirrorRift:true,adventureOpening:true});
+    this.bindSocialSocket();
     this.socket.on('adventureOpening',scene=>{if(this.isDrift)return;this.releaseAllMovementKeys();this.openingScene=scene;});
     bindSessionReplacement(this.socket, () => this.$router.replace({path:'/connexion',query:{reason:'session-replaced'}}));
     if (this.isDrift) {
@@ -3143,6 +3160,7 @@ export default {
     this.socket.on('pcUpdated',state=>{if(this.pc.visible)this.pc.state=state;});
 
     this.socket.on('battletrigger', (data) => {
+      this.friendsOpen=false;this.heldPickerUuid=null;this.trainingFeedback=null;
       this.cancelFishing();
       this.pc.visible=false;
       this.pendingBattleResult = null;

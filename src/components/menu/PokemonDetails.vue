@@ -5,6 +5,7 @@
         <div><span class="companion-kicker">{{ contextLabel }} · {{ position }} / {{ total }}</span><h2>{{ pokemon.name }}</h2></div>
         <button ref="close" class="companion-close" aria-label="Fermer la fiche" @click="$emit('close')">×</button>
       </header>
+      <nav class="companion-pagination" aria-label="Parcourir les Pokémon"><button data-companion-previous :disabled="position <= 1" @click="$emit('navigate', -1)">‹ Précédent</button><span>{{ position }} / {{ total }}</span><button data-companion-next :disabled="position >= total" @click="$emit('navigate', 1)">Suivant ›</button></nav>
       <div class="companion-body">
         <div class="companion-identity">
           <div class="companion-art"><span class="companion-number">N° {{ String(pokemon.spriteId).padStart(3, '0') }}</span><pokemon-portrait :src="`${$assetBase}img/pokemon/front/${pokemon.spriteId}.png`" :alt="pokemon.truename || pokemon.name" /><span class="companion-level">Niv. {{ pokemon.level }}</span></div>
@@ -63,7 +64,7 @@
         </article>
         <p v-if="pokemon.currentHp <= 0 && evolutionOptions.length" class="evolution-help">Soigne ce Pokémon avant de le faire évoluer.</p>
       </section>
-      <footer class="companion-footer"><button :disabled="position <= 1" @click="$emit('navigate', -1)">‹ Précédent</button><span>{{ footerLabel }}</span><button :disabled="position >= total" @click="$emit('navigate', 1)">Suivant ›</button></footer>
+      <footer class="companion-footer"><span>{{ footerLabel }}</span></footer>
     </section>
   </div>
 </template>
@@ -150,6 +151,8 @@ export default {
 };
 </script>
 <style scoped>
+.companion-pagination{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 24px;background:var(--journal-paper);border-bottom:1px solid var(--journal-border);color:var(--journal-muted);font:12px var(--journal-font)}.companion-pagination button{min-height:44px;padding:8px 14px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);color:var(--journal-ink);font:inherit;cursor:pointer}.companion-pagination button:disabled{opacity:.4;cursor:default}.companion-pagination button:focus-visible{outline:2px solid var(--journal-accent);outline-offset:2px}@media(max-width:400px){.companion-pagination{padding:8px 12px}.companion-pagination button{padding:8px 10px}}
+
 /* Learned moves are shared by team and PC sheets. */
 .companion-pc-moves{padding:4px 26px 24px;border-top:1px solid var(--journal-border)}
 .companion-pc-moves h3{font:24px Georgia,serif;color:var(--journal-heading);margin:20px 0 8px}

@@ -55,6 +55,7 @@
               <circle class="ping-ring" :cx="node.x" :cy="node.y" r="14" fill="none" stroke="#ffd273" stroke-width="2"/>
             </g>
             <rect v-if="selectedNode" :x="selectedNode.x-13" :y="selectedNode.y-13" width="26" height="26" rx="3" fill="none" stroke="#fff7cf" stroke-width="2" class="map-selection"/>
+            <g v-for="member in groupMarkers" :key="'group-'+member.id" :data-group-marker="member.id" :transform="`translate(${member.x},${member.y})`" class="group-map-marker" role="button" tabindex="0" :aria-label="`${member.username} · ${label(member.nodeId)}`" @click="selectGroupMember(member)" @keydown.enter.prevent="selectGroupMember(member)" @keydown.space.prevent="selectGroupMember(member)"><title>{{ member.username }} · {{ modeLabel(member.mode) }}</title><circle r="6" :fill="member.color" stroke="#fffde1" stroke-width="2"/><path d="m-2 0 2-3 2 3-2 3Z" fill="#fffde1"/></g>
             <g v-if="currentNode" :transform="`translate(${currentNode.x},${currentNode.y})`" data-current-marker pointer-events="none">
               <path d="M0 2-7-11a8 8 0 1 1 14 0Z" fill="#244e71" stroke="#fffde1" stroke-width="2"/>
               <circle cy="-15" r="3" fill="#fffde1"/>
@@ -74,10 +75,11 @@
           </div>
           <p class="map-gesture-hint">{{ en ? 'Scroll or pinch to zoom · Drag to move' : 'Molette ou pincement pour zoomer · Glisse pour déplacer' }}</p>
         </div>
+        <div v-if="groupMarkers.length" class="map-group-list" aria-label="Membres du groupe"><button v-for="member in groupMarkers" :key="member.id" :data-group-location="member.id" @click="selectGroupMember(member)"><i :style="{background:member.color}"></i><strong>{{ member.username }}</strong><span>{{ label(member.nodeId) }} · {{ modeLabel(member.mode) }}</span></button></div>
         <div class="region-detail">
           <div v-if="flightAllowed && !pokemon" class="flight-module" data-flight-module>
             <strong>{{ en ? 'Flight Module' : 'Module Vol' }}</strong>
-            <p>{{ flight?.unlocked ? (en ? 'Choose a visited town, then take flight.' : 'Choisis une ville visitée, puis prends ton envol.') : (en ? 'Wanda will give you this module after your victory.' : 'Wanda te remettra ce module après ta victoire.') }}</p>
+            <p>{{ flight?.unlocked ? (en ? 'Choose a visited town, then take flight.' : 'Choisis une ville visitée, puis prends ton envol.') : (en ? 'Raphael will give you this module after your victory.' : 'Raphael te remettra ce module après ta victoire.') }}</p>
           </div>
           <template v-if="pokemon">
             <label for="region-place">{{ en ? 'Habitats' : 'Localisations' }}</label>
@@ -101,9 +103,11 @@ import { getMapLocationLabel } from '@/services/mapLocations';
 import { mapLayout, anchoredMapScroll, clampMapZoom } from '@/services/regionMapViewport';
 export default {
   name:'RegionMapPanel',
-  props:{currentMap:String,currentRegion:String,pokemon:Object,entries:{type:Array,default:()=>[]},language:{type:String,default:'fr'},animationsEnabled:{type:Boolean,default:true},flight:{type:Object,default:null},flightAllowed:Boolean},
+  props:{groupMembers:{type:Array,default:()=>[]},currentMap:String,currentRegion:String,pokemon:Object,entries:{type:Array,default:()=>[]},language:{type:String,default:'fr'},animationsEnabled:{type:Boolean,default:true},flight:{type:Object,default:null},flightAllowed:Boolean},
   data:()=>({atlas:null,loading:true,error:'',selected:'',zoom:1,dragging:false,viewport:{width:512,height:448}}),
   computed:{
+    groupMarkers(){if(!this.atlas)return [];const colors=['#9b5e9d','#35798e','#a27432','#407e54','#a95463','#5d64a0'],offsets=[[12,0],[-12,0],[0,12],[0,-12],[12,12],[-12,12]],counts={};return this.groupMembers.filter(p=>p.online&&p.location).map((p,index)=>{const node=this.atlas.nodes.find(n=>n.id===p.location.nodeId);if(!node)return null;const k=counts[node.id]||0;counts[node.id]=k+1;const offset=offsets[k%offsets.length];return {...p,nodeId:node.id,mode:p.location.mode,x:node.x+offset[0],y:node.y+offset[1],color:colors[index%colors.length]};}).filter(Boolean);},
+
     canFlySelected(){return this.flightAllowed&&this.flight?.unlocked&&this.selectedNode?.kind==='town'&&this.flight.visited.includes(this.selected);},
     layout(){return mapLayout(this.atlas || {width:512,height:448},this.viewport,this.zoom);},
     artStyle(){return {width:this.layout.mapWidth+'px',height:this.layout.mapHeight+'px'};},
@@ -123,6 +127,9 @@ export default {
   mounted(){this.previousFocus=document.activeElement;this.$refs.close.focus({preventScroll:true});this.load();},
   beforeDestroy(){this.disposed=true;this._resizeObserver?.disconnect();window.removeEventListener('resize',this.measureViewport);this._pointers?.clear();if(this.previousFocus?.isConnected)this.previousFocus.focus({preventScroll:true});},
   methods:{
+    modeLabel(mode){return {adventure:'Aventure',rift:'Rift',colosseum:'Colosseum'}[mode]||'';},
+    selectGroupMember(member){this.selected=member.nodeId;this.centerOn(this.atlas.nodes.find(n=>n.id===member.nodeId));},
+
     label(id){return getMapLocationLabel(id,this.language);},
     shortLabel(id){return id==='start' ? (this.en?'Home village':'Village de départ') : this.label(id);},
     speciesName(id){return this.entries.find(p=>p.id===id)?.name || `#${id}`;},
@@ -189,6 +196,8 @@ export default {
 };
 </script>
 <style scoped>
+.group-map-marker{cursor:pointer}.group-map-marker:focus{outline:none}.group-map-marker:focus circle{stroke:#f6ca5d;stroke-width:3}.map-group-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}.map-group-list button{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px;padding:7px 10px;border:1px solid var(--journal-border);border-radius:7px;background:var(--journal-card);color:var(--journal-ink);font:11px var(--journal-font);cursor:pointer}.map-group-list i{width:8px;height:8px;border-radius:50%;flex:none}.map-group-list span{font-size:10px;color:var(--journal-muted)}
+
 .map-node:focus-visible{outline:none}.map-node:focus-visible>rect:first-of-type{stroke:#fff7cf;stroke-width:2}
 .flight-actionbar{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-top:1px solid var(--journal-border);background:var(--journal-card)}.flight-actionbar small{display:block;color:var(--journal-muted);font-size:10px;margin-bottom:4px}.flight-actionbar strong{font-size:13px}
 

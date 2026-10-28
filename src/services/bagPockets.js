@@ -6,7 +6,7 @@ export const BAG_POCKETS = Object.freeze([
   {key:'balls',name:'Balls',en:'Balls',hint:'Pour tes prochaines rencontres.',enHint:'Ready for your next encounter.'},
   {key:'field',name:'Objets',en:'Field items',hint:'Pour explorer plus tranquillement.',enHint:'For a quieter journey.'},
   {key:'berries',name:'Baies',en:'Berries',hint:'À consommer ou à faire tenir.',enHint:'Use them or give them to a Pokémon.'},
-  {key:'held',name:'Objets tenus',en:'Held items',hint:'À équiper depuis le menu Pokémon.',enHint:'Equip these from the Pokémon menu.'},
+  {key:'held',name:'Objets tenus',en:'Held items',hint:'À faire tenir depuis le sac ou le menu Pokémon.',enHint:'Give these from the bag or Pokémon menu.'},
   {key:'evolution',name:'Évolution',en:'Evolution',hint:'Une nouvelle forme pour un compagnon compatible.',enHint:'A new form for a compatible companion.'},
   {key:'treasures',name:'Trésors',en:'Treasures',hint:'Des trouvailles à revendre dans les boutiques.',enHint:'Finds to sell at any shop.'},
   {key:'key',name:'Objets clés',en:'Key items',hint:'Les souvenirs et indices de ton aventure.',enHint:'Clues and keepsakes from your adventure.'},
