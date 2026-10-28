@@ -14,6 +14,11 @@
           <h3>Talent</h3><p>{{ abilityName(entry.change.before) }} <span aria-hidden="true">→</span> <strong>{{ abilityName(entry.change.after) }}</strong></p>
           <p class="training-ability-description">{{ abilityDescription(entry.change.after) }}</p>
         </article>
+        <article v-else-if="entry.change.kind==='nature'" class="training-result training-ability" data-training-result>
+          <h3>Nature</h3><p>{{ natureLabel(entry.change.before) }} <span aria-hidden="true">→</span> <strong>{{ natureLabel(entry.change.after) }}</strong></p>
+          <p class="training-ability-description">{{ natureDescription(entry.change.after) }}</p>
+          <p v-if="entry.change.before===entry.change.after" class="training-ability-description">La nature tirée est identique à la précédente.</p>
+        </article>
         <div v-else class="training-results" :class="{'training-results-many':rows.length>1}">
           <article v-for="row in rows" :key="row.stat" class="training-result" :class="{'training-result-lower':row.after<row.before}" data-training-result>
             <h3>{{ entry.change.kind==='iv'?'IV':'EV' }} {{ labels[row.stat] }}</h3>
@@ -21,7 +26,7 @@
             <small class="training-difference">{{ row.after===row.before?'Valeur inchangée':`${row.after>row.before?'+':''}${row.after-row.before}` }}</small>
           </article>
         </div>
-        <p class="training-saved">{{ entry.change.kind==='ability'?'Nouveau talent sauvegardé.':entry.change.kind==='iv'?'Nouvel IV sauvegardé. Potentiel K inchangé.':'Entraînement sauvegardé.' }}</p>
+        <p class="training-saved">{{ entry.change.kind==='nature'?'Nature sauvegardée et statistiques recalculées.':entry.change.kind==='ability'?'Nouveau talent sauvegardé.':entry.change.kind==='iv'?'Nouvel IV sauvegardé. Potentiel K inchangé.':'Entraînement sauvegardé.' }}</p>
         <footer><button ref="primary" class="training-continue" data-training-close @click="close">Continuer</button></footer>
       </template>
     </section>
@@ -30,14 +35,15 @@
 <script>
 import {localizeAbilityName} from '@/services/i18n';
 import reference from '@/data/pokemonReference.fr.json';
+import {natureLabel,natureDescription} from '@/services/pokemonNatures';
 const labels={hp:'PV',attack:'Attaque',defense:'Défense',specialAttack:'Attaque Spéciale',specialDefense:'Défense Spéciale',speed:'Vitesse'};
 export default {
   props:{entry:{type:Object,required:true},busy:Boolean},
   data:()=>({labels,previousFocus:null}),
-  computed:{confirmation(){return this.entry.kind==='confirm';},rows(){const c=this.entry.change;if(!c||c.kind==='ability')return [];if(c.kind==='evReset')return Object.keys(labels).filter(stat=>c.before[stat]!==c.after[stat]).map(stat=>({stat,before:c.before[stat],after:c.after[stat]}));return [{stat:c.stat,before:c.before,after:c.after}];}},
+  computed:{confirmation(){return this.entry.kind==='confirm';},rows(){const c=this.entry.change;if(!c||['ability','nature'].includes(c.kind))return [];if(c.kind==='evReset')return Object.keys(labels).filter(stat=>c.before[stat]!==c.after[stat]).map(stat=>({stat,before:c.before[stat],after:c.after[stat]}));return [{stat:c.stat,before:c.before,after:c.after}];}},
   mounted(){this.previousFocus=document.activeElement;this.$refs.primary?.focus({preventScroll:true});},
   beforeDestroy(){const previous=this.previousFocus;this.$nextTick(()=>{if(document.querySelector('[data-training-feedback]'))return;(previous?.isConnected?previous:document.querySelector('.pack-close, .bag-panel button'))?.focus({preventScroll:true});});},
-  methods:{abilityName(name){return localizeAbilityName(name,'fr');},abilityDescription(name){return reference.abilities[name]||'';},close(){if(!this.busy)this.$emit('close');},trapFocus(event){const buttons=[...this.$refs.panel.querySelectorAll('button:not(:disabled)')],first=buttons[0],last=buttons[buttons.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}}
+  methods:{natureLabel,natureDescription,abilityName(name){return localizeAbilityName(name,'fr');},abilityDescription(name){return reference.abilities[name]||'';},close(){if(!this.busy)this.$emit('close');},trapFocus(event){const buttons=[...this.$refs.panel.querySelectorAll('button:not(:disabled)')],first=buttons[0],last=buttons[buttons.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}}
 };
 </script>
 <style scoped>

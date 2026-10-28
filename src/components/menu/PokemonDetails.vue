@@ -77,22 +77,14 @@ import { localizeTypeName, typeBadgeStyle } from '@/services/pokemonTypes';
 import { localizeAbilityName, localizeMoveName } from '@/services/i18n';
 import { createPokemonReference } from '@/services/pokemonReference';
 import referenceData from '@/data/pokemonReference.fr.json';
+import {natures} from '@/services/pokemonNatures';
 const reference=createPokemonReference(referenceData);
 const stats = [
   { key: 'hp', label: 'PV', full: 'Points de vie' }, { key: 'attack', label: 'ATQ', full: 'Attaque' },
   { key: 'defense', label: 'DÉF', full: 'Défense' }, { key: 'speed', label: 'VIT', full: 'Vitesse' },
   { key: 'specialDefense', label: 'DÉF. SPÉ.', full: 'Défense spéciale' }, { key: 'specialAttack', label: 'ATQ. SPÉ.', full: 'Attaque spéciale' }
 ];
-const natures = {
-  Hardy: ['Hardi'], Docile: ['Docile'], Serious: ['Sérieux'], Bashful: ['Pudique'], Quirky: ['Bizarre'],
-  Adamant: ['Rigide', 'attack', 'specialAttack'], Bold: ['Assuré', 'defense', 'attack'], Brave: ['Brave', 'attack', 'speed'],
-  Calm: ['Calme', 'specialDefense', 'attack'], Careful: ['Prudent', 'specialDefense', 'specialAttack'], Gentle: ['Gentil', 'specialDefense', 'defense'],
-  Hasty: ['Pressé', 'speed', 'defense'], Impish: ['Malin', 'defense', 'specialAttack'], Jolly: ['Jovial', 'speed', 'specialAttack'],
-  Lax: ['Lâche', 'defense', 'specialDefense'], Lonely: ['Solo', 'attack', 'defense'], Mild: ['Doux', 'specialAttack', 'defense'],
-  Modest: ['Modeste', 'specialAttack', 'attack'], Naive: ['Naïf', 'speed', 'specialDefense'], Naughty: ['Mauvais', 'attack', 'specialDefense'],
-  Quiet: ['Discret', 'specialAttack', 'speed'], Rash: ['Foufou', 'specialAttack', 'specialDefense'], Relaxed: ['Relax', 'defense', 'speed'],
-  Sassy: ['Malpoli', 'specialDefense', 'speed'], Timid: ['Timide', 'speed', 'attack']
-};
+
 export default {
   components: { ExperienceBar, PokemonPortrait, PotentialStar },
   props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },

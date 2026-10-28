@@ -83,7 +83,7 @@
                   <option value="">Choisir un Pokémon…</option>
                   <option v-for="p in teamPokemons" :key="p.uuid" :value="p.uuid" :disabled="!canReceiveMedicine(item, p)">{{ medicineTargetLabel(item,p) }}</option>
                 </select>
-                <small v-if="(item.fieldUse?.effort||item.fieldUse?.ivReroll||item.fieldUse?.effortReset||item.fieldUse?.abilityReroll) && medicineTargets[item.key]" class="bag-use-hint" data-effort-preview>{{ effortPreview(item) }}</small>
+                <small v-if="(item.fieldUse?.effort||item.fieldUse?.ivReroll||item.fieldUse?.effortReset||item.fieldUse?.abilityReroll||item.fieldUse?.natureReroll) && medicineTargets[item.key]" class="bag-use-hint" data-effort-preview>{{ effortPreview(item) }}</small>
                 <label v-if="item.fieldUse?.effort?.amount>0&&item.quantity>=5" class="bag-use-hint">Quantité <select data-medicine-quantity :value="medicineQuantities[item.key]||1" :disabled="medicineBusy" @change="$set(medicineQuantities,item.key,Number($event.target.value))"><option v-for="n in [1,5,10,25].filter(n=>n<=item.quantity)" :key="n" :value="n">×{{ n }}</option></select><small>Seules les vitamines utiles seront consommées.</small></label>
                 <button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagItem(item) || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key]))" @click="useBagMedicine(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button>
                 <small v-if="!canUseBagItem(item)" class="bag-use-hint">{{ isDrift && driftState?.phase !== 'exploration' ? 'Soins automatiques entre les combats du tournoi.' : 'Disponible hors combat.' }}</small>
@@ -467,6 +467,7 @@ import { trainerPaletteKey, normalizeTrainerPalette, themedTrainerSheet, trainer
 import { GAMEPAD_EVENT } from '@/services/gamepad';
 import { attachGameFullscreen } from '@/services/gameFullscreen';
 import { localizeAbilityName, translate } from '@/services/i18n';
+import {natureLabel} from '@/services/pokemonNatures';
 import { getMapLocationLabel } from '@/services/mapLocations';
 import { WorldMusic } from '@/services/worldMusic';
 // import navBar from "./NavBar.vue"
@@ -870,13 +871,14 @@ export default {
     isBagConsumable(item) {
       return !item.voidTravel && Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse || item.category==='evolution') && !(this.isDrift && item.revive));
     },
-    canUseBagItem(item) { return (item.category==='machine' || item.category==='evolution' || item.fieldUse?.effort || item.fieldUse?.ivReroll || item.fieldUse?.effortReset||item.fieldUse?.abilityReroll) && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
+    canUseBagItem(item) { return (item.category==='machine' || item.category==='evolution' || item.fieldUse?.effort || item.fieldUse?.ivReroll || item.fieldUse?.effortReset||item.fieldUse?.abilityReroll||item.fieldUse?.natureReroll) && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
     canReceiveMedicine(item, pokemon) {
       if (!pokemon) return false;
       if(item.category==='evolution')return !pokemon.isEgg && pokemon.currentHp > 0 && Boolean(item.evolutions?.[pokemon.uuid]);
       const effect = item.fieldUse || item;
       if (effect.revive) return !this.isDrift && pokemon.currentHp <= 0;
       if (pokemon.currentHp <= 0 && !(this.isDrift && pokemon.riftFainted && (effect.heal || effect.healFraction || item.category==='heal'))) return false;
+      if(effect.natureReroll)return !pokemon.isEgg;
       if(effect.abilityReroll)return !pokemon.isEgg && !!item.abilityOptions?.[pokemon.uuid]?.length;
       if(effect.ivReroll)return !pokemon.isEgg&&Number.isInteger(pokemon.iv?.[effect.ivReroll])&&pokemon.iv[effect.ivReroll]>=0&&pokemon.iv[effect.ivReroll]<=31;
       if(effect.effortReset)return !pokemon.isEgg&&(effect.effortReset==='all'?Object.values(pokemon.ev||{}).some(n=>n>0):(pokemon.ev?.[effect.effortReset]||0)>0);
@@ -895,6 +897,7 @@ export default {
     effortPreview(item) {
       const p=this.teamPokemons.find(p=>p.uuid===this.medicineTargets[item.key]),ev=p?.ev || {};
       const names={hp:'PV',attack:'Attaque',defense:'Défense',specialAttack:'Attaque Spéciale',specialDefense:'Défense Spéciale',speed:'Vitesse'};
+      if(item.fieldUse.natureReroll)return `Nature actuelle : ${natureLabel(p?.nature)}. Tirage parmi les 25 natures, y compris la nature actuelle. Statistiques recalculées, IV/EV et potentiel K conservés.`;
       if(item.fieldUse.abilityReroll)return `Talent actuel : ${this.localizedAbility(p?.passiveAbility)}. Autres talents possibles : ${(item.abilityOptions?.[p?.uuid]||[]).map(this.localizedAbility).join(', ') || 'aucun'}.`;
       if(item.fieldUse.ivReroll)return `IV ${names[item.fieldUse.ivReroll]} : ${p?.iv?.[item.fieldUse.ivReroll]||0}/31 · Tirage 0–31 : remplace la valeur actuelle, même si elle baisse. Potentiel K inchangé.`;
       if(item.fieldUse.effortReset)return item.fieldUse.effortReset==='all'?`EV totaux : ${Object.values(ev).reduce((n,v)=>n+Number(v),0)}/510 → 0. Les six statistiques seront remises à zéro.`:`EV ${names[item.fieldUse.effortReset]} : ${ev[item.fieldUse.effortReset]||0}/252 → 0. Les autres statistiques restent identiques.`;
@@ -909,6 +912,7 @@ export default {
     },
     trainingNotice(change,name,quantity=1){
       const stats={hp:'PV',attack:'Attaque',defense:'Défense',specialAttack:'Attaque Spéciale',specialDefense:'Défense Spéciale',speed:'Vitesse'};
+      if(change.kind==='nature')return `${name} · Nature : ${natureLabel(change.before)} → ${natureLabel(change.after)}. Statistiques recalculées et nature sauvegardée.`;
       if(change.kind==='ability')return `${name} · Talent : ${this.localizedAbility(change.before)} → ${this.localizedAbility(change.after)}. Nouveau talent sauvegardé.`;
       if(change.kind==='iv')return `${name} · IV ${stats[change.stat]} : ${change.before} → ${change.after} (tirage ${change.rolled}). Nouvel IV sauvegardé.`;
       if(change.kind==='evReset')return `${name} · ${change.stat==='all'?'Tous les EV':`EV ${stats[change.stat]}`} remis à zéro. Entraînement sauvegardé.`;
