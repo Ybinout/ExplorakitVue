@@ -131,6 +131,9 @@
 .mirror-scene-veil{position:absolute;inset:0;z-index:45;background:#07040e;pointer-events:auto}
 .mirror-scene-veil.closing{animation:mirror-sleep var(--mirror-duration) ease-in both}
 .mirror-scene-veil.awakening{animation:mirror-wake var(--mirror-duration) ease-out both}
+.mirror-opening-caption{position:absolute;z-index:26;left:50%;top:22px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);box-sizing:border-box;padding:10px 18px;border:1px solid #c4a6df88;border-radius:5px;background:#181326ed;color:#f0e7fa;box-shadow:0 3px 12px #07041080;font:15px/1.5 var(--journal-font);text-align:center;pointer-events:none;animation:mirror-caption 3.8s ease both}
+.mirror-opening-caption.is-reduced{animation:none}
+@keyframes mirror-caption{0%{opacity:0}12%,74%{opacity:1}100%{opacity:0}}
 @keyframes mirror-sleep{0%,55%{opacity:0}90%,100%{opacity:1}}
 @keyframes mirror-wake{from{opacity:1}to{opacity:0}}
-@media(prefers-reduced-motion:reduce){.mirror-scene-veil.closing{animation-timing-function:linear}}
+@media(prefers-reduced-motion:reduce){.mirror-scene-veil.closing{animation-timing-function:linear}.mirror-opening-caption{animation:none}}

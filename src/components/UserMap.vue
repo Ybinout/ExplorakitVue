@@ -225,6 +225,7 @@
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
           <room-obstacle-action v-if="roomObstacleAction && !battle" :key="roomObstacleAction.id" :action="roomObstacleAction" :language="preferences.language" />
+          <div v-if="mirrorScene?.phase === 'opening' && mirrorScene.map === map" class="mirror-opening-caption" :class="{'is-reduced': !preferences.animationsEnabled || worldWeatherReducedMotion}" role="status" aria-live="polite"><em>{{ preferences.language === 'en' ? 'Something is happening…' : 'Il se passe quelque chose…' }}</em></div>
           <div v-if="!roomObstacleAction && interactionNotice && interactionNoticeKind === 'gate' && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ interactionNotice }}</div>
           <div v-if="nearbyRoomObstacle && !roomObstacleAction && !interactionNotice && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ preferences.language === 'en' ? 'A / Space · Break the crystals' : 'A / Espace · Briser les cristaux' }}</div>
           <div v-if="mapLoading || mapLoadError || worldContextLost" class="world-loading" role="status" :class="{ 'has-error': mapLoadError }">
@@ -388,7 +389,7 @@ import FlightTransition from './FlightTransition.vue';
 import VoidTransition from './VoidTransition.vue';
 import { drawVoidTeleporter } from '@/services/voidTeleporter';
 import { drawVoidJournals } from '@/services/voidJournals';
-import {drawMirrorGround,drawMirrorClone,mirrorScenePose} from '@/services/mirrorRiftRenderer';
+import {drawMirrorGround,drawMirrorClone,mirrorScenePose,mirrorCameraTarget,releaseMirrorEffects} from '@/services/mirrorRiftRenderer';
 import {BattleAudio} from '@/services/battleAudio';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
@@ -1374,7 +1375,7 @@ export default {
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { this._mirrorAudio?.stop(); this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
+    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { releaseMirrorEffects(); this._mirrorAudio?.stop(); this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       if(this.flight)return;
@@ -2436,12 +2437,13 @@ export default {
       c.setTransform(1, 0, 0, 1, 0, 0);
       c.clearRect(0, 0, canvas.width, canvas.height);
       const now = performance.now();
-      const camera = getWorldCamera(this.worldFrame.width, this.worldFrame.height, this.visualPlayer(this.socket.id,me,now), this.showMobileControls);
+      const mirrorMotion=this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion;
+      const cameraTarget=mirrorCameraTarget(this.mirrorScene,now,this.visualPlayer(this.socket.id,me,now),this.mirrorRift,mirrorMotion);
+      const camera = getWorldCamera(this.worldFrame.width, this.worldFrame.height, cameraTarget, this.showMobileControls);
       const scale = camera.scale * this.worldFrame.pixelRatio;
       c.save();
       try {
       c.imageSmoothingEnabled = false;
-      const mirrorMotion=this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion;
       const shake=mirrorScenePose(this.mirrorScene?.map===this.map?this.mirrorScene:null,now,mirrorMotion);
       c.setTransform(scale, 0, 0, scale, (-camera.x+shake.shakeX)*scale, (-camera.y+shake.shakeY)*scale);
       const actors=this.grassRustleActive||this.dirtFootprintsActive||this.snowFootprintsActive?this.grassActors(now):[];
@@ -3206,6 +3208,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    releaseMirrorEffects();
     clearTimeout(this._mirrorSceneTimer);clearInterval(this._mirrorWakeTimer);
     this._mirrorAudio?.dispose();
     this._fullscreen?.destroy();
