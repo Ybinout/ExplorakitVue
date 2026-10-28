@@ -22,7 +22,7 @@ export function arenaChampion(mapName, encounterKind, trainerKey = null) {
     eyebrow:'LE DERNIER FACE-À-FACE',eyebrowEn:'THE FINAL CONFRONTATION',minimumMs:4400,portraitMs:2600
   };
   if (mapName === 'start' && encounterKind === 'trainer' && trainerKey === 'dia1') return {
-    name: 'Wayne', city: 'Village du départ', cityEn: 'Starting Village', portrait: 'wayne-eyepatch-v1.png', accent: '#aec5bd', story: true,
+    name: 'Wayne', city: 'Village du départ', cityEn: 'Starting Village', portrait: 'wayne-eyepatch-v2.png', accent: '#aec5bd', story: true,
     eyebrow: 'LE DÉFI DE WAYNE', eyebrowEn: 'WAYNE’S CHALLENGE', minimumMs: 3600, portraitMs: 2200
   };
   if (mapName === 'ville_safe1' && encounterKind === 'trainer' && trainerKey === 'mathilde_pikapika') return {

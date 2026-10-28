@@ -14,7 +14,7 @@ export function illustratedNpcPortrait(sentence, dialogueName = '') {
   }
   // Wayne has a dedicated monochrome illustration, including old a.png payloads.
   if (sentence.imageName === 'a.png') {
-    return { ...sentence, imageName: 'wayne-eyepatch-v1.png', portraitFrame: null };
+    return { ...sentence, imageName: 'wayne-eyepatch-v2.png', portraitFrame: null };
   }
   if (['lucie_route2', 'lucie_route2_after', 'lucie_route2_locked'].includes(dialogueName)) {
     return { ...sentence, imageName: 'lucie-v1.png', portraitFrame: null,
