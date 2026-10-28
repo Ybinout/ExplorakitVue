@@ -105,6 +105,7 @@ export class WorldNightRenderer {
   }
   paintLighting(light) {
     const c = this.base.getContext('2d'), lamps = this.fixtures.getContext('2d'), p = townLights[this.map] || {};
+    const intensity=Math.max(1,Math.min(1.6,Number(p.brightness)||1));
     c.clearRect(0, 0, W, H); lamps.clearRect(0, 0, W, H);
     // A readable blue hour, never a black veil. The game UI is outside this canvas.
     const shade = c.createLinearGradient(0, 0, 0, H);
@@ -119,17 +120,17 @@ export class WorldNightRenderer {
     }
     for (const [x, y, r] of p.lamps || []) {
       c.save(); c.globalCompositeOperation = 'destination-out';
-      glow(c, x, y + 14, r, '#fff', .75 * light.lamps); c.restore();
-      glow(lamps, x, y + 28, r, '#ffc678', .15 * light.lamps, .45);
-      glow(lamps, x, y, 10, '#ffcf85', .48 * light.lamps);
-      lamps.globalAlpha = light.lamps * .88; lamps.fillStyle = '#ffe7ad'; lamps.fillRect(x - 2, y - 1, 4, 3); lamps.globalAlpha = 1;
+      glow(c, x, y + 14, r, '#fff', Math.min(1,.75 * light.lamps * intensity)); c.restore();
+      glow(lamps, x, y + 28, r, '#ffc678', .15 * light.lamps * intensity, .45);
+      glow(lamps, x, y, 10, '#ffcf85', .48 * light.lamps * intensity);
+      lamps.globalAlpha = Math.min(1,light.lamps * .88 * intensity); lamps.fillStyle = '#ffe7ad'; lamps.fillRect(x - 2, y - 1, 4, 3); lamps.globalAlpha = 1;
     }
     for (const [x, y, w, h] of p.windows || []) {
       const cx = x + w / 2, cy = y + h / 2;
-      c.save(); c.globalCompositeOperation = 'destination-out'; glow(c, cx, cy + h, 19, '#fff', .46 * light.lamps); c.restore();
-      glow(lamps, cx, cy, Math.max(12, w), '#ffcf87', .24 * light.lamps);
+      c.save(); c.globalCompositeOperation = 'destination-out'; glow(c, cx, cy + h, 19, '#fff', .46 * light.lamps * intensity); c.restore();
+      glow(lamps, cx, cy, Math.max(12, w), '#ffcf87', .24 * light.lamps * intensity);
     }
-    lamps.globalAlpha = light.lamps * .8; lamps.fillStyle = '#ffdfa2';
+    lamps.globalAlpha = Math.min(1,light.lamps * .8 * intensity); lamps.fillStyle = '#ffdfa2';
     for (const [x, y, w, h] of this.glass || []) lamps.fillRect(x, y, w, h);
     lamps.globalAlpha = 1;
     this.paints++;
