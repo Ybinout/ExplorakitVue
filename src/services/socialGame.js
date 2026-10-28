@@ -2,7 +2,7 @@ const emptyState=()=>({accepted:[],incoming:[],outgoing:[],group:null,groupInvit
 export default {
   data:()=>({friendsOpen:false,friendsTarget:null,socialConnected:false,socialState:emptyState(),socialMessage:null,socialError:'',socialActionBusy:false}),
   computed:{
-    socialAlertCount(){return this.socialState.incoming.length+this.socialState.groupInvites.length+this.socialState.accepted.reduce((n,p)=>n+(p.unread||0),0);},
+    socialAlertCount(){return (this.incomingTrade?1:0)+this.socialState.incoming.length+this.socialState.groupInvites.length+this.socialState.accepted.reduce((n,p)=>n+(p.unread||0),0);},
     nearbySocialTrainer(){
       if(this.battle||this.mapLoading||this.textImageSequence.length||this.movementSuspended||!this.socket?.id)return null;
       const self=this.players[this.socket.id];if(!self)return null;

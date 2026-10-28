@@ -2,7 +2,7 @@
 /* Desktop menus follow the visible game, while their scrim still covers the
    viewport. Do not transform/contain the stage: fixed drag previews use client coordinates. */
 #app .game-root:not(.is-mobile) :is(.region-backdrop, .dex-backdrop, .bag-backdrop, .badge-case-backdrop,
-  .info-backdrop, .shop-backdrop, .pc-backdrop, .companion-backdrop, .friends-backdrop, .held-picker-backdrop,
+  .info-backdrop, .shop-backdrop, .pc-backdrop, .companion-backdrop, .friends-backdrop, .held-picker-backdrop, .trade-backdrop,
   .learning-backdrop, .evolution-backdrop, .battle-summary-backdrop,
   .drift-backdrop, .trainer-backdrop, .starter-backdrop, .spectator-backdrop) {
   box-sizing:border-box;
@@ -10,7 +10,7 @@
     var(--game-popup-bottom,24px) var(--game-popup-left,24px);
 }
 #app .game-root:not(.is-mobile) :is(.region-backdrop, .dex-backdrop, .bag-backdrop, .badge-case-backdrop,
-  .info-backdrop, .shop-backdrop, .pc-backdrop, .companion-backdrop, .friends-backdrop, .held-picker-backdrop,
+  .info-backdrop, .shop-backdrop, .pc-backdrop, .companion-backdrop, .friends-backdrop, .held-picker-backdrop, .trade-backdrop,
   .learning-backdrop, .evolution-backdrop, .battle-summary-backdrop,
   .drift-backdrop, .trainer-backdrop, .starter-backdrop, .spectator-backdrop) > section {
   box-sizing:border-box;

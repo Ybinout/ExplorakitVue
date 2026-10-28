@@ -101,7 +101,8 @@
               </div>
           </template>
         </bag-panel>
-        <game-friends-panel v-if="friendsOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
+        <game-trade-panel v-if="tradeModalVisible" :key="tradeState.id" :state="tradeState" :user-id="Number(currentUserId)" :busy="tradeBusy" :error="tradeError" :connected="tradeConnected" :command="tradeCommand" @action="runTradeAction" @cancel="cancelFriendTrade"/>
+        <game-friends-panel v-if="friendsOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError || tradeError" :trade-invite="incomingTrade" :trading="tradeBusy" :can-trade="!isDrift" :request-trade="requestFriendTrade" @trade-answer="answerFriendTrade" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
         <held-item-picker v-if="heldPickerPokemon" :pokemon="heldPickerPokemon" :items="heldBagItems" :busy="teamSaving" :error="teamError" @close="heldPickerUuid=null" @equip="equipPickedHeldItem"/>
         <training-feedback v-if="trainingFeedback" :entry="trainingFeedback" :busy="medicineBusy" @close="trainingFeedback=null" @confirm="confirmIvReroll"/>
         <pokemon-computer v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
@@ -240,7 +241,7 @@
           @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
           @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture">
         <div
-          v-if="showMobileControls && !friendsOpen && !heldPickerUuid && !pc.visible && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
+          v-if="showMobileControls && !tradeModalVisible && !friendsOpen && !heldPickerUuid && !pc.visible && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
           <div class="mobile-dpad" :inert="textImageSequence.length ? '' : null" :aria-hidden="textImageSequence.length ? 'true' : null" aria-label="Pad directionnel"
@@ -407,6 +408,8 @@ import TrainingFeedback from './menu/TrainingFeedback.vue';
 import HeldItemPicker from './menu/HeldItemPicker.vue';
 import GameFriendsPanel from './social/GameFriendsPanel.vue';
 import socialGame from '@/services/socialGame';
+import tradeGame from '@/services/tradeGame';
+import GameTradePanel from './social/GameTradePanel.vue';
 import MachineItemUse from './menu/MachineItemUse.vue';
 import moveLearningData from '@/data/moveLearning.json';
 import PokemonComputer from './menu/PokemonComputer.vue';
@@ -470,13 +473,13 @@ import { WorldMusic } from '@/services/worldMusic';
 /* eslint-disable */
 
 export default {
-  mixins:[socialGame],
+  mixins:[socialGame,tradeGame],
   components: {
     AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    JournalIcon, BagPanel, TrainingFeedback, HeldItemPicker, GameFriendsPanel, MachineItemUse, PokemonComputer,
+    JournalIcon, BagPanel, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -738,7 +741,7 @@ export default {
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     movementSuspended() {
       return !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
-        || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
+        || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
@@ -2128,7 +2131,7 @@ export default {
       this.closeLegacyPanels();
     },
     handleOutsideMenuClick(event) {
-      if (this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.selectedPokemonUuid) return;
+      if (this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.selectedPokemonUuid) return;
       const header = this.$refs.gameHeader;
       const bagPanel = this.$refs.bagPanel?.$el;
       const appearancePanel = this.$refs.appearancePanel;
@@ -2329,7 +2332,7 @@ export default {
       if(this.flight){e.preventDefault();return;}
       if(this.fishing && e.key==='Escape'){e.preventDefault();this.cancelFishing();return;}
       if(this.fishing && (e.code==='Space' || e.code==='KeyA') && !e.ctrlKey && !e.metaKey && !e.altKey){e.preventDefault();if(!e.repeat)this.fishingAction();return;}
-      if (this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) { this.releaseAllMovementKeys(); return; }
+      if (this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) { this.releaseAllMovementKeys(); return; }
       if (this.isDriftPanelOpen) { if (e.key === "Escape") this.isDriftPanelOpen = false; return; }
       if (this.selectedPokemonUuid) return;
       if (e.key === 'Escape' && this.shop.visible) {e.preventDefault();this.closeShop();return;}
@@ -2684,7 +2687,7 @@ export default {
     }
 
     this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token,{mirrorRift:true,adventureOpening:true});
-    this.bindSocialSocket();
+    this.bindSocialSocket();this.bindTradeSocket();
     this.socket.on('adventureOpening',scene=>{if(this.isDrift)return;this.releaseAllMovementKeys();this.openingScene=scene;});
     bindSessionReplacement(this.socket, () => this.$router.replace({path:'/connexion',query:{reason:'session-replaced'}}));
     if (this.isDrift) {

@@ -1,0 +1,19 @@
+<template>
+  <section class="trade-offer" :data-trade-side="side">
+    <h3>{{ label }}</h3>
+    <div v-if="offer?.pokemon" class="trade-offer-pokemon"><pokemon-portrait :src="`${$assetBase}img/pokemon/front/${offer.pokemon.pokemonId}.png`" :alt="offer.pokemon.name"/><div><strong>{{ offer.pokemon.nickname || offer.pokemon.name }}</strong><span>Niv. {{ offer.pokemon.level }} <potential-star :value="offer.pokemon.potential"/></span><small v-if="offer.pokemon.heldItem">Tient : {{ offer.pokemon.heldItemName }}</small><button data-trade-details @click="$emit('details',offer.pokemon)">Voir la fiche</button></div><button v-if="editable" :disabled="busy" data-trade-remove-pokemon aria-label="Retirer le Pokémon de mon offre" @click="$emit('pokemon',null)">×</button></div>
+    <p v-else class="trade-offer-empty">Aucun Pokémon</p>
+    <ul v-if="offer?.items?.length"><li v-for="item in offer.items" :key="item.key" :data-trade-offered-item="item.key"><bag-item-icon :pocket="pocket(item)" :item-key="item.key"/><span>{{ item.name }}</span><label v-if="editable"><span class="sr-only">Quantité de {{ item.name }}</span><input type="number" min="1" max="99" :value="item.quantity" :disabled="busy" @change="$emit('quantity',{key:item.key,value:Number($event.target.value)});$event.target.value=item.quantity"/></label><strong v-else>×{{ item.quantity }}</strong><button v-if="editable" :disabled="busy" :aria-label="`Retirer ${item.name} de mon offre`" @click="$emit('remove',item.key)">×</button></li></ul><p v-else class="trade-offer-empty">Aucun objet</p>
+    <p v-if="!offer?.pokemon && !offer?.items?.length" class="trade-gift-note">Aucune contrepartie proposée.</p>
+  </section>
+</template>
+<script>
+import PokemonPortrait from '../PokemonPortrait.vue';
+import PotentialStar from '../PotentialStar.vue';
+import BagItemIcon from '../menu/BagItemIcon.vue';
+import {bagPocket} from '@/services/bagPockets';
+export default {components:{PokemonPortrait,PotentialStar,BagItemIcon},props:{offer:Object,label:String,side:String,editable:Boolean,busy:Boolean},methods:{pocket:bagPocket}};
+</script>
+<style scoped>
+.trade-offer{min-width:0;padding:14px;border:1px solid var(--journal-border);border-radius:11px;background:var(--journal-card)}h3{margin:0 0 10px;font-size:13px;color:var(--journal-heading)}.trade-offer-pokemon{display:flex;gap:10px;align-items:center;min-width:0}.trade-offer-pokemon>.pokemon-portrait{width:64px;flex:none}.trade-offer-pokemon>div{min-width:0;flex:1}.trade-offer-pokemon strong{display:block;overflow-wrap:anywhere;font-size:14px}.trade-offer-pokemon span{display:flex;gap:7px;align-items:center;font-size:11px}.trade-offer-pokemon small{display:block;font-size:10px;color:var(--journal-muted)}button,input{color:inherit;font:inherit;border:1px solid var(--journal-border);border-radius:7px;background:var(--journal-paper);min-height:44px;min-width:44px;padding:6px 10px}button{cursor:pointer}button:disabled,input:disabled{opacity:.5;cursor:default}button:focus-visible,input:focus-visible{outline:2px solid var(--journal-accent);outline-offset:2px}[data-trade-details]{font-size:10px;margin-top:4px;min-height:36px}.trade-offer-empty{font-size:11px;color:var(--journal-muted);margin:7px 0}.trade-gift-note{font-size:10px;margin:10px 0 0;color:var(--journal-muted)}ul{list-style:none;padding:0;margin:12px 0 0}li{display:flex;align-items:center;gap:7px;padding:8px 0;border-top:1px solid var(--journal-border);font-size:11px}li>.bag-object-icon{width:23px;height:23px;flex:none}li>span{flex:1;min-width:0;overflow-wrap:anywhere}li input{box-sizing:border-box;width:56px;padding:5px;font-size:13px}li strong{flex:none}.sr-only{position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;overflow:hidden}@media(max-width:400px){.trade-offer{padding:11px}.trade-offer-pokemon>.pokemon-portrait{width:52px}}
+</style>
