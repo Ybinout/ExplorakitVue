@@ -18,7 +18,7 @@
             <article v-for="(badge,index) in badges" :key="badge.key" :class="['badge-case-slot',{ 'is-earned': badge.earned, 'is-cracked':badge.cracked }]" :data-badge-key="badge.key" :data-badge-earned="Boolean(badge.earned)" :data-badge-cracked="Boolean(badge.cracked)" role="listitem">
               <div class="badge-case-slot-top"><span>{{ String(index+1).padStart(2,'0') }}</span><span class="badge-case-status"><span aria-hidden="true">{{ badge.earned ? '✓' : badge.cracked ? '╱' : '◇' }}</span> {{ badge.earned ? (english ? 'Collected' : 'Obtenu') : badge.cracked ? (english ? 'Cracked' : 'Fissuré') : (english ? 'To discover' : 'À obtenir') }}</span></div>
               <div class="badge-case-display"><badge-emblem :badge-key="badge.key" :cracked="Boolean(badge.cracked)" /></div>
-              <h4>{{ badge.name }}</h4><p class="badge-case-place">{{ places[badge.key] || (english ? 'Adventure' : 'Aventure') }}</p>
+              <h4>{{ badge.name }}</h4><p class="badge-case-place">{{ placeLabel(badge) }}</p>
               <p class="badge-case-caption">{{ badge.cracked ? (english ? 'The other outcome of this encounter was chosen.' : 'L’autre issue de cette rencontre a été choisie.') : badge.description || (english ? 'A reminder of an arena challenge.' : 'Le souvenir d’un défi d’arène.') }}</p>
             </article>
           </div>
@@ -38,7 +38,11 @@ export default {
   props:{capture:{type:Object,default:null},badges:{type:Array,default:()=>[]},loading:Boolean,language:{type:String,default:'fr'}},
   computed:{english(){return this.language==='en';},places(){return places;},total(){return new Set(this.badges.map(b=>b.exclusiveGroup||b.key)).size;},earned(){return this.badges.filter(b=>b.earned).length;},percent(){return this.total?Math.min(100,this.earned/this.total*100):0;},complete(){return this.total>0&&this.earned===this.total;}},
   mounted(){this.$refs.close.focus({preventScroll:true});},
-  methods:{handleKeydown(event){
+  methods:{placeLabel(badge){
+    const label=this.places[badge.key] || (this.english ? 'Adventure' : 'Aventure');
+    // A cracked ending also means this encounter has already been resolved.
+    return badge.earned || badge.cracked ? label : label.split(' · ')[0];
+  },handleKeydown(event){
     if(event.key==='Escape'){event.preventDefault();this.$emit('close');}
     if(event.key==='Tab'){const first=this.$refs.close,last=this.$refs.scroll;if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}
   }}
