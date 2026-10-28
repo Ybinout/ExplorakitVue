@@ -16,10 +16,10 @@ export function bindSessionReplacement(socket, onReplaced) {
   socket.on('drift:replaced', stop);
 }
 
-export function createGameSocket(token, { mirrorRift = false } = {}) {
+export function createGameSocket(token, { mirrorRift = false, adventureOpening = false } = {}) {
   return io(socketOrigin, {
     path: `${process.env.BASE_URL || '/'}socket.io`,
-    auth: { token, ...(mirrorRift ? { mirrorRift:true } : {}) },
+    auth: { token, ...(mirrorRift ? { mirrorRift:true } : {}), ...(adventureOpening ? { adventureOpening:true } : {}) },
     transports: ['websocket', 'polling']
   });
 }

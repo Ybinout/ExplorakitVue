@@ -1,10 +1,11 @@
 <template>
   <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift, 'is-mobile': showMobileControls, 'is-fullscreen': fullscreenState.active }]">
+    <adventure-opening v-if="openingScene && !mapLoadError" :ready="openingReady" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" @finished="finishAdventureOpening" />
     <div v-if="mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase)" :key="mirrorScene.id" class="mirror-scene-veil" :class="mirrorScene.phase" :style="{'--mirror-duration':mirrorScene.duration+'ms'}" :data-mirror-phase="mirrorScene.phase" role="status" aria-live="polite" aria-busy="true">
       <span v-if="mirrorScene.phase === 'closing'" class="mirror-ending-title">{{ preferences.language === 'en' ? 'The End' : 'Fin' }}</span>
     </div>
     <!-- <navBar></navBar> -->
-    <div class="game-layout" :inert="mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase) ? '' : null">
+    <div class="game-layout" :inert="(openingScene && !mapLoadError) || (mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase)) ? '' : null">
       <div class="game-stage" ref="gameStage">
       <fishing-prompt v-if="fishing && !battle" :state="fishing" @start="fishingAction" @cancel="cancelFishing()" />
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
@@ -389,6 +390,7 @@ import { StoryGateRenderer } from '@/services/storyGateRenderer';
 import { drawNpcFrame, npcWorldSize, usesClassicNpcAtlas, npcRenderOffset, npcAppearance } from '@/services/npcFrames';
 import FlightTransition from './FlightTransition.vue';
 import VoidTransition from './VoidTransition.vue';
+import AdventureOpening from './AdventureOpening.vue';
 import { drawVoidTeleporter } from '@/services/voidTeleporter';
 import { drawVoidJournals } from '@/services/voidJournals';
 import {drawMirrorGround,drawMirrorClone,mirrorScenePose,mirrorCameraTarget,releaseMirrorEffects} from '@/services/mirrorRiftRenderer';
@@ -464,6 +466,7 @@ import { WorldMusic } from '@/services/worldMusic';
 
 export default {
   components: {
+    AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
@@ -493,7 +496,7 @@ export default {
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
       repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{},
       endSentences: null,
-      flight: null, voidEnding:null, mirrorRift:null, mirrorScene:null,
+      flight: null, voidEnding:null, mirrorRift:null, mirrorScene:null, openingScene:null,
       textImageSequence: [],
       socket: null,
       animationFrameId: null,
@@ -721,12 +724,13 @@ export default {
         && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map
         && this.players[this.socket?.id]?.currentmap === this.map && !this.flight && !this.battle && !this.textImageSequence.length;
     },
+    openingReady() { return !!this.openingScene && this.map === this.openingScene.map && this.renderedMap === this.map && !this.mapLoading && !this.mapLoadError && !!this.players[this.socket?.id]; },
     movementBlocked() { return this.worldContextLost || this.mapLoading || !!this.mapLoadError || this.movementSuspended; },
     mirrorVictoryReady(){return !this.isDrift&&this.mirrorRift?.stage==='won'&&this.battleResult?.outcome==='victory'&&!this.battle&&!this.pendingBattleResult;},
     mirrorWakeReady(){return this.mirrorRift?.stage==='won'&&!this.battle&&!this.battleResult&&!this.pendingBattleResult&&!this.mapLoading&&this.mirrorScene?.phase!=='closing';},
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     movementSuspended() {
-      return !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
@@ -778,6 +782,15 @@ export default {
   },
 
   methods: {
+    finishAdventureOpening() {
+      if(!this.openingScene || !this.socket?.connected)return;
+      const scene=this.openingScene;
+      this.socket.timeout(4000).emit('adventureOpeningDone',(error,response)=>{
+        if(this.openingScene!==scene)return;
+        if(!error&&response?.success)this.openingScene=null;
+        else this._openingRetry=setTimeout(()=>this.finishAdventureOpening(),1000);
+      });
+    },
     onMusicPrelude(active) {
       this.trainerMusicPrelude = Boolean(active);
       this.syncWorldMusic();
@@ -2635,7 +2648,8 @@ export default {
       return;
     }
 
-    this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token,{mirrorRift:true});
+    this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token,{mirrorRift:true,adventureOpening:true});
+    this.socket.on('adventureOpening',scene=>{if(this.isDrift)return;this.releaseAllMovementKeys();this.openingScene=scene;});
     bindSessionReplacement(this.socket, () => this.$router.replace({path:'/connexion',query:{reason:'session-replaced'}}));
     if (this.isDrift) {
       this.driftClockTimer = setInterval(() => { this.driftClock = Date.now(); }, 250);
@@ -3066,6 +3080,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      clearTimeout(this._openingRetry);this.openingScene=null;
       clearTimeout(this._mirrorSceneTimer);clearInterval(this._mirrorWakeTimer);this.mirrorScene=null;this._mirrorAudio?.stop();
       this.flight=null;
       clearTimeout(this._lucieDepartureTimer);this.lucieDeparture=null;this._lucieDepartureResult=null;
@@ -3227,6 +3242,7 @@ export default {
   beforeDestroy() {
     releaseMirrorEffects();
     clearTimeout(this._mirrorSceneTimer);clearInterval(this._mirrorWakeTimer);
+    clearTimeout(this._openingRetry);
     this._mirrorAudio?.dispose();
     this._fullscreen?.destroy();
     clearTimeout(this._lucieDepartureTimer);
