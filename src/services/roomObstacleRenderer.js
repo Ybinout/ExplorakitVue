@@ -9,6 +9,13 @@ function actionStrikeTimes(action) {
 }
 export function strikeState(action, now) {
   const elapsed = action?.active ? Math.max(0, now - action.startedAt) : -1;
+  if (action?.manual) {
+    const totalHits = Math.max(1, Math.min(10, Number(action.requiredHits) || 10));
+    const hits = Math.max(0, Math.min(totalHits, Number(action.hits) || 0));
+    const age = elapsed >= 80 ? elapsed - 80 : Infinity;
+    return {elapsed, hits, totalHits, impact:age < 220 ? 1-age/220 : 0,
+      anticipation:elapsed>=0 && elapsed<80 ? elapsed/80 : 0};
+  }
   const times=actionStrikeTimes(action);
   const hits = times.filter(t => elapsed >= t).length;
   const age = hits ? elapsed - times[hits - 1] : Infinity;
@@ -34,7 +41,7 @@ function crystal(ctx,x,y,height,width,light) {
   ctx.fillStyle=light;ctx.fillRect(x-1,y-height+9,2,Math.max(2,height-17));
 }
 export function drawRoomBarricade(ctx,gate,now,opening,animated) {
-  const action=gate.workAction,state=strikeState(action,now);
+  const action=gate.workAction,state=strikeState(action || (gate.manual ? gate : null),now);
   ctx.save();
   try {
     ctx.globalAlpha=1-opening;

@@ -224,10 +224,10 @@
           <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
-          <room-obstacle-action v-if="roomObstacleAction && !battle" :key="roomObstacleAction.id" :action="roomObstacleAction" :language="preferences.language" />
+          <room-obstacle-action v-if="displayedRoomObstacleAction && !battle" :key="displayedRoomObstacleAction.id" :action="displayedRoomObstacleAction" :language="preferences.language" />
           <div v-if="mirrorScene?.phase === 'opening' && mirrorScene.map === map" class="mirror-opening-caption" :class="{'is-reduced': !preferences.animationsEnabled || worldWeatherReducedMotion}" role="status" aria-live="polite"><em>{{ preferences.language === 'en' ? 'Something is happening…' : 'Il se passe quelque chose…' }}</em></div>
-          <div v-if="!roomObstacleAction && interactionNotice && interactionNoticeKind === 'gate' && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ interactionNotice }}</div>
-          <div v-if="nearbyRoomObstacle && !roomObstacleAction && !interactionNotice && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ preferences.language === 'en' ? 'A / Space · Break the crystals' : 'A / Espace · Briser les cristaux' }}</div>
+          <div v-if="!displayedRoomObstacleAction && interactionNotice && interactionNoticeKind === 'gate' && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ interactionNotice }}</div>
+          <div v-if="nearbyRoomObstacle && !displayedRoomObstacleAction && !interactionNotice && !battle && !textImageSequence.length" class="story-gate-notice" role="status">{{ preferences.language === 'en' ? 'A / Space · Break the crystals' : 'A / Espace · Briser les cristaux' }}</div>
           <div v-if="mapLoading || mapLoadError || worldContextLost" class="world-loading" role="status" :class="{ 'has-error': mapLoadError }">
             <span>{{ mapLoadError || (preferences.language === 'en' ? 'Loading location…' : 'Chargement du lieu…') }}</span>
             <button v-if="mapLoadError" @click="loadMapImage">{{ preferences.language === 'en' ? 'Retry' : 'Réessayer' }}</button>
@@ -276,7 +276,7 @@
           <div class="mobile-action-group">
           <button
             class="mobile-action-a"
-            :disabled="!!roomObstacleAction || !!lucieDeparture || !!mirrorScene || mirrorRift?.stage==='won'"
+            :disabled="(!!roomObstacleAction && (!roomObstacleAction.manual || roomObstacleAction.success)) || !!lucieDeparture || !!mirrorScene || mirrorRift?.stage==='won'"
             :aria-label="textImageSequence.length ? (preferences.language === 'en' ? 'Continue dialogue' : 'Continuer le dialogue') : (preferences.language === 'en' ? 'Interact' : 'Parler ou agir')"
             @pointerdown.stop.prevent="triggerMobileActionA"
             @click="activateMobileActionA"
@@ -707,6 +707,12 @@ export default {
       const x = Math.floor(player.x / 32), y = Math.floor(player.y / 32);
       return this.roomObstacles.find(o => o.map === this.map && o.locked
         && o.cells.some(p => Math.abs(p.x - x) + Math.abs(p.y - y) <= 1)) || null;
+    },
+    displayedRoomObstacleAction() {
+      if (this.roomObstacleAction) return this.roomObstacleAction;
+      if (!this.nearbyRoomObstacle?.manual || this.textImageSequence.length || this.mapLoading) return null;
+      return {...this.nearbyRoomObstacle, active:false,
+        message:'Cristaux de l’Aube Obscure', messageEn:'Obscure Dawn crystals'};
     },
     roomEntryReady() {
       return this.pendingRoomEntry && this.pendingRoomEntry[2]?.entryMap === this.map
@@ -2173,7 +2179,11 @@ export default {
         return;
       }
       if (this.textImageSequence.length <= 0) {
-        this.socket.emit('Space', { action: 'Space' });
+        if (this.roomObstacleAction?.success) return;
+        if (this.nearbyRoomObstacle?.manual) {
+          this._roomObstaclePress = (this._roomObstaclePress || 0) + 1;
+          this.socket.emit('roomObstacle:hit', {pressId:this._roomObstaclePress});
+        } else this.socket.emit('Space', { action: 'Space' });
       }
 
     },
@@ -2225,6 +2235,7 @@ export default {
       if (action === 'direction' && !direction) {
         this._gamepadDirection = null; this.syncPlayerIdleState(); consume(); return;
       }
+      if (action === 'confirm' && this.roomObstacleAction?.manual && !this.roomObstacleAction.success) { consume(); this.triggerMobileActionA(); return; }
       if (this.flight || this.lucieDeparture || this.roomObstacleAction || this.quitting) { consume(); return; }
       if (this.textImageSequence.length && !this.battleResult && !this.driftSpectator) {
         consume(); if (action === 'confirm') this.triggerMobileActionA(); return;
@@ -2299,7 +2310,7 @@ export default {
       }
       if (e.code === 'Space') {
         e.preventDefault();
-        this.espace();
+        if (!e.repeat) this.espace();
       }
     },
     getMovementKey(e) {
@@ -2735,7 +2746,7 @@ export default {
       if (this.roomObstacleAction) this._roomObstacleTimer = setTimeout(() => {
         this.roomObstacleAction = null;
         this._storyGateRenderer?.work(null);
-      }, action.success ? 1100 : Math.min(20000, (Number(action.duration) || 0) + 4000));
+      }, action.success ? 1100 : action.manual ? 380 : Math.min(20000, (Number(action.duration) || 0) + 4000));
       this.drawPlayers();
     });
     this.socket.on('storyGatesState', (payload = {}) => {
