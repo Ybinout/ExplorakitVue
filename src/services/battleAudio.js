@@ -1,3 +1,5 @@
+import {moveSoundPlan} from './moveSounds.js';
+
 // Small synthesized effects: no download on the critical path of an attack.
 export class BattleAudio {
   constructor(createContext = () => {
@@ -13,7 +15,11 @@ export class BattleAudio {
   }
   setVolume(volume) {
     this.volume = Math.max(0, Math.min(1, Number(volume) || 0));
-    if (this.output) this.output.gain.setValueAtTime(this.volume, this.context.currentTime);
+    if (this.output) {
+      const gain=this.output.gain,now=this.context.currentTime;
+      if(gain.setTargetAtTime)gain.setTargetAtTime(this.volume,now,.012);
+      else gain.setValueAtTime(this.volume,now);
+    }
     if (!this.volume) this.stop();
   }
   unlock() {
@@ -32,15 +38,21 @@ export class BattleAudio {
   }
   voice(source, duration, options, filter = null) {
     const c = this.context, gain = c.createGain();
+    // Bound even fast/reduced-motion battles, and release evicted nodes now.
+    if(this.voices.size>=48){const oldest=this.voices.values().next().value;try{oldest.stop();}catch{ /* Already ended. */ }oldest.onended?.();}
     const start = c.currentTime + (options.delay || 0);
+    const attack=Math.min(duration*.4,options.attack||.008),hold=Math.min(duration-.01,options.hold||0);
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(options.volume || 0.1, start + 0.012);
+    gain.gain.exponentialRampToValueAtTime(options.volume || 0.1, start + attack);
+    if(hold>attack)gain.gain.setValueAtTime(options.volume||.1,start+hold);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
     source.connect(filter || gain);
     if (filter) filter.connect(gain);
     gain.connect(this.output);
     this.voices.add(source);
+    let released=false;
     source.onended = () => {
+      if(released)return;released=true;
       this.voices.delete(source); source.disconnect(); gain.disconnect(); filter?.disconnect();
     };
     source.start(start); source.stop(start + duration + 0.02);
@@ -66,42 +78,28 @@ export class BattleAudio {
     }
     const source = c.createBufferSource(), filter = c.createBiquadFilter();
     source.buffer = this.noiseBuffer;
-    filter.type = 'bandpass'; filter.Q.value = 0.8;
+    filter.type = options.filter || 'bandpass'; filter.Q.value = 0.8;
     const start = c.currentTime + (options.delay || 0);
     filter.frequency.setValueAtTime(frequency, start);
     filter.frequency.exponentialRampToValueAtTime(options.endFrequency || frequency / 2, start + duration);
     this.voice(source, duration, options, filter);
   }
-  move({ moveType = 'Normal', damageClass = 'physical' } = {}) {
-    if (!this.ready()) return;
-    if (damageClass === 'status') {
-      [440, 660, 880].forEach((note, i) => this.tone(note, 0.18, { delay: i * 0.06, volume: 0.07 }));
-    } else if (['Electric', 'Steel'].includes(moveType)) {
-      this.noise(0.22, 3600, { volume: 0.17 });
-      this.tone(760, 0.23, { type: 'sawtooth', endFrequency: 120, volume: 0.08 });
-    } else if (['Water', 'Ice'].includes(moveType)) {
-      this.noise(0.38, 1600, { endFrequency: 4300, volume: 0.2 });
-      [520, 760, 1080].forEach((note, i) => this.tone(note, 0.1, { delay: i * 0.07, volume: 0.06 }));
-    } else if (['Fire', 'Ground', 'Rock', 'Dragon'].includes(moveType)) {
-      this.noise(0.36, 850, { volume: 0.3 });
-      this.tone(180, 0.25, { endFrequency: 48, type: 'triangle', volume: 0.2 });
-    } else if (['Grass', 'Bug', 'Flying'].includes(moveType)) {
-      this.noise(0.24, 3200, { volume: 0.23 });
-      this.tone(240, 0.16, { endFrequency: 90, volume: 0.12, delay: 0.08 });
-    } else if (damageClass === 'special') {
-      this.tone(300, 0.3, { endFrequency: 1100, volume: 0.1 });
-      this.tone(600, 0.25, { endFrequency: 160, volume: 0.1, delay: 0.08 });
-    } else {
-      this.noise(0.12, 2400, { volume: 0.25 });
-      this.tone(150, 0.18, { endFrequency: 45, type: 'triangle', volume: 0.22 });
+  playPlan(payload,stage) {
+    if(!this.ready())return;
+    for(const voice of moveSoundPlan(payload,stage)){
+      const {kind,frequency,duration,...options}=voice;
+      if(kind==='noise')this.noise(duration,frequency,options);
+      else this.tone(frequency,duration,options);
     }
   }
+  move(payload={}) { this.playPlan({damageClass:'physical',...payload},'cast'); }
+  impact(payload={}) { this.playPlan(payload,'impact'); }
   stop() {
-    for (const source of this.voices) { try { source.stop(); } catch (_) { /* Already ended. */ } }
+    for (const source of this.voices) { try { source.stop(); } catch (_) { /* Already ended. */ } source.onended?.(); }
     this.voices.clear();
   }
   dispose() {
     this.stop(); this.disposed = true;
-    this.context?.close().catch(() => {});
+    this.context?.close?.().catch(() => {});
   }
 }

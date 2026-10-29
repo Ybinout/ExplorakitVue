@@ -439,6 +439,7 @@ export default {
       messageNonce: 0,
       messageTimer: null,
       moveTimer: null,
+      moveAudio: null,
       resultTimer: null,
       criticalFx: { side: null, nonce: 0 }, criticalTimer: null, pendingCritical: null,
       battleMoveFx: {
@@ -991,6 +992,9 @@ export default {
       if (this._pendingBattleField) {
         const field=this._pendingBattleField;this._pendingBattleField=null;this.applyFieldState(field);
       }
+      // The impact belongs to this authoritative HP frame, including with
+      // visual animations disabled. Misses/Abri/immunities never play a hit.
+      if(this.moveAudio){this._battleAudio?.impact(this.moveAudio);this.moveAudio=null;}
       const healing = [];
       // Settle damage on the Pokémon that received it before removing its sprite.
       let hpChanged = false;
@@ -1309,6 +1313,8 @@ export default {
         ? payload.damageClass : 'status');
       this.clearMoveFx();
       clearTimeout(this.resultTimer); this.resultFx.visible = false;
+      this.moveAudio={...payload,damageClass,result:null};
+      this._battleAudio?.move(this.moveAudio);
       if (this.reducedMotion()) return;
       this.movePath = this.buildMovePath(actor, damageClass, payload.phase === 'prepare' ? 'self' : payload.moveTarget);
       const targetSide = actor === 'opponent' ? 'player' : 'wild';
@@ -1317,9 +1323,9 @@ export default {
         actor, moveName:payload.moveName || '', moveType:payload.moveType || 'Normal', damageClass,
         visible:true, nonce:this.battleMoveFx.nonce+1, stage:'windup', result:null, prepare:payload.phase==='prepare', moveTarget:payload.moveTarget || 'opponent', fieldMove:hasBattleFieldVisual(payload.moveName)
       });
-      this._battleAudio?.move({ damageClass, moveType: payload.moveType || 'Normal' });
     },
     playMoveResult(payload = {}) {
+      if(this.moveAudio)this.moveAudio.result=payload;
       this.battleMoveFx.result = payload;
       const labels = [];
       const side = payload.actor === 'opponent' ? 'player' : 'wild';
@@ -1491,6 +1497,7 @@ export default {
       }
     },
     clearMoveFx() {
+      this.moveAudio=null;
       if (this.moveTimer) clearTimeout(this.moveTimer);
       this.moveTimer = null;
       this.battleMoveFx.visible = false;
@@ -1509,6 +1516,7 @@ export default {
       });
     },
     clearAllTimers() {
+      this._battleAudio?.stop();
       this.cancelEntrance();
       clearTimeout(this.criticalTimer); this.criticalFx.side=null; this.pendingCritical=null;
       this.visualEpoch++;this._sendOutController?.abort();this.sendOuts=[];this.trainerSpeech=null;this._transitionRelease?.();clearTimeout(this._transitionLabelTimer);clearTimeout(this.driftNoticeTimer);this.transitionFx={player:'',wild:''};this.transitionLabel='';this.driftNotices=[];clearTimeout(this.conditionTimer);this.conditionFx={player:[],wild:[]};this.conditionNotice='';
