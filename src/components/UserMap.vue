@@ -3267,7 +3267,7 @@ export default {
     });
 
     this.socket.on('battleText', (data) => {
-      this.$refs.battleOverlay?.presentEvent('showMessage', data?.message || '...');
+      this.$refs.battleOverlay?.presentEvent(data?.reward===true?'showRewardMessage':'showMessage', data?.reward===true?data:data?.message || '...');
     });
 
     this.socket.on('bagUpdated', (data) => {

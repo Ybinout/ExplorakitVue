@@ -19,7 +19,7 @@ export function bindSessionReplacement(socket, onReplaced) {
 export function createGameSocket(token, { mirrorRift = false, adventureOpening = false } = {}) {
   return io(socketOrigin, {
     path: `${process.env.BASE_URL || '/'}socket.io`,
-    auth: { token, ...(mirrorRift ? { mirrorRift:true } : {}), ...(adventureOpening ? { adventureOpening:true } : {}) },
+    auth: { token, rewardPlayback:true, ...(mirrorRift ? { mirrorRift:true } : {}), ...(adventureOpening ? { adventureOpening:true } : {}) },
     transports: ['websocket', 'polling']
   });
 }
@@ -27,7 +27,7 @@ export function createGameSocket(token, { mirrorRift = false, adventureOpening =
 export function createDriftSocket(token) {
   return io(`${socketOrigin.replace(/\/$/, '')}/drift`, {
     path: `${process.env.BASE_URL || '/'}socket.io`,
-    auth: { token }, autoConnect: false, transports: ['websocket', 'polling']
+    auth: { token, rewardPlayback:true }, autoConnect: false, transports: ['websocket', 'polling']
   });
 }
 

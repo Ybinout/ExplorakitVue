@@ -217,6 +217,9 @@
           v-else-if="actionState.patient"
           :key="messageNonce"
           class="battle-text-box"
+          :class="{'battle-reward-message':rewardNotice}"
+          :data-battle-reward="rewardNotice?'':null"
+          :title="rewardNotice?(preferences.language==='en'?'Click to continue':'Appuie pour continuer'):null"
           role="status"
           aria-live="polite"
         >
@@ -419,6 +422,7 @@ export default {
       replacementId: null,
       actionTurnId: null,
       presentationBusy: false,
+      rewardNotice: false,
       entrancePhase: 'ready',
       entranceChampion: null,
       feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
@@ -789,7 +793,7 @@ export default {
       else if (this.music.paused) this.music.play().catch(() => {});
     },
     syncAudio() {
-      if (document.hidden) { this.clearMoveFx(); this.cancelEntrance(); this._presentation?.skipWait(); this._transitionRelease?.(); this.clearCaptureTimers({settle:true}); }
+      if (document.hidden) { this.clearMoveFx(); this.cancelEntrance(); this._presentation?.skipWait(); this._rewardRelease?.(); this._transitionRelease?.(); this.clearCaptureTimers({settle:true}); }
       this._battleAudio?.setVolume(this.soundEnabled && !document.hidden ? this.audioVolume : 0);
       this.syncMusic();
     },
@@ -809,7 +813,15 @@ export default {
       if (!keepPrelude) this.setMusicPrelude(false);
     },
     consumeExperienceClick(event){if(this._experiencePointer){this._experiencePointer=false;event.preventDefault();event.stopPropagation();}},
-    advanceExperience(event){if(!this.experienceBusy||!this._experienceControl?.skip)return false;event?.preventDefault?.();event?.stopPropagation?.();if(event?.type==='pointerdown')this._experiencePointer=true;this._experienceControl.skip();return true;},
+    advanceExperience(event){const skip=this.experienceBusy&&this._experienceControl?.skip||this._rewardRelease;if(!skip)return false;event?.preventDefault?.();event?.stopPropagation?.();if(event?.type==='pointerdown')this._experiencePointer=true;skip();return true;},
+    showRewardMessage(payload){
+      this.showMessage(payload.message,true);this.rewardNotice=true;
+      return new Promise(resolve=>{
+        const finish=()=>{clearTimeout(this._rewardTimer);this._rewardTimer=null;this._rewardRelease=null;this.rewardNotice=false;resolve();};
+        this._rewardRelease=finish;
+        this._rewardTimer=setTimeout(finish,document.hidden?0:Math.max(150,Math.min(2200,Number(payload.readMs)||900)));
+      });
+    },
     updateExperience(payload) {
       const pokemon = payload?.pokemon;
       const index = this.battleTeam.findIndex(entry => entry.uuid === pokemon?.uuid);
@@ -1516,6 +1528,7 @@ export default {
       });
     },
     clearAllTimers() {
+      this._rewardRelease?.();
       this._battleAudio?.stop();
       this.cancelEntrance();
       clearTimeout(this.criticalTimer); this.criticalFx.side=null; this.pendingCritical=null;
@@ -1960,6 +1973,7 @@ export default {
   animation: battle-message-in 0.22s ease-out both;
 }
 
+.battle-reward-message { cursor: pointer; }
 .battle-text-box-muted {
   color: #b9c3de;
 }
