@@ -36,9 +36,9 @@
             <p v-if="loading" class="pack-empty" role="status">{{ english?'Opening your bag…':'Ouverture du sac…' }}</p>
             <div v-else-if="!visibleItems.length" class="pack-empty"><bag-item-icon :pocket="activePocket"/><strong>{{ english?'This pocket is empty':'Cette poche est vide' }}</strong><span>{{ total ? (english?'Your other items are in the other pockets.':'Tes autres objets sont dans les autres poches.') : emptyLabel }}</span></div>
             <div v-else class="bag-items">
-              <article v-for="item in visibleItems" :key="item.key" :data-item-key="item.key" class="bag-item-row" :class="{'item-open':selectedKey===item.key}">
+              <article v-for="item in visibleItems" :key="item.key" :data-item-key="item.key" class="bag-item-row" :class="{'item-open':selectedKey===item.key}" :style="machine(item) ? typeStyle(machine(item).type) : null">
                 <button class="bag-item-select" :aria-expanded="selectedKey===item.key" :aria-controls="`bag-item-${item.key}`" @click="selectedKey=item.key">
-                  <span class="item-stamp"><bag-item-icon :pocket="activePocket" :item-key="item.key"/></span><span class="bag-item-name">{{ item.name }}<small v-if="item.unique" class="item-unique">Unique</small></span><span class="bag-item-qty">x{{ item.quantity }}</span><span class="item-chevron" aria-hidden="true">{{ selectedKey===item.key?'⌄':'›' }}</span>
+                  <span class="item-stamp"><bag-item-icon :pocket="activePocket" :item-key="item.key"/></span><span class="bag-item-name"><span :class="{'bag-machine-name':machine(item)}" :data-bag-machine-name="machine(item)?'':null">{{ item.name }}</span><span v-if="machine(item)" class="bag-machine-meta"><span data-bag-machine-type>{{ english?machine(item).type:typeName(machine(item).type) }}</span><span aria-hidden="true">·</span><span data-bag-machine-class>{{ machineClass(item) }}</span></span><small v-if="item.unique" class="item-unique">Unique</small></span><span class="bag-item-qty">x{{ item.quantity }}</span><span class="item-chevron" aria-hidden="true">{{ selectedKey===item.key?'⌄':'›' }}</span>
                 </button>
                 <div v-if="selectedKey===item.key" :id="`bag-item-${item.key}`" class="bag-item-detail">
                   <p class="bag-item-description">{{ description(item) }}</p>
@@ -61,6 +61,9 @@
 <script>
 import BagItemIcon from './BagItemIcon.vue';
 import {BAG_POCKETS,bagPocket} from '@/services/bagPockets';
+import machines from '@/data/machines.json';
+import reference from '@/data/pokemonReference.fr.json';
+import {localizeTypeName,typeBadgeStyle} from '@/services/pokemonTypes';
 export default {
   name:'BagPanel',components:{BagItemIcon},
   props:{items:{type:Array,default:()=>[]},loading:Boolean,error:String,notice:String,repelSteps:{type:Number,default:0},emptyLabel:String,expedition:Boolean,language:String},
@@ -78,6 +81,10 @@ export default {
   mounted(){this.previousFocus=document.activeElement;if(!this.visibleItems.length&&this.owned.length)this.activePocket=bagPocket(this.owned[0]);this.reconcile();this.$refs.close.focus({preventScroll:true});},
   beforeDestroy(){const previous=this.previousFocus;this.$nextTick(()=>{const target=previous?.isConnected&&previous!==document.body&&previous!==document.documentElement?previous:document.querySelector('.menu-toggle-btn');target?.focus({preventScroll:true});});},
   methods:{
+    machine(item){return item.category==='machine'?machines[item.key]:null;},
+    typeName:localizeTypeName,
+    typeStyle:typeBadgeStyle,
+    machineClass(item){const category=reference.moves[this.machine(item)?.move]?.category;return (this.english?{physical:'Physical',special:'Special',status:'Status'}:{physical:'Physique',special:'Spéciale',status:'Statut'})[category]||'—';},
     description(item){const balls={pokeball:'Une Ball pour capturer un Pokémon sauvage.',superball:'Une Ball offrant de meilleures chances de capture.',hyperball:'Une Ball très performante pour les captures difficiles.'};return !this.english&&balls[item.key]?balls[item.key]:item.description;},
     reconcile(){if(!this.pockets.some(p=>p.key===this.activePocket))this.activePocket='medicine';if(!this.visibleItems.some(i=>i.key===this.selectedKey))this.selectedKey=this.visibleItems[0]?.key||null;},
     choosePocket(key){this.activePocket=key;this.selectedKey=null;this.$nextTick(()=>{this.reconcile();this.$refs.scroll.scrollTop=0;});},
@@ -87,6 +94,8 @@ export default {
 };
 </script>
 <style scoped>
+.bag-machine-name{padding:2px 5px;border-radius:5px;background:var(--pokemon-type-color);color:var(--pokemon-type-ink);line-height:1.7;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.bag-machine-meta{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;color:var(--journal-muted);font-size:10px;font-weight:400}
 .bag-backdrop{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:20px;background:var(--journal-backdrop);backdrop-filter:blur(5px)}
 .bag-backdrop .bag-panel.expedition-bag{box-sizing:border-box;position:relative;inset:auto;display:flex;flex-direction:column;width:min(840px,100%);height:min(690px,calc(100dvh - 40px));max-height:none;padding:0;overflow:hidden;border:2px solid var(--journal-border);border-radius:28px 28px 18px 18px;color:var(--journal-ink);background:var(--journal-paper);font:13px/1.45 var(--journal-font);box-shadow:var(--journal-shadow)}
 .item-unique{display:block;font-size:10px;color:var(--journal-muted);font-weight:400;margin-top:3px}.expedition-bag *{box-sizing:border-box}.pack-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border-bottom:1px solid var(--journal-border);background:var(--journal-card)}.pack-header small{font-size:9px;letter-spacing:.13em;font-weight:700;color:var(--journal-muted)}.pack-header h2{margin:3px 0 0;font:600 29px/1.2 Georgia,serif;color:var(--journal-heading)}.pack-header .panel-close{width:44px;height:44px;flex:none;border:1px solid var(--journal-border);border-radius:50%;background:var(--journal-soft);color:var(--journal-ink);font:26px Arial;cursor:pointer}

@@ -36,7 +36,7 @@ export default {
   methods:{
     label(move){return localizeMoveName(move,'fr');},
     description(move){return reference.moves[move]?.description || 'Description de cette capacité indisponible.';},
-    details(name){const m=moves[name];return m?`${localizeTypeName(m.type)} · Puiss. ${m.power||'—'} · Préc. ${m.accuracy||'—'} · ${m.pp} PP`:'';},
+    details(name){const m=moves[name],category={physical:'Physique',special:'Spéciale',status:'Statut'}[reference.moves[name]?.category]||'—';return m?`${localizeTypeName(m.type)} · ${category} · Puiss. ${m.power||'—'} · Préc. ${m.accuracy||'—'} · ${m.pp} PP`:'';},
     reason(p){if(p.isEgg)return 'Œuf';if(!(p.currentHp>0))return 'K.O.';if(!this.machine.species.includes(p.data?.id))return 'Incompatible';if(p.abilities.includes(this.machine.move))return 'Déjà apprise';return '';},
     choose(uuid){this.target=uuid;this.expectedMoves=[...(this.pokemon?.abilities||[])];this.slot=uuid&&this.expectedMoves.length<4?this.expectedMoves.length:null;},
     confirm(){if(!this.pokemon||this.busy||!this.allowed||this.slot===null||this.reason(this.pokemon))return;this.$emit('use',{itemKey:this.item.key,pokemonUuid:this.target,slot:this.slot,expectedMoves:[...this.expectedMoves]});}
