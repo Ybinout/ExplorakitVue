@@ -153,6 +153,7 @@
                 <div class="team-row-top">
                   <span class="team-slot">#{{ index + 1 }}</span>
                   <button class="team-row-name team-detail-link" @click="openPokemonDetails(pokemon)">{{ pokemon.name }} <span>›</span></button>
+                  <potential-star class="team-potential" :value="pokemon.k" :language="preferences.language" />
                   <span class="team-level">lv.{{ pokemon.level }}</span>
                 </div>
                 <div class="team-hp-track">
@@ -402,6 +403,8 @@ import { drawVoidTeleporter } from '@/services/voidTeleporter';
 import { drawVoidJournals } from '@/services/voidJournals';
 import {drawMirrorGround,drawMirrorClone,mirrorScenePose,mirrorCameraTarget,releaseMirrorEffects} from '@/services/mirrorRiftRenderer';
 import {BattleAudio} from '@/services/battleAudio';
+import { GameFeedbackAudio, teamWasRestored } from '@/services/gameFeedbackAudio';
+import PotentialStar from './PotentialStar.vue';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
 import {drawDepartment} from '@/services/departmentLayout';
@@ -486,7 +489,7 @@ export default {
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    JournalIcon, BagPanel, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer,
+    JournalIcon, BagPanel, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, PotentialStar,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -813,7 +816,9 @@ export default {
       this.trainerMusicPrelude = Boolean(active);
       this.syncWorldMusic();
     },
-    syncWorldMusic() {
+    syncWorldMusic(event) {
+      this._feedbackAudio?.setVolume(this.worldAudioConnected && !document.hidden ? this.preferences.masterVolume / 100 : 0);
+      if (event?.isTrusted && ['pointerdown', 'pointerup', 'keydown'].includes(event.type)) this._feedbackAudio?.unlock();
       this._worldMusic?.update({ ...this.worldMusicState, active: this.worldMusicState.active && !document.hidden });
     },
     async loadEvolutionOptions() {
@@ -1780,6 +1785,7 @@ export default {
       for(const p of normalizedTeam){const pending=p.evolutionState?.pending;
         if(pending&&!this.evolutionQueue.some(e=>e.key===pending.id))this.evolutionQueue.push({key:pending.id,uuid:p.uuid,from:pending.from,to:pending.targetId,fromName:evolutionGraph.names[pending.from],toName:evolutionGraph.names[pending.targetId],pending});}
 
+      if (!this.battle && teamWasRestored(this.teamPokemons, normalizedTeam)) this._feedbackAudio?.play('heal');
       this.teamPokemons = normalizedTeam;
       this.teamDirty = false;
     },
@@ -2709,6 +2715,7 @@ export default {
 
   },
   mounted() {
+    this._feedbackAudio = new GameFeedbackAudio();
     this._worldMusic = new WorldMusic({ 'gwenn-room': require('@/assets/msc/gwenn-entrance.mp3'), 'mounir-room': require('@/assets/msc/mounir-arene.mp3'), 'hoze-room': require('@/assets/msc/hoze-arene.mp3'), center: require('@/assets/msc/center.mp3'), village: require('@/assets/msc/village.mp3'), route: require('@/assets/msc/start.mp3'), cave: require('@/assets/msc/cave.mp3'), snow: require('@/assets/msc/snow.mp3'), 'wanda-room': require('@/assets/msc/areneWanda.mp3'), 'sevenp-room': require('@/assets/msc/arene7p.mp3'), 'raph-room': require('@/assets/msc/areneraph.mp3'), 'ana-room': require('@/assets/msc/ana_arene.mp3'), 'lucie-room': require('@/assets/msc/lucie-maison.mp3') });
     window.addEventListener('pointerdown', this.syncWorldMusic);
     window.addEventListener('pointerup', this.syncWorldMusic);
@@ -3034,6 +3041,7 @@ export default {
       const teamFromPayload = Array.isArray(payload?.equipe?.pokemons)
         ? payload.equipe.pokemons
         : [];
+      if (payload.reason === 'heal' && !this.battle && !teamWasRestored(this.teamPokemons, teamFromPayload)) this._feedbackAudio?.play('heal');
       if (teamFromPayload.length > 0 || this.isDrift) {
         this.applyTeamPokemons(teamFromPayload);
       }
@@ -3219,7 +3227,7 @@ export default {
     });
     this.socket.on('mapWeatherState', state => { this.mapWeather = state; });
     this.socket.on('worldDevicesState', state=>{this.worldDevices=state;});
-    this.socket.on('pcOpened', state=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;this.pc={visible:true,busy:false,state,error:'',notice:''};});
+    this.socket.on('pcOpened', state=>{if(!this.pc.visible)this._feedbackAudio?.play('pc');this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;this.pc={visible:true,busy:false,state,error:'',notice:''};});
     this.socket.on('pcUpdated',state=>{if(this.pc.visible)this.pc.state=state;});
 
     this.socket.on('battletrigger', (data) => {
@@ -3344,6 +3352,7 @@ export default {
     clearTimeout(this._mirrorSceneTimer);clearInterval(this._mirrorWakeTimer);
     clearTimeout(this._openingRetry);
     this._mirrorAudio?.dispose();
+    this._feedbackAudio?.dispose();
     this._fullscreen?.destroy();
     clearTimeout(this._lucieDepartureTimer);
     this.cancelFishing();
@@ -3991,12 +4000,16 @@ button:hover {
   margin-bottom: 5px;
 }
 
+.team-potential{width:24px;height:24px;flex:0 0 24px}
+.team-potential ::v-deep svg{max-width:24px;max-height:24px}
+
 .team-slot {
   color: #9eb0d6;
   font-size: 9px;
 }
 
 .team-level {
+  flex-shrink:0;
   margin-left: auto;
   color: #dff5ff;
   background: #304f72;
@@ -4007,6 +4020,8 @@ button:hover {
 }
 
 .team-row-name {
+  min-width:0;
+  flex:1;
   color: #f8fbff;
   font-size: 10px;
   margin-bottom: 0;

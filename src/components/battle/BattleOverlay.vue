@@ -439,7 +439,6 @@ export default {
       messageNonce: 0,
       messageTimer: null,
       moveTimer: null,
-      moveAudio: null,
       resultTimer: null,
       criticalFx: { side: null, nonce: 0 }, criticalTimer: null, pendingCritical: null,
       battleMoveFx: {
@@ -998,9 +997,6 @@ export default {
       if (this._pendingBattleField) {
         const field=this._pendingBattleField;this._pendingBattleField=null;this.applyFieldState(field);
       }
-      // The impact belongs to this authoritative HP frame, including with
-      // visual animations disabled. Misses/Abri/immunities never play a hit.
-      if(this.moveAudio){this._battleAudio?.impact(this.moveAudio);this.moveAudio=null;}
       const healing = [];
       // Settle damage on the Pokémon that received it before removing its sprite.
       let hpChanged = false;
@@ -1319,8 +1315,6 @@ export default {
         ? payload.damageClass : 'status');
       this.clearMoveFx();
       clearTimeout(this.resultTimer); this.resultFx.visible = false;
-      this.moveAudio={...payload,damageClass,result:null};
-      this._battleAudio?.move(this.moveAudio);
       if (this.reducedMotion()) return;
       this.movePath = this.buildMovePath(actor, damageClass, payload.phase === 'prepare' ? 'self' : payload.moveTarget);
       const targetSide = actor === 'opponent' ? 'player' : 'wild';
@@ -1331,7 +1325,6 @@ export default {
       });
     },
     playMoveResult(payload = {}) {
-      if(this.moveAudio)this.moveAudio.result=payload;
       this.battleMoveFx.result = payload;
       const labels = [];
       const side = payload.actor === 'opponent' ? 'player' : 'wild';
@@ -1362,13 +1355,12 @@ export default {
       this.resultFx.labels = labels;
       this.resultFx.nonce += 1;
       this.resultFx.visible = true;
-      if (payload.missed) this.playSound('miss');
       this.resultTimer = setTimeout(() => {
         this.resultFx.visible = false;
         this.resultTimer = null;
       }, 1150);
     },
-    triggerHealthFx(target, delta, nextHp) {
+    triggerHealthFx(target, delta) {
       if (!target || !this.attackFx[target]) return;
       const numericDelta = Number(delta);
       if (!Number.isFinite(numericDelta) || numericDelta === 0) return;
@@ -1376,7 +1368,6 @@ export default {
       const fxState = this.attackFx[target];
       fxState.critical = numericDelta < 0 && this.pendingCritical?.side === target && this.pendingCritical.key === this.getPokemonBattleKey(target === 'player' ? this.currentPokemon : this.opponent);
       if (fxState.critical) {
-        this.playSound('critical');
         if (!this.reducedMotion()) {
           this.criticalFx = {side:target,nonce:this.criticalFx.nonce+1};
           this.criticalTimer = setTimeout(()=>{this.criticalFx.side=null;},700);
@@ -1392,7 +1383,12 @@ export default {
         this.playSound('heal');
         this.playConditionChanges({player:[],wild:[],[target]:[{key:'heal',kind:'heal',symbol:'+',text:'Soin'}]});
       }
-      if (numericDelta < 0 && Number(nextHp) <= 0) this.playSound('ko');
+      // Called only for the same Pokémon's authoritative HP change, after the
+      // projectile/beam arrives. No launch sound, no duplicate critical/KO cue.
+      if (numericDelta < 0) this._battleAudio?.impact({
+        damage: -numericDelta,
+        maxHp: Number((target === 'player' ? this.currentPokemon : this.opponent)?.maxHp)
+      });
       const hitTimer = setTimeout(() => { fxState.hit = false; }, 300);
       const visibleTimer = setTimeout(() => { fxState.visible = false; }, 980);
       this.healthTimers[target] = [hitTimer, visibleTimer];
@@ -1476,18 +1472,12 @@ export default {
     playSound(kind) {
       if (!this.soundEnabled) return;
       const sounds = {
-        attack: () => this.tone(190, 0.16, { type: 'sawtooth', endFrequency: 85, volume: 0.045 }),
         status: () => {
           this.tone(420, 0.18, { volume: 0.035 });
           this.tone(630, 0.2, { delay: 0.08, volume: 0.03 });
         },
         heal: () => [440, 554, 659].forEach((note, index) => this.tone(note, 0.18, { delay: index * 0.08, volume: 0.035 })),
-        ko: () => this.tone(220, 0.48, { type: 'square', endFrequency: 55, volume: 0.035 }),
         miss: () => this.tone(260, 0.12, { type: 'triangle', endFrequency: 150, volume: 0.025 }),
-        critical: () => {
-          this.tone(330, 0.11, { type: 'square', volume: 0.035 });
-          this.tone(660, 0.17, { delay: 0.08, type: 'square', volume: 0.03 });
-        },
         capture: () => this.tone(520, 0.16, { endFrequency: 260, volume: 0.035 }),
         captureTick: () => this.tone(360, 0.08, { type: 'triangle', volume: 0.025 }),
         captureSuccess: () => [523, 659, 784].forEach((note, index) => this.tone(note, 0.2, { delay: index * 0.1, volume: 0.035 }))
@@ -1503,7 +1493,6 @@ export default {
       }
     },
     clearMoveFx() {
-      this.moveAudio=null;
       if (this.moveTimer) clearTimeout(this.moveTimer);
       this.moveTimer = null;
       this.battleMoveFx.visible = false;

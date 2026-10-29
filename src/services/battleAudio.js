@@ -1,4 +1,4 @@
-import {moveSoundPlan} from './moveSounds.js';
+import {damageImpactPlan} from './moveSounds.js';
 
 // Small synthesized effects: no download on the critical path of an attack.
 export class BattleAudio {
@@ -84,16 +84,14 @@ export class BattleAudio {
     filter.frequency.exponentialRampToValueAtTime(options.endFrequency || frequency / 2, start + duration);
     this.voice(source, duration, options, filter);
   }
-  playPlan(payload,stage) {
+  impact(payload={}) {
     if(!this.ready())return;
-    for(const voice of moveSoundPlan(payload,stage)){
+    for(const voice of damageImpactPlan(payload)){
       const {kind,frequency,duration,...options}=voice;
       if(kind==='noise')this.noise(duration,frequency,options);
       else this.tone(frequency,duration,options);
     }
   }
-  move(payload={}) { this.playPlan({damageClass:'physical',...payload},'cast'); }
-  impact(payload={}) { this.playPlan(payload,'impact'); }
   stop() {
     for (const source of this.voices) { try { source.stop(); } catch (_) { /* Already ended. */ } source.onended?.(); }
     this.voices.clear();
