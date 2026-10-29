@@ -2108,7 +2108,7 @@
       "powerKind": "status",
       "accuracy": null,
       "pp": 5,
-      "description": "Un soin qui restaure des PV au lanceur. Son efficacité varie en fonction de la météo."
+      "description": "Rend au lanceur la moitié de ses PV maximum, environ deux tiers sous le soleil et un quart sous la pluie, la grêle ou une tempête de sable."
     },
     "Synthesis": {
       "type": "Grass",
@@ -2117,7 +2117,7 @@
       "powerKind": "status",
       "accuracy": null,
       "pp": 5,
-      "description": "Un soin qui restaure des PV au lanceur. Son efficacité varie en fonction de la météo."
+      "description": "Rend au lanceur la moitié de ses PV maximum, environ deux tiers sous le soleil et un quart sous la pluie, la grêle ou une tempête de sable."
     },
     "Moonlight": {
       "type": "Fairy",
@@ -2126,7 +2126,7 @@
       "powerKind": "status",
       "accuracy": null,
       "pp": 5,
-      "description": "Un soin qui restaure des PV au lanceur. Son efficacité varie en fonction de la météo."
+      "description": "Rend au lanceur la moitié de ses PV maximum, environ deux tiers sous le soleil et un quart sous la pluie, la grêle ou une tempête de sable."
     },
     "Hidden Power": {
       "type": "Normal",
