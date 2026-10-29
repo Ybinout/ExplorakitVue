@@ -25,7 +25,7 @@
             <p class="quiet team-note">Soigne tes compagnons avant de repartir. Un talisman équipé évite une perte définitive une fois ; son porteur reste K.O. jusqu’au prochain soin.</p>
             <div class="companion-grid"><article v-for="(pokemon,index) in state.team" :key="pokemon.uuid" :data-team-position="index" class="companion">
               <div class="companion-order"><strong>{{ index===0 ? 'En tête' : index+1 }}</strong><button :disabled="teamBusy||index===0||!state.alive" :aria-label="`Monter ${pokemon.data.name.french || pokemon.name}`" data-team-order="up" @click="reorder(index,-1)">↑</button><button :disabled="teamBusy||index===state.team.length-1||!state.alive" :aria-label="`Descendre ${pokemon.data.name.french || pokemon.name}`" data-team-order="down" @click="reorder(index,1)">↓</button></div><div class="companion-art"><pokemon-portrait :src="`${$assetBase}img/pokemon/front/${pokemon.data.id}.png`" :alt="pokemon.data.name.french || pokemon.name" /></div>
-              <div class="companion-info"><div class="companion-name"><h3>{{ pokemon.data.name.french || pokemon.name }}</h3><span>N. {{ pokemon.level }}</span></div><div class="hp-label"><span>PV</span><strong>{{ pokemon.currentHp }} / {{ pokemon.maxHp }}</strong></div><div class="hp-track" :class="{ low: hpPercent(pokemon) < 30 }"><i :style="{ width: hpPercent(pokemon) + '%' }"></i></div><div v-if="state.phase === 'exploration'" class="potion-actions"><button v-for="item in potions" :key="item.key" :disabled="pokemon.currentHp >= pokemon.maxHp" @click="command('drift:heal', { pokemonUuid: pokemon.uuid, itemKey: item.key })">{{ item.name }} <small>×{{ item.quantity }}</small></button><span v-if="!potions.length" class="quiet">Plus de potions dans le sac.</span></div></div>
+              <div class="companion-info"><div class="companion-name"><h3>{{ pokemon.data.name.french || pokemon.name }}</h3><span>N. {{ pokemon.level }}</span></div><team-pokemon-traits :pokemon="pokemon"/><div class="hp-label"><span>PV</span><strong>{{ pokemon.currentHp }} / {{ pokemon.maxHp }}</strong></div><div class="hp-track" :class="{ low: hpPercent(pokemon) < 30 }"><i :style="{ width: hpPercent(pokemon) + '%' }"></i></div><div v-if="state.phase === 'exploration'" class="potion-actions"><button v-for="item in potions" :key="item.key" :disabled="pokemon.currentHp >= pokemon.maxHp" @click="command('drift:heal', { pokemonUuid: pokemon.uuid, itemKey: item.key })">{{ item.name }} <small>×{{ item.quantity }}</small></button><span v-if="!potions.length" class="quiet">Plus de potions dans le sac.</span></div></div>
             </article></div>
           </template>
           <rift-participants v-if="tab === 'players'" :state="state" :user-id="userId" @watch="$emit('watch', $event)" />
@@ -64,11 +64,12 @@ import ExpeditionContracts from './ExpeditionContracts.vue';
 import DriftRunReport from './DriftRunReport.vue';
 import ColosseumRun from './ColosseumRun.vue';
 import RiftParticipants from './RiftParticipants.vue';
+import TeamPokemonTraits from '../TeamPokemonTraits.vue';
 import PokemonPortrait from '../PokemonPortrait.vue';
 
 export default {
   name: 'DriftRunPanel',
-  components: { DriftInventory, ExpeditionContracts, DriftGlyph, DriftRunReport, ColosseumRun, RiftParticipants, PokemonPortrait },
+  components: { DriftInventory, ExpeditionContracts, DriftGlyph, DriftRunReport, ColosseumRun, RiftParticipants, PokemonPortrait, TeamPokemonTraits },
   props: { initialTab: String, runCommand: Function, state: Object, catalogue: Object, inShop: Boolean, feedback: { type: String, default: '' } },
   data() {
     return { tab: this.state?.phase === 'exploration' ? this.initialTab || 'drifts' : 'tournament',

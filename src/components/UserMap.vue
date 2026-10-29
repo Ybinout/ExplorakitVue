@@ -153,9 +153,9 @@
                 <div class="team-row-top">
                   <span class="team-slot">#{{ index + 1 }}</span>
                   <button class="team-row-name team-detail-link" @click="openPokemonDetails(pokemon)">{{ pokemon.name }} <span>›</span></button>
-                  <potential-star class="team-potential" :value="pokemon.k" :language="preferences.language" />
                   <span class="team-level">lv.{{ pokemon.level }}</span>
                 </div>
+                <team-pokemon-traits :pokemon="pokemon" :language="preferences.language" />
                 <div class="team-hp-track">
                   <div
                     class="team-hp-fill"
@@ -404,7 +404,7 @@ import { drawVoidJournals } from '@/services/voidJournals';
 import {drawMirrorGround,drawMirrorClone,mirrorScenePose,mirrorCameraTarget,releaseMirrorEffects} from '@/services/mirrorRiftRenderer';
 import {BattleAudio} from '@/services/battleAudio';
 import { GameFeedbackAudio, teamWasRestored } from '@/services/gameFeedbackAudio';
-import PotentialStar from './PotentialStar.vue';
+import TeamPokemonTraits from './TeamPokemonTraits.vue';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
 import {drawDepartment} from '@/services/departmentLayout';
@@ -489,7 +489,7 @@ export default {
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    JournalIcon, BagPanel, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, PotentialStar,
+    JournalIcon, BagPanel, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, TeamPokemonTraits,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -4002,9 +4002,6 @@ button:hover {
   gap: 6px;
   margin-bottom: 5px;
 }
-
-.team-potential{width:24px;height:24px;flex:0 0 24px}
-.team-potential ::v-deep svg{max-width:24px;max-height:24px}
 
 .team-slot {
   color: #9eb0d6;
