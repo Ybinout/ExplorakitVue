@@ -10,7 +10,11 @@
       </template>
       <template v-else>
         <p class="training-item">{{ entry.itemName }}{{ entry.quantity>1?` × ${entry.quantity}`:'' }}</p>
-        <article v-if="entry.change.kind==='ability'" class="training-result training-ability" data-training-result>
+        <article v-if="entry.change.kind==='level'" class="training-result" data-training-result>
+          <h3>Niveau</h3><div class="training-values"><span>{{ entry.change.before }}</span><span class="training-arrow" aria-hidden="true">→</span><strong>{{ entry.change.after }}</strong></div>
+          <level-growth v-if="entry.change.growth" :growth="entry.change.growth" compact />
+        </article>
+        <article v-else-if="entry.change.kind==='ability'" class="training-result training-ability" data-training-result>
           <h3>Talent</h3><p>{{ abilityName(entry.change.before) }} <span aria-hidden="true">→</span> <strong>{{ abilityName(entry.change.after) }}</strong></p>
           <p class="training-ability-description">{{ abilityDescription(entry.change.after) }}</p>
         </article>
@@ -26,18 +30,20 @@
             <small class="training-difference">{{ row.after===row.before?'Valeur inchangée':`${row.after>row.before?'+':''}${row.after-row.before}` }}</small>
           </article>
         </div>
-        <p class="training-saved">{{ entry.change.kind==='nature'?'Nature sauvegardée et statistiques recalculées.':entry.change.kind==='ability'?'Nouveau talent sauvegardé.':entry.change.kind==='iv'?'Nouvel IV sauvegardé. Potentiel K inchangé.':'Entraînement sauvegardé.' }}</p>
+        <p class="training-saved">{{ entry.change.kind==='level'?'Niveau sauvegardé. Les éventuels apprentissages et évolutions suivent ce récapitulatif.':entry.change.kind==='nature'?'Nature sauvegardée et statistiques recalculées.':entry.change.kind==='ability'?'Nouveau talent sauvegardé.':entry.change.kind==='iv'?'Nouvel IV sauvegardé. Potentiel K inchangé.':'Entraînement sauvegardé.' }}</p>
         <footer><button ref="primary" class="training-continue" data-training-close @click="close">Continuer</button></footer>
       </template>
     </section>
   </div>
 </template>
 <script>
+import LevelGrowth from '../LevelGrowth.vue';
 import {localizeAbilityName} from '@/services/i18n';
 import reference from '@/data/pokemonReference.fr.json';
 import {natureLabel,natureDescription} from '@/services/pokemonNatures';
 const labels={hp:'PV',attack:'Attaque',defense:'Défense',specialAttack:'Attaque Spéciale',specialDefense:'Défense Spéciale',speed:'Vitesse'};
 export default {
+  components:{LevelGrowth},
   props:{entry:{type:Object,required:true},busy:Boolean},
   data:()=>({labels,previousFocus:null}),
   computed:{confirmation(){return this.entry.kind==='confirm';},rows(){const c=this.entry.change;if(!c||['ability','nature'].includes(c.kind))return [];if(c.kind==='evReset')return Object.keys(labels).filter(stat=>c.before[stat]!==c.after[stat]).map(stat=>({stat,before:c.before[stat],after:c.after[stat]}));return [{stat:c.stat,before:c.before,after:c.after}];}},

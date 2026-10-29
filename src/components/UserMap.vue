@@ -700,8 +700,8 @@ export default {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
       return this.teamPokemons.find(p => p.currentHp > 0 && p.pendingMoves?.length);
     },
-    evolutionVisible() { return Boolean(this.evolutionQueue.length && !this.pc.visible && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.trainerOffer && !this.textImageSequence.length && !this.medicineBusy && !this.learningBusy && !['selection','results'].includes(this.driftState?.phase)); },
-    learningVisible() { return Boolean(!this.textImageSequence.length && !this.evolutionQueue.length && !this.pc.visible && this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
+    evolutionVisible() { return Boolean(!this.trainingFeedback && this.evolutionQueue.length && !this.pc.visible && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.trainerOffer && !this.textImageSequence.length && !this.medicineBusy && !this.learningBusy && !['selection','results'].includes(this.driftState?.phase)); },
+    learningVisible() { return Boolean(!this.medicineBusy && !this.trainingFeedback && !this.textImageSequence.length && !this.evolutionQueue.length && !this.pc.visible && this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
     isColosseum() { return this.$route.name === 'ColosseumGame' || this.driftState?.mode === 'colosseum'; },
     driftLobbyPath() { return this.isColosseum ? '/colosseum' : '/drift'; },
     isDrift() { return ['DriftGame','ColosseumGame'].includes(this.$route.name); },
@@ -897,13 +897,14 @@ export default {
     isBagConsumable(item) {
       return !item.voidTravel && Boolean((item.category === 'medicine' || item.category === 'heal' || item.fieldUse || item.category==='evolution') && !(this.isDrift && item.revive));
     },
-    canUseBagItem(item) { return (item.category==='machine' || item.category==='evolution' || item.fieldUse?.effort || item.fieldUse?.ivReroll || item.fieldUse?.effortReset||item.fieldUse?.abilityReroll||item.fieldUse?.natureReroll) && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
+    canUseBagItem(item) { return (item.category==='machine' || item.category==='evolution' || item.fieldUse?.levelUp || item.fieldUse?.effort || item.fieldUse?.ivReroll || item.fieldUse?.effortReset||item.fieldUse?.abilityReroll||item.fieldUse?.natureReroll) && this.isDrift ? !this.battle && this.driftState?.alive && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase) : this.canUseBagConsumables; },
     canReceiveMedicine(item, pokemon) {
       if (!pokemon) return false;
       if(item.category==='evolution')return !pokemon.isEgg && pokemon.currentHp > 0 && Boolean(item.evolutions?.[pokemon.uuid]);
       const effect = item.fieldUse || item;
       if (effect.revive) return !this.isDrift && pokemon.currentHp <= 0;
       if (pokemon.currentHp <= 0 && !(this.isDrift && pokemon.riftFainted && (effect.heal || effect.healFraction || item.category==='heal'))) return false;
+      if(effect.levelUp)return !pokemon.isEgg && pokemon.level<100 && !pokemon.evolutionState?.pending;
       if(effect.natureReroll)return !pokemon.isEgg;
       if(effect.abilityReroll)return !pokemon.isEgg && !!item.abilityOptions?.[pokemon.uuid]?.length;
       if(effect.ivReroll)return !pokemon.isEgg&&Number.isInteger(pokemon.iv?.[effect.ivReroll])&&pokemon.iv[effect.ivReroll]>=0&&pokemon.iv[effect.ivReroll]<=31;
@@ -930,6 +931,7 @@ export default {
       return `EV ${names[item.fieldUse.effort.stat]} : ${ev[item.fieldUse.effort.stat] || 0}/252 · Total : ${Object.values(ev).reduce((n,v)=>n+Number(v),0)}/510`;
     },
     medicineTargetLabel(item,p){
+      if(item.fieldUse?.levelUp)return `${p.name} · Niveau ${p.level}${p.level>=100?' · Niveau maximum':''}${this.medicineStatus(p)}`;
       if(item.category==='evolution')return `${p.name}${item.evolutions?.[p.uuid]?` → ${item.evolutions[p.uuid].name}`:''}${this.medicineStatus(p)}`;
       if(item.fieldUse?.abilityReroll)return `${p.name} · ${this.localizedAbility(p.passiveAbility)}${item.abilityOptions?.[p.uuid]?.length?'':' · Aucun autre talent'}${this.medicineStatus(p)}`;
       if(item.fieldUse?.ivReroll)return `${p.name} · IV ${p.iv?.[item.fieldUse.ivReroll]||0}/31`;
@@ -938,6 +940,7 @@ export default {
     },
     trainingNotice(change,name,quantity=1){
       const stats={hp:'PV',attack:'Attaque',defense:'Défense',specialAttack:'Attaque Spéciale',specialDefense:'Défense Spéciale',speed:'Vitesse'};
+      if(change.kind==='level')return `${name} · Niveau ${change.before} → ${change.after}. Statistiques recalculées et niveau sauvegardé.`;
       if(change.kind==='nature')return `${name} · Nature : ${natureLabel(change.before)} → ${natureLabel(change.after)}. Statistiques recalculées et nature sauvegardée.`;
       if(change.kind==='ability')return `${name} · Talent : ${this.localizedAbility(change.before)} → ${this.localizedAbility(change.after)}. Nouveau talent sauvegardé.`;
       if(change.kind==='iv')return `${name} · IV ${stats[change.stat]} : ${change.before} → ${change.after} (tirage ${change.rolled}). Nouvel IV sauvegardé.`;

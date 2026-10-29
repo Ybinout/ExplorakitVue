@@ -13,19 +13,20 @@ export const BAG_POCKETS = Object.freeze([
   {key:'other',name:'Autres',en:'Other',hint:'Le reste de ton équipement.',enHint:'The rest of your equipment.'}
 ]);
 export const TRAINING_GROUPS = Object.freeze([
+  {key:'levels',name:'Niveaux',en:'Levels'},
   {key:'vitamins',name:'Vitamines',en:'Vitamins'}, {key:'iv',name:'Relances IV',en:'IV rolls'},
   {key:'ev',name:'Reset EV',en:'EV resets'}, {key:'abilities',name:'Talents',en:'Abilities'},
   {key:'natures',name:'Natures',en:'Natures'}
 ]);
 export function trainingGroup(item) {
-  return item.fieldUse?.ivReroll?'iv':item.fieldUse?.effortReset?'ev':item.fieldUse?.abilityReroll?'abilities':item.fieldUse?.natureReroll?'natures':'vitamins';
+  return item.fieldUse?.levelUp?'levels':item.fieldUse?.ivReroll?'iv':item.fieldUse?.effortReset?'ev':item.fieldUse?.abilityReroll?'abilities':item.fieldUse?.natureReroll?'natures':'vitamins';
 }
 export function bagPocket(item) {
   if(item.category==='treasure')return 'treasures';
   if(item.category==='machine')return 'machines';
   if(item.category==='ball')return 'balls';
   if(item.category==='heal')return 'medicine';
-  if(item.fieldUse?.effort?.amount>0||item.fieldUse?.ivReroll||item.fieldUse?.effortReset||item.fieldUse?.abilityReroll||item.fieldUse?.natureReroll)return 'training';
+  if(item.fieldUse?.levelUp||item.fieldUse?.effort?.amount>0||item.fieldUse?.ivReroll||item.fieldUse?.effortReset||item.fieldUse?.abilityReroll||item.fieldUse?.natureReroll)return 'training';
   if(item.category==='held' && /_berry$/.test(item.key || ''))return 'berries';
   return ['medicine','field','held','evolution','key'].includes(item.category)?item.category:'other';
 }
