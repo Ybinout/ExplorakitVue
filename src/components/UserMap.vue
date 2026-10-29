@@ -78,7 +78,7 @@
         <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid?'':null" :aria-hidden="trainingFeedback || heldPickerUuid?'true':null" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
               <template v-if="item.experienceModule && !isDrift">
-                <p class="bag-use-hint" data-experience-module-state><strong>{{ item.active ? (preferences.language==='en'?'Active':'Actif') : (preferences.language==='en'?'Inactive':'Inactif') }}</strong> · {{ item.active ? (preferences.language==='en'?'+10 levels for wild encounters':'+10 niveaux pour les rencontres sauvages') : (preferences.language==='en'?'Usual encounter levels':'Niveaux habituels des rencontres') }}</p>
+                <p class="bag-use-hint" data-experience-module-state><strong>{{ item.active ? (preferences.language==='en'?'Active':'Actif') : (preferences.language==='en'?'Inactive':'Inactif') }}</strong> · {{ item.active ? (preferences.language==='en'?'+15 levels for wild encounters':'+15 niveaux pour les rencontres sauvages') : (preferences.language==='en'?'Usual encounter levels':'Niveaux habituels des rencontres') }}</p>
                 <button class="bag-use-button" data-experience-module-toggle :aria-pressed="item.active ? 'true' : 'false'" :disabled="medicineBusy || !!battle || mapLoading || !socket?.connected" @click="toggleExperienceModule(item)">{{ medicineBusy ? (preferences.language==='en'?'Saving…':'Sauvegarde…') : item.active ? (preferences.language==='en'?'Deactivate module':'Désactiver le module') : (preferences.language==='en'?'Activate module':'Activer le module') }}</button>
               </template>
               <button v-else-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="!item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
@@ -973,7 +973,7 @@ export default {
         if(!response?.success)throw Error(response?.message||'Module indisponible.');
         this.applyExperienceModuleState(response.experienceModule);
         if(response.items)this.applyBagItems(response.items);
-        this.medicineNotice=response.experienceModule.active?'Module d’expérience activé : +10 niveaux aux nouvelles rencontres sauvages.':'Module d’expérience désactivé : les rencontres retrouvent leurs niveaux habituels.';
+        this.medicineNotice=response.experienceModule.active?'Module d’expérience activé : +15 niveaux aux nouvelles rencontres sauvages.':'Module d’expérience désactivé : les rencontres retrouvent leurs niveaux habituels.';
       }catch(error){this.bagError=error.message;}
       finally{this.medicineBusy=false;}
     },
