@@ -43,7 +43,7 @@
             <div v-else class="bag-items">
               <article v-for="item in visibleItems" :key="item.key" :data-item-key="item.key" class="bag-item-row" :class="{'item-open':selectedKey===item.key}" :style="machine(item) ? typeStyle(machine(item).type) : null">
                 <button class="bag-item-select" :aria-expanded="selectedKey===item.key" :aria-controls="`bag-item-${item.key}`" @click="selectedKey=selectedKey===item.key?null:item.key">
-                  <span class="item-stamp"><bag-item-icon :pocket="activePocket" :item-key="item.key"/></span><span class="bag-item-name"><span :class="{'bag-machine-name':machine(item)}" :data-bag-machine-name="machine(item)?'':null">{{ item.name }}</span><span v-if="machine(item)" class="bag-machine-meta"><span data-bag-machine-type>{{ english?machine(item).type:typeName(machine(item).type) }}</span><span aria-hidden="true">·</span><span data-bag-machine-class>{{ machineClass(item) }}</span></span><small v-if="item.unique" class="item-unique">Unique</small></span><span class="bag-item-qty">x{{ item.quantity }}</span><span class="item-chevron" aria-hidden="true">{{ selectedKey===item.key?'⌄':'›' }}</span>
+                  <span class="item-stamp"><bag-item-icon :pocket="activePocket" :item-key="item.key"/></span><span class="bag-item-name"><span :class="{'bag-machine-name':machine(item)}" :data-bag-machine-name="machine(item)?'':null">{{ item.name }}</span><span v-if="machine(item)" class="bag-machine-meta"><span data-bag-machine-type>{{ english?machine(item).type:typeName(machine(item).type) }}</span><span aria-hidden="true">·</span><span data-bag-machine-class>{{ machineClass(item) }}</span></span><small v-if="item.experienceModule" class="item-module-status" :class="{enabled:item.active}">{{ item.active ? (english?'Active · +10 levels':'Actif · +10 niveaux') : (english?'Inactive':'Désactivé') }}</small><small v-if="item.unique" class="item-unique">Unique</small></span><span class="bag-item-qty">x{{ item.quantity }}</span><span class="item-chevron" aria-hidden="true">{{ selectedKey===item.key?'⌄':'›' }}</span>
                 </button>
                 <div v-if="selectedKey===item.key" :id="`bag-item-${item.key}`" class="bag-item-detail">
                   <p class="bag-item-description">{{ description(item) }}</p>
@@ -101,6 +101,7 @@ export default {
 };
 </script>
 <style scoped>
+.item-module-status{display:block;margin-top:4px;font-size:10px;color:var(--journal-muted);font-weight:600}.item-module-status.enabled{color:var(--journal-accent)}
 .bag-filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}.bag-filters button,.bag-sort select{min-height:44px;padding:8px 10px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);color:var(--journal-ink);font:600 11px var(--journal-font)}.bag-filters button{cursor:pointer}.bag-filters [aria-pressed=true]{background:var(--journal-selected);border-color:var(--journal-accent)}.bag-filters small{margin-left:4px;opacity:.75}.bag-sort{display:flex;align-items:center;gap:12px;margin:0 0 14px;font-weight:700}.bag-sort select{flex:1;min-width:0}
 
 .bag-machine-name{padding:2px 5px;border-radius:5px;background:var(--pokemon-type-color);color:var(--pokemon-type-ink);line-height:1.7;box-decoration-break:clone;-webkit-box-decoration-break:clone}

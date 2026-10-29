@@ -77,7 +77,11 @@
         </div>
         <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid?'':null" :aria-hidden="trainingFeedback || heldPickerUuid?'true':null" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
-              <button v-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="!item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
+              <template v-if="item.experienceModule && !isDrift">
+                <p class="bag-use-hint" data-experience-module-state><strong>{{ item.active ? (preferences.language==='en'?'Active':'Actif') : (preferences.language==='en'?'Inactive':'Inactif') }}</strong> · {{ item.active ? (preferences.language==='en'?'+10 levels for wild encounters':'+10 niveaux pour les rencontres sauvages') : (preferences.language==='en'?'Usual encounter levels':'Niveaux habituels des rencontres') }}</p>
+                <button class="bag-use-button" data-experience-module-toggle :aria-pressed="item.active ? 'true' : 'false'" :disabled="medicineBusy || !!battle || mapLoading || !socket?.connected" @click="toggleExperienceModule(item)">{{ medicineBusy ? (preferences.language==='en'?'Saving…':'Sauvegarde…') : item.active ? (preferences.language==='en'?'Deactivate module':'Désactiver le module') : (preferences.language==='en'?'Activate module':'Activer le module') }}</button>
+              </template>
+              <button v-else-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="!item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
               <machine-item-use v-else-if="item.category==='machine'" :key="item.key" :item="item" :team="teamPokemons" :busy="medicineBusy || teamLoading" :allowed="canUseBagItem(item)" @use="useBagMachine" />
               <template v-else-if="isBagConsumable(item)">
                 <select data-medicine-target :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
@@ -947,6 +951,23 @@ export default {
         this.pc.notice={move:'Nouvel emplacement sauvegardé.',deposit:'Compagnon déposé dans le PC.',withdraw:'Compagnon ajouté à ton équipe.',swap:'Les deux Pokémon ont échangé leur place.',release:'Pokémon relâché. Son éventuel objet tenu est dans ton sac.'}[payload.action];
       }catch(error){this.pc.error=error.message;}
       finally{this.pc.busy=false;}
+    },
+    applyExperienceModuleState(state){
+      if(this.isDrift || typeof state?.active!=='boolean')return;
+      this.$set(this.progressionState,'experienceModule',state);
+      this.bagItems=this.bagItems.map(item=>item.experienceModule?{...item,active:state.active,levelBonus:state.levelBonus}:item);
+    },
+    async toggleExperienceModule(item){
+      if(this.isDrift || this.medicineBusy || this.battle || !this.socket?.connected)return;
+      const active=!item.active;this.medicineBusy=true;this.bagError='';this.medicineNotice='';
+      try{
+        const response=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit('setExperienceModule',{active},(error,result)=>error?reject(new Error('Le serveur ne répond pas. Vérifie le module avant de réessayer.')):resolve(result)));
+        if(!response?.success)throw Error(response?.message||'Module indisponible.');
+        this.applyExperienceModuleState(response.experienceModule);
+        if(response.items)this.applyBagItems(response.items);
+        this.medicineNotice=response.experienceModule.active?'Module d’expérience activé : +10 niveaux aux nouvelles rencontres sauvages.':'Module d’expérience désactivé : les rencontres retrouvent leurs niveaux habituels.';
+      }catch(error){this.bagError=error.message;}
+      finally{this.medicineBusy=false;}
     },
     async useBagRepel(item) {
       if(this.medicineBusy || !this.canUseBagConsumables || this.repelSteps>0)return;
@@ -2834,6 +2855,7 @@ export default {
     });
 
     this.socket.on('arenaCollapseState',state=>{this.arenaCollapse=state?.map==='ville_safe1_arene'&&Array.isArray(state.holes)?{...state,receivedAt:performance.now()}:null;this.drawPlayers();});
+    this.socket.on('experienceModuleState',state=>this.applyExperienceModuleState(state));
     this.socket.on('fieldEffectState', (payload={})=>{this.repelSteps=Number(payload.repelSteps)||0;});
     this.socket.on('roomObstacleAction', (action = {}) => {
       clearTimeout(this._roomObstacleTimer);
