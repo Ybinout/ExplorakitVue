@@ -41,7 +41,6 @@
           <button ref="teamToggle" class="team-toggle-btn" data-menu-action="pokemon" :aria-expanded="isTeamPanelOpen" aria-controls="pokemon-team-panel" @click="handleMenuAction('pokemon')">
             <journal-icon name="pokemon" /><span>{{ tr('pokemon') }}</span>
           </button>
-          <span class="online-player-count" data-online-count role="status" aria-live="polite" aria-atomic="true" :aria-label="onlineCountLabel" :title="onlineCountLabel"><journal-icon name="user"/><span>{{ onlinePlayerCount === null ? '—' : onlinePlayerCount }}</span></span>
           </div>
           <div v-if="isDrift" class="drift-hud">
             <div class="drift-clock"><drift-glyph name="clock" /><span><small>{{ driftPhaseLabel }}</small><strong>{{ driftCountdown || 'Rift' }}</strong></span></div>
@@ -69,7 +68,7 @@
         </div>
         <div v-if="!battle" class="location-banner">
           <journal-icon class="location-pin" name="location" />
-          <span class="location-copy"><small>{{ preferences.language === 'en' ? 'Current location' : 'Tu es ici' }}</small><span class="location-name" :title="locationLabel">{{ locationLabel }}</span></span>
+          <span class="location-copy"><span class="location-meta"><small class="location-eyebrow">{{ preferences.language === 'en' ? 'Current location' : 'Tu es ici' }}</small><span class="online-player-count" data-online-count role="status" aria-live="polite" aria-atomic="true" :aria-label="onlineCountLabel" :title="onlineCountLabel"><journal-icon name="user"/><span>{{ onlinePlayerCount === null ? '—' : onlinePlayerCount }}</span></span></span><span class="location-name" :title="locationLabel">{{ locationLabel }}</span></span>
           <button v-if="isShopMap" class="location-shop-btn" type="button" @click="openShop">
             {{ tr('openShop') }}
           </button>
