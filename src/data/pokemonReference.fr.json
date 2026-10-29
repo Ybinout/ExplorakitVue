@@ -902,7 +902,7 @@
       "powerKind": "status",
       "accuracy": null,
       "pp": 20,
-      "description": "Permet de fuir une rencontre avec un Pokémon sauvage."
+      "description": "Avec une priorité très basse, laisse sa place à un équipier apte choisi par le joueur contre un dresseur. En rencontre sauvage, permet au lanceur de fuir."
     },
     "Night Shade": {
       "type": "Ghost",
