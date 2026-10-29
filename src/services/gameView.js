@@ -51,6 +51,7 @@ export function normalizeTeamPokemon(pokemon, index) {
     position: Number(pokemon?.position ?? index + 1),
     name: pokemon?.name || pokemon?.truename || 'Pokemon',
     level: Number(pokemon?.level ?? 1),
+    evolutionState: pokemon?.evolutionState ?? (typeof pokemon?.evolution_state==='string'?JSON.parse(pokemon.evolution_state):pokemon?.evolution_state) ?? null,
     heldItem: pokemon?.heldItem ?? pokemon?.held_item ?? null,
     passiveAbility: pokemon?.passiveAbility ?? pokemon?.passive_ability ?? null,
     currentHp: Number.isFinite(currentHpValue) ? Math.max(0, currentHpValue) : 0,

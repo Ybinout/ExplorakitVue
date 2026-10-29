@@ -14,16 +14,18 @@ export function experienceFrames(payload) {
     { level: last, from: last === first ? before.percent : 0, to: after.percent }];
 }
 
-function wait(ms, signal) {
+function wait(ms, signal, control) {
   return new Promise(resolve => {
-    if (signal.aborted) return resolve();
-    const done = () => { clearTimeout(timer); signal.removeEventListener('abort', done); resolve(); };
+    if (signal.aborted || control?.skipped) return resolve();
+    const done = () => { clearTimeout(timer); signal.removeEventListener('abort', done); if(control?.release===done)control.release=null; resolve(); };
     const timer = setTimeout(done, ms);
     signal.addEventListener('abort', done, { once: true });
+    if(control)control.release=done;
   });
 }
 
-export async function playExperienceGain(payload, onFrame, signal, reducedMotion = false) {
+export async function playExperienceGain(payload, onFrame, signal, reducedMotion = false, control = null) {
+  if(control){control.skipped=false;control.skip=()=>{control.skipped=true;control.release?.();};}
   const frames = experienceFrames(payload);
   if (!frames.length || signal.aborted) return;
   const duration = reducedMotion ? 0 : Math.min(700, 2300 / frames.length);
@@ -32,12 +34,13 @@ export async function playExperienceGain(payload, onFrame, signal, reducedMotion
     const start = Date.now();
     onFrame({ ...frame, percent: frame.from });
     do {
-      await wait(16, signal);
+      await wait(16, signal, control);
       if (signal.aborted) return;
-      const fraction = duration ? Math.min(1, (Date.now() - start) / duration) : 1;
+      const fraction = duration && !control?.skipped ? Math.min(1, (Date.now() - start) / duration) : 1;
       onFrame({ ...frame, percent: frame.from + (frame.to - frame.from) * fraction });
-    } while (Date.now() - start < duration);
-    if (frame.to === 100 && !reducedMotion) await wait(100, signal);
+    } while (!control?.skipped && Date.now() - start < duration);
+    if (frame.to === 100 && !reducedMotion) await wait(100, signal, control);
   }
-  await wait(reducedMotion ? 150 : 350, signal);
+  await wait(reducedMotion ? 150 : 350, signal, control);
+  if(control){control.skip=null;control.release=null;}
 }

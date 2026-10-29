@@ -12,6 +12,14 @@ export const BAG_POCKETS = Object.freeze([
   {key:'key',name:'Objets clés',en:'Key items',hint:'Les souvenirs et indices de ton aventure.',enHint:'Clues and keepsakes from your adventure.'},
   {key:'other',name:'Autres',en:'Other',hint:'Le reste de ton équipement.',enHint:'The rest of your equipment.'}
 ]);
+export const TRAINING_GROUPS = Object.freeze([
+  {key:'vitamins',name:'Vitamines',en:'Vitamins'}, {key:'iv',name:'Relances IV',en:'IV rolls'},
+  {key:'ev',name:'Reset EV',en:'EV resets'}, {key:'abilities',name:'Talents',en:'Abilities'},
+  {key:'natures',name:'Natures',en:'Natures'}
+]);
+export function trainingGroup(item) {
+  return item.fieldUse?.ivReroll?'iv':item.fieldUse?.effortReset?'ev':item.fieldUse?.abilityReroll?'abilities':item.fieldUse?.natureReroll?'natures':'vitamins';
+}
 export function bagPocket(item) {
   if(item.category==='treasure')return 'treasures';
   if(item.category==='machine')return 'machines';

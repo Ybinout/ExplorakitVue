@@ -1,5 +1,5 @@
 <template>
-  <div v-if="active" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-void-arena':environment==='void-arena', 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle, ...daylightStyle}" :data-place-light="placeLight ? environment : null" :data-day-phase="outdoorLighting ? daylight.phase : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
+  <div v-if="active" @pointerdown.capture="advanceExperience" @click.capture="consumeExperienceClick" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-void-arena':environment==='void-arena', 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle, ...daylightStyle}" :data-place-light="placeLight ? environment : null" :data-day-phase="outdoorLighting ? daylight.phase : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
     <battle-entrance v-if="entranceActive" :key="visualEpoch" :champion="entranceChampion" @portrait-ready="onEntrancePortraitReady" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
@@ -808,6 +808,8 @@ export default {
       this.musicKind = null;
       if (!keepPrelude) this.setMusicPrelude(false);
     },
+    consumeExperienceClick(event){if(this._experiencePointer){this._experiencePointer=false;event.preventDefault();event.stopPropagation();}},
+    advanceExperience(event){if(!this.experienceBusy||!this._experienceControl?.skip)return false;event?.preventDefault?.();event?.stopPropagation?.();if(event?.type==='pointerdown')this._experiencePointer=true;this._experienceControl.skip();return true;},
     updateExperience(payload) {
       const pokemon = payload?.pokemon;
       const index = this.battleTeam.findIndex(entry => entry.uuid === pokemon?.uuid);
@@ -822,11 +824,13 @@ export default {
         const label = this.currentPokemon?.uuid === pokemon.uuid ? '' : `${pokemon.truename || pokemon.name} : `;
         this.experienceNotice = `${label}+${payload.xpGained} XP`;
         const reduced = !this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const control={};this._experienceControl=control;
         await playExperienceGain(payload, frame => {
           this.experienceVisual = { ...frame, uuid: pokemon.uuid };
           if (frame.level === pokemon.level && payload.levelGrowth) this.levelGrowthNotice=payload.levelGrowth;
           if (frame.level > payload.previousLevel) this.experienceNotice = `${label}Niveau ${frame.level} ! +${payload.xpGained} XP`;
-        }, signal, reduced);
+        }, signal, reduced, control);
+        if(this._experienceControl===control)this._experienceControl=null;
         if (!signal.aborted) this._growthTimer=setTimeout(()=>{this.levelGrowthNotice=null;},3500);
       };
       const previous = this._experiencePlayback;
@@ -851,6 +855,8 @@ export default {
       await this._experiencePlayback;
     },
     cancelExperience() {
+      this._experiencePointer=false;
+      this._experienceControl=null;
       clearTimeout(this._growthTimer);
       this.levelGrowthNotice=null;
       this._experienceAbort?.abort();

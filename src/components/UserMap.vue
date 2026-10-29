@@ -69,9 +69,10 @@
         <div v-if="!battle" class="location-banner">
           <journal-icon class="location-pin" name="location" />
           <span class="location-copy"><span class="location-meta"><small class="location-eyebrow">{{ preferences.language === 'en' ? 'Current location' : 'Tu es ici' }}</small><span class="online-player-count" data-online-count role="status" aria-live="polite" aria-atomic="true" :aria-label="onlineCountLabel" :title="onlineCountLabel"><journal-icon name="user"/><span>{{ onlinePlayerCount === null ? '—' : onlinePlayerCount }}</span></span></span><span class="location-name" :title="locationLabel">{{ locationLabel }}</span></span>
-          <button v-if="isShopMap" class="location-shop-btn" type="button" @click="openShop">
+          <button v-if="isShopMap" class="location-shop-btn" type="button" @click="openShop('buy')">
             {{ tr('openShop') }}
           </button>
+          <button v-if="isShopMap" class="location-shop-btn" data-open-sell type="button" @click="openShop('sell')">{{ preferences.language==='en'?'Sell':'Vendre' }}</button>
         </div>
         </div>
         <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid?'':null" :aria-hidden="trainingFeedback || heldPickerUuid?'true':null" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
@@ -209,7 +210,7 @@
           @update-preferences="updatePreferences"
         />
         <shop-panel
-          :visible="shop.visible"
+          :visible="shop.visible" :initial-mode="shop.initialMode"
           :catalog="shop.catalog" :metadata="shop.metadata" :location="locationLabel"
           :expedition="isDrift" :merchant="shop.metadata.department && shop.metadata.department!==1 ? null : driftState?.merchant" :drift-catalogue="driftCatalogue" :drifts="driftState?.drifts || []" :equipped="driftState?.equipped || []" @merchant="merchantCommand"
           :items="bagItems"
@@ -373,7 +374,7 @@
       </div>
     </div>
 
-    <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" @continue="evolutionQueue.shift()" />
+    <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" :busy="evolutionBusy" :error="evolutionError" @resolve="resolveEvolutionPresentation" @continue="evolutionError='';evolutionQueue.shift()" />
     <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
@@ -399,6 +400,7 @@ import {drawMirrorGround,drawMirrorClone,mirrorScenePose,mirrorCameraTarget,rele
 import {BattleAudio} from '@/services/battleAudio';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
+import {drawDepartment} from '@/services/departmentLayout';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
 import { createMapSceneLoader } from '@/services/mapScene';
 import { moveTouchGesture } from '@/services/touchMovement';
@@ -554,6 +556,7 @@ export default {
       pokedexState: { total: 493, seen: 0, caught: 0, entries: [] },
       progressionState: { flags: {}, quests: [], badges: [], completedNpcBattles: [], money: 0 },
       shop: {
+        initialMode: 'buy',
         visible: false,
         loading: false,
         error: '',
@@ -690,7 +693,7 @@ export default {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
       return this.teamPokemons.find(p => p.currentHp > 0 && p.pendingMoves?.length);
     },
-    evolutionVisible() { return Boolean(this.evolutionQueue.length && !this.pc.visible && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.trainerOffer && !this.textImageSequence.length && !this.evolutionBusy && !this.medicineBusy && !this.learningBusy && this.driftState?.phase !== 'selection'); },
+    evolutionVisible() { return Boolean(this.evolutionQueue.length && !this.pc.visible && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.trainerOffer && !this.textImageSequence.length && !this.medicineBusy && !this.learningBusy && !['selection','results'].includes(this.driftState?.phase)); },
     learningVisible() { return Boolean(!this.textImageSequence.length && !this.evolutionQueue.length && !this.pc.visible && this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
     isColosseum() { return this.$route.name === 'ColosseumGame' || this.driftState?.mode === 'colosseum'; },
     driftLobbyPath() { return this.isColosseum ? '/colosseum' : '/drift'; },
@@ -825,14 +828,28 @@ export default {
     async evolveCompanion(targetId) {
       const pokemon = this.selectedPokemon;
       if (!pokemon || this.evolutionBusy || !this.socket?.connected || this.battle || this.battleResult) return;
-      this.evolutionBusy = true; this.evolutionError = ''; this.evolutionNotice = '';
-      try {
-        const response = await new Promise((resolve,reject) => this.socket.timeout(8000).emit('evolvePokemon', { pokemonUuid: pokemon.uuid, fromSpeciesId: pokemon.data.id, targetId }, (error,result) => error ? reject(new Error('Vérifie la fiche avant de réessayer : le serveur ne répond pas.')) : resolve(result)));
-        if (!response?.success) throw new Error(response?.message || 'Évolution indisponible.');
-        if (response.equipe?.pokemons) this.applyTeamPokemons(response.equipe.pokemons);
-        if (this.selectedPokemonUuid === pokemon.uuid) this.evolutionNotice = `${pokemon.truename || pokemon.name} a évolué en ${response.evolution.name} !`;
-      } catch (error) { if (this.selectedPokemonUuid === pokemon.uuid) this.evolutionError = error.message; }
-      finally { this.evolutionBusy = false; }
+      this.queueEvolutionPreview(pokemon,targetId);return;
+    },
+    queueEvolutionPreview(pokemon,targetId,itemKey=null){
+      this.evolutionError='';
+      this.evolutionQueue.push({key:`preview:${pokemon.uuid}:${targetId}`,uuid:pokemon.uuid,from:pokemon.data.id,to:targetId,fromName:evolutionGraph.names[pokemon.data.id],toName:evolutionGraph.names[targetId],request:{targetId,itemKey}});
+    },
+    async resolveEvolutionPresentation(cancel){
+      const entry=this.evolutionQueue[0];if(!entry||this.evolutionBusy)return;
+      if(cancel&&!entry.pending){this.evolutionQueue.shift();return;}
+      this.evolutionBusy=true;this.evolutionError='';
+      const pokemon=this.teamPokemons.find(p=>p.uuid===entry.uuid);
+      try{
+        const event=entry.request?.itemKey?(this.isDrift?'drift:evolve':'useEvolutionStone'):'evolvePokemon';
+        const data=entry.pending?{pokemonUuid:entry.uuid,promptId:entry.pending.id,cancel}:{pokemonUuid:entry.uuid,fromSpeciesId:entry.from,targetId:entry.to,itemKey:entry.request?.itemKey};
+        const response=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit(event,data,(error,result)=>error?reject(new Error('Le serveur ne répond pas. Réessaie après la reconnexion.')):resolve(result)));
+        if(!response?.success)throw Error(response?.message||'Évolution indisponible.');
+        if(response.items)this.applyBagItems(response.items);
+        if(response.equipe?.pokemons)this.applyTeamPokemons(response.equipe.pokemons);
+        if(cancel){this.evolutionQueue.shift();this.showInteractionNotice(`${entry.fromName} garde sa forme actuelle.`);}
+        else {this.$set(entry,'resolved',true);if(this.selectedPokemonUuid===pokemon?.uuid)this.evolutionNotice=`${entry.fromName} a évolué en ${entry.toName} !`;}
+      }catch(error){this.evolutionError=error.message;}
+      finally{this.evolutionBusy=false;}
     },
     openMoveLearning() { this.isMenuOpen = false; this.learningDeferred = false; this.releaseAllMovementKeys(); },
     async chooseLearnedMove(slot) {
@@ -978,6 +995,7 @@ export default {
       }
       this.medicineNotice = ''; this.bagError = '';
       if (!this.socket?.connected) { this.bagError = 'Reconnecte-toi pour utiliser un objet.'; return; }
+      if(item.category==='evolution'){this.queueEvolutionPreview(pokemon,item.evolutions[pokemon.uuid].id,item.key);return;}
       this.medicineBusy = true;
       try {
         const event = item.category === 'evolution' ? (this.isDrift ? 'drift:evolve' : 'useEvolutionStone') : (this.isDrift ? 'drift:heal' : 'useMedicine');
@@ -1111,7 +1129,8 @@ export default {
           };
       return messages[reason] || (isEnglish ? 'The shop is temporarily unavailable.' : 'La boutique est temporairement indisponible.');
     },
-    openShop() {
+    openShop(mode = 'buy') {
+      this.shop.initialMode = mode === 'sell' ? 'sell' : 'buy';
       if (!this.socket || !this.socket.connected || !this.isShopMap) return;
       this.shop.visible = true;
       this.shop.loading = true;
@@ -1438,6 +1457,8 @@ export default {
     onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { releaseMirrorEffects(); this._mirrorAudio?.stop(); this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
+      if(this.evolutionVisible){this.$children.find(c=>c.$options.name==='EvolutionPresentation')?.advance();return;}
+      if(this.battle&&this.$refs.battleOverlay?.advanceExperience())return;
       if(this.flight)return;
       this.releaseAllMovementKeys();
       if (this.battle || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
@@ -1732,7 +1753,12 @@ export default {
         .map((pokemon, index) => this.normalizeTeamPokemon(pokemon, index))
         .sort((a, b) => (a.position || 0) - (b.position || 0));
 
-      this.evolutionQueue.push(...this.evolutionTracker.observe(normalizedTeam));
+      this.evolutionQueue=this.evolutionQueue.filter(e=>{const p=normalizedTeam.find(p=>p.uuid===e.uuid);return p&&(!e.pending||e.resolved||this.evolutionBusy||p.evolutionState?.pending?.id===e.pending.id);});
+      const observed=this.evolutionTracker.observe(normalizedTeam);
+      this.evolutionQueue.push(...observed.filter(e=>!this.evolutionQueue.some(q=>q.uuid===e.uuid&&(q.pending||q.request))));
+      for(const p of normalizedTeam){const pending=p.evolutionState?.pending;
+        if(pending&&!this.evolutionQueue.some(e=>e.key===pending.id))this.evolutionQueue.push({key:pending.id,uuid:p.uuid,from:pending.from,to:pending.targetId,fromName:evolutionGraph.names[pending.from],toName:evolutionGraph.names[pending.targetId],pending});}
+
       this.teamPokemons = normalizedTeam;
       this.teamDirty = false;
     },
@@ -2305,6 +2331,8 @@ export default {
       if (this.textImageSequence.length && !this.battleResult && !this.driftSpectator) {
         consume(); if (action === 'confirm') this.triggerMobileActionA(); return;
       }
+      if(action==='confirm'&&this.evolutionVisible){consume();this.$children.find(c=>c.$options.name==='EvolutionPresentation')?.advance();return;}
+      if(action==='confirm'&&this.battle&&this.$refs.battleOverlay?.advanceExperience()){consume();return;}
       if (this.battle && !this.battleResult && !this.evolutionVisible && !this.learningVisible) {
         const overlay = this.$refs.battleOverlay;
         if (action === 'back') { consume(); if (!overlay?.replacementChoice) overlay?.closePanels(); }
@@ -2337,6 +2365,7 @@ export default {
       else if (action === 'back') consume();
     },
     handleKeydown(e) {
+      if(this.battle&&['Space','KeyA','Enter'].includes(e.code)&&!e.repeat&&this.$refs.battleOverlay?.advanceExperience(e))return;
       if(this.flight){e.preventDefault();return;}
       if(this.fishing && e.key==='Escape'){e.preventDefault();this.cancelFishing();return;}
       if(this.fishing && (e.code==='Space' || e.code==='KeyA') && !e.ctrlKey && !e.metaKey && !e.altKey){e.preventDefault();if(!e.repeat)this.fishingAction();return;}
@@ -2526,7 +2555,8 @@ export default {
 
       // Fill the canvas with the map image
       if (this.mapImage) {
-        if (this.villageWaterActive && !document.hidden) {
+        if(drawDepartment(c,this.mapImage,this.map)) { /* Compact, tile-aligned department floor. */ }
+        else if (this.villageWaterActive && !document.hidden) {
           if (!this._villageWater) this._villageWater = new VillageWaterRenderer();
           this._villageWater.draw(c, this.mapImage, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
         } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
