@@ -460,6 +460,7 @@ export default {
         message: '',
         nonce: 0,
         targetContained: false,
+        success: false,
         path: { startX: 180, startY: 390, targetX: 700, targetY: 220, groundY: 310 }
       },
       healthTimers: { wild: [], player: [] },
@@ -516,7 +517,7 @@ export default {
       return this.canAct && !this.entranceActive && !this.presentationBusy && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
     },
     turnLabel() {
-      if (this.captureFx.visible) return this.tr('captureRunning');
+      if (this.captureFx.visible && this.captureFx.state !== 'caught') return this.tr('captureRunning');
       if (this.replacementChoice) return this.preferences.language === 'en' ? 'Choose your next Pokémon' : 'Choisis ton prochain Pokémon';
       return this.canChooseAction ? this.tr('yourTurn') : this.tr('resolvingTurn');
     },
@@ -788,7 +789,7 @@ export default {
       else if (this.music.paused) this.music.play().catch(() => {});
     },
     syncAudio() {
-      if (document.hidden) { this.clearMoveFx(); this.cancelEntrance(); this._presentation?.skipWait(); this._transitionRelease?.(); this.clearCaptureTimers(); }
+      if (document.hidden) { this.clearMoveFx(); this.cancelEntrance(); this._presentation?.skipWait(); this._transitionRelease?.(); this.clearCaptureTimers({settle:true}); }
       this._battleAudio?.setVolume(this.soundEnabled && !document.hidden ? this.audioVolume : 0);
       this.syncMusic();
     },
@@ -1189,8 +1190,10 @@ export default {
         if (scene) this._feedbackObserver?.observe(scene);
       }
       if (!scene) return;
-      if (this.feedbackSceneSize.width !== scene.clientWidth || this.feedbackSceneSize.height !== scene.clientHeight)
+      if (this.feedbackSceneSize.width !== scene.clientWidth || this.feedbackSceneSize.height !== scene.clientHeight) {
         this.feedbackSceneSize = { width: scene.clientWidth, height: scene.clientHeight };
+        if(this.captureFx.state==='caught')this.captureFx.path=this.buildCapturePath();
+      }
       for (const side of ['wild', 'player']) {
         const ref = this.$refs[`feedback-${side}`], element = Array.isArray(ref) ? ref[0] : ref;
         const height = element?.offsetHeight || 0;
@@ -1401,6 +1404,7 @@ export default {
       const pokemonName = payload.wildPokemonName || this.opponent?.truename || 'Pokemon';
       this.clearCaptureTimers();
       if (this.reducedMotion()) {
+        if(success)Object.assign(this.captureFx,{visible:true,state:'caught',ballType:itemKey,message:'',targetContained:true,success:true,path:this.buildCapturePath()});
         this.showMessage(success ? this.tr('captured', { pokemon: pokemonName }) : this.tr('escaped', { pokemon: pokemonName }));
         return;
       }
@@ -1414,6 +1418,7 @@ export default {
         message: this.tr('launched', { item: itemName }),
         nonce: this.captureFx.nonce + 1,
         targetContained: false,
+        success,
         path: this.buildCapturePath()
       });
       this.playSound('capture');
@@ -1454,9 +1459,8 @@ export default {
         this.playSound(success ? 'captureSuccess' : 'miss');
       }, resultDelay));
       timers.push(setTimeout(() => {
-        this.captureFx.visible = false;
-        this.captureFx.state = 'idle';
-        this.captureFx.targetContained = false;
+        Object.assign(this.captureFx,{visible:success,state:success?'caught':'idle',targetContained:success,message:''});
+        this.captureTimers = [];
         this._captureRelease = null; complete();
       }, resultDelay + 620));
       this.captureTimers = timers;
@@ -1497,9 +1501,10 @@ export default {
       this.moveTimer = null;
       this.battleMoveFx.visible = false;
     },
-    clearCaptureTimers() {
+    clearCaptureTimers({settle=false}={}) {
+      const caught=settle&&this.captureFx.success;
+      Object.assign(this.captureFx, {visible:caught,state:caught?'caught':'idle',targetContained:caught,success:caught,message:''});
       this._captureRelease?.(); this._captureRelease = null;
-      Object.assign(this.captureFx, {visible:false,state:'idle',targetContained:false});
       this.captureTimers.forEach((timer) => clearTimeout(timer));
       this.captureTimers = [];
     },
@@ -2172,6 +2177,12 @@ export default {
   animation: capture-success 0.62s ease-out forwards;
 }
 
+.capture-fx-ball.state-caught {
+  left: var(--capture-target-x);
+  top: var(--capture-ground-y);
+  transform: scale(0.94);
+}
+
 .capture-fx-ball.state-fail {
   left: var(--capture-target-x);
   top: var(--capture-ground-y);
@@ -2271,6 +2282,7 @@ export default {
 .capture-fx-overlay.capture-state-drop .capture-fx-shadow,
 .capture-fx-overlay.capture-state-shake .capture-fx-shadow,
 .capture-fx-overlay.capture-state-success .capture-fx-shadow,
+.capture-fx-overlay.capture-state-caught .capture-fx-shadow,
 .capture-fx-overlay.capture-state-fail .capture-fx-shadow {
   opacity: 0.4;
 }
