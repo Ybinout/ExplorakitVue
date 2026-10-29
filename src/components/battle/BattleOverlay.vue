@@ -116,6 +116,7 @@
           <span v-if="opponent.passiveAbility" class="battle-status-ability">{{ tr('ability') }} : {{ localizedAbility(opponent.passiveAbility) }}</span>
         </div>
         <p v-if="opponentEffortLabel" class="battle-effort-yield" data-battle-effort-yield :title="effortYieldHint">{{ opponentEffortLabel }}</p>
+        <battle-party :party="opponentParty" :language="preferences.language" />
       </div>
 
       <div
@@ -384,12 +385,13 @@ const FIELD_LABELS = {
 };
 
 import { outdoorMap } from '@/data/nightLights';
+import BattleParty from './BattleParty.vue';
 import { battleEnvironment } from '@/services/battleEnvironment';
 import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleWaterfalls, BattleSnow, BattleSandstorm, JournalIcon },
+  components: { BattleParty, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleWaterfalls, BattleSnow, BattleSandstorm, JournalIcon },
   props: {
     mobile: Boolean,
     daylight: { type: Object, default: () => ({ night: 0, warmth: 0, phase: 'day' }) },
@@ -409,6 +411,7 @@ export default {
       player: null,
       challenge: null,
       opponent: null,
+      opponentParty: null,
       opponentEffortYield: null,
       canAct: false,
       replacementChoice: false,
@@ -1098,6 +1101,7 @@ export default {
       this.driftNoticeTimer=setTimeout(()=>{this.driftNotices=[];},2200);
     },
     updateBattleState(payload = {}) {
+      this.opponentParty = Array.isArray(payload.opponentParty) && payload.opponentParty.every(value=>typeof value==='boolean') ? payload.opponentParty.slice(0,6) : null;
       this.capturePolicy = payload.capturePolicy || null;
       this.phaseReturning = { player:false, wild:false };
       this.opponentEffortYield = payload.effortYield || null;
@@ -1532,6 +1536,7 @@ export default {
       this.clearAllTimers();
       this.player = null;
       this.opponent = null;
+      this.opponentParty = null;
       this.opponentEffortYield = null;
       this.canAct = false;
       this.replacementChoice = false;
