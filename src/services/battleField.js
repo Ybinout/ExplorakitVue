@@ -68,5 +68,9 @@ export function hazardEntryVisible(field,sideName,pokemon) {
   const h=field.sides[sideName].hazards,b=pokemon?.__battle||{};
   const types=b.tempTypes || [pokemon?.type1,pokemon?.type2];
   const grounded=field.field.gravityTurns>0 || b.grounded || b.ingrain || (!types.includes('Flying') && (pokemon?.passiveAbility!=='Levitate'||b.abilitySuppressed) && !(b.magnetRiseTurns>0) && !(b.telekinesisTurns>0));
+  const bootsActive=pokemon?.heldItem==='heavy_duty_boots' && !(b.embargoTurns>0) && !(field.field.magicRoomTurns>0)
+    && (pokemon?.passiveAbility!=='Klutz'||b.abilitySuppressed);
+  // Poison types still absorb Toxic Spikes while wearing boots.
+  if(bootsActive)return Boolean(grounded&&types.includes('Poison')&&h.toxicSpikes);
   return Boolean(h.stealthRock || (grounded&&(h.spikes||h.toxicSpikes||h.stickyWeb)));
 }

@@ -33,7 +33,7 @@
   },
   "focus_sash": {
     "name": "Ceinture Force",
-    "description": "À pleine vie, survit à une attaque fatale avec 1 PV. Consommée après activation."
+    "description": "À pleine vie, survit à une attaque fatale avec 1 PV. Se consume à l’activation et est récupérée à la fin du combat."
   },
   "assault_vest": {
     "name": "Veste de Combat",
@@ -210,5 +210,9 @@
   "everstone": {
     "name": "Pierre Stase",
     "description": "Empêche les évolutions par niveau tant que le Pokémon la tient. Retire-la pour lui permettre d’évoluer à nouveau."
+  },
+  "heavy_duty_boots": {
+    "name": "Grosses Bottes",
+    "description": "Tenues, elles protègent de Piège de Roc, des Picots, des Pics Toxik et de la Toile Gluante à l’entrée en combat. Réutilisables."
   }
 }
