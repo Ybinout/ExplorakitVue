@@ -6,6 +6,7 @@
 
 <script>
 const paths = {
+  user:'M17 7a5 5 0 1 1-10 0 5 5 0 0 1 10 0ZM2 22v-3c0-4 4-6 10-6s10 2 10 6v3Z',
   friends:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.9M16 3a4 4 0 0 1 0 8M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',
   fullscreen: 'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5',
   minimap: 'm3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16',

@@ -37,6 +37,13 @@
 /* Team access stays beside Menu, including narrow expedition headers. */
 .game-root .game-stage .header-actions { display:flex; align-items:center; flex:none; gap:6px; }
 .game-root .game-stage .header-actions button { white-space:nowrap; }
+.online-player-count { display:inline-flex;align-items:center;gap:5px;flex:none;padding:5px 7px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-soft);color:var(--journal-muted);font:600 12px/1.2 var(--journal-font);font-variant-numeric:tabular-nums;white-space:nowrap; }
+.online-player-count .journal-icon { width:15px;height:15px;fill:currentColor;stroke:none; }
+@media(max-width:380px) {
+  .game-root:not(.is-drift) .game-stage .world-toolbar { flex-wrap:wrap;row-gap:4px; }
+  .game-root:not(.is-drift) .game-stage .game-header { flex-basis:100%;min-width:0; }
+  .game-root:not(.is-drift) .game-stage .location-banner { margin-left:0;max-width:100%; }
+}
 .game-root.is-drift .game-stage .game-header { flex-wrap:wrap; row-gap:4px; }
 .game-root.is-drift .game-stage .drift-hud { flex:none; }
 @media(max-width:550px) {
