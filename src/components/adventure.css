@@ -23,9 +23,31 @@
 }
 .game-root .menu-caption { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 4px 6px; padding:10px 6px 14px; border-bottom:1px solid var(--journal-border); color:var(--journal-muted); font:700 10px var(--journal-font); text-transform:uppercase; letter-spacing:.12em; }
 .game-root .menu-caption small { font-size:9px; font-weight:400; letter-spacing:.04em; }
-.game-root .game-stage .menu-dropdown-item { display:flex; align-items:center; gap:13px; min-height:46px; padding:10px 12px; color:var(--journal-ink); border:0; border-radius:9px; font:500 14px var(--journal-font); }
-.game-root .menu-dropdown-item .journal-icon { color:var(--journal-accent); width:19px; height:19px; }
-.game-root .game-stage .menu-dropdown-item:hover { background:var(--journal-selected); color:var(--journal-heading); }
+.game-root .game-stage .menu-dropdown-item { --menu-ink:var(--journal-accent); --menu-tint:var(--journal-soft); display:flex; align-items:center; gap:11px; min-height:46px; padding:8px 12px; color:var(--journal-ink); border:0; border-radius:9px; font:500 14px var(--journal-font); }
+.game-root .menu-dropdown-item .journal-icon { box-sizing:border-box; flex:none; color:var(--menu-ink); background:var(--menu-tint); width:28px; height:28px; padding:4px; border-radius:8px; }
+.game-root .game-stage .menu-dropdown-item:hover,.game-root .game-stage .menu-dropdown-item:focus-visible { background:var(--menu-tint); color:var(--journal-heading); }
+.game-root .menu-dropdown-item[data-menu-action="pokedex"] { --menu-ink:#a8433e; --menu-tint:#fae8e5; }
+.game-root .menu-dropdown-item[data-menu-action="bag"] { --menu-ink:#8c5a1e; --menu-tint:#f9efdc; }
+.game-root .menu-dropdown-item[data-menu-action="badges"] { --menu-ink:#846313; --menu-tint:#f7efd2; }
+.game-root .menu-dropdown-item:is([data-menu-action="progress"],[data-menu-action="contracts"]) { --menu-ink:#366e53; --menu-tint:#e3f0e5; }
+.game-root .menu-dropdown-item:is([data-menu-action="appearance"],[data-menu-action="learning"]) { --menu-ink:#6f539b; --menu-tint:#efe7f6; }
+.game-root .menu-dropdown-item[data-menu-action="drifts"] { --menu-ink:#7651a0; --menu-tint:#eee7f8; }
+.game-root .menu-dropdown-item[data-menu-action="options"] { --menu-ink:#566878; --menu-tint:#e5edf2; }
+.game-root .menu-dropdown-item[data-menu-action="friends"] { --menu-ink:#3a6599; --menu-tint:#e5eefc; }
+.game-root .menu-dropdown-item[data-menu-action="minimap"] { --menu-ink:#247576; --menu-tint:#def2f0; }
+.game-root .menu-dropdown-item[data-menu-action="quit"] { --menu-ink:#91483e; --menu-tint:#f7e8e2; }
+.game-root .game-stage .team-toggle-btn .journal-icon { color:#a8433e; }
+html[data-game-theme-mode="dark"] .game-root .menu-dropdown-item[data-menu-action="pokedex"] { --menu-ink:#f6a39b; --menu-tint:#493136; }
+html[data-game-theme-mode="dark"] .game-root .menu-dropdown-item[data-menu-action="bag"] { --menu-ink:#e8c078; --menu-tint:#453d2d; }
+html[data-game-theme-mode="dark"] .game-root .menu-dropdown-item[data-menu-action="badges"] { --menu-ink:#e5ca73; --menu-tint:#453f2b; }
+html[data-game-theme-mode="dark"] .game-root .menu-dropdown-item:is([data-menu-action="progress"],[data-menu-action="contracts"]) { --menu-ink:#a0c9a5; --menu-tint:#2c423b; }
+html[data-game-theme-mode="dark"] .game-root .menu-dropdown-item:is([data-menu-action="appearance"],[data-menu-action="learning"]) { --menu-ink:#c4adeb; --menu-tint:#3e354b; }
+html[data-game-theme-mode="dark"] .game-root .menu-dropdown-item[data-menu-action="drifts"] { --menu-ink:#ccb0ed; --menu-tint:#42324d; }
+html[data-game-theme-mode="dark"] .game-root .menu-dropdown-item[data-menu-action="options"] { --menu-ink:#b4c5d5; --menu-tint:#33434f; }
+html[data-game-theme-mode="dark"] .game-root .menu-dropdown-item[data-menu-action="friends"] { --menu-ink:#a4c4ef; --menu-tint:#2c3c54; }
+html[data-game-theme-mode="dark"] .game-root .menu-dropdown-item[data-menu-action="minimap"] { --menu-ink:#8bcfcd; --menu-tint:#284545; }
+html[data-game-theme-mode="dark"] .game-root .menu-dropdown-item[data-menu-action="quit"] { --menu-ink:#e8b3a8; --menu-tint:#493934; }
+html[data-game-theme-mode="dark"] .game-root .game-stage .team-toggle-btn .journal-icon { color:#f6a39b; }
 .game-root .game-stage .location-banner { position:static; margin-left:auto; max-width:calc(100% - 120px); min-width:0; gap:10px; padding:0; border:0; border-radius:0; background:transparent; color:var(--journal-ink); box-shadow:none; font:600 14px/1.3 var(--journal-font); }
 .game-root .game-stage .location-pin { width:20px; height:20px; color:var(--journal-accent); }
 .game-root .location-copy { display:flex; flex-direction:column; gap:3px; min-width:0; text-align:left; }

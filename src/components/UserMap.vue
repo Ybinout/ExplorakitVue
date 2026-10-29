@@ -47,7 +47,7 @@
             <button class="drift-hud-toggle" :aria-expanded="isDriftPanelOpen" aria-label="Ouvrir le carnet Drift" @click="toggleDriftPanel"><drift-glyph /><span>Drifts <small>{{ driftState?.equipped?.length || 0 }}/5</small></span></button>
           </div>
           <nav v-if="isMenuOpen" id="adventure-menu" class="menu-dropdown" :aria-label="tr('menu')">
-            <button v-if="learningPokemon" class="menu-dropdown-item" @click="openMoveLearning"><journal-icon name="pokemon" /><span>Attaques à apprendre</span></button>
+            <button v-if="learningPokemon" class="menu-dropdown-item" data-menu-action="learning" @click="openMoveLearning"><journal-icon name="pokemon" /><span>Attaques à apprendre</span></button>
             <div class="menu-caption"><span>RiftMon</span><small>{{ isDrift ? (isColosseum ? 'Colosseum' : 'RiftMon') : (preferences.language === 'en' ? 'Adventure' : 'Aventure') }}</small></div>
             <button
               v-for="item in visibleMenuItems"
