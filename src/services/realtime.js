@@ -20,14 +20,16 @@ export function createGameSocket(token, { mirrorRift = false, adventureOpening =
   return io(socketOrigin, {
     path: `${process.env.BASE_URL || '/'}socket.io`,
     auth: { token, rewardPlayback:true, ...(mirrorRift ? { mirrorRift:true } : {}), ...(adventureOpening ? { adventureOpening:true } : {}) },
-    transports: ['websocket', 'polling']
+    // v4.7 does not try the next transport after a blocked WebSocket handshake.
+    // Establish HTTP first, then let Engine.IO upgrade when WebSocket is usable.
+    transports: ['polling', 'websocket']
   });
 }
 
 export function createDriftSocket(token) {
   return io(`${socketOrigin.replace(/\/$/, '')}/drift`, {
     path: `${process.env.BASE_URL || '/'}socket.io`,
-    auth: { token, rewardPlayback:true }, autoConnect: false, transports: ['websocket', 'polling']
+    auth: { token, rewardPlayback:true }, autoConnect: false, transports: ['polling', 'websocket']
   });
 }
 

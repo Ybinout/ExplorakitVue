@@ -2310,6 +2310,7 @@ export default {
       this.socket.emit(event,{id:this.fishing.id});
     },
     espace() {
+      if(!this.socket?.connected)return;
       if(this.mirrorScene||this.mirrorRift?.stage==='won')return;
       if(this.map==='route2_maison'&&this.mirrorRift?.unlocked){
         if(!this._mirrorAudio)this._mirrorAudio=new BattleAudio();
@@ -3216,6 +3217,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.closeShop();this.shop.loading=false;
       clearTimeout(this._openingRetry);this.openingScene=null;
       clearTimeout(this._mirrorSceneTimer);clearInterval(this._mirrorWakeTimer);this.mirrorScene=null;this._mirrorAudio?.stop();
       this.flight=null;
