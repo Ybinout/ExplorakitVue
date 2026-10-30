@@ -17,7 +17,7 @@
 .game-root .game-stage :is(.menu-toggle-btn, .team-toggle-btn)[aria-expanded=true] { background:var(--journal-selected); border-color:var(--journal-border); }
 .game-root .game-stage .menu-dropdown {
   top:calc(100% + 16px); left:0; width:250px; min-width:0; max-width:calc(100vw - 28px);
-  max-height:calc(100dvh - 100px); overflow:auto; overscroll-behavior:contain; padding:10px;
+  max-height:min(calc(100dvh - 24px),var(--game-menu-max-height,calc(100dvh - 100px))); overflow:auto; overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; padding:10px;
   border:1px solid var(--journal-border); border-radius:16px; background:var(--journal-paper);
   box-shadow:var(--journal-shadow); z-index:60;
 }
@@ -188,7 +188,7 @@ html[data-game-theme-mode="dark"] .game-root .game-stage .team-toggle-btn .journ
 @media(max-height:500px) and (orientation:landscape) {
   .game-root .game-stage { margin-top:0; }
   .game-root .game-stage :is(.team-panel, .bag-panel, .appearance-panel) { max-height:calc(100dvh - 88px); }
-  .game-root .game-stage .menu-dropdown { max-height:calc(100dvh - 90px); }
+  .game-root .game-stage .menu-dropdown { max-height:var(--game-menu-max-height,calc(100dvh - 90px)); }
   .game-root .dialogue-layer .dialogue-shell { padding:15px 115px 18px 15px; }
   .game-root .dialogue-layer .texts { flex-basis:95px; height:110px; }
   .game-root .dialogue-layer .portrait-atlas { width:95px; height:95px; }
