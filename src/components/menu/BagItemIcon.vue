@@ -1,6 +1,9 @@
 <template>
-  <svg class="bag-object-icon" :style="palette" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+  <svg class="bag-object-icon" :style="palette" :data-item-design="design ? design.kind : itemKey || pocket" :data-item-stat="design && design.stat" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
     <template v-if="itemKey==='experience_module'"><rect x="10" y="5" width="28" height="38" rx="5" fill="var(--item-main)"/><rect x="15" y="11" width="18" height="14" rx="2" fill="var(--item-light)"/><path d="M24 21v-7m-4 4 4-4 4 4M16 32h4m8 0h4m-12 5h8"/></template>
+    <bag-equipment-icon v-else-if="design && design.family==='equipment'" :kind="design.kind"/>
+    <bag-training-icon v-else-if="design && design.family==='training'" :design="design"/>
+    <bag-stone-icon v-else-if="design && design.family==='stone'" :kind="design.kind"/>
     <template v-else-if="itemKey==='rare_candy'"><path d="m13 15-8-3 2 10-2 10 9-3m21-14 8-3-2 10 2 10-9-3" fill="var(--item-light)"/><circle cx="24" cy="23" r="13" fill="var(--item-main)"/><path d="m17 17 3 4m8-6 3 4m-15 7 4 3m6-5 4 4" stroke="var(--item-light)"/></template>
     <template v-else-if="itemKey==='heavy_duty_boots'"><path d="M8 7h12v19l7 5v9H5V29h3Z" fill="var(--item-main)"/><path d="M28 5h12v19l5 6v8H29V28h-1Z" fill="var(--item-main)"/><path d="M5 36h22M29 34h16M10 13h8m-8 6h8m12-8h8m-8 6h8"/><path d="M11 26h7m14-2h6" stroke="var(--item-light)"/></template>
     <template v-else-if="pocket==='treasures'"><path :d="itemKey==='crystal_shard'?'m12 29 6-16 8 4 10-8-2 26-13 8Z':'m24 4 13 10-3 22-10 8-13-10-2-20Z'" :fill="itemKey==='aurora_prism'?'#b8a0d2':itemKey==='clear_crystal'?'#8cc6dc':'#b2bcc8'"/><path d="m24 8-5 13 5 20 6-20Zm-13 7 8 6 11 0 7-7"/><path v-if="itemKey==='crystal_shard'" d="m14 29 10-5-2 8 11-2"/><path v-if="itemKey==='aurora_prism'" d="m39 5 1 4 4 1-4 1-1 4-1-4-4-1 4-1Z" fill="var(--item-light)"/></template>
@@ -17,7 +20,18 @@
   </svg>
 </template>
 <script>
+import BagEquipmentIcon from './BagEquipmentIcon.vue';
+import BagTrainingIcon from './BagTrainingIcon.vue';
+import BagStoneIcon from './BagStoneIcon.vue';
+import {bagItemDesign} from '@/services/bagItemPresentation';
 const colors={medicine:'#c197d8',balls:'#e37a77',field:'#82c3ad',berries:'#d984a0',training:'#e8bd70',machines:'#91b8de',evolution:'#b5a1d9',held:'#d8bd7c',key:'#cfa18c'};
-export default {name:'BagItemIcon',props:{pocket:String,itemKey:{type:String,default:''}},computed:{palette(){const main={experience_module:'#83c4d7',rare_candy:'#83b9df',heavy_duty_boots:'#b29c83',pokeball:'#e97672',superball:'#6eabdf',hyperball:'#e3bd62',potion:'#bd96d5',super_potion:'#eaaa6e',hyper_potion:'#e88eaa',max_potion:'#8eb4e3',antidote:'#dfc467',repel:'#87bdb0',super_repel:'#81b6d8',max_repel:'#d4a2c7'}[this.itemKey]||colors[this.pocket]||'#b5c5cf';return {'--item-main':main,'--item-light':'#f6f9f6',color:'#435b68'};}}};
+export default {
+  name:'BagItemIcon',components:{BagEquipmentIcon,BagTrainingIcon,BagStoneIcon},
+  props:{pocket:String,itemKey:{type:String,default:''}},
+  computed:{
+    design(){return bagItemDesign(this.itemKey);},
+    palette(){const main=this.design?.main||{experience_module:'#83c4d7',rare_candy:'#83b9df',heavy_duty_boots:'#b29c83',pokeball:'#e97672',superball:'#6eabdf',hyperball:'#e3bd62',potion:'#bd96d5',super_potion:'#eaaa6e',hyper_potion:'#e88eaa',max_potion:'#8eb4e3',antidote:'#dfc467',repel:'#87bdb0',super_repel:'#81b6d8',max_repel:'#d4a2c7'}[this.itemKey]||colors[this.pocket]||'#b5c5cf';return {'--item-main':main,'--item-accent':this.design?.accent||'#f6f9f6','--item-light':'#f6f9f6',color:'#435b68'};}
+  }
+};
 </script>
 <style scoped>.bag-object-icon{display:block;width:40px;height:40px;flex:none;color:var(--journal-accent)}</style>

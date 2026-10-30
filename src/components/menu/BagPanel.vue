@@ -43,7 +43,7 @@
             <div v-else class="bag-items">
               <article v-for="item in visibleItems" :key="item.key" :data-item-key="item.key" class="bag-item-row" :class="{'item-open':selectedKey===item.key}" :style="machine(item) ? typeStyle(machine(item).type) : null">
                 <button class="bag-item-select" :aria-expanded="selectedKey===item.key" :aria-controls="`bag-item-${item.key}`" @click="selectedKey=selectedKey===item.key?null:item.key">
-                  <span class="item-stamp"><bag-item-icon :pocket="activePocket" :item-key="item.key"/></span><span class="bag-item-name"><span :class="{'bag-machine-name':machine(item)}" :data-bag-machine-name="machine(item)?'':null">{{ item.name }}</span><span v-if="machine(item)" class="bag-machine-meta"><span data-bag-machine-type>{{ english?machine(item).type:typeName(machine(item).type) }}</span><span aria-hidden="true">·</span><span data-bag-machine-class>{{ machineClass(item) }}</span></span><small v-if="item.experienceModule" class="item-module-status" :class="{enabled:item.active}">{{ item.active ? (english?'Active · +15 levels':'Actif · +15 niveaux') : (english?'Inactive':'Désactivé') }}</small><small v-if="item.unique" class="item-unique">Unique</small></span><span class="bag-item-qty">x{{ item.quantity }}</span><span class="item-chevron" aria-hidden="true">{{ selectedKey===item.key?'⌄':'›' }}</span>
+                  <span class="item-stamp"><bag-item-icon :pocket="activePocket" :item-key="item.key"/></span><span class="bag-item-name"><span :class="{'bag-machine-name':machine(item)}" :data-bag-machine-name="machine(item)?'':null">{{ itemName(item) }}</span><span v-if="machine(item)" class="bag-machine-meta"><span data-bag-machine-type>{{ english?machine(item).type:typeName(machine(item).type) }}</span><span aria-hidden="true">·</span><span data-bag-machine-class>{{ machineClass(item) }}</span></span><small v-if="item.experienceModule" class="item-module-status" :class="{enabled:item.active}">{{ item.active ? (english?'Active · +15 levels':'Actif · +15 niveaux') : (english?'Inactive':'Désactivé') }}</small><small v-if="item.unique" class="item-unique">Unique</small></span><span class="bag-item-qty">x{{ item.quantity }}</span><span class="item-chevron" aria-hidden="true">{{ selectedKey===item.key?'⌄':'›' }}</span>
                 </button>
                 <div v-if="selectedKey===item.key" :id="`bag-item-${item.key}`" class="bag-item-detail">
                   <p class="bag-item-description">{{ description(item) }}</p>
@@ -66,6 +66,7 @@
 <script>
 import BagItemIcon from './BagItemIcon.vue';
 import {BAG_POCKETS,bagPocket,TRAINING_GROUPS,trainingGroup} from '@/services/bagPockets';
+import {bagItemName} from '@/services/bagItemPresentation';
 import machines from '@/data/machines.json';
 import reference from '@/data/pokemonReference.fr.json';
 import {localizeTypeName,typeBadgeStyle} from '@/services/pokemonTypes';
@@ -88,6 +89,7 @@ export default {
   mounted(){this.previousFocus=document.activeElement;if(!this.visibleItems.length&&this.owned.length)this.activePocket=bagPocket(this.owned[0]);this.reconcile();this.$refs.close.focus({preventScroll:true});},
   beforeDestroy(){const previous=this.previousFocus;this.$nextTick(()=>{const target=previous?.isConnected&&previous!==document.body&&previous!==document.documentElement?previous:document.querySelector('.menu-toggle-btn');target?.focus({preventScroll:true});});},
   methods:{
+    itemName(item){return bagItemName(item,this.language);},
     machine(item){return item.category==='machine'?machines[item.key]:null;},
     typeName:localizeTypeName,
     typeStyle:typeBadgeStyle,
