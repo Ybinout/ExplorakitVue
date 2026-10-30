@@ -232,7 +232,7 @@
     "Jump Kick": {
       "type": "Fighting",
       "category": "physical",
-      "power": 130,
+      "power": 100,
       "powerKind": "standard",
       "accuracy": 95,
       "pp": 10,
@@ -1946,7 +1946,7 @@
       "powerKind": "special_case",
       "accuracy": 100,
       "pp": 20,
-      "description": "Plus le Pokémon apprécie son Dresseur, plus la puissance de cette attaque furieuse augmente."
+      "description": "Attaque physique de type Normal. Dans RiftMon, sa puissance est fixée à 102 pour tous les Pokémon, sans condition de bonheur."
     },
     "Present": {
       "type": "Normal",
@@ -1964,7 +1964,7 @@
       "powerKind": "special_case",
       "accuracy": 100,
       "pp": 20,
-      "description": "Moins le Pokémon aime son Dresseur, plus cette attaque est puissante."
+      "description": "Attaque physique de type Normal. Dans RiftMon, sa puissance est fixée à 102 pour tous les Pokémon, sans condition de bonheur."
     },
     "Safeguard": {
       "type": "Normal",
