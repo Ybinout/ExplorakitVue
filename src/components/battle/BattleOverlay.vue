@@ -1107,11 +1107,14 @@ export default {
     conditionPosition(side) {
       const geometry = this.getSpriteGeometry(side);
       const sceneWidth=this.$refs.battleScene?.clientWidth || 896;
-      const labelCenter=Math.max(86,Math.min(sceneWidth-86,geometry.centerX));
+      let labelCenter=Math.max(86,Math.min(sceneWidth-86,geometry.centerX));
       const count=(this.conditionFx[side]||[]).filter(e=>e.kind==='up'||e.kind==='down').length;
-      const labelHeight=(count>2?Math.ceil(count/2)*17:count*18)+10;
-      const labelOffset=Math.max(0,labelHeight+11-(geometry.centerY-geometry.height/2));
-      return {'--stat-label-offset-y':`${labelOffset}px`,'--stat-label-shift':`${labelCenter-geometry.centerX}px`,left:`${geometry.centerX}px`,top:`${geometry.centerY}px`,width:`${Math.max(52,geometry.width)}px`,height:`${Math.max(52,geometry.height)}px`};
+      const directions=new Set((this.conditionFx[side]||[]).filter(e=>e.kind==='up'||e.kind==='down').map(e=>e.kind)).size;
+      const labelHeight=(count>2?directions:count)*18+10;
+      const compact=side==='wild' && (this.$refs.battleScene?.clientHeight||515)<340 && this.fieldState.weather;
+      if(compact)labelCenter=sceneWidth*.79;
+      const labelOffset=Math.max(0,labelHeight+(compact?61:11)-(geometry.centerY-geometry.height/2));
+      return {'--stat-label-max-width':compact?`${Math.max(80,sceneWidth*.35-12)}px`:'160px','--stat-label-offset-y':`${labelOffset}px`,'--stat-label-shift':`${labelCenter-geometry.centerX}px`,left:`${geometry.centerX}px`,top:`${geometry.centerY}px`,width:`${Math.max(52,geometry.width)}px`,height:`${Math.max(52,geometry.height)}px`};
     },
     sendOutPosition(side) {
       const geometry=this.getSpriteGeometry(side);
