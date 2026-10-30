@@ -7,7 +7,7 @@
         <template v-if="payload.tab==='abandon'"><p>Ton score sera conservé. Cette tentative s’arrêtera et tu retrouveras l’accueil.</p><p>Ton équipe d’Aventure et ses objets seront disponibles à la sortie.</p></template>
         <template v-else-if="tab==='entry'">
           <p class="host">Hôtesse</p><p v-if="busy">Très bien ! Je soigne vos Pokémon, puis je vous téléporte dans le sas. Bonne chance pour votre parcours !</p><p v-else>Bienvenue ! Votre PASS vous ouvre les portes du Super Tournoi. Souhaitez-vous inscrire cette équipe ?</p>
-          <ul class="rules"><li><b>16 salles</b> à traverser, jusqu’au duel contre Lucie.</li><li>Chaque dresseur possède <b>3 Pokémon de niveaux 85, 95 et 100</b>.</li><li>Vos six Pokémon sont soignés <b>une seule fois, à l’inscription</b>.</li><li><b>Aucun soin entre les salles.</b> PV, statuts et PP sont conservés.</li><li>Le sac est fermé. Les objets déjà tenus gardent leurs effets.</li><li><b>100 points</b> par Pokémon vaincu. Votre meilleur score compte.</li></ul>
+          <ul class="rules"><li><b>16 dresseurs en boucle, sans fin.</b> Après Lucie, un nouveau cycle commence.</li><li>Chaque dresseur possède <b>3 Pokémon de niveaux 85, 95 et 100</b>, à chaque cycle.</li><li>Vos six Pokémon sont soignés <b>à l’inscription</b>.</li><li>Après chaque victoire, choisissez <b>une carte parmi trois</b> pour récupérer des PV, des PP ou relever un partenaire.</li><li><b>Aucun autre soin automatique.</b> PV, statuts, PP et objets consommés suivent votre parcours.</li><li>Le sac est fermé. Les objets déjà tenus gardent leurs effets.</li><li><b>Aucune XP</b>, aucun argent ni butin. <b>100 points</b> par Pokémon vaincu ; votre meilleur score compte.</li></ul>
           <div class="registered-team" aria-label="Équipe à inscrire"><div v-for="pokemon in team" :key="pokemon.uuid"><img :src="sprite(pokemon)" alt=""><b>{{ pokemon.name || pokemon.truename }}</b><span>Niv. {{ pokemon.level }}</span></div></div>
           <p class="aside">Entre deux duels, avancez jusqu’à la porte du fond. Une déconnexion conserve votre tentative.</p>
           <p v-if="!payload.offerId" class="aside">Adressez-vous à l’hôtesse pour confirmer votre inscription.</p>
@@ -15,7 +15,7 @@
         <template v-else>
           <p class="personal">Ton record <b>{{ payload.leaderboard?.personal?.score || 0 }} pts</b></p>
           <p v-if="!payload.leaderboard?.rows?.length" class="aside">Le tableau attend ses premiers champions.</p>
-          <ol class="rankings"><li v-for="row in payload.leaderboard?.rows || []" :key="row.id" :class="{self:row.self}"><span class="rank">{{ row.rank }}</span><span><b>{{ row.username }}</b><small>{{ row.rooms }} / 16 salles</small></span><strong>{{ row.score }} <small>pts</small></strong></li></ol>
+          <ol class="rankings"><li v-for="row in payload.leaderboard?.rows || []" :key="row.id" :class="{self:row.self}"><span class="rank">{{ row.rank }}</span><span><b>{{ row.username }}</b><small>{{ row.rooms }} salles · {{ Math.floor(Number(row.rooms)/16) }} cycles terminés</small></span><strong>{{ row.score }} <small>pts</small></strong></li></ol>
         </template>
         <p v-if="error" class="error" role="alert">{{ error }}</p>
       </div>
