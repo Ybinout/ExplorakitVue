@@ -14,7 +14,7 @@
           <div class="companion-health"><strong>PV</strong><span>{{ pokemon.currentHp }} / {{ pokemon.maxHp }}</span><div><i :style="{ width: hpPercent + '%' }"></i></div></div>
           <experience-bar :pokemon="pokemon" detailed />
           <p class="companion-next">Prochain niveau : {{ progress.remaining }} XP</p>
-          <div class="companion-traits"><span>Nature <strong>{{ nature.label }}</strong></span><small>{{ nature.effect }}</small><span>Talent <strong>{{ abilityName }}</strong></span><span>Potentiel <potential-star :value="pokemon.k" /></span></div>
+          <div class="companion-traits"><span>Nature <strong>{{ nature.label }}</strong></span><small>{{ nature.effect }}</small><span v-if="pokemon.gender && !pokemon.isEgg">Sexe <pokemon-gender :pokemon="pokemon" detailed /></span><span>Talent <strong>{{ abilityName }}</strong></span><span>Potentiel <potential-star :value="pokemon.k" /></span></div>
           <p class="companion-ability-description" data-ability-description>{{ abilityDescription }}</p>
           <p v-if="abilityNotice" class="evolution-help" data-ability-notice>{{ abilityNotice }}</p>
         </div>
@@ -70,6 +70,7 @@
 </template>
 <script>
 import PotentialStar from '../PotentialStar.vue';
+import PokemonGender from '../PokemonGender.vue';
 import PokemonPortrait from '../PokemonPortrait.vue';
 import ExperienceBar from '../ExperienceBar.vue';
 import { experienceProgress } from '@/services/pokemonProgress';
@@ -86,7 +87,7 @@ const stats = [
 ];
 
 export default {
-  components: { ExperienceBar, PokemonPortrait, PotentialStar },
+  components: { ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender },
   props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
   data: () => ({ mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
     typeNames: { Grass: 'Plante', Fire: 'Feu', Water: 'Eau', Bug: 'Insecte', Flying: 'Vol', Electric: 'Électrik', Ground: 'Sol', Rock: 'Roche', Ice: 'Glace', Fighting: 'Combat', Psychic: 'Psy', Ghost: 'Spectre', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' } }),
