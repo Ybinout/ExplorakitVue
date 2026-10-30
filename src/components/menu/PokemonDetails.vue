@@ -41,9 +41,13 @@
       <section class="companion-pc-moves" aria-labelledby="companion-moves-title">
         <h3 id="companion-moves-title">Capacités</h3>
         <p class="evolution-help">Les dégâts réels dépendent des statistiques, des types et des effets en combat.</p>
+        <p v-if="movesOrderAllowed && moves.length>1" class="evolution-help">Utilise les flèches pour changer l’ordre. Chaque déplacement est enregistré automatiquement.</p>
+        <p v-if="movesOrderBusy" class="move-order-feedback" role="status">Enregistrement de l’ordre…</p>
+        <p v-else-if="movesOrderError" class="move-order-feedback evolution-error" role="alert">{{ movesOrderError }}</p>
+        <p v-else-if="movesOrderNotice" class="move-order-feedback" role="status">{{ movesOrderNotice }}</p>
         <p v-if="!moves.length" class="evolution-help">Aucune capacité apprise.</p>
-        <article v-for="(move,index) in moves" :key="`${index}-${move.name}`" :data-companion-move="move.name" :style="typeStyle(move.type)">
-          <div class="companion-move-heading"><strong>{{ moveName(move.name) }}</strong><div><span class="companion-move-type">{{ typeName(move.type) || 'Type inconnu' }}</span><span class="companion-move-class">{{ moveClass(move.damageClass) }}</span></div></div>
+        <article v-for="(move,index) in moves" :key="move.name" :data-companion-move="move.name" :style="typeStyle(move.type)">
+          <div class="companion-move-heading"><div class="companion-move-title"><strong><small class="move-position">{{ index+1 }}</small>{{ moveName(move.name) }}</strong><span v-if="movesOrderAllowed && moves.length>1" class="move-order-controls"><button :data-move-up="index" :disabled="movesOrderBusy || index===0" :aria-label="`Monter ${moveName(move.name)}`" @click="reorderMove(index,-1)">↑</button><button :data-move-down="index" :disabled="movesOrderBusy || index===moves.length-1" :aria-label="`Descendre ${moveName(move.name)}`" @click="reorderMove(index,1)">↓</button></span></div><div><span class="companion-move-type">{{ typeName(move.type) || 'Type inconnu' }}</span><span class="companion-move-class">{{ moveClass(move.damageClass) }}</span></div></div>
           <dl><div><dt>{{ move.fixedDamage ? 'Dégâts fixes' : 'Puissance' }}</dt><dd>{{ move.powerLabel }}</dd></div><div><dt>Précision</dt><dd>{{ move.accuracy>0?`${move.accuracy} %`:'—' }}</dd></div><div><dt>PP</dt><dd>{{ move.pp ?? '—' }} / {{ move.maxPp ?? '—' }}</dd></div></dl>
           <p class="companion-move-description" data-move-description>{{ move.description }}</p>
         </article>
@@ -88,7 +92,7 @@ const stats = [
 
 export default {
   components: { ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender },
-  props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
+  props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, movesOrderAllowed:Boolean,movesOrderBusy:Boolean,movesOrderError:String,movesOrderNotice:String,contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
   data: () => ({ mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
     typeNames: { Grass: 'Plante', Fire: 'Feu', Water: 'Eau', Bug: 'Insecte', Flying: 'Vol', Electric: 'Électrik', Ground: 'Sol', Rock: 'Roche', Ice: 'Glace', Fighting: 'Combat', Psychic: 'Psy', Ghost: 'Spectre', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' } }),
   computed: {
@@ -121,6 +125,13 @@ export default {
   mounted() { this.previousFocus = document.activeElement; this.$refs.close.focus(); },
   beforeDestroy() { this.previousFocus?.focus?.(); },
   methods: {
+    reorderMove(index,delta){
+      if(!this.movesOrderAllowed || this.movesOrderBusy)return;
+      const expectedMoves=[...(this.pokemon.abilities || [])],orderedIndexes=expectedMoves.map((_,i)=>i),next=index+delta;
+      if(next<0 || next>=orderedIndexes.length)return;
+      [orderedIndexes[index],orderedIndexes[next]]=[orderedIndexes[next],orderedIndexes[index]];
+      this.$emit('reorder-moves',{pokemonUuid:this.pokemon.uuid,expectedMoves,orderedIndexes});
+    },
     moveName(name){return localizeMoveName(name,'fr');},typeName:localizeTypeName,
     typeStyle:typeBadgeStyle,
     moveClass(value){return {physical:'Physique',special:'Spéciale',status:'Statut'}[value] || '—';},
@@ -149,6 +160,9 @@ export default {
 /* Learned moves are shared by team and PC sheets. */
 .companion-pc-moves{padding:4px 26px 24px;border-top:1px solid var(--journal-border)}
 .companion-pc-moves h3{font:24px Georgia,serif;color:var(--journal-heading);margin:20px 0 8px}
+.companion-move-title{display:flex;align-items:center;justify-content:space-between;gap:8px}.companion-move-title>strong{flex:1;min-width:0}.move-position{margin-right:8px;font:11px var(--journal-font);color:var(--journal-muted)}
+.companion-move-heading>.companion-move-title{margin-top:0;flex-wrap:nowrap}.move-order-controls{display:flex;flex:none;gap:4px}.move-order-controls button{width:44px;height:44px;border:1px solid var(--journal-border);border-radius:8px;color:var(--journal-accent);background:var(--journal-soft);font:700 20px Arial;cursor:pointer;touch-action:manipulation}.move-order-controls button:disabled{opacity:.3;cursor:default}.move-order-controls button:focus-visible{outline:2px solid var(--journal-accent);outline-offset:2px}.move-order-feedback{font:12px/1.5 var(--journal-font);color:var(--journal-accent)}.move-order-feedback.evolution-error{color:#a33f35}
+.companion-pc-moves article:has(.move-order-controls){grid-template-columns:minmax(0,1fr)}.companion-pc-moves article:has(.move-order-controls) dl{justify-content:flex-start}
 .companion-pc-moves article{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 18px;margin-top:12px;padding:15px;border:1px solid var(--journal-border);border-left:4px solid var(--pokemon-type-color);border-radius:10px;background:var(--journal-card)}
 .companion-move-heading{min-width:0;align-self:center}.companion-move-heading strong{font-size:14px;color:var(--journal-heading);overflow-wrap:anywhere}.companion-move-heading>div{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:7px}
 .companion-move-type{display:inline-block;padding:3px 9px;border-radius:5px;background:var(--pokemon-type-color);color:var(--pokemon-type-ink);font-size:10px;font-weight:bold}

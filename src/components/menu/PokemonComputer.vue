@@ -25,7 +25,7 @@
     </section>
   </div>
   <div v-if="drag" class="pc-drag-ghost" :style="{left:drag.x+'px',top:drag.y+'px'}" aria-hidden="true" data-pc-drag-ghost><pokemon-portrait :src="sprite(drag.pokemon)"/><span>{{ drag.pokemon.name }}</span></div>
-  <pokemon-details v-if="detailOpen && detailPokemon" :pokemon="detailPokemon" :position="detailIndex+1" :total="detailList.length" :read-only="true" :context-label="detailContext" :footer-label="detailContext" @close="closeDetail" @navigate="navigateDetail"/>
+  <pokemon-details v-if="detailOpen && detailPokemon" :pokemon="detailPokemon" :position="detailIndex+1" :total="detailList.length" :read-only="true" :moves-order-allowed="!opening && !detailPokemon.isEgg" :moves-order-busy="busy" :moves-order-error="error" :moves-order-notice="notice" :context-label="detailContext" :footer-label="detailContext" @reorder-moves="$emit('command',{action:'reorderMoves',...$event})" @close="closeDetail" @navigate="navigateDetail"/>
   </div>
 </template>
 <script>
