@@ -19,6 +19,7 @@
       <picture v-else-if="environment === 'snow'" class="battle-arena-background" data-battle-environment="snow"><source v-if="mobile" media="(orientation: portrait)" :srcset="snowBackgrounds.mobile"><img :src="snowBackgrounds.wide" class="battle-background battle-snow-background" alt=""></picture>
       <picture v-else class="battle-arena-background"><source v-if="mobile" media="(orientation: portrait)" :srcset="raining ? rainBackgrounds.grassMobile : require('@/assets/battle/grass-mobile-v3.webp')"><img :src="raining ? rainBackgrounds.grassWide : require('@/assets/battle/back.webp')" class="battle-background" alt=""></picture>
       <battle-waterfalls v-if="!challenge && environment === 'lake-gym'" :animations-enabled="preferences.animationsEnabled" />
+      <battle-tournament-scenery v-if="environment === 'super-tournament'" :animations-enabled="preferences.animationsEnabled && !entranceActive" />
       <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
       <template v-if="challenge || mobile || gymBackground || environment === 'raph-gym' || environment === 'cave' || environment === 'lake-gym' || environment === 'lake' || environment === 'snow'">
         <div class="battle-platform battle-position-wild" data-battle-platform="wild" aria-hidden="true">
@@ -317,6 +318,7 @@ import BattlePersistentEffect from './BattlePersistentEffect.vue';
 import { moveVisual, persistentMoveVisuals, moveConnected } from '@/services/moveVisuals';
 import BattleRain from './BattleRain.vue';
 import BattleWaterfalls from './BattleWaterfalls.vue';
+import BattleTournamentScenery from './BattleTournamentScenery.vue';
 import BattleSnow from './BattleSnow.vue';
 import BattleSandstorm from './BattleSandstorm.vue';
 import { battleConditionChanges } from '@/services/battleConditions';
@@ -339,6 +341,10 @@ const SNOW_BACKGROUNDS = Object.freeze({
   wide: require('@/assets/battle/snow-wide-v1.webp')
 });
 const GYM_BACKGROUNDS = Object.freeze({
+  'super-tournament': {
+    wide: require('@/assets/battle/tournament-wide-v1.png'), mobile: require('@/assets/battle/tournament-mobile-v1.png'),
+    platform: { '--gym-ground': '#7197bd', '--gym-rim': '#d8bd79', '--gym-edge': '#2c527b', '--gym-light': '#aecde4' }
+  },
   'void-arena':{wide:require('@/assets/battle/void-arena-wide-v1.webp'),mobile:require('@/assets/battle/void-arena-mobile-v1.webp'),platform:{'--gym-ground':'#454450','--gym-rim':'#77717e','--gym-edge':'#24222e','--gym-light':'#a19aa7'}},
   'professor-lab': {
     wide: require('@/assets/battle/professor-lab-wide-v1.png'), mobile: require('@/assets/battle/professor-lab-mobile-v1.png'),
@@ -399,7 +405,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleStatChange, BattleWeatherInfo, BattleParty, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleSnow, BattleSandstorm },
+  components: { BattleStatChange, BattleWeatherInfo, BattleParty, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
     tournament:{type:Boolean,default:false},
     mobile: Boolean,
@@ -612,9 +618,9 @@ export default {
       if (this.musicPrelude && map !== this.battleMapName) this.stopMusic();
       if (map !== 'route4_maison') this.disposeTrainerSequence();
       else this.preloadTrainerSequence();
-      this.preloadSnowBackground(); this.preloadArenaPortrait();
+      this.preloadSnowBackground(); this.preloadTournamentBackground(); this.preloadArenaPortrait();
     },
-    mobile() { this.preloadSnowBackground(); },
+    mobile() { this.preloadSnowBackground(); this.preloadTournamentBackground(); },
     audioVolume() { this.syncAudio(); },
     soundEnabled() { this.syncAudio(); },
     active(isActive) {
@@ -625,6 +631,7 @@ export default {
   mounted() {
     this.preloadTrainerSequence();
     this.preloadSnowBackground();
+    this.preloadTournamentBackground();
     this.preloadArenaPortrait();
     // Warm the two matching weather variants before a battle, sharing the browser cache.
     const format = this.mobile && window.matchMedia('(orientation: portrait)').matches ? 'Mobile' : 'Wide';
@@ -673,6 +680,12 @@ export default {
     preloadSnowBackground() {
       if (battleEnvironment(this.mapName) !== 'snow') return;
       const src = SNOW_BACKGROUNDS[this.mobile && window.matchMedia('(orientation: portrait)').matches ? 'mobile' : 'wide'];
+      if (preloadedBackgrounds.has(src)) return;
+      preloadedBackgrounds.add(src); const image = new Image(); image.src = src;
+    },
+    preloadTournamentBackground() {
+      if (this.mapName !== 'super_tournament_room') return;
+      const src = GYM_BACKGROUNDS['super-tournament'][this.mobile && window.matchMedia('(orientation: portrait)').matches ? 'mobile' : 'wide'];
       if (preloadedBackgrounds.has(src)) return;
       preloadedBackgrounds.add(src); const image = new Image(); image.src = src;
     },
@@ -1684,6 +1697,9 @@ export default {
   object-fit: cover;
   filter: saturate(1.2) contrast(1.05);
 }
+
+/* The scenery overlay uses the artwork's exact coordinates in both formats. */
+.battle-dedicated-gym [data-battle-environment="super-tournament"] .battle-background {object-fit:fill;filter:none;image-rendering:pixelated;}
 
 .battle-cave .battle-background { filter:none; image-rendering:pixelated; object-position:50% 50%; }
 .battle-cave .battle-atmosphere { background:linear-gradient(180deg,#211c4315,transparent 60%); }
