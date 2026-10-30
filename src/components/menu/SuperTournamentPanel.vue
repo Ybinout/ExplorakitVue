@@ -1,9 +1,9 @@
 <template>
-  <div class="tournament-backdrop" @pointerdown.self="$emit('close')" @keydown.stop="onKey" @keyup.stop>
-    <section ref="panel" class="tournament-panel" :data-tournament-view="view" role="dialog" aria-modal="true" aria-labelledby="tournament-title" tabindex="-1">
-      <header><div><small>RIFTMON / ÎLE DU SUPER TOURNOI</small><h2 id="tournament-title">{{ view==='abandon' ? 'Quitter le parcours ?' : view==='ranking' ? 'Classement' : 'Inscription' }}</h2></div><button class="close" aria-label="Fermer" @click="$emit('close')">×</button></header>
+  <div class="tournament-backdrop" @pointerdown.self="!busy && $emit('close')" @keydown.stop="onKey" @keyup.stop>
+    <section id="super-tournament-dialog" ref="panel" class="tournament-panel" :data-tournament-view="view" role="dialog" aria-modal="true" aria-labelledby="tournament-title" tabindex="-1">
+      <header><div><small>RIFTMON / ÎLE DU SUPER TOURNOI</small><h2 id="tournament-title">{{ view==='abandon' ? 'Quitter le parcours ?' : view==='ranking' ? 'Classement' : 'Inscription' }}</h2></div><button class="close" aria-label="Fermer" :disabled="busy" @click="$emit('close')">×</button></header>
       <div class="tournament-content">
-        <template v-if="view==='abandon'"><p>Ton score sera conservé. Cette tentative s’arrêtera et tu retrouveras l’accueil.</p><p>Ton équipe d’Aventure et ses objets seront disponibles à la sortie.</p></template>
+        <template v-if="view==='abandon'"><p>Ton score sera conservé. Cette tentative s’arrêtera et tu retourneras dans ton dernier Centre Pokémon.</p><p>Tu retrouveras ton équipe d’Aventure et ses objets.</p></template>
         <template v-else-if="view==='entry'">
           <p class="host">Hôtesse</p><p v-if="busy">Très bien ! Je soigne vos Pokémon, puis je vous téléporte dans le sas. Bonne chance pour votre parcours !</p><p v-else>Bienvenue ! Votre PASS vous ouvre les portes du Super Tournoi. Souhaitez-vous inscrire cette équipe ?</p>
           <ul class="rules"><li><b>16 dresseurs en boucle, sans fin.</b> Après Lucie, un nouveau cycle commence.</li><li>Chaque dresseur possède <b>3 Pokémon de niveaux 85, 95 et 100</b>, à chaque cycle.</li><li>Vos six Pokémon sont soignés <b>à l’inscription</b>.</li><li>Après chaque victoire, choisissez <b>une carte parmi trois</b> pour récupérer des PV, des PP ou relever un partenaire.</li><li><b>Aucun autre soin automatique.</b> PV, statuts, PP et objets consommés suivent votre parcours.</li><li>Le sac est fermé. Les objets déjà tenus gardent leurs effets.</li><li><b>Aucune XP</b>, aucun argent ni butin. <b>100 points</b> par Pokémon vaincu ; votre meilleur score compte.</li></ul>
@@ -28,7 +28,7 @@ export default {
   computed:{view(){return ['ranking','abandon'].includes(this.payload.tab)?this.payload.tab:'entry';}},
   mounted(){this.previousFocus=document.activeElement;this.$refs.panel.focus();},
   beforeDestroy(){this.previousFocus?.focus?.();},
-  methods:{sprite(p){return `${process.env.BASE_URL}img/pokemon/front/${p.pokemonId || p.data?.id || p.id}.png`;},onKey(e){if(e.key==='Escape')this.$emit('close');if(e.key!=='Tab')return;const list=[...this.$refs.panel.querySelectorAll('button:not(:disabled)')],first=list[0],last=list[list.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}}
+  methods:{sprite(p){return `${process.env.BASE_URL}img/pokemon/front/${p.pokemonId || p.data?.id || p.id}.png`;},onKey(e){if(e.key==='Escape'&&!this.busy)this.$emit('close');if(e.key!=='Tab')return;const list=[...this.$refs.panel.querySelectorAll('button:not(:disabled)')],first=list[0],last=list[list.length-1];if(e.shiftKey&&[first,this.$refs.panel].includes(document.activeElement)){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}}
 };
 </script>
 <style scoped>

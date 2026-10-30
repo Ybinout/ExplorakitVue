@@ -1,5 +1,5 @@
 <template>
-  <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift, 'is-mobile': showMobileControls, 'is-fullscreen': fullscreenState.active }]">
+  <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift, 'is-mobile': showMobileControls, 'is-fullscreen': fullscreenState.active, 'has-super-tournament': superTournament.active }]">
     <adventure-opening v-if="openingScene && !mapLoadError" :ready="openingReady" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" @finished="finishAdventureOpening" />
     <div v-if="mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase)" :key="mirrorScene.id" class="mirror-scene-veil" :class="mirrorScene.phase" :style="{'--mirror-duration':mirrorScene.duration+'ms'}" :data-mirror-phase="mirrorScene.phase" role="status" aria-live="polite" aria-busy="true">
       <span v-if="mirrorScene.phase === 'closing'" class="mirror-ending-title">{{ preferences.language === 'en' ? 'The End' : 'Fin' }}</span>
@@ -7,6 +7,9 @@
     <!-- <navBar></navBar> -->
     <div class="game-layout" :inert="(openingScene && !mapLoadError) || (mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase)) ? '' : null">
       <div class="game-stage" ref="gameStage">
+      <button v-if="superTournament.active && !isDrift && tournamentPanel?.tab!=='abandon'" ref="tournamentExit" class="super-tournament-exit" data-super-tournament-exit type="button" :disabled="tournamentBusy || !socket?.connected" :aria-label="preferences.language==='en'?'Abandon the Super Tournament':'Abandonner le Super Tournoi'" :title="preferences.language==='en'?'Abandon the Super Tournament':'Abandonner le Super Tournoi'" aria-haspopup="dialog" aria-controls="super-tournament-dialog" @pointerdown.stop @click.stop="openTournamentAbandon">
+        <svg viewBox="0 0 32 32" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 28V4" stroke="currentColor"/><path d="M8 6c6-4 11 4 17 0v13c-6 4-11-4-17 0Z" fill="#fff" stroke="#415565"/></svg>
+      </button>
       <fishing-prompt v-if="fishing && !battle" :state="fishing" @start="fishingAction" @cancel="cancelFishing()" />
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
       <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
@@ -16,12 +19,12 @@
       <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
       <drift-run-panel v-show="!learningVisible && !evolutionVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
-      <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :busy="tournamentBusy" :error="tournamentError" @close="tournamentPanel=null" @register="registerSuperTournament" @abandon="abandonSuperTournament" />
-      <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :team="superTournament.team" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @leave="tournamentPanel={tab:'abandon'}" />
+      <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @abandon="abandonSuperTournament" />
+      <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :team="superTournament.team" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @leave="openTournamentAbandon" />
       <battle-overlay
         ref="battleOverlay"
         :active="battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
-        :bag-items="bagItems" :tournament="!!superTournament.active" @tournament-abandon="tournamentPanel={tab:'abandon'}"
+        :bag-items="bagItems" :tournament="!!superTournament.active" @tournament-abandon="openTournamentAbandon"
         :bag-loading="bagLoading"
         :preferences="preferences"
         :notice="interactionNotice"
@@ -231,7 +234,7 @@
           @sell="sellShopItem"
         />
         <div class="world-viewport" ref="worldViewport">
-          <button v-if="superTournament.active && !battle && !battleResult && !flight" class="super-tournament-status" @pointerdown.stop @click="tournamentPanel={tab:'abandon'}"><b>Salle {{ superTournament.room }} · Cycle {{ superTournament.cycle || 1 }} · {{ superTournament.opponent }}</b><span>{{ superTournament.score }} pts · {{ superTournament.phase==='reward' ? 'Choisis une carte' : superTournament.phase==='cleared' ? 'Porte du fond ouverte' : superTournament.phase==='sas' ? 'Avance vers la porte du fond' : 'Parle au dresseur' }} · Quitter</span></button>
+          <button v-if="superTournament.active && !battle && !battleResult && !flight" class="super-tournament-status" @pointerdown.stop @click="openTournamentAbandon"><b>Salle {{ superTournament.room }} · Cycle {{ superTournament.cycle || 1 }} · {{ superTournament.opponent }}</b><span>{{ superTournament.score }} pts · {{ superTournament.phase==='reward' ? 'Choisis une carte' : superTournament.phase==='cleared' ? 'Porte du fond ouverte' : superTournament.phase==='sas' ? 'Avance vers la porte du fond' : 'Parle au dresseur' }} · Quitter</span></button>
           <void-transition v-if="flight?.kind==='void'" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" />
           <flight-transition v-else-if="flight" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" />
           <button v-if="nearbySocialTrainer" class="nearby-social" data-nearby-social @pointerdown.stop @click.stop="openNearbySocial"><journal-icon name="friends"/><span>{{ nearbySocialTrainer.username || 'Dresseur' }}</span><small>Amis / Message</small></button>
@@ -886,6 +889,7 @@ export default {
       finally { this.learningBusy = false; }
     },
     async presentBattleEnd(payload) {
+      if(payload?.tournamentAbandoned)return;
       const result = buildBattleResult(payload, this.isDrift ? 'drift' : 'adventure');
       this.pendingBattleResult = result;
       this.releaseAllMovementKeys();
@@ -2002,7 +2006,7 @@ export default {
       }
     },
     handleBattleAction(payload = {}) {
-      if (this.pc.visible || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
+      if (this.tournamentPanel || this.pc.visible || this.battleResult || this.driftSpectator || this.learningVisible || this.evolutionVisible) return;
       if (!this.socket || !this.socket.connected) return;
       const action = typeof payload.action === 'string' ? payload.action : '';
       if (!['attack', 'flee', 'change', 'bag'].includes(action)) return;
@@ -2072,9 +2076,25 @@ export default {
       await this.flyToTown('super_tournament_sas',{kind:'void',event:'superTournament:register',data:{offerId}});
       this.tournamentBusy=false;
     },
-    async abandonSuperTournament(){if(this.tournamentBusy)return;this.tournamentBusy=true;this.tournamentError='';
-      const result=await this.driftCommand({name:'superTournament:abandon',includeResponse:true});
-      this.tournamentBusy=false;if(result)this.tournamentPanel=null;
+    openTournamentAbandon(){
+      if(!this.superTournament.active||this.tournamentBusy)return;
+      this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.isMenuOpen=false;this.selectedPokemonUuid=null;
+      this.tournamentError='';this.tournamentPanel={tab:'abandon'};
+    },
+    closeTournamentPanel(){
+      if(this.tournamentBusy)return;const wasAbandon=this.tournamentPanel?.tab==='abandon';this.tournamentPanel=null;
+      if(wasAbandon)this.$nextTick(()=>this.$refs.tournamentExit?.focus({preventScroll:true}));
+    },
+    completeTournamentAbandon(){
+      this.releaseAllMovementKeys();this.pendingBattleResult=null;this.battleResult=null;this.battle=false;
+      this.tournamentPanel=null;this.tournamentError='';this.tournamentRewardError='';this.lock=false;
+      this.$refs.battleOverlay?.resetBattleUi();this.$nextTick(this.restoreWorldView);
+    },
+    async abandonSuperTournament(){if(this.tournamentBusy||!this.socket?.connected)return;this.tournamentBusy=true;this.tournamentError='';
+      try{
+        const result=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('superTournament:abandon',{},(error,r)=>error?reject(new Error('Connexion interrompue. Vérifie ta position après reconnexion.')):resolve(r)));
+        if(!result?.success)throw Error(result?.message||'Abandon indisponible.');this.completeTournamentAbandon();
+      }catch(error){this.tournamentError=error.message;}finally{this.tournamentBusy=false;}
     },
     async chooseTournamentReward(data){
       if(this.tournamentBusy||!this.socket?.connected)return;this.tournamentBusy=true;this.tournamentRewardError='';
@@ -3288,7 +3308,7 @@ export default {
     this.socket.on('superTournamentPanel',async payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.tournamentError='';await this.loadTeamPokemons();this.tournamentPanel=payload;});
     this.socket.on('superTournamentState',state=>{if(state?.reward?.id!==this.superTournament.reward?.id)this.tournamentRewardError='';this.superTournament=state || {active:false};if(state?.active)this.applyTeamPokemons(state.team || []);else this.loadTeamPokemons();});
     this.socket.on('superTournamentRewardApplied',result=>{if(result.changes?.length)this._feedbackAudio?.play('heal');this.showInteractionNotice(`${result.name} · soin appliqué à l’équipe inscrite.`);});
-    this.socket.on('superTournamentFinished',result=>{this.showInteractionNotice(`Super Tournoi terminé · ${result.score} points`);});
+    this.socket.on('superTournamentFinished',result=>{if(result.reason==='abandoned')this.completeTournamentAbandon();this.showInteractionNotice(`${result.reason==='abandoned'?'Tentative abandonnée':'Super Tournoi terminé'} · ${result.score} points`);});
     this.socket.on('uniqueItemReceived',item=>{this._feedbackAudio?.play('unique');this.showInteractionNotice(`${item.name} obtenu !`);});
     this.socket.on('pcOpened', state=>{if(!this.pc.visible)this._feedbackAudio?.play('pc');this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;this.pc={visible:true,busy:false,state,error:'',notice:''};});
     this.socket.on('pcUpdated',state=>{if(this.pc.visible)this.pc.state=state;});

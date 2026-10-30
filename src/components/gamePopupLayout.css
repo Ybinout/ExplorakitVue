@@ -29,3 +29,11 @@
 }
 
 .super-tournament-status{position:absolute;z-index:12;right:10px;bottom:10px;display:flex;flex-direction:column;gap:4px;max-width:calc(100% - 20px);min-height:44px;padding:8px 13px;text-align:left;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-paper);color:var(--journal-ink);font:12px var(--journal-font)}
+.super-tournament-exit{position:fixed;z-index:1950;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));display:grid;place-items:center;width:44px;height:44px;padding:7px;border:1px solid var(--journal-border);border-radius:10px;background:var(--journal-card);color:var(--journal-heading);box-shadow:0 2px 0 #132d4033;cursor:pointer;touch-action:manipulation}
+.super-tournament-exit svg{width:28px;height:28px}
+.super-tournament-exit:disabled{opacity:.55;cursor:default}
+.super-tournament-exit:focus-visible{outline:3px solid var(--journal-accent);outline-offset:3px}
+.game-root.has-super-tournament .location-banner{padding-right:62px}
+.game-root.has-super-tournament .game-stage .location-name{white-space:nowrap}
+.game-root.is-mobile.has-super-tournament .battle-weather-anchor{top:64px}
+@media(min-width:921px){.game-root:not(.is-mobile) .super-tournament-exit{top:max(8px,calc(var(--game-popup-top,20px) - 6px));right:var(--game-popup-right,12px)}}
