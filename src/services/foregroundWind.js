@@ -1,4 +1,5 @@
 import trees from '../data/windTrees.js';
+import { PixelUploadPatch } from './pixelUploadPatch.js';
 // Warp leaf colours inside their original silhouettes: no moved shadows, trunks,
 // roofs, alpha edges or rectangular cutouts, even across separate baked layers.
 const WIDTH = 896, HEIGHT = 640, SOURCE_WIDTH = 448, SOURCE_HEIGHT = 320, FRAME_MS = 1000 / 30;
@@ -37,13 +38,34 @@ export class ForegroundWindRenderer {
       this.canvas = this.createCanvas(); this.canvas.width = SOURCE_WIDTH; this.canvas.height = SOURCE_HEIGHT;
       this.context = this.canvas.getContext('2d'); if (!this.context) throw Error('Canvas 2D unavailable');
       this.context.imageSmoothingEnabled = false; this.context.drawImage(image, 0, 0, SOURCE_WIDTH, SOURCE_HEIGHT);
-      const original = this.context.getImageData(0, 0, SOURCE_WIDTH, SOURCE_HEIGHT);
+      // Read pixels on a disposable CPU surface, never on the animated GPU
+      // canvas. Only the small leaf patch crosses from CPU to GPU each tick.
+      const reader = this.createCanvas(); reader.width = SOURCE_WIDTH; reader.height = SOURCE_HEIGHT;
+      let original;
+      try {
+        const c = reader.getContext('2d', { willReadFrequently: true });
+        if (!c) throw Error('Canvas 2D unavailable');
+        c.imageSmoothingEnabled = false; c.drawImage(image, 0, 0, SOURCE_WIDTH, SOURCE_HEIGHT);
+        original = c.getImageData(0, 0, SOURCE_WIDTH, SOURCE_HEIGHT);
+      } finally { reader.width = reader.height = 0; }
       this.original = new Uint32Array(original.data.buffer);
       this.frame = this.context.createImageData(SOURCE_WIDTH, SOURCE_HEIGHT); this.output = new Uint32Array(this.frame.data.buffer);
       // Background is an opaque leaf-only overlay, preserving the lake renderer
       // and original map already painted below. Foreground keeps its full RGBA.
       if(layer!=='background')this.output.set(this.original);
       this.mask = treeLeafMask(original.data,map,layer); this.source = image; this.map=map;this.layer=layer;
+      if (layer === 'background') this.context.clearRect(0, 0, SOURCE_WIDTH, SOURCE_HEIGHT);
+      const rows = new Map();
+      for (const index of this.mask.pixels) {
+        const owner = this.mask.owners[index], y = Math.floor(index / SOURCE_WIDTH), key = owner * SOURCE_HEIGHT + y;
+        if (!rows.has(key)) {
+          const rect = this.mask.crowns[owner - 1];
+          rows.set(key, { owner, y, flex: .35 + .65 * (rect.bottom - y) / (rect.bottom - rect.top), indices: [], xs: [] });
+        }
+        rows.get(key).indices.push(index); rows.get(key).xs.push(index % SOURCE_WIDTH);
+      }
+      this.rows = [...rows.values()].map(row => ({...row, indices: Uint32Array.from(row.indices), xs: Uint16Array.from(row.xs)}));
+      this.patch = new PixelUploadPatch(this.createCanvas, SOURCE_WIDTH, this.mask.pixels, SOURCE_HEIGHT);
     } catch (_) { this.suspend(); }
   }
   draw(target, image, timestamp, wind, motion = true, map = 'start', layer = 'foreground') {
@@ -56,19 +78,22 @@ export class ForegroundWindRenderer {
     if (this.wind !== strength || time - this.lastTime >= FRAME_MS || time < this.lastTime) {
       this.wind = strength; this.lastTime = time;
       const poses = this.mask.crowns.map((_, index) => foliagePose(time, strength, index + 1));
-      for (const index of this.mask.pixels) {
-        const owner = this.mask.owners[index], rect = this.mask.crowns[owner - 1], pose = poses[owner - 1];
-        const y = Math.floor(index / SOURCE_WIDTH), x = index % SOURCE_WIDTH;
-        const flex = .35 + .65 * (rect.bottom - y) / (rect.bottom - rect.top);
-        const sx=Math.round(x-pose.x*flex/2),sy=Math.round(y-pose.y/2),sample=sy*SOURCE_WIDTH+sx;
-        this.output[index] = sx>=0&&sx<SOURCE_WIDTH&&sy>=0&&sy<SOURCE_HEIGHT&&this.mask.owners[sample]===owner ? this.original[sample] : this.original[index];
+      for (const row of this.rows) {
+        const pose = poses[row.owner - 1], shift = pose.x * row.flex / 2;
+        const sy = Math.round(row.y - pose.y / 2), sourceRow = sy * SOURCE_WIDTH;
+        for (let i = 0; i < row.indices.length; i++) {
+          const index = row.indices[i], sx = Math.round(row.xs[i] - shift), sample = sourceRow + sx;
+          this.output[index] = sx>=0&&sx<SOURCE_WIDTH&&sy>=0&&sy<SOURCE_HEIGHT&&this.mask.owners[sample]===row.owner ? this.original[sample] : this.original[index];
+        }
       }
-      this.context.putImageData(this.frame,0,0);
+      this.patch.upload(this.frame, this.context);
+      this.patch.draw(this.context);
       this.frames++;
     }
     target.drawImage(this.canvas, 0, 0, WIDTH, HEIGHT);
   }
   suspend() {
+    this.patch?.destroy(); this.patch = null; this.rows = null;
     if (this.canvas) { this.canvas.width = 0; this.canvas.height = 0; }
     this.canvas = null; this.context = null; this.source = null; this.frame = null; this.original = null; this.output = null; this.mask = null; this.map=null;this.layer=null;this.lastTime = -Infinity; this.wind = null;
   }
