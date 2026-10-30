@@ -1368,6 +1368,15 @@ export default {
       });
       this.chatDraft = '';
     },
+    handleFullscreenShortcut(e) {
+      if (String(e.key || '').toLowerCase() !== 'p' || e.repeat || e.isComposing
+        || e.ctrlKey || e.metaKey || e.altKey
+        || !this.fullscreenState.desktop || !this.fullscreenState.supported
+        || e.target?.isContentEditable
+        || e.target?.closest?.('input, textarea, select, [role="textbox"]')) return;
+      e.preventDefault();
+      this.toggleGameFullscreen();
+    },
     async toggleGameFullscreen() {
       if (!this._fullscreen || this.fullscreenState.busy) return;
       this.releaseAllMovementKeys();
@@ -2756,6 +2765,7 @@ export default {
       this.releaseAllMovementKeys();
       this.$nextTick(this.resizeWorldViewport);
     });
+    window.addEventListener('keydown', this.handleFullscreenShortcut, true);
     document.body.classList.add("in-world");
     this._weatherMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     this._weatherMotionChange = () => { this.worldWeatherReducedMotion = Boolean(this._weatherMotionQuery?.matches); };
@@ -3389,6 +3399,7 @@ export default {
     clearTimeout(this._openingRetry);
     this._mirrorAudio?.dispose();
     this._feedbackAudio?.dispose();
+    window.removeEventListener('keydown', this.handleFullscreenShortcut, true);
     this._fullscreen?.destroy();
     clearTimeout(this._lucieDepartureTimer);
     this.cancelFishing();

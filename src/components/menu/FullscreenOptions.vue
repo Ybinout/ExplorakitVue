@@ -3,13 +3,13 @@
     <legend>{{ english ? 'Screen' : 'Affichage' }}</legend>
     <div class="fullscreen-row">
       <span><strong>{{ english ? 'Fullscreen' : 'Plein écran' }}</strong><small id="fullscreen-help">{{ english ? 'Enlarge the game while keeping its proportions.' : 'Agrandit le jeu en conservant ses proportions.' }}</small></span>
-      <button type="button" data-fullscreen-toggle :aria-pressed="state.active" aria-describedby="fullscreen-help" :disabled="state.busy || !state.supported" @click="$emit('toggle')">
+      <button type="button" data-fullscreen-toggle aria-keyshortcuts="P" :aria-pressed="state.active" aria-describedby="fullscreen-help" :disabled="state.busy || !state.supported" @click="$emit('toggle')">
         <journal-icon name="fullscreen" />
         {{ state.busy ? (english ? 'Switching…' : 'Changement…') : state.active ? (english ? 'Windowed mode' : 'Revenir en fenêtre') : (english ? 'Fullscreen' : 'Passer en plein écran') }}
       </button>
     </div>
     <p v-if="!state.supported">{{ english ? 'Fullscreen is unavailable in this browser.' : 'Le plein écran est indisponible dans ce navigateur.' }}</p>
-    <p v-else>{{ english ? 'Press Esc to return to windowed mode.' : 'Appuie sur Échap pour revenir en fenêtre.' }}</p>
+    <p v-else>{{ english ? 'Press P to switch fullscreen on or off. Esc also returns to windowed mode.' : 'Appuie sur P pour activer ou quitter le plein écran. Échap permet aussi de revenir en fenêtre.' }}</p>
     <p v-if="state.error" class="fullscreen-error" role="alert">{{ state.error }}</p>
   </fieldset>
 </template>
