@@ -2,7 +2,7 @@ import { RaphArenaRenderer, RAPH_MAP } from './raphArena.js';
 import { HozeArenaRenderer, HOZE_MAP } from './hozeArena.js';
 import { AnaArenaRenderer, ANA_MAP } from './anaArena.js';
 import { WandaArenaRenderer, WANDA_MAP } from './wandaArena.js';
-import { TournamentLobbySkyRenderer, TOURNAMENT_LOBBY_MAP } from './tournamentLobbySky.js';
+import { TournamentLobbySkyRenderer, TOURNAMENT_SCENERY } from './tournamentLobbySky.js';
 import { villageWaterMask } from './villageWater.js';
 
 // Positions are authored in the 448 × 320 map artwork, never inferred from a colour
@@ -91,7 +91,7 @@ const butterflyGardens = {
     [353,255],[400,277],[348,104],[406,103]],
 };
 export function placeAmbienceProfile(map) {
-  if (map === TOURNAMENT_LOBBY_MAP) return { kind: 'tournament-lobby', shade: '#000000', opacity: 0 };
+  if (TOURNAMENT_SCENERY[map]) return { kind: 'tournament-lobby', shade: '#000000', opacity: 0 };
   if (butterflyGardens[map]) return {
     kind: 'garden', shade: '#000000', opacity: 0,
     butterflies: butterflyGardens[map],
@@ -268,7 +268,7 @@ export class PlaceAmbienceRenderer {
     }
   }
   drawGround(target, source, map, timestamp, motion = true, arenaState = null, speaking = false) {
-    const key = map === TOURNAMENT_LOBBY_MAP ? 'tournamentLobby' : map === HOZE_MAP ? 'hoze' : map === RAPH_MAP ? 'raph' : map === ANA_MAP ? 'ana' : map === WANDA_MAP ? 'wanda' : null;
+    const key = TOURNAMENT_SCENERY[map] ? 'tournamentLobby' : map === HOZE_MAP ? 'hoze' : map === RAPH_MAP ? 'raph' : map === ANA_MAP ? 'ana' : map === WANDA_MAP ? 'wanda' : null;
     if (this.destroyed || !key) { this.hoze?.suspend(); this.raph?.suspend(); this.ana?.suspend(); this.wanda?.suspend(); this.tournamentLobby?.suspend(); return; }
     if (this.map !== map || this.source !== source || !this.canvas) this.prepare(source, map);
     if (!this.context) return;
@@ -277,7 +277,7 @@ export class PlaceAmbienceRenderer {
       this[key] = new Renderer(this.createCanvas);
     }
     if(key==='hoze')this[key].setCollapseState(arenaState);
-    this[key].draw(target, source, timestamp, motion, speaking);
+    this[key].draw(target, source, timestamp, motion, key === 'tournamentLobby' ? map : speaking);
   }
   draw(target, source, map, timestamp, motion = true, wind = 0, daylight = { night: 0 }) {
     if (this.destroyed) return;
