@@ -179,7 +179,7 @@
                 <button
                   class="team-order-btn"
                   :aria-label="`${preferences.language === 'en' ? 'Move up' : 'Monter'} ${pokemon.name}`"
-                  :disabled="index === 0 || teamSaving"
+                  :disabled="index === 0 || teamSaving || !canReorderTeam"
                   @click="moveTeamPokemon(index, 'up')"
                 >
                   ↑
@@ -187,7 +187,7 @@
                 <button
                   class="team-order-btn"
                   :aria-label="`${preferences.language === 'en' ? 'Move down' : 'Descendre'} ${pokemon.name}`"
-                  :disabled="index === teamPokemons.length - 1 || teamSaving"
+                  :disabled="index === teamPokemons.length - 1 || teamSaving || !canReorderTeam"
                   @click="moveTeamPokemon(index, 'down')"
                 >
                   ↓
@@ -722,6 +722,7 @@ export default {
     driftPhaseLabel() { return { selection:'Choix du compagnon', exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', colosseum_ready: 'Colosseum · prêt ?', colosseum_battle: 'Colosseum', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
     driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return this.isColosseum && this.driftState?.colosseum ? `${this.driftState.colosseum.score} pts` : ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
     selectedPokemon() { return this.teamPokemons.find(pokemon => pokemon.uuid === this.selectedPokemonUuid); },
+    canReorderTeam(){return Boolean(this.socket?.connected && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.flight && (!this.superTournament.active || ['sas','ready','reward','cleared'].includes(this.superTournament.phase)));},
     canReorderMoves(){return Boolean(this.socket?.connected && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.evolutionVisible && !this.evolutionBusy && !this.medicineBusy && !this.selectedPokemon?.isEgg && (!this.isDrift || this.driftState?.alive && !this.driftState?.storagePaused && !this.driftState?.recoveryWaiting && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase)));},
     evolutionLookupKey() { const p = this.selectedPokemon; return p ? [p.uuid,p.data?.id,p.level,p.currentHp,p.attack,p.defense,(p.abilities || []).join(',')].join(':') : ''; },
     locationLabel() {
@@ -1953,7 +1954,7 @@ export default {
       }
     },
     async moveTeamPokemon(index, direction) {
-      if (this.teamSaving || this.teamLoading) return;
+      if (this.teamSaving || this.teamLoading || !this.canReorderTeam) return;
       if (!Array.isArray(this.teamPokemons)) return;
       if (index < 0 || index >= this.teamPokemons.length) return;
 
@@ -1980,20 +1981,21 @@ export default {
       this.teamOrderNotice = '';
       try {
         if (this.isDrift) {
-          if (!await this.driftCommand({ name: 'drift:reorder', data: { orderedUuids: this.teamPokemons.map(p => p.uuid) } })) throw new Error('rejected');
+          if (!await this.driftCommand({ name: 'drift:reorder', data: { orderedUuids: this.teamPokemons.map(p => p.uuid) } })) throw new Error(this.tr('orderFailed'));
           await this.loadTeamPokemons();
         } else {
-          if (!this.socket?.connected) throw new Error('offline');
-          const response = await new Promise((resolve, reject) => this.socket.timeout(6000).emit('reorderTeam',
-            { orderedUuids: this.teamPokemons.map(p => p.uuid) }, (error, result) => error ? reject(error) : resolve(result)));
-          if (!response?.success) throw new Error('rejected');
+          if (!this.socket?.connected) throw new Error(this.tr('orderFailed'));
+          const event=this.superTournament.active?'superTournament:reorderTeam':'reorderTeam';
+          const response = await new Promise((resolve, reject) => this.socket.timeout(6000).emit(event,
+            { orderedUuids: this.teamPokemons.map(p => p.uuid) }, (error, result) => error ? reject(new Error(this.tr('orderFailed'))) : resolve(result)));
+          if (!response?.success) throw new Error(response?.message || this.tr('orderFailed'));
           this.applyTeamPokemons(response.equipe.pokemons);
         }
         this.teamDirty = false;
         this.teamOrderNotice = this.tr('orderSaved');
         return true;
       } catch (error) {
-        this.teamError = this.tr('orderFailed');
+        this.teamError = error?.message || this.tr('orderFailed');
         return false;
       } finally {
         this.teamSaving = false;
