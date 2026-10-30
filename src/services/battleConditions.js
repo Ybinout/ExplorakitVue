@@ -40,7 +40,7 @@ export function battleConditionChanges(previous,next) {
   }
   for (const [key,[short]] of Object.entries(STATS)) {
     const delta=stage(next,key)-stage(previous,key);
-    if(delta) changes.push({key,kind:delta>0?'up':'down',symbol:delta>0?'↑':'↓',text:`${short} ${delta>0?'+':''}${delta}`});
+    if(delta) changes.push({key,kind:delta>0?'up':'down',symbol:delta>0?'↑':'↓',delta,from:stage(previous,key),to:stage(next,key),text:`${short} ${delta>0?'+':''}${delta}`});
   }
   if(previous.status!==next.status) {
     if(AILMENTS[next.status]) changes.push({key:'ailment',kind:'status',symbol:'!',text:AILMENTS[next.status]});

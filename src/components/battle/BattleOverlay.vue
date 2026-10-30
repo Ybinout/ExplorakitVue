@@ -35,7 +35,7 @@
       <div class="battle-terrain-layer" aria-hidden="true"></div>
       <battle-field-effects :state="fieldModel" :changes="fieldFx.changes" :nonce="fieldFx.nonce" :language="preferences.language" :animations-enabled="preferences.animationsEnabled" />
       <battle-field-side v-for="side in ['player','opponent']" :key="side" :class="side==='player'?'battle-position-player':'battle-position-wild'" :state="fieldModel" :side="side" :pokemon="side==='player'?currentPokemon:opponent" :changes="fieldFx.changes.filter(e=>e.scope===side)" :nonce="fieldFx.nonce" :animations-enabled="preferences.animationsEnabled" />
-      <span v-if="weatherLabel" class="battle-weather-indicator" :class="`battle-weather-${fieldState.weather}`" :data-battle-weather="fieldState.weather" role="img" :aria-label="weatherLabel" :title="weatherLabel"><journal-icon :name="`weather-${fieldState.weather}`" /></span>
+      <battle-weather-info v-if="fieldState.weather" ref="weatherInfo" :weather="fieldState.weather" :metadata="weatherMetadata" :language="preferences.language" />
       <battle-send-out v-for="entry in sendOuts" :key="entry.uuid" :side="entry.side" :style="sendOutPosition(entry.side)" />
 
       <battle-move-effect v-if="battleMoveFx.visible && !reducedMotion()" :key="`move-${battleMoveFx.nonce}-${battleMoveFx.stage}`"
@@ -146,7 +146,8 @@
       </div>
 
       <div v-for="side in ['wild','player']" :key="`conditions-${side}`" class="battle-condition-fx" :data-condition-side="side" :style="conditionPosition(side)" aria-hidden="true">
-        <i v-for="(effect,index) in conditionFx[side]" :key="effect.key" :class="`condition-${effect.kind}`" :style="{'--effect-index':index,'--effect-count':conditionFx[side].length}">{{ effect.symbol }}</i>
+        <battle-stat-change :key="`stats-${conditionNonce}-${side}`" :effects="conditionFx[side]" :language="preferences.language" />
+        <i v-for="(effect,index) in conditionFx[side].filter(e=>e.kind!=='up' && e.kind!=='down')" :key="effect.key" :class="`condition-${effect.kind}`" :style="{'--effect-index':index,'--effect-count':conditionFx[side].length}">{{ effect.symbol }}</i>
       </div>
 
       <div v-if="criticalFx.side" :key="`critical-${criticalFx.nonce}`" class="battle-critical-burst" :data-critical-side="criticalFx.side" :style="conditionPosition(criticalFx.side)" aria-hidden="true"><b>!</b></div>
@@ -302,6 +303,8 @@ import { SequencedMusic } from '@/services/sequencedMusic';
 import moveLearning from '@/data/moveLearning.json';
 import { localizeTypeName } from '@/services/pokemonTypes';
 import PotentialStar from '../PotentialStar.vue';
+import BattleStatChange, {STAT_CHANGE_DURATION} from './BattleStatChange.vue';
+import BattleWeatherInfo from './BattleWeatherInfo.vue';
 import BattleConditions from './BattleConditions.vue';
 import BattleFieldEffects from './BattleFieldEffects.vue';
 import BattleFieldSide from './BattleFieldSide.vue';
@@ -313,7 +316,6 @@ import BattleRain from './BattleRain.vue';
 import BattleWaterfalls from './BattleWaterfalls.vue';
 import BattleSnow from './BattleSnow.vue';
 import BattleSandstorm from './BattleSandstorm.vue';
-import JournalIcon from '../menu/JournalIcon.vue';
 import { battleConditionChanges } from '@/services/battleConditions';
 import ExperienceBar from '../ExperienceBar.vue';
 import LevelGrowth from '../LevelGrowth.vue';
@@ -394,7 +396,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleParty, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleWaterfalls, BattleSnow, BattleSandstorm, JournalIcon },
+  components: { BattleStatChange, BattleWeatherInfo, BattleParty, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleWaterfalls, BattleSnow, BattleSandstorm },
   props: {
     tournament:{type:Boolean,default:false},
     mobile: Boolean,
@@ -427,7 +429,7 @@ export default {
       entrancePhase: 'ready',
       entranceChampion: null,
       feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
-      visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
+      visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionNonce:0, conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
       sendOuts: [], trainerSpeech: null,
       phaseReturning: { player:false, wild:false },
       usableMoveIndexes: null,
@@ -473,7 +475,7 @@ export default {
         wild: { visible: false, hit: false, amount: 0, kind: 'damage', nonce: 0, critical: false },
         player: { visible: false, hit: false, amount: 0, kind: 'damage', nonce: 0, critical: false }
       },
-      fieldState: { weather: null, terrain: null },
+      fieldState: { weather: null, terrain: null }, weatherMetadata:{},
       fieldModel: normalizeBattleField(), fieldInitialized: false, fieldFx: {changes:[],nonce:0},
       soundEnabled: localStorage.getItem('battleSoundEnabled') !== 'false',
       music: null,
@@ -814,7 +816,7 @@ export default {
       if (!keepPrelude) this.setMusicPrelude(false);
     },
     consumeExperienceClick(event){if(this._experiencePointer){this._experiencePointer=false;event.preventDefault();event.stopPropagation();}},
-    advanceExperience(event){const skip=this.experienceBusy&&this._experienceControl?.skip||this._rewardRelease;if(!skip)return false;event?.preventDefault?.();event?.stopPropagation?.();if(event?.type==='pointerdown')this._experiencePointer=true;skip();return true;},
+    advanceExperience(event){if(event?.target?.closest?.('[data-battle-weather-info]'))return false;const skip=this.experienceBusy&&this._experienceControl?.skip||this._rewardRelease;if(!skip)return false;event?.preventDefault?.();event?.stopPropagation?.();if(event?.type==='pointerdown')this._experiencePointer=true;skip();return true;},
     showRewardMessage(payload){
       this.showMessage(payload.message,true);this.rewardNotice=true;
       return new Promise(resolve=>{
@@ -1093,7 +1095,7 @@ export default {
       }
       if (changes.player.length || changes.wild.length) {
         this.playConditionChanges(changes);
-        if (!this.reducedMotion()) await this.transitionWait(680);
+        if (!this.reducedMotion()) await this.transitionWait([...changes.player,...changes.wild].some(e=>['up','down'].includes(e.kind))?STAT_CHANGE_DURATION:680);
         if (epoch !== this.visualEpoch) return;
         this.conditionFx={player:[],wild:[]};
       }
@@ -1104,7 +1106,12 @@ export default {
     },
     conditionPosition(side) {
       const geometry = this.getSpriteGeometry(side);
-      return {left:`${geometry.centerX}px`,top:`${geometry.centerY}px`,width:`${Math.max(52,geometry.width)}px`,height:`${Math.max(52,geometry.height)}px`};
+      const sceneWidth=this.$refs.battleScene?.clientWidth || 896;
+      const labelCenter=Math.max(86,Math.min(sceneWidth-86,geometry.centerX));
+      const count=(this.conditionFx[side]||[]).filter(e=>e.kind==='up'||e.kind==='down').length;
+      const labelHeight=(count>2?Math.ceil(count/2)*17:count*18)+10;
+      const labelOffset=Math.max(0,labelHeight+11-(geometry.centerY-geometry.height/2));
+      return {'--stat-label-offset-y':`${labelOffset}px`,'--stat-label-shift':`${labelCenter-geometry.centerX}px`,left:`${geometry.centerX}px`,top:`${geometry.centerY}px`,width:`${Math.max(52,geometry.width)}px`,height:`${Math.max(52,geometry.height)}px`};
     },
     sendOutPosition(side) {
       const geometry=this.getSpriteGeometry(side);
@@ -1113,8 +1120,9 @@ export default {
     playConditionChanges(changes) {
       clearTimeout(this.conditionTimer);
       this.conditionNotice = ['player','wild'].filter(side=>changes[side].length).map(side=>`${side==='player'?'Allié':'Adversaire'} · ${changes[side].map(e=>e.text).join(' · ')}`).join(' / ');
+      this.conditionNonce++;
       this.conditionFx = this.reducedMotion() ? {player:[],wild:[]} : changes;
-      this.conditionTimer = setTimeout(()=>{this.conditionFx={player:[],wild:[]};this.conditionNotice='';},1200);
+      this.conditionTimer = setTimeout(()=>{this.conditionFx={player:[],wild:[]};this.conditionNotice='';},Math.max(1300,STAT_CHANGE_DURATION+120));
     },
     playDriftEffects(payload={}) {
       clearTimeout(this.driftNoticeTimer);
@@ -1171,6 +1179,7 @@ export default {
       this.fieldFx = {changes:this.fieldInitialized?battleFieldChanges(this.fieldModel,next,this.preferences.language):[],nonce:this.fieldFx.nonce+1};
       this.fieldModel=next;
       this.fieldInitialized=true;
+      this.weatherMetadata = typeof payload.weather==='object' && payload.weather ? {...payload.weather} : {};
       this.fieldState.weather = typeof payload.weather === 'string' ? payload.weather : payload.weather?.kind || null;
       this.fieldState.terrain = typeof payload.terrain === 'string' ? payload.terrain : payload.terrain?.kind || null;
     },
@@ -1530,6 +1539,7 @@ export default {
       });
     },
     clearAllTimers() {
+      this.$refs.weatherInfo?.dismiss();
       this._rewardRelease?.();
       this._battleAudio?.stop();
       this.cancelEntrance();
@@ -1680,11 +1690,7 @@ export default {
 .battle-snow .battle-position-player .snow-disc { width:calc(var(--sprite-visible-size) * 1.9); height:calc(var(--sprite-visible-size) * .46); transform:translate(-50%,-84%); }
 .battle-colosseum .battle-background { filter:none; object-position:50% 44%; }
 .battle-arena-background { position:absolute; inset:0; }
-.battle-weather-indicator { position:absolute; z-index:14; top:10px; right:10px; display:grid; place-items:center; width:34px; height:34px; border:1px solid #96b8cb; border-radius:10px; background:#19384de6; color:#b5e0f8; box-shadow:0 2px 0 #10263460; cursor:help; }
-.battle-weather-indicator .journal-icon { width:23px; height:23px; }
-.battle-weather-sun { color:#f6d580; border-color:#d6bc7b; }
-.battle-weather-sandstorm { color:#efd19e; border-color:#c3aa7e; }
-.battle-weather-hail { color:#e2f6ff; }
+
 .battle-platform { position:absolute; z-index:0; width:var(--sprite-visible-size); height:0; pointer-events:none; }
 .battle-platform img { position:absolute; left:0; top:0; width:170%; max-width:none; height:auto; transform:translate(-50%,var(--platform-offset-y,-46%)); }
 .battle-platform.battle-position-player img { width:210%; }
