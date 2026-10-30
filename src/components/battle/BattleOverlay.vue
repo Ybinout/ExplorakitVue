@@ -791,7 +791,7 @@ export default {
     },
     syncMusic() {
       if (!this.music) return;
-      this.music.volume = this.audioVolume * 0.4;
+      this.music.volume = this.audioVolume * (this.musicKind === 'wild' ? 0.3 : 0.4);
       if ((!this.active && !this.musicPrelude) || !this.soundEnabled || !this.audioVolume || document.hidden) this.music.pause();
       else if (this.music.paused) this.music.play().catch(() => {});
     },
