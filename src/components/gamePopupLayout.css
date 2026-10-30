@@ -27,3 +27,6 @@
   max-height:var(--game-popup-height,calc(100dvh - 48px));
 }
 }
+
+.super-tournament-status{position:absolute;z-index:12;right:10px;bottom:10px;display:flex;flex-direction:column;gap:4px;max-width:calc(100% - 20px);min-height:44px;padding:8px 13px;text-align:left;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-paper);color:var(--journal-ink);font:12px var(--journal-font)}
+@media(min-width:900px){.tournament-backdrop{padding-left:var(--game-popup-left,16px)!important;padding-right:var(--game-popup-right,16px)!important;padding-top:var(--game-popup-top,16px)!important;padding-bottom:var(--game-popup-bottom,16px)!important}}

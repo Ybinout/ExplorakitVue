@@ -16,10 +16,11 @@
       <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
       <drift-run-panel v-show="!learningVisible && !evolutionVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
+      <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :busy="tournamentBusy" :error="tournamentError" @close="tournamentPanel=null" @register="registerSuperTournament" @abandon="abandonSuperTournament" />
       <battle-overlay
         ref="battleOverlay"
         :active="battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
-        :bag-items="bagItems"
+        :bag-items="bagItems" :tournament="!!superTournament.active" @tournament-abandon="tournamentPanel={tab:'abandon'}"
         :bag-loading="bagLoading"
         :preferences="preferences"
         :notice="interactionNotice"
@@ -81,6 +82,7 @@
                 <p class="bag-use-hint" data-experience-module-state><strong>{{ item.active ? (preferences.language==='en'?'Active':'Actif') : (preferences.language==='en'?'Inactive':'Inactif') }}</strong> · {{ item.active ? (preferences.language==='en'?'+15 levels for wild encounters':'+15 niveaux pour les rencontres sauvages') : (preferences.language==='en'?'Usual encounter levels':'Niveaux habituels des rencontres') }}</p>
                 <button class="bag-use-button" data-experience-module-toggle :aria-pressed="item.active ? 'true' : 'false'" :disabled="medicineBusy || !!battle || mapLoading || !socket?.connected" @click="toggleExperienceModule(item)">{{ medicineBusy ? (preferences.language==='en'?'Saving…':'Sauvegarde…') : item.active ? (preferences.language==='en'?'Deactivate module':'Désactiver le module') : (preferences.language==='en'?'Activate module':'Activer le module') }}</button>
               </template>
+              <button v-else-if="item.superTournamentTravel && !isDrift" class="bag-use-button" data-use-tournament-pass :disabled="superTournament.active || battle || mapLoading || !!flight" @click="flyToTown('super_tournament_lobby',{kind:'void',event:'superTournament:travel'})">Utiliser</button>
               <button v-else-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="!item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
               <machine-item-use v-else-if="item.category==='machine'" :key="item.key" :item="item" :team="teamPokemons" :busy="medicineBusy || teamLoading" :allowed="canUseBagItem(item)" @use="useBagMachine" />
               <template v-else-if="isBagConsumable(item)">
@@ -196,7 +198,7 @@
         </div>
         <game-info-panels
           :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @toggle-fullscreen="toggleGameFullscreen"
-          :flight-allowed="!isDrift" @fly="flyToTown"
+          :flight-allowed="!isDrift && !superTournament.active" @fly="flyToTown"
           :active="activeInfoPanel"
           :group-members="(socialState.group?.members || []).filter(p=>p.id!==Number(currentUserId))"
           :current-map="map" :current-region="players[socket?.id]?.regionLocation"
@@ -228,6 +230,7 @@
           @sell="sellShopItem"
         />
         <div class="world-viewport" ref="worldViewport">
+          <button v-if="superTournament.active && !battle && !battleResult && !flight" class="super-tournament-status" @pointerdown.stop @click="tournamentPanel={tab:'abandon'}"><b>Salle {{ superTournament.room }}/{{ superTournament.total }} · {{ superTournament.opponent }}</b><span>{{ superTournament.score }} pts · {{ superTournament.phase==='cleared' ? 'Porte du fond ouverte' : superTournament.phase==='sas' ? 'Avance vers la porte du fond' : 'Parle au dresseur' }} · Quitter</span></button>
           <void-transition v-if="flight?.kind==='void'" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" />
           <flight-transition v-else-if="flight" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" />
           <button v-if="nearbySocialTrainer" class="nearby-social" data-nearby-social @pointerdown.stop @click.stop="openNearbySocial"><journal-icon name="friends"/><span>{{ nearbySocialTrainer.username || 'Dresseur' }}</span><small>Amis / Message</small></button>
@@ -247,7 +250,7 @@
           @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
           @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture">
         <div
-          v-if="showMobileControls && !tradeModalVisible && !friendsOpen && !heldPickerUuid && !pc.visible && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
+          v-if="showMobileControls && !tournamentPanel && !tradeModalVisible && !friendsOpen && !heldPickerUuid && !pc.visible && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
           <div class="mobile-dpad" :inert="textImageSequence.length ? '' : null" :aria-hidden="textImageSequence.length ? 'true' : null" aria-label="Pad directionnel"
@@ -451,6 +454,7 @@ import './worldViewport.css';
 import './gamePopupLayout.css';
 import { attachGamePopupLayout } from './gamePopupLayout';
 import BattleOverlay from './battle/BattleOverlay.vue';
+import SuperTournamentPanel from './menu/SuperTournamentPanel.vue';
 import BattleResultPanel from './battle/BattleResultPanel.vue';
 import MoveLearningPanel from './menu/MoveLearningPanel.vue';
 import EvolutionPresentation from './menu/EvolutionPresentation.vue';
@@ -485,7 +489,7 @@ import { WorldMusic } from '@/services/worldMusic';
 export default {
   mixins:[socialGame,tradeGame],
   components: {
-    AdventureOpening,
+    SuperTournamentPanel, AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
@@ -512,6 +516,7 @@ export default {
       trainerMusicPrelude: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
+      superTournament:{active:false},tournamentPanel:null,tournamentBusy:false,tournamentError:'',
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
       repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{}, trainingFeedback:null, heldTargets:{}, heldPickerUuid:null,
       endSentences: null,
@@ -753,7 +758,7 @@ export default {
     movementSuspended() {
       return !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
-        || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
+        || this.tournamentPanel || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
     },
@@ -1799,7 +1804,7 @@ export default {
       return 'hp-low';
     },
     heldItemName(key){return heldItemDefinitions[key]?.name || this.bagItems.find(i=>i.key===key)?.name || key;},
-    async openHeldPicker(pokemon){this.heldPickerUuid=pokemon.uuid;this.teamError='';await this.loadBagItems();},
+    async openHeldPicker(pokemon){if(this.superTournament.active){this.showInteractionNotice('Les objets tenus sont fixés pour ce parcours.');return;}this.heldPickerUuid=pokemon.uuid;this.teamError='';await this.loadBagItems();},
     async equipPickedHeldItem(key){const result=await this.equipHeldItem(this.heldPickerPokemon,key);if(result)this.heldPickerUuid=null;},
     async giveBagHeldItem(item){
       const pokemon=this.teamPokemons.find(p=>p.uuid===this.heldTargets[item.key]);
@@ -1854,6 +1859,7 @@ export default {
       }
     },
     async loadTeamPokemons() {
+      if(this.superTournament.active){this.applyTeamPokemons(this.superTournament.team || []);return;}
       if (this.isDrift) { this.teamId = "drift"; this.applyTeamPokemons(this.driftState?.team || []); return; }
       const userId = this.currentUserId || this.getStoredUserId();
       if (!userId) {
@@ -2031,7 +2037,17 @@ export default {
         this.menuDataLoading = false;
       }
     },
-    async flyToTown(map,{kind='flight',event='flyToTown',departureReady=null}={}) {
+    async registerSuperTournament(){
+      if(this.tournamentBusy)return;this.tournamentBusy=true;this.tournamentError='';
+      const offerId=this.tournamentPanel?.offerId;this._feedbackAudio?.play('heal');await new Promise(resolve=>setTimeout(resolve,1400));this.tournamentPanel=null;
+      await this.flyToTown('super_tournament_sas',{kind:'void',event:'superTournament:register',data:{offerId}});
+      this.tournamentBusy=false;
+    },
+    async abandonSuperTournament(){if(this.tournamentBusy)return;this.tournamentBusy=true;this.tournamentError='';
+      const result=await this.driftCommand({name:'superTournament:abandon',includeResponse:true});
+      this.tournamentBusy=false;if(result)this.tournamentPanel=null;
+    },
+    async flyToTown(map,{kind='flight',event='flyToTown',departureReady=null,data={}}={}) {
       if(this.flight||this.isDrift||this.battle||this.battleResult||!this.socket?.connected)return;
       this.releaseAllMovementKeys();this.closeInfoPanel();this.isMenuOpen=false;if(kind==='void')this.isBagOpen=false;
       const reduced=!this.preferences.animationsEnabled||this.worldWeatherReducedMotion;
@@ -2044,7 +2060,7 @@ export default {
         if(!reduced)await wait(650);
         if(!alive())return;
         this.flight={...this.flight,phase:'loading',startedAt:performance.now()};
-        const response=departureReady?(departureReady(),{success:true}):await new Promise((resolve,reject)=>socket.timeout(10000).emit(event,{map},(error,result)=>error?reject(new Error('Connexion interrompue. Vérifie ta position après reconnexion.')):resolve(result)));
+        const response=departureReady?(departureReady(),{success:true}):await new Promise((resolve,reject)=>socket.timeout(10000).emit(event,{...data,map},(error,result)=>error?reject(new Error('Connexion interrompue. Vérifie ta position après reconnexion.')):resolve(result)));
         if(!response?.success)throw new Error(response?.message||'Vol indisponible.');
         const deadline=performance.now()+16000;
         while(alive()&&(this.mapLoading||this.renderedMap!==map||this.map!==map)){
@@ -2132,6 +2148,7 @@ export default {
       } finally { this.quitting = false; }
     },
     async handleMenuAction(actionKey) {
+      if(this.superTournament.active && ['bag','appearance','learning'].includes(actionKey)){this.isMenuOpen=false;this.showInteractionNotice('Le sac et l’équipe inscrite sont verrouillés pendant ce parcours.');return;}
       if(this.lucieDeparture)return;
       if(this.flight)return;
       this.isMenuOpen = false;
@@ -3045,7 +3062,8 @@ export default {
         ? payload.equipe.pokemons
         : [];
       if (payload.reason === 'heal' && !this.battle && !teamWasRestored(this.teamPokemons, teamFromPayload)) this._feedbackAudio?.play('heal');
-      if (teamFromPayload.length > 0 || this.isDrift) {
+      if (this.superTournament.active) this.applyTeamPokemons(this.superTournament.team || []);
+      else if (teamFromPayload.length > 0 || this.isDrift) {
         this.applyTeamPokemons(teamFromPayload);
       }
 
@@ -3230,6 +3248,10 @@ export default {
     });
     this.socket.on('mapWeatherState', state => { this.mapWeather = state; });
     this.socket.on('worldDevicesState', state=>{this.worldDevices=state;});
+    this.socket.on('superTournamentPanel',async payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.tournamentError='';await this.loadTeamPokemons();this.tournamentPanel=payload;});
+    this.socket.on('superTournamentState',state=>{this.superTournament=state || {active:false};if(state?.active)this.applyTeamPokemons(state.team || []);else this.loadTeamPokemons();});
+    this.socket.on('superTournamentFinished',result=>{this.showInteractionNotice(`Super Tournoi terminé · ${result.score} points`);});
+    this.socket.on('uniqueItemReceived',item=>{this._feedbackAudio?.play('unique');this.showInteractionNotice(`${item.name} obtenu !`);});
     this.socket.on('pcOpened', state=>{if(!this.pc.visible)this._feedbackAudio?.play('pc');this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;this.pc={visible:true,busy:false,state,error:'',notice:''};});
     this.socket.on('pcUpdated',state=>{if(this.pc.visible)this.pc.state=state;});
 
@@ -3246,7 +3268,7 @@ export default {
       this.closeChatSession(true);
       this.$refs.battleOverlay?.resetBattleUi();
       this.$refs.battleOverlay?.setEncounterEnvironment(data?.environment);
-      this.$refs.battleOverlay?.prepareEntrance(data?.musicKind || data?.battleType || 'wild', data?.trainerKey);
+      this.$refs.battleOverlay?.prepareEntrance(data?.musicKind || data?.battleType || 'wild', data?.trainerKey, data?.tournamentEntrance);
       this.$refs.battleOverlay?.updateFieldState(data?.field || {});
       this.battle = true;
       this.syncWorldMusic();

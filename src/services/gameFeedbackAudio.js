@@ -6,7 +6,8 @@ export class GameFeedbackAudio extends BattleAudio {
   play(kind) {
     if (!this.ready()) return;
     this.stop();
-    if (kind === 'heal') {
+    if(kind==='unique'){[523,659,784,1047,1319].forEach((note,index)=>this.tone(note,.22,{delay:index*.1,volume:.14}));}
+    else if (kind === 'heal') {
       [523, 659, 784, 1047].forEach((note, index) => this.tone(note, 0.16, { delay: index * 0.085, volume: 0.16 }));
     } else if (kind === 'pc') {
       this.tone(660, 0.09, { type: 'triangle', volume: 0.14 });

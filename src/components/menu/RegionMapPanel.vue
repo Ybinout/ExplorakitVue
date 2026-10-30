@@ -47,7 +47,7 @@
                 <path v-if="node.kind === 'town'" :d="`M${node.x-5} ${node.y-4}h10v8h-10Z`" fill="#d87765"/>
                 <rect v-else :x="node.x-3" :y="node.y-3" width="6" height="6" :fill="node.kind==='cave' ? '#6b7967' : '#f7edb4'"/>
                 <text v-if="node.kind==='route'" :x="node.x+10" :y="node.y+3" class="route-label">{{ label(node.id).replace('Route ','') }}</text>
-                <text v-if="node.kind === 'town'" :x="node.x" :y="node.y - (currentNode?.id === node.id ? 28 : 14)" text-anchor="middle" class="town-label">{{ shortLabel(node.id) }}</text>
+                <text v-if="node.kind === 'town' || node.kind === 'event'" :x="node.x" :y="node.y - (currentNode?.id === node.id ? 28 : 14)" text-anchor="middle" class="town-label">{{ shortLabel(node.id) }}</text>
               </g>
             </g>
             <g v-for="node in habitatNodes" :key="`habitat-${node.id}`" class="habitat-ping" :data-habitat-ping="node.id" @click="selected = node.id">

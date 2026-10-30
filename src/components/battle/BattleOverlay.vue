@@ -281,9 +281,9 @@
 
       <div class="battle-main-actions">
         <button class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
-        <button v-if="!opponent?.storyActor" class="battle-main-btn action-bag" :disabled="!canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
+        <button v-if="!opponent?.storyActor" class="battle-main-btn action-bag" :disabled="tournament || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
         <button class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
-        <button class="battle-main-btn action-flee" :disabled="!canChooseAction || replacementChoice" @click="submitAction({ action: 'flee' }, tr('fleeing'))">{{ tr('flee') }}</button>
+        <button class="battle-main-btn action-flee" :disabled="!canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
       </div>
     </div>
   </div>
@@ -396,6 +396,7 @@ export default {
   name: 'BattleOverlay',
   components: { BattleParty, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleWaterfalls, BattleSnow, BattleSandstorm, JournalIcon },
   props: {
+    tournament:{type:Boolean,default:false},
     mobile: Boolean,
     daylight: { type: Object, default: () => ({ night: 0, warmth: 0, phase: 'day' }) },
     mapName: { type: String, default: '' },
@@ -693,13 +694,13 @@ export default {
     onEntrancePortraitReady() {
       if (this.entrancePhase === 'holding') this._entrancePortraitAt = performance.now();
     },
-    prepareEntrance(encounterKind = 'wild', trainerKey = null) {
+    prepareEntrance(encounterKind = 'wild', trainerKey = null, tournamentEntrance = null) {
       this.cancelEntrance();
       this.battleMapName = this.mapName;
       this._entranceController = new AbortController();
       this._entranceStartedAt = performance.now();
       this._entrancePortraitAt = null;
-      this.entranceChampion = this.arenaPortrait(encounterKind, trainerKey);
+      this.entranceChampion = tournamentEntrance?.portrait ? {...tournamentEntrance,city:'Super Tournoi',cityEn:'Super Tournament',story:true,eyebrow:'SUPER TOURNOI',eyebrowEn:'SUPER TOURNAMENT',accent:'#a0c8e2',minimumMs:2800,portraitMs:1600,src:require('@/assets/image/'+tournamentEntrance.portrait)} : this.arenaPortrait(encounterKind, trainerKey);
       this.entrancePhase = 'holding';
     },
     cancelEntrance() {
@@ -940,6 +941,7 @@ export default {
       this.actionState.bagPanel = false;
     },
     openBag() {
+      if(this.tournament)return;
       if (!this.canChooseAction) {
         this.showMessage(this.tr('waitTurnBag'));
         return;
