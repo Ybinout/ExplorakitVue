@@ -2,6 +2,7 @@ import { RaphArenaRenderer, RAPH_MAP } from './raphArena.js';
 import { HozeArenaRenderer, HOZE_MAP } from './hozeArena.js';
 import { AnaArenaRenderer, ANA_MAP } from './anaArena.js';
 import { WandaArenaRenderer, WANDA_MAP } from './wandaArena.js';
+import { TournamentLobbySkyRenderer, TOURNAMENT_LOBBY_MAP } from './tournamentLobbySky.js';
 import { villageWaterMask } from './villageWater.js';
 
 // Positions are authored in the 448 × 320 map artwork, never inferred from a colour
@@ -90,6 +91,7 @@ const butterflyGardens = {
     [353,255],[400,277],[348,104],[406,103]],
 };
 export function placeAmbienceProfile(map) {
+  if (map === TOURNAMENT_LOBBY_MAP) return { kind: 'tournament-lobby', shade: '#000000', opacity: 0 };
   if (butterflyGardens[map]) return {
     kind: 'garden', shade: '#000000', opacity: 0,
     butterflies: butterflyGardens[map],
@@ -266,12 +268,12 @@ export class PlaceAmbienceRenderer {
     }
   }
   drawGround(target, source, map, timestamp, motion = true, arenaState = null, speaking = false) {
-    const key = map === HOZE_MAP ? 'hoze' : map === RAPH_MAP ? 'raph' : map === ANA_MAP ? 'ana' : map === WANDA_MAP ? 'wanda' : null;
-    if (this.destroyed || !key) { this.hoze?.suspend(); this.raph?.suspend(); this.ana?.suspend(); this.wanda?.suspend(); return; }
+    const key = map === TOURNAMENT_LOBBY_MAP ? 'tournamentLobby' : map === HOZE_MAP ? 'hoze' : map === RAPH_MAP ? 'raph' : map === ANA_MAP ? 'ana' : map === WANDA_MAP ? 'wanda' : null;
+    if (this.destroyed || !key) { this.hoze?.suspend(); this.raph?.suspend(); this.ana?.suspend(); this.wanda?.suspend(); this.tournamentLobby?.suspend(); return; }
     if (this.map !== map || this.source !== source || !this.canvas) this.prepare(source, map);
     if (!this.context) return;
     if (!this[key]) {
-      const Renderer = key === 'hoze' ? HozeArenaRenderer : key === 'raph' ? RaphArenaRenderer : key === 'ana' ? AnaArenaRenderer : WandaArenaRenderer;
+      const Renderer = key === 'tournamentLobby' ? TournamentLobbySkyRenderer : key === 'hoze' ? HozeArenaRenderer : key === 'raph' ? RaphArenaRenderer : key === 'ana' ? AnaArenaRenderer : WandaArenaRenderer;
       this[key] = new Renderer(this.createCanvas);
     }
     if(key==='hoze')this[key].setCollapseState(arenaState);
@@ -284,7 +286,7 @@ export class PlaceAmbienceRenderer {
       return;
     }
     if (this.map !== map || this.source !== source || !this.canvas) this.prepare(source, map);
-    if (!this.context) return;
+    if (!this.context || this.profile.kind === 'tournament-lobby') return;
     const time = Number.isFinite(timestamp) ? Math.max(0, timestamp) : 0;
     const settings = `${motion}:${wind}:${Math.round(daylight.night * 1000)}`;
     if (
@@ -451,7 +453,7 @@ export class PlaceAmbienceRenderer {
     for (const [x, y] of p.flags || []) cloth(c, x, y, t, p.color, motion ? Math.max(0.5, wind) : 0);
   }
   suspend() {
-    this.hoze?.suspend(); this.raph?.suspend(); this.ana?.suspend(); this.wanda?.suspend();
+    this.hoze?.suspend(); this.raph?.suspend(); this.ana?.suspend(); this.wanda?.suspend(); this.tournamentLobby?.suspend();
     for (const key of ['canvas', 'water', 'waterMask', 'lightingBase']) {
       if (this[key]) {
         this[key].width = 0;
