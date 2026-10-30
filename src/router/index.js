@@ -2,6 +2,7 @@ import Vue from 'vue';
 import Router from 'vue-router';
 import HomeMenu from '@/components/HomeMenu.vue';
 import { hasAuthenticatedSession, loginDestination } from '@/services/session';
+import { isModeAvailable } from '@/services/gameModes';
 
 const Inscription = () => import(/* webpackChunkName: "account" */ '@/components/UserInscription.vue');
 const Connexion = () => import(/* webpackChunkName: "account" */ '@/components/UserConnexion.vue');
@@ -44,16 +45,16 @@ const router = new Router({
       path: '/drift',
       name: 'Drift',
       component: Drift,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, gameMode: 'rift' }
     },
     {
       path: '/drift/game',
       name: 'DriftGame',
       component: Game,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, gameMode: 'rift' }
     },
-    { path: '/colosseum', name: 'Colosseum', component: () => import(/* webpackChunkName: "colosseum" */ '@/components/drift/ColosseumLobby.vue'), meta: { requiresAuth: true } },
-    { path: '/colosseum/game', name: 'ColosseumGame', component: Game, meta: { requiresAuth: true } },
+    { path: '/colosseum', name: 'Colosseum', component: () => import(/* webpackChunkName: "colosseum" */ '@/components/drift/ColosseumLobby.vue'), meta: { requiresAuth: true, gameMode: 'colosseum' } },
+    { path: '/colosseum/game', name: 'ColosseumGame', component: Game, meta: { requiresAuth: true, gameMode: 'colosseum' } },
     { path: '/dresseurs', name: 'Trainers', component: () => import(/* webpackChunkName: "community" */ '@/components/social/TrainerCommunity.vue'), meta: { requiresAuth: true } },
     { path: '/classements', name: 'Rankings', component: () => import(/* webpackChunkName: "community" */ '@/components/social/TrainerCommunity.vue'), meta: { requiresAuth: true } },
     { path: '/profil/:id', name: 'TrainerProfile', component: () => import(/* webpackChunkName: "community" */ '@/components/social/TrainerCommunity.vue'), meta: { requiresAuth: true } },
@@ -70,6 +71,9 @@ const router = new Router({
 });
 
 router.beforeEach((to, from, next) => {
+  if (to.matched.some(record => record.meta.gameMode && !isModeAvailable(record.meta.gameMode))) {
+    return next({ path: '/', replace: true });
+  }
   if (to.matched.some(record => record.meta.requiresAuth) && !isAuthenticated()) {
     return next({ path: '/connexion', query: { redirect: to.path.startsWith('/profil/') || ['/dresseurs','/classements'].includes(to.path) ? loginDestination(to.fullPath) : to.path.startsWith('/colosseum') ? '/colosseum' : to.path.startsWith('/drift') ? '/drift' : '/game' } });
   }

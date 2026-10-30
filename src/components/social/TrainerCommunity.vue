@@ -51,7 +51,7 @@
           <section class="community-card ranked-personal"><p class="eyebrow">TON RANG · {{ rankingMode==='rift' ? 'RIFT MULTIJOUEUR' : `COLOSSEUM ${rankingMode} MIN` }}</p>
             <rank-progress :rank="personalLeague" :value="personalValue" :unit="rankingMode==='rift' ? 'Elo' : 'points'" :empty-hint="rankingMode==='rift' ? 'Termine une expédition multijoueur pour entrer dans le classement.' : 'Remporte au moins un combat dans l’arène pour inscrire ton record.'"/>
             <p v-if="personal" class="personal-rank" data-personal-rank>Ta position : <strong>#{{ personal.position || personal.rank }}</strong> · {{ number(personalValue) }} {{ rankingMode==='rift' ? 'Elo' : 'points' }}</p>
-            <router-link class="ranked-play" :to="rankingMode==='rift' ? '/drift' : '/colosseum'">{{ rankingMode==='rift' ? 'Jouer un Rift' : 'Jouer au Colosseum' }} →</router-link>
+            <router-link v-if="modeAvailable(rankingMode==='rift' ? 'rift' : 'colosseum')" class="ranked-play" :to="rankingMode==='rift' ? '/drift' : '/colosseum'">{{ rankingMode==='rift' ? 'Jouer un Rift' : 'Jouer au Colosseum' }} →</router-link><span v-else class="ranked-play ranked-play-unavailable" aria-disabled="true">Soon</span>
           </section>
           <section class="community-card ranked-road"><p class="eyebrow">LA ROUTE VERS DIAMANT</p><ol aria-label="Les cinq ligues"><li v-for="(name,i) in rankNames" :key="name" :class="{current:personalLeague.key===rankKeys[i]}"><rank-badge :rank="{key:rankKeys[i],name}"/><small>IV → III → II → I</small></li></ol><p class="muted">100 points de ligue pour remplir une division. Les PL indiquent ta progression à partir de ton {{ rankingMode==='rift' ? 'Elo' : 'meilleur score' }}.</p></section>
         </div>
@@ -70,6 +70,7 @@
   </main>
 </template>
 <script>
+import { isModeAvailable } from '@/services/gameModes';
 import ColosseumDefeat from '../drift/ColosseumDefeat.vue';
 import api from '@/services/api';
 import { getSession } from '@/services/session';
@@ -85,6 +86,7 @@ export default {
   watch:{'$route':{immediate:true,handler(){this.rankingMode=['rift','30','60'].includes(this.$route.query.mode)?this.$route.query.mode:'rift';this.notice='';this.searchRequest++;this.searching=false;this.load();}}},
   beforeDestroy(){this.request++;this.searchRequest++;},
   methods:{
+    modeAvailable:isModeAvailable,
     spriteImage(name,palette){
       void this.paletteReadyRevision;
       const key='./'+name,src=sprites.keys().includes(key)?sprites(key):sprites('./sprite.png');
@@ -108,3 +110,6 @@ export default {
 };
 </script>
 <style scoped src="./community.css"></style>
+<style scoped>
+.ranked-play.ranked-play-unavailable{background:#e4e8e3;border-color:#d0d7d0;color:#5e6a61;cursor:not-allowed;box-shadow:none}
+</style>
