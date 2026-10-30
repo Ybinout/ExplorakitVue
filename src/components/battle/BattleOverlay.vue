@@ -99,6 +99,7 @@
       >
         <div class="battle-status-top">
           <span class="battle-status-name">{{ opponent.__battle?.illusion?.name || opponent.truename || opponent.name }}</span>
+          <pokemon-gender v-if="!opponent.storyActor" class="battle-status-gender" :pokemon="{gender:fighterGenders.opponent,isEgg:opponent.isEgg}" :language="preferences.language" />
           <span v-if="!opponent.storyActor" class="battle-status-lvl">lv.{{ opponent.level }}</span>
           <potential-star v-if="!opponent.storyActor" :value="opponent.k" :language="preferences.language" />
           <span
@@ -125,6 +126,7 @@
       >
         <div class="battle-status-top">
           <span class="battle-status-name">{{ currentPokemon.name || currentPokemon.truename }}</span>
+          <pokemon-gender class="battle-status-gender" :pokemon="{gender:fighterGenders.player,isEgg:currentPokemon.isEgg}" :language="preferences.language" />
           <span class="battle-status-lvl">lv.{{ experienceVisual?.uuid === currentPokemon.uuid ? experienceVisual.level : currentPokemon.level }}</span>
           <potential-star :value="currentPokemon.k" :language="preferences.language" />
           <span
@@ -303,6 +305,7 @@ import { SequencedMusic } from '@/services/sequencedMusic';
 import moveLearning from '@/data/moveLearning.json';
 import { localizeTypeName } from '@/services/pokemonTypes';
 import PotentialStar from '../PotentialStar.vue';
+import PokemonGender from '../PokemonGender.vue';
 import BattleStatChange, {STAT_CHANGE_DURATION} from './BattleStatChange.vue';
 import BattleWeatherInfo from './BattleWeatherInfo.vue';
 import BattleConditions from './BattleConditions.vue';
@@ -396,7 +399,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleStatChange, BattleWeatherInfo, BattleParty, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, BattleConditions, BattleRain, BattleWaterfalls, BattleSnow, BattleSandstorm },
+  components: { BattleStatChange, BattleWeatherInfo, BattleParty, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleSnow, BattleSandstorm },
   props: {
     tournament:{type:Boolean,default:false},
     mobile: Boolean,
@@ -417,6 +420,7 @@ export default {
       player: null,
       challenge: null,
       opponent: null,
+      fighterGenders: {player:null,opponent:null},
       opponentParty: null,
       opponentEffortYield: null,
       canAct: false,
@@ -1133,6 +1137,7 @@ export default {
       this.driftNoticeTimer=setTimeout(()=>{this.driftNotices=[];},2200);
     },
     updateBattleState(payload = {}) {
+      this.fighterGenders = payload.genders || {player:payload.player?.equipe?.pokemons?.[0]?.gender || null,opponent:payload.wildPokemon?.gender || null};
       this.opponentParty = Array.isArray(payload.opponentParty) && payload.opponentParty.every(value=>typeof value==='boolean') ? payload.opponentParty.slice(0,6) : null;
       this.capturePolicy = payload.capturePolicy || null;
       this.phaseReturning = { player:false, wild:false };
@@ -1778,6 +1783,7 @@ export default {
 
 .battle-status-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
@@ -1785,13 +1791,16 @@ export default {
 }
 
 .battle-status-name {
-  flex: 1;
+  flex: 1 1 72px;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 11px;
 }
 
 .battle-status-lvl {
   font-size: 10px;
 }
+.battle-status-gender { min-width:18px; min-height:18px; padding:0 3px; }
 
 .battle-effort-yield {
   margin: 5px 0 0;
