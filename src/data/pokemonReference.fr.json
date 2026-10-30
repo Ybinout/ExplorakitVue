@@ -1567,7 +1567,7 @@
       "power": null,
       "powerKind": "special_case",
       "accuracy": null,
-      "pp": null,
+      "pp": 10,
       "description": "Une capacité à l’effet différent selon que le lanceur est un Pokémon Spectre ou non."
     },
     "Flail": {
