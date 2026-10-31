@@ -1,4 +1,18 @@
 /* The canvas uses world coordinates; its viewport is measured by ResizeObserver. */
+/* Fit the whole desktop frame, including its toolbar, in the actual window.
+   Keep the root free of transforms so fixed menus and drag previews stay true. */
+.game-root:not(.is-mobile) {
+  box-sizing:border-box; display:grid; place-items:center;
+  width:100%; height:100vh; height:100dvh; padding:12px 16px; overflow:hidden;
+}
+.game-root:not(.is-mobile) .game-layout { width:100%; min-width:0; }
+.game-root:not(.is-mobile) .game-stage {
+  width:var(--game-window-width,min(896px,calc((100dvh - 88px) * 1.4)));
+  max-width:100%; margin:0 auto;
+}
+.game-root:not(.is-mobile) .game-stage .battle {
+  inset:var(--game-toolbar-height,64px) 0 0; height:auto; min-height:0;
+}
 /* Fullscreen keeps the world ratio and fits the actual mode-specific header. */
 .game-root.is-fullscreen:not(.is-mobile) {
   display:grid; place-items:center; width:100%; height:100%; padding:0;

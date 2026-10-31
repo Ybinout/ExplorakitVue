@@ -1,4 +1,9 @@
-import { WORLD_WIDTH, WORLD_HEIGHT } from './worldCamera';
+import { WORLD_WIDTH, WORLD_HEIGHT } from './worldCamera.js';
+
+export function fittedGameWidth(width, height, toolbarHeight, fullscreen = false) {
+  return Math.max(1, Math.floor(Math.min(fullscreen ? Infinity : WORLD_WIDTH,
+    Math.max(1, width), Math.max(1, height - toolbarHeight) * WORLD_WIDTH / WORLD_HEIGHT)));
+}
 
 // Request the whole game root so fixed menus, dialogues and battles stay in
 // the browser's fullscreen layer. Never request automatically on page load.
@@ -13,25 +18,43 @@ export function attachGameFullscreen(root, toolbar, onChange) {
   const desktop = !(/Android|iPad|iPhone|iPod/i.test(nav.userAgent) ||
     (nav.platform === 'MacIntel' && nav.maxTouchPoints > 1) || nav.userAgentData?.mobile === true);
   let destroyed = false;
+  let resizeFrame = 0;
+  const setSize = (key, value) => {
+    if (root.style.getPropertyValue(key) !== value) root.style.setProperty(key, value);
+  };
   const resize = () => {
-    if (destroyed || current() !== root) return;
-    // Fit the unchanged 7:5 world below the actual toolbar, including the
-    // taller Rift header. No stretching, cropping or CSS scale transforms.
+    if (destroyed || root.classList.contains('is-mobile')) return;
+    // Windowed laptops need the same fit as fullscreen. Measure the actual
+    // content box/header, including browser zoom and wrapped toolbar content.
+    const fullscreen = current() === root;
+    const style = getComputedStyle(root);
+    const availableWidth = root.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+    const availableHeight = root.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
     const toolbarHeight = toolbar.getBoundingClientRect().height;
-    const height = Math.max(1, root.clientHeight - toolbarHeight);
-    const width = Math.floor(Math.min(root.clientWidth, height * WORLD_WIDTH / WORLD_HEIGHT));
-    root.style.setProperty('--game-fullscreen-width', `${width}px`);
-    root.style.setProperty('--game-fullscreen-toolbar-height', `${toolbarHeight}px`);
+    const width = fittedGameWidth(availableWidth, availableHeight, toolbarHeight, fullscreen);
+    setSize(fullscreen ? '--game-fullscreen-width' : '--game-window-width', `${width}px`);
+    setSize('--game-toolbar-height', `${toolbarHeight}px`);
+    setSize('--game-fullscreen-toolbar-height', `${toolbarHeight}px`);
+  };
+  // Defer geometry writes out of ResizeObserver delivery (notably WebKit).
+  // Only actual notifications queue a frame; this is not an animation loop.
+  const scheduleResize = () => {
+    if (destroyed || resizeFrame) return;
+    resizeFrame = doc.defaultView.requestAnimationFrame(() => {
+      resizeFrame = 0;
+      resize();
+    });
   };
   const sync = () => {
     if (destroyed) return;
     onChange({ active: current() === root, supported, desktop });
-    resize();
+    scheduleResize();
   };
   doc.addEventListener('fullscreenchange', sync);
   doc.addEventListener('webkitfullscreenchange', sync);
-  window.addEventListener('resize', resize, { passive: true });
-  const observer = new ResizeObserver(resize);
+  window.addEventListener('resize', scheduleResize, { passive: true });
+  const observer = new ResizeObserver(scheduleResize);
+  observer.observe(root);
   observer.observe(toolbar);
   sync();
   return {
@@ -45,12 +68,15 @@ export function attachGameFullscreen(root, toolbar, onChange) {
     },
     destroy() {
       destroyed = true;
+      if (resizeFrame) doc.defaultView.cancelAnimationFrame(resizeFrame);
       observer.disconnect();
       doc.removeEventListener('fullscreenchange', sync);
       doc.removeEventListener('webkitfullscreenchange', sync);
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', scheduleResize);
       root.style.removeProperty('--game-fullscreen-width');
       root.style.removeProperty('--game-fullscreen-toolbar-height');
+      root.style.removeProperty('--game-window-width');
+      root.style.removeProperty('--game-toolbar-height');
       if (current() === root && exit) {
         try { Promise.resolve(exit.call(doc)).catch(() => {}); } catch (_) { /* Browser exits when the root is removed. */ }
       }
