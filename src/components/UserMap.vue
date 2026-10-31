@@ -20,8 +20,8 @@
       <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
       <drift-run-panel v-show="!learningVisible && !evolutionVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
-      <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @abandon="abandonSuperTournament" />
-      <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :cash="superTournament.cash" :team="superTournament.team" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @leave="openTournamentAbandon" />
+      <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :passives="superTournament.passives" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @abandon="abandonSuperTournament" />
+      <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :cash="superTournament.cash" :team="superTournament.team" :passives="superTournament.passives" :victory-recovery="superTournament.victoryRecovery" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @leave="openTournamentAbandon" />
       <battle-overlay
         ref="battleOverlay"
         :active="battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
@@ -66,6 +66,7 @@
               <journal-icon :name="item.key==='contracts'?'progress':item.key" /><span>{{ menuItemLabel(item) }}</span>
               <small v-if="item.key==='contracts' && readyContractCount" class="contract-reward-label">{{ readyContractCount }} à récupérer</small>
             </button>
+            <button v-if="superTournament.active && !battle" class="menu-dropdown-item" data-menu-action="tournament-powers" @click="isMenuOpen=false;releaseAllMovementKeys();tournamentPanel={tab:'powers'}"><journal-icon name="drifts"/><span>Augmentations</span><small>{{ superTournament.passives?.length || 0 }} actives</small></button>
             <button class="menu-dropdown-item" :class="{'has-social-notification':socialAlertCount>0}" data-menu-action="friends" @click="openFriends()"><journal-icon name="friends"/><span>Amis</span><notification-badge :count="socialAlertCount" data-social-alert/></button>
             <button class="menu-dropdown-item" data-menu-action="minimap" @click="handleMenuAction('minimap')"><journal-icon name="minimap" /><span>Minimap</span></button>
             <button class="menu-dropdown-item" data-menu-action="quit" :disabled="quitting" @click="quitGame"><journal-icon name="quit" /><span>{{ quitting ? tr('saving') : tr('saveAndQuit') }}</span><small>Accueil</small></button>
@@ -3453,6 +3454,7 @@ export default {
     this.socket.on('superTournamentPanel',async payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.tournamentError='';await this.loadTeamPokemons();this.tournamentPanel=payload;});
     this.socket.on('superTournamentState',state=>{if(state?.reward?.id!==this.superTournament.reward?.id)this.tournamentRewardError='';this.superTournament=state || {active:false};if(state?.active)this.applyTeamPokemons(state.team || []);else this.loadTeamPokemons();});
     this.socket.on('superTournamentRewardApplied',result=>{
+      if(result.passive){this._feedbackAudio?.play('notification');this.showInteractionNotice(`${result.name} · augmentation active pour cette tentative.`);return;}
       const g=result.grant;
       if(g){this._feedbackAudio?.play('notification');this.showInteractionNotice(g.limited?'Limite du porte-monnaie ou du stock atteinte.':g.kind==='money'?`+${Number(g.amount).toLocaleString('fr-FR')} ₽ · récompense récupérée.`:`${g.quantity} ${g.name} ajouté au sac · utilisable après le parcours.`);}
       else{if(result.changes?.length)this._feedbackAudio?.play('heal');this.showInteractionNotice(`${result.name} · soin appliqué à l’équipe inscrite.`);}

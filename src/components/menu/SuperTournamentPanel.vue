@@ -1,12 +1,13 @@
 <template>
   <div class="tournament-backdrop" @pointerdown.self="!busy && $emit('close')" @keydown.stop="onKey" @keyup.stop>
     <section id="super-tournament-dialog" ref="panel" class="tournament-panel" :data-tournament-view="view" role="dialog" aria-modal="true" aria-labelledby="tournament-title" tabindex="-1">
-      <header><div><small>RIFTMON / ÎLE DU SUPER TOURNOI</small><h2 id="tournament-title">{{ view==='abandon' ? 'Quitter le parcours ?' : view==='ranking' ? 'Classement' : 'Inscription' }}</h2></div><button class="close" aria-label="Fermer" :disabled="busy" @click="$emit('close')">×</button></header>
+      <header><div><small>RIFTMON / ÎLE DU SUPER TOURNOI</small><h2 id="tournament-title">{{ view==='abandon' ? 'Quitter le parcours ?' : view==='ranking' ? 'Classement' : view==='powers' ? 'Augmentations' : 'Inscription' }}</h2></div><button class="close" aria-label="Fermer" :disabled="busy" @click="$emit('close')">×</button></header>
       <div class="tournament-content">
         <template v-if="view==='abandon'"><p>Ton score et les Pokédollars déjà gagnés seront conservés. Cette tentative s’arrêtera et tu retourneras dans ton dernier Centre Pokémon.</p><p>Tu retrouveras ton équipe d’Aventure et ses objets.</p></template>
+        <template v-else-if="view==='powers'"><tournament-power-list :passives="passives"/></template>
         <template v-else-if="view==='entry'">
           <p class="host">Hôtesse</p><p v-if="busy">Très bien ! Je soigne vos Pokémon, puis je vous téléporte dans le sas. Bonne chance pour votre parcours !</p><p v-else>Bienvenue ! Votre PASS vous ouvre les portes du Super Tournoi. Souhaitez-vous inscrire cette équipe ?</p>
-          <ul class="rules"><li><b>16 dresseurs en boucle, sans fin.</b> Après Lucie, un nouveau cycle commence.</li><li>Chaque dresseur possède <b>3 Pokémon de niveaux 75, 85 et 90 au premier cycle</b>. Les équipes adverses gagnent <b>10 niveaux à chaque cycle de 16 combats</b> : 85/95/100 au deuxième, puis 95/105/110 au troisième.</li><li>Vos six Pokémon sont soignés <b>à l’inscription</b>.</li><li>Après chaque victoire, choisissez <b>une carte parmi trois</b> pour soigner votre équipe ou gagner des Pokédollars. Des Super Bonbons très rares et Méga Bonbons ultra rares peuvent aussi être proposés ; ils vont dans le sac pour après le parcours.</li><li><b>Aucun autre soin automatique.</b> PV, statuts, PP et objets consommés suivent votre parcours.</li><li>Le sac est fermé. Les objets déjà tenus gardent leurs effets.</li><li><b>Aucune XP ni butin de combat.</b> <b>100 points</b> par Pokémon vaincu ; votre meilleur score compte.</li></ul>
+          <ul class="rules"><li><b>16 dresseurs en boucle, sans fin.</b> Après Lucie, un nouveau cycle commence.</li><li>Chaque dresseur possède <b>3 Pokémon de niveaux 75, 85 et 90 au premier cycle</b>. Les équipes adverses gagnent <b>10 niveaux à chaque cycle de 16 combats</b> : 85/95/100 au deuxième, puis 95/105/110 au troisième.</li><li>Vos six Pokémon sont soignés <b>à l’inscription</b>.</li><li>Après chaque victoire, choisissez <b>une carte parmi quatre</b> pour soigner votre équipe ou gagner des Pokédollars. Des augmentations mythiques peuvent aussi donner des pouvoirs pour toute la tentative. Des Super Bonbons très rares et Méga Bonbons ultra rares peuvent aussi être proposés ; ils vont dans le sac pour après le parcours.</li><li><b>Aucun autre soin automatique.</b> PV, statuts, PP et objets consommés suivent votre parcours.</li><li>Le sac est fermé. Les objets déjà tenus gardent leurs effets.</li><li><b>Aucune XP ni butin de combat.</b> <b>100 points</b> par Pokémon vaincu ; votre meilleur score compte.</li></ul>
           <section v-if="payload.payoutSchedule" class="tournament-prizes" data-tournament-prizes aria-label="Primes du Super Tournoi">
             <h3>Primes du premier cycle</h3>
             <dl><div v-for="tier in payload.payoutSchedule.tiers" :key="tier.from"><dt>Salles {{ tier.from }}–{{ tier.to }}</dt><dd>{{ money(tier.amount) }} ₽ <small>par salle</small></dd></div></dl>
@@ -26,14 +27,16 @@
         </template>
         <p v-if="error" class="error" role="alert">{{ error }}</p>
       </div>
-      <footer><button :disabled="busy" @click="$emit('close')">{{ view==='abandon' ? 'Continuer le parcours' : view==='ranking' ? 'Fermer' : 'Plus tard' }}</button><button v-if="view==='abandon'" class="primary" :disabled="busy" @click="$emit('abandon')">Confirmer l’abandon</button><button v-else-if="view==='entry' && payload.offerId" class="primary" :disabled="busy || !team.length" @click="$emit('register')">{{ busy ? 'Inscription…' : 'Inscrire mon équipe' }}</button></footer>
+      <footer><button :disabled="busy" @click="$emit('close')">{{ view==='abandon' ? 'Continuer le parcours' : ['ranking','powers'].includes(view) ? 'Fermer' : 'Plus tard' }}</button><button v-if="view==='abandon'" class="primary" :disabled="busy" @click="$emit('abandon')">Confirmer l’abandon</button><button v-else-if="view==='entry' && payload.offerId" class="primary" :disabled="busy || !team.length" @click="$emit('register')">{{ busy ? 'Inscription…' : 'Inscrire mon équipe' }}</button></footer>
     </section>
   </div>
 </template>
 <script>
+import TournamentPowerList from './TournamentPowerList.vue';
 export default {
-  props:{payload:{type:Object,required:true},team:{type:Array,default:()=>[]},busy:Boolean,error:{type:String,default:''}},
-  computed:{view(){return ['ranking','abandon'].includes(this.payload.tab)?this.payload.tab:'entry';}},
+  components:{TournamentPowerList},
+  props:{passives:{type:Array,default:()=>[]},payload:{type:Object,required:true},team:{type:Array,default:()=>[]},busy:Boolean,error:{type:String,default:''}},
+  computed:{view(){return ['ranking','abandon','powers'].includes(this.payload.tab)?this.payload.tab:'entry';}},
   mounted(){this.previousFocus=document.activeElement;this.$refs.panel.focus();},
   beforeDestroy(){this.previousFocus?.focus?.();},
   methods:{money(n){return Number(n||0).toLocaleString('fr-FR');},sprite(p){return `${process.env.BASE_URL}img/pokemon/front/${p.pokemonId || p.data?.id || p.id}.png`;},onKey(e){if(e.key==='Escape'&&!this.busy)this.$emit('close');if(e.key!=='Tab')return;const list=[...this.$refs.panel.querySelectorAll('button:not(:disabled)')],first=list[0],last=list[list.length-1];if(e.shiftKey&&[first,this.$refs.panel].includes(document.activeElement)){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}}
