@@ -954,7 +954,7 @@ export default {
       const effect = item.fieldUse || item;
       if (effect.revive) return !this.isDrift && pokemon.currentHp <= 0;
       if (pokemon.currentHp <= 0 && !(this.isDrift && pokemon.riftFainted && (effect.heal || effect.healFraction || item.category==='heal'))) return false;
-      if(effect.levelUp)return !pokemon.isEgg && pokemon.level<100 && !pokemon.evolutionState?.pending;
+      if(effect.levelUp)return !pokemon.isEgg && pokemon.level<(effect.maxLevel??100) && !pokemon.evolutionState?.pending;
       if(effect.natureReroll)return !pokemon.isEgg;
       if(effect.abilityReroll)return !pokemon.isEgg && !!item.abilityOptions?.[pokemon.uuid]?.length;
       if(effect.ivReroll)return !pokemon.isEgg&&Number.isInteger(pokemon.iv?.[effect.ivReroll])&&pokemon.iv[effect.ivReroll]>=0&&pokemon.iv[effect.ivReroll]<=31;
@@ -981,7 +981,7 @@ export default {
       return `EV ${names[item.fieldUse.effort.stat]} : ${ev[item.fieldUse.effort.stat] || 0}/252 · Total : ${Object.values(ev).reduce((n,v)=>n+Number(v),0)}/510`;
     },
     medicineTargetLabel(item,p){
-      if(item.fieldUse?.levelUp)return `${p.name} · Niveau ${p.level}${p.level>=100?' · Niveau maximum':''}${this.medicineStatus(p)}`;
+      if(item.fieldUse?.levelUp)return `${p.name} · Niveau ${p.level}${p.level>=(item.fieldUse.maxLevel??100)?' · Niveau maximum':''}${this.medicineStatus(p)}`;
       if(item.category==='evolution')return `${p.name}${item.evolutions?.[p.uuid]?` → ${item.evolutions[p.uuid].name}`:''}${this.medicineStatus(p)}`;
       if(item.fieldUse?.abilityReroll)return `${p.name} · ${this.localizedAbility(p.passiveAbility)}${item.abilityOptions?.[p.uuid]?.length?'':' · Aucun autre talent'}${this.medicineStatus(p)}`;
       if(item.fieldUse?.ivReroll)return `${p.name} · IV ${p.iv?.[item.fieldUse.ivReroll]||0}/31`;

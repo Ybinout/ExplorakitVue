@@ -5,7 +5,7 @@ export const STORE_DEPARTMENTS = Object.freeze([
   {number:4,name:'Baies',en:'Berries',hint:'Soins et effets en combat',enHint:'Recovery and battle effects',pocket:'berries'}
 ]);
 export const TRAINING_TASKS = Object.freeze([
-  {key:'levels',name:'Monter de niveau',en:'Gain a level',hint:'Super Bonbon',enHint:'Rare Candy',itemKey:'rare_candy',pocket:'training'},
+  {key:'levels',name:'Monter de niveau',en:'Gain a level',hint:'Super et Méga Bonbons',enHint:'Rare and Mega Candies',itemKey:'rare_candy',pocket:'training'},
   {key:'machines',name:'Apprendre une attaque',en:'Learn a move',hint:'CS : vérifie la compatibilité dans ton sac.',enHint:'CS: check compatibility in your bag.',itemKey:'',pocket:'machines'},
   {key:'vitamins',name:'Renforcer les stats',en:'Train stats',hint:'Vitamines : +10 EV dans une stat.',enHint:'Vitamins: +10 EVs in one stat.',itemKey:'protein',pocket:'training'},
   {key:'iv',name:'Relancer un IV',en:'Reroll an IV',hint:'Nouveau tirage de 0 à 31, même si ça baisse.',enHint:'A new roll from 0 to 31; it may be lower.',itemKey:'iv_randomizer_attack',pocket:'training'},
