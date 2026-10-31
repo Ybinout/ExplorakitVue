@@ -81,7 +81,7 @@
           <button v-if="isShopMap" class="location-shop-btn" data-open-sell type="button" @click="openShop('sell')">{{ preferences.language==='en'?'Sell':'Vendre' }}</button>
         </div>
         </div>
-        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid?'':null" :aria-hidden="trainingFeedback || heldPickerUuid?'true':null" ref="bagPanel" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
+        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid?'':null" :aria-hidden="trainingFeedback || heldPickerUuid?'true':null" ref="bagPanel" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
               <template v-if="item.experienceModule && !isDrift">
                 <p class="bag-use-hint" data-experience-module-state><strong>{{ item.active ? (preferences.language==='en'?'Active':'Actif') : (preferences.language==='en'?'Inactive':'Inactif') }}</strong> · {{ item.active ? (preferences.language==='en'?'+15 levels for wild encounters':'+15 niveaux pour les rencontres sauvages') : (preferences.language==='en'?'Usual encounter levels':'Niveaux habituels des rencontres') }}</p>

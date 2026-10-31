@@ -3,6 +3,7 @@
     <section ref="dialog" class="bag-panel expedition-bag" role="dialog" aria-modal="true" aria-labelledby="bag-heading" :aria-busy="loading">
       <header class="pack-header">
         <div><small>RIFTMON / {{ expedition ? (english ? 'EXPEDITION' : 'EXPÉDITION') : (english ? 'ADVENTURE' : 'AVENTURE') }}</small><h2 id="bag-heading">{{ english ? 'Your bag' : 'Ton sac' }}</h2></div>
+        <div class="pack-wallet" data-bag-money :aria-label="`${money.toLocaleString(english?'en':'fr')} Pokédollars`"><span>Pokédollars</span><strong>{{ money.toLocaleString(english?'en':'fr') }} ₽</strong></div>
         <button ref="close" class="panel-close" :aria-label="english?'Close bag':'Fermer le sac'" @click="$emit('close')">×</button>
       </header>
       <div class="pack-layout">
@@ -72,7 +73,7 @@ import reference from '@/data/pokemonReference.fr.json';
 import {localizeTypeName,typeBadgeStyle} from '@/services/pokemonTypes';
 export default {
   name:'BagPanel',components:{BagItemIcon},
-  props:{items:{type:Array,default:()=>[]},loading:Boolean,error:String,notice:String,repelSteps:{type:Number,default:0},emptyLabel:String,expedition:Boolean,language:String},
+  props:{money:{type:Number,default:0},items:{type:Array,default:()=>[]},loading:Boolean,error:String,notice:String,repelSteps:{type:Number,default:0},emptyLabel:String,expedition:Boolean,language:String},
   data(){return {activePocket:'medicine',selectedKey:null,previousFocus:null,trainingFilter:'all',machineSort:'name'};},
   computed:{
     english(){return this.language==='en';},
@@ -117,4 +118,6 @@ export default {
 @media(max-width:600px){.bag-backdrop{padding:8px}.bag-backdrop .bag-panel.expedition-bag{height:calc(100dvh - 16px);border-radius:22px 22px 14px 14px}.pack-header{padding:13px 16px 13px 86px;min-height:80px}.pack-header h2{font-size:24px}.pack-header small{font-size:8px}.pack-layout{position:relative}.pack-cover{position:absolute;left:13px;top:-80px;width:64px;height:80px;padding:2px;background:none;border:0;pointer-events:none}.pack-cover:after,.pack-tag,.pack-total{display:none}.backpack{width:62px;height:78px;filter:none}.pack-pockets{grid-template-columns:repeat(3,minmax(0,1fr));padding:8px;gap:4px}.pack-pockets button{gap:4px;font-size:10px;padding:5px;min-height:46px}.pack-pockets .bag-object-icon{width:23px;height:23px}.pack-pockets small{font-size:9px}.pack-scroll{padding:16px 12px}.pocket-heading h3{font-size:23px}.pocket-hint{font-size:11px;margin-bottom:13px}.bag-item-detail{padding:12px}.pack-footer{padding:10px 12px;font-size:9px;gap:10px}}
 @media(max-height:500px){.bag-backdrop{padding:6px}.bag-backdrop .bag-panel.expedition-bag{height:calc(100dvh - 12px)}.pack-header{padding:8px 18px;min-height:60px}.pack-header h2{font-size:23px}.pack-cover{width:145px;padding:10px}.backpack{width:115px}.pack-tag{margin-top:8px;font-size:9px}.pack-total{font-size:10px}.pack-pockets{padding:5px;gap:3px;grid-template-columns:repeat(8,minmax(0,1fr))}.pack-pockets button{flex-direction:column;justify-content:center;gap:2px;min-height:54px;padding:4px 2px;font-size:9px;text-align:center}.pack-pockets small{display:none}.pack-pockets .bag-object-icon{width:22px;height:22px}.pack-scroll{padding:12px 16px}.pocket-heading h3{font-size:20px}.pocket-hint{margin-bottom:10px}.pack-footer{padding:7px 16px}}
 @media(max-height:500px) and (max-width:600px){.pack-header{padding-left:74px}.pack-cover{top:-60px;width:52px;height:60px;padding:0}.backpack{width:48px;height:60px}.pack-pockets{grid-template-columns:repeat(3,minmax(0,1fr))}.pack-pockets button{min-height:44px;flex-direction:row;font-size:9px}.pack-pockets .bag-object-icon{width:20px;height:20px}.pack-scroll{padding:10px}.pocket-heading>.bag-object-icon,.pocket-hint{display:none}.pocket-heading{margin-bottom:10px}.pack-footer{font-size:9px}}
+.pack-header{display:grid;grid-template-columns:minmax(0,1fr) auto 44px}.pack-wallet{display:flex;flex-direction:column;align-items:flex-end;gap:2px;color:var(--journal-ink);font-variant-numeric:tabular-nums;white-space:nowrap}.pack-wallet>span{font-size:10px;color:var(--journal-muted)}.pack-wallet strong{font-size:17px;font-weight:750;color:var(--journal-heading)}
+@media(max-width:600px){.pack-header{grid-template-columns:minmax(0,1fr) 44px;gap:2px 10px}.pack-wallet{grid-column:1;grid-row:2;align-items:flex-start}.pack-wallet>span{display:none}.pack-wallet strong{font-size:13px}.pack-header .panel-close{grid-column:2;grid-row:1/3}}
 </style>
