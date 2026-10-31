@@ -18,7 +18,6 @@
 .game-root.is-mobile .game-stage .battle-status-name { min-width:0; overflow-wrap:anywhere; font-size:12px; }
 .game-root.is-mobile .game-stage .battle-status-top { gap:5px; margin-bottom:6px; }
 .game-root.is-mobile .game-stage .battle-status-details { font-size:9px; }
-.game-root.is-mobile .game-stage .battle-status-details .battle-status-ability { display:none; }
 .game-root.is-mobile .game-stage .battle-action-shell {
   position:relative; inset:auto; width:100%; height:auto; min-height:0; margin:0;
   display:grid; grid-template-columns:minmax(0,1fr) 44px; grid-template-rows:44px 92px 92px;
@@ -101,6 +100,17 @@
   .game-root.is-mobile .game-stage .battle-status-wild:has(.battle-effort-yield) .potential-star svg { max-width:18px; max-height:18px; }
   .game-root.is-mobile .game-stage .battle-status-wild:has(.battle-effort-yield) .battle-status-details { margin-top:2px; }
   .game-root.is-mobile .game-stage .battle-status-wild .battle-effort-yield { margin-top:2px; }
+}
+
+/* Make room for types/talent on short phones without expanding into the sprites. */
+@media (orientation:portrait) and (max-height:600px) {
+  .game-root.is-mobile .game-stage .battle-status { padding:4px 6px; }
+  .game-root.is-mobile .game-stage .battle-status .battle-status-top { margin-bottom:3px; }
+  .game-root.is-mobile .game-stage .battle-status .health-bar-container { height:10px; }
+  .game-root.is-mobile .game-stage .battle-status .experience-strip { margin-top:3px; }
+  .game-root.is-mobile .game-stage .battle-status .battle-status-details { margin-top:3px; }
+  .game-root.is-mobile .game-stage .battle-status .potential-star { height:18px; }
+  .game-root.is-mobile .game-stage .battle-status .potential-star svg { max-width:18px; max-height:18px; }
 }
 
 /* Trainer lines share the existing text slot, including its fixed mobile height. */

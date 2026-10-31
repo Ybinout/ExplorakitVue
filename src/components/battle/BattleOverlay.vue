@@ -112,11 +112,11 @@
             {{ opponentStatus.code }}
           </span>
         </div>
+        <battle-traits :pokemon="opponent" :language="preferences.language" />
         <health-bar :current-hp="opponent.currentHp" :hp-max="opponent.maxHp" />
         <div class="battle-status-details">
           <span class="battle-hp-value">{{ formatBattleHp(opponent) }}</span>
           <battle-conditions :pokemon="opponent"/>
-          <span v-if="opponent.passiveAbility" class="battle-status-ability">{{ tr('ability') }} : {{ localizedAbility(opponent.passiveAbility) }}</span>
         </div>
         <p v-if="opponentEffortLabel" class="battle-effort-yield" data-battle-effort-yield :title="effortYieldHint">{{ opponentEffortLabel }}</p>
         <battle-party :party="opponentParty" :language="preferences.language" />
@@ -139,13 +139,13 @@
             {{ playerStatus.code }}
           </span>
         </div>
+        <battle-traits :pokemon="currentPokemon" :language="preferences.language" />
         <health-bar :current-hp="currentPokemon.currentHp" :hp-max="currentPokemon.maxHp" />
         <experience-bar :pokemon="currentPokemon" :playback-percent="experienceVisual?.uuid === currentPokemon.uuid ? experienceVisual.percent : null" />
         <span v-if="experienceNotice" class="experience-notice" :title="experienceNotice" role="status">{{ experienceNotice }}</span>
         <div class="battle-status-details">
           <span class="battle-hp-value">{{ formatBattleHp(currentPokemon) }}</span>
           <battle-conditions :pokemon="currentPokemon"/>
-          <span v-if="currentPokemon.passiveAbility" class="battle-status-ability">{{ tr('ability') }} : {{ localizedAbility(currentPokemon.passiveAbility) }}</span>
         </div>
       </div>
 
@@ -311,6 +311,7 @@ import PokemonGender from '../PokemonGender.vue';
 import BattleStatChange, {STAT_CHANGE_DURATION} from './BattleStatChange.vue';
 import BattleWeatherInfo from './BattleWeatherInfo.vue';
 import BattleConditions from './BattleConditions.vue';
+import BattleTraits from './BattleTraits.vue';
 import BattleFieldEffects from './BattleFieldEffects.vue';
 import BattleFieldSide from './BattleFieldSide.vue';
 import { normalizeBattleField, battleFieldChanges, hasBattleFieldVisual } from '@/services/battleField';
@@ -408,7 +409,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
+  components: { BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
     tournament:{type:Boolean,default:false},
     mobile: Boolean,
@@ -1653,7 +1654,6 @@ export default {
 .battle-status-details {align-items:center;height:16px;min-height:16px}
 .battle-status-details .battle-hp-value {flex:none;white-space:nowrap}
 .battle-status-details .battle-conditions {flex:1}
-.battle-status-details:has(.battle-conditions)>.battle-status-ability {display:none}
 .battle-condition-notice{background:#ecf1e2;color:#325441;border:1px solid #abbc8e}
 .battle-condition-fx{position:absolute;z-index:55;transform:translate(-50%,-50%);pointer-events:none;display:grid;place-items:center}
 .battle-condition-fx i{position:absolute;inset:-10%;display:grid;place-items:center;font:bold 30px Arial,sans-serif;font-style:normal;color:#9ef5b6;text-shadow:0 1px 3px #112c28;border:2px solid currentColor;border-radius:50%;animation:condition-bloom .65s ease-out both;animation-delay:calc(min(var(--effect-index),3) * 10ms)}
@@ -1813,7 +1813,7 @@ export default {
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
-  color: #1b1f2a;
+  color: var(--journal-ink, #1b1f2a);
 }
 
 .battle-status-name {
@@ -1843,13 +1843,6 @@ export default {
   color: #354057;
   font-size: 7px;
   line-height: 1.35;
-}
-
-.battle-status-details .battle-status-ability {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
 }
 
 .battle-status-ailment {
@@ -2646,10 +2639,6 @@ export default {
 
   .battle-status-details {
     font-size: 6px;
-  }
-
-  .battle-status-details .battle-status-ability {
-    display: none;
   }
 
   .battle-action-shell {
