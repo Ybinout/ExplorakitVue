@@ -99,6 +99,7 @@
         :class="['battle-status', 'battle-status-wild', { 'battle-status-hit': attackFx.wild.hit }]"
       >
         <div class="battle-status-top">
+          <span v-if="wildAlreadyCaught" class="battle-caught-marker" :data-caught-species="opponent.data.id" role="img" :aria-label="preferences.language==='en'?'Species already caught':'Espèce déjà capturée'" :title="preferences.language==='en'?'Species already caught':'Espèce déjà capturée'"><battle-ball /></span>
           <span class="battle-status-name">{{ opponent.__battle?.illusion?.name || opponent.truename || opponent.name }}</span>
           <pokemon-gender v-if="!opponent.storyActor" class="battle-status-gender" :pokemon="{gender:fighterGenders.opponent,isEgg:opponent.isEgg}" :language="preferences.language" />
           <span v-if="!opponent.storyActor" class="battle-status-lvl">lv.{{ opponent.level }}</span>
@@ -400,12 +401,14 @@ const FIELD_LABELS = {
 
 import { outdoorMap } from '@/data/nightLights';
 import BattleParty from './BattleParty.vue';
+import BattleBall from './BattleBall.vue';
+import { opponentPartyStates } from '@/services/battleParty';
 import { battleEnvironment } from '@/services/battleEnvironment';
 import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleStatChange, BattleWeatherInfo, BattleParty, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
+  components: { BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
     tournament:{type:Boolean,default:false},
     mobile: Boolean,
@@ -416,6 +419,7 @@ export default {
     colosseumChallenge: { type: Object, default: null },
     bagItems: { type: Array, default: () => [] },
     bagLoading: { type: Boolean, default: false },
+    caughtSpeciesIds: { type: Array, default: () => [] },
     preferences: {
       type: Object,
       default: () => ({ masterVolume: 35, animationsEnabled: true, language: 'fr' })
@@ -428,6 +432,7 @@ export default {
       opponent: null,
       fighterGenders: {player:null,opponent:null},
       opponentParty: null,
+      isWildEncounter: false,
       opponentEffortYield: null,
       canAct: false,
       replacementChoice: false,
@@ -500,6 +505,8 @@ export default {
     };
   },
   computed: {
+    caughtSpeciesSet(){return new Set(this.caughtSpeciesIds.map(Number));},
+    wildAlreadyCaught(){return this.isWildEncounter && !this.opponent?.isEgg && !this.opponent?.storyActor && this.caughtSpeciesSet.has(Number(this.opponent?.data?.id));},
     entranceActive() { return this.entrancePhase !== 'ready'; },
     raining() { return this.fieldState.weather === 'rain'; },
     outdoorLighting() { return !this.challenge && outdoorMap(this.battleMapName); },
@@ -1151,7 +1158,8 @@ export default {
     },
     updateBattleState(payload = {}) {
       this.fighterGenders = payload.genders || {player:payload.player?.equipe?.pokemons?.[0]?.gender || null,opponent:payload.wildPokemon?.gender || null};
-      this.opponentParty = Array.isArray(payload.opponentParty) && payload.opponentParty.every(value=>typeof value==='boolean') ? payload.opponentParty.slice(0,6) : null;
+      this.opponentParty = opponentPartyStates(payload);
+      this.isWildEncounter = payload.battleType === 'wild';
       this.capturePolicy = payload.capturePolicy || null;
       this.phaseReturning = { player:false, wild:false };
       this.opponentEffortYield = payload.effortYield || null;
@@ -1591,6 +1599,7 @@ export default {
       this.player = null;
       this.opponent = null;
       this.opponentParty = null;
+      this.isWildEncounter = false;
       this.opponentEffortYield = null;
       this.canAct = false;
       this.replacementChoice = false;
@@ -1618,6 +1627,7 @@ export default {
 </script>
 
 <style scoped>
+.battle-caught-marker{display:inline-flex;align-items:center;flex:none;width:14px;height:14px}
 .battle-human .battle-sprite{image-rendering:auto}
 .battle-void-arena .battle-background{filter:brightness(.82)}
 

@@ -26,6 +26,7 @@
         :active="battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
         :bag-items="bagItems" :tournament="!!superTournament.active" @tournament-abandon="openTournamentAbandon"
         :bag-loading="bagLoading"
+        :caught-species-ids="isDrift ? [] : caughtSpeciesIds"
         :preferences="preferences"
         :notice="interactionNotice"
         :colosseum-challenge="isColosseum && driftState?.phase !== 'exploration' ? driftState?.colosseum?.next : null"
@@ -738,6 +739,7 @@ export default {
       return this.tr('emptyBag');
     },
     visibleMenuItems() { return this.isDrift ? [...this.menuItems.filter(i => !['pokedex', 'progress', 'badges', 'save'].includes(i.key)), { key: 'drifts' }, ...(this.driftState?.contracts?.length?[{key:'contracts'}]:[])] : this.menuItems; },
+    caughtSpeciesIds(){return (this.pokedexState?.entries || []).filter(p=>p.caught).map(p=>Number(p.id));},
     readyContractCount() { return this.isDrift && this.driftState?.alive && this.driftState.phase === 'exploration' ? (this.driftState.contracts || []).filter(c => c.complete && !c.claimed).length : 0; },
     driftPhaseLabel() { return { selection:'Choix du compagnon', exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', colosseum_ready: 'Colosseum · prêt ?', colosseum_battle: 'Colosseum', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
     driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return this.isColosseum && this.driftState?.colosseum ? `${this.driftState.colosseum.score} pts` : ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
