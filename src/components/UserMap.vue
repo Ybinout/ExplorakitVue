@@ -145,7 +145,7 @@
             <div
               v-for="(pokemon, index) in teamPokemons"
               :key="pokemon.uuid || `slot-${index}`"
-              class="team-row" :data-team-uuid="pokemon.uuid" :class="{'team-drag-source':teamDrag?.uuid===pokemon.uuid,'team-drop-target':teamDrag?.to===pokemon.uuid && teamDrag?.uuid!==pokemon.uuid}" @pointerdown="startTeamDrag($event,pokemon.uuid)"
+              class="team-row" :data-team-uuid="pokemon.uuid" :class="{'team-drag-source':teamDrag?.uuid===pokemon.uuid,'team-drop-target':teamDrag?.to===pokemon.uuid && teamDrag?.uuid!==pokemon.uuid,'team-held-drop-target':heldItemDrag?.to===pokemon.uuid,'team-held-source':heldItemDrag?.uuid===pokemon.uuid}" @pointerdown="startTeamDrag($event,pokemon.uuid)"
             >
               <button class="team-row-visual" :aria-label="`Voir la fiche de ${pokemon.name}`" @click="openPokemonDetails(pokemon)">
                 <pokemon-portrait
@@ -174,7 +174,10 @@
                   {{ tr('hp') }} {{ pokemon.currentHp }} / {{ pokemon.maxHp }}
                 </div>
                 <div class="team-row-meta">{{ tr('ability') }} : {{ localizedAbility(pokemon.passiveAbility) || tr('noAbility') }}</div>
-                <button class="team-held-item-select" :title="pokemon.heldItem ? heldDescription(pokemon.heldItem) : undefined" data-open-held-picker :disabled="teamSaving || battle" @click="openHeldPicker(pokemon)">{{ pokemon.heldItem ? (heldItemName(pokemon.heldItem)+' · Changer') : '＋ Donner un objet' }}</button>
+                <div class="team-held-controls">
+                  <button v-if="pokemon.heldItem" class="team-held-drag" data-held-drag :disabled="teamSaving || teamLoading || battle || superTournament.active" :aria-label="`Déplacer ${heldItemName(pokemon.heldItem)} de ${pokemon.name} · cliquer pour changer`" :title="heldDescription(pokemon.heldItem)+' · Glisser sur un autre Pokémon pour transférer ou échanger.'" @pointerdown.stop="startHeldItemDrag($event,pokemon.uuid)" @contextmenu.prevent @click="openHeldPicker(pokemon)"><bag-item-icon :item-key="pokemon.heldItem" :pocket="pokemon.heldItem.endsWith('_berry')?'berries':'held'"/></button>
+                  <button class="team-held-item-select" :title="pokemon.heldItem ? heldDescription(pokemon.heldItem) : undefined" data-open-held-picker :disabled="teamSaving || battle" @click="openHeldPicker(pokemon)">{{ pokemon.heldItem ? (heldItemName(pokemon.heldItem)+' · Changer') : '＋ Donner un objet' }}</button>
+                </div>
                 <p v-if="pokemon.heldItem" class="team-item-description">{{ heldDescription(pokemon.heldItem) }}</p>
                 <p v-if="pokemon.riftFainted" class="team-item-description team-fainted-notice">Sauvé par un talisman · K.O. jusqu’à un soin hors combat.</p>
               </div>
@@ -199,7 +202,7 @@
               </div>
             </div>
           </div>
-          <p class="team-order-status" role="status">{{ teamSaving ? tr('saving') : teamOrderNotice || tr('orderAutoSave') }}<small v-if="canReorderTeam">{{ preferences.language==='en'?'Drag a companion or use the arrows to change its position.':'Glisse un Pokémon ou utilise les flèches pour changer sa place.' }}</small></p>
+          <p class="team-order-status" role="status">{{ teamSaving ? tr('saving') : teamOrderNotice || tr('orderAutoSave') }}<small v-if="canReorderTeam">{{ preferences.language==='en'?(superTournament.active?'Drag a companion or use the arrows to reorder.':'Drag a companion to reorder; drag its item onto a teammate to transfer or swap it.'):(superTournament.active?'Glisse un Pokémon ou utilise les flèches pour changer sa place.':'Glisse un Pokémon pour le déplacer, ou son objet sur un coéquipier pour le transférer ou l’échanger.') }}</small></p>
         </div>
         <game-info-panels
           :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @toggle-fullscreen="toggleGameFullscreen"
@@ -392,6 +395,7 @@
 
     <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" :busy="evolutionBusy" :error="evolutionError" @resolve="resolveEvolutionPresentation" @continue="evolutionError='';evolutionQueue.shift()" />
     <div v-if="teamDrag" class="team-drag-ghost" :style="{left:teamDrag.x+'px',top:teamDrag.y+'px'}" aria-hidden="true"><pokemon-portrait :src="getPokemonFrontSprite(teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.spriteId)"/><span>{{ teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.name }}</span></div>
+    <div v-if="heldItemDrag && heldDragPokemon" class="team-held-ghost" :style="{left:heldItemDrag.x+'px',top:heldItemDrag.y+'px'}" aria-hidden="true"><bag-item-icon :item-key="heldDragPokemon.heldItem" :pocket="heldDragPokemon.heldItem?.endsWith('_berry')?'berries':'held'"/><strong>{{ heldItemName(heldDragPokemon.heldItem) }}</strong><span v-if="heldDragTarget">{{ heldDragTarget.heldItem?'Échanger avec':'Donner à' }} {{ heldDragTarget.name }}</span></div>
     <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :moves-order-allowed="canReorderMoves" :moves-order-busy="moveOrderBusy" :moves-order-error="moveOrderError" :moves-order-notice="moveOrderNotice" @reorder-moves="reorderPokemonMoves" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
@@ -417,6 +421,8 @@ import {drawMirrorGround,drawMirrorClone,mirrorScenePose,mirrorCameraTarget,rele
 import {BattleAudio} from '@/services/battleAudio';
 import { GameFeedbackAudio, teamWasRestored } from '@/services/gameFeedbackAudio';
 import { createTeamDrag } from '@/services/teamDrag';
+import './teamHeldTransfer.css';
+import BagItemIcon from './menu/BagItemIcon.vue';
 import { WorldSpeech, speechColors } from '@/services/worldSpeech';
 import WorldChatInput from './world/WorldChatInput.vue';
 import TeamPokemonTraits from './TeamPokemonTraits.vue';
@@ -506,7 +512,7 @@ export default {
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    WorldChatInput, JournalIcon, BagPanel, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, TeamPokemonTraits,
+    WorldChatInput, JournalIcon, BagPanel, BagItemIcon, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, TeamPokemonTraits,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -607,6 +613,7 @@ export default {
       teamDirty: false,
       teamOrderNotice: '',
       teamDrag: null,
+      heldItemDrag: null,
       currentUserId: null,
       currentUsername: '',
       showMobileControls: false,
@@ -736,6 +743,9 @@ export default {
     driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return this.isColosseum && this.driftState?.colosseum ? `${this.driftState.colosseum.score} pts` : ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
     selectedPokemon() { return this.teamPokemons.find(pokemon => pokemon.uuid === this.selectedPokemonUuid); },
     canReorderTeam(){return Boolean(this.socket?.connected && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.flight && (!this.superTournament.active || ['sas','ready','reward','cleared'].includes(this.superTournament.phase)));},
+    canTransferHeldItems(){return this.isTeamPanelOpen && this.canReorderTeam && !this.superTournament.active && this.canUseBagConsumables && !this.teamSaving && !this.teamLoading && !this.selectedPokemonUuid && !this.heldPickerUuid && !this.learningVisible;},
+    heldDragPokemon(){return this.teamPokemons.find(p=>p.uuid===this.heldItemDrag?.uuid);},
+    heldDragTarget(){return this.teamPokemons.find(p=>p.uuid===this.heldItemDrag?.to);},
     canReorderMoves(){return Boolean(this.socket?.connected && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.evolutionVisible && !this.evolutionBusy && !this.medicineBusy && !this.selectedPokemon?.isEgg && (!this.isDrift || this.driftState?.alive && !this.driftState?.storagePaused && !this.driftState?.recoveryWaiting && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase)));},
     evolutionLookupKey() { const p = this.selectedPokemon; return p ? [p.uuid,p.data?.id,p.level,p.currentHp,p.attack,p.defense,(p.abilities || []).join(',')].join(':') : ''; },
     locationLabel() {
@@ -791,6 +801,7 @@ export default {
     worldChatAvailable(allowed){if(!allowed && this.worldChatOpen)this.closeWorldChat();},
     isTeamPanelOpen(open){if(!open)this.cancelTeamDrag();},
     canReorderTeam(allowed){if(!allowed)this.cancelTeamDrag();},
+    canTransferHeldItems(allowed){if(!allowed)this._heldItemDragController?.cancel();},
     teamLoading(loading){if(loading)this.cancelTeamDrag();},
     teamSaving(saving){if(saving)this.cancelTeamDrag();},
     // Only a server-confirmed mirror victory proceeds straight into the epilogue.
@@ -2018,7 +2029,39 @@ export default {
     guardTeamDragClick(event) {
       if (event.detail && performance.now() < (this._teamDragClickUntil || 0)) { event.preventDefault(); event.stopPropagation(); }
     },
-    cancelTeamDrag() { this._teamDragController?.cancel(); this._teamDragController = null; },
+    cancelTeamDrag() { this._teamDragController?.cancel(); this._teamDragController = null; this._heldItemDragController?.cancel(); this._heldItemDragController = null; },
+    startHeldItemDrag(event, uuid) {
+      if (!this.canTransferHeldItems || !this.teamPokemons.some(p=>p.uuid===uuid && p.heldItem && !p.isEgg)) return;
+      this.cancelTeamDrag();
+      this._heldItemDragController = createTeamDrag({
+        root:this.$refs.teamPanel, roster:()=>this.teamPokemons.map(p=>p.uuid),
+        snapshot:()=>this.teamPokemons.map(p=>[p.uuid,p.heldItem||null]),
+        canDrop:(from,to)=>from!==to && this.teamPokemons.some(p=>p.uuid===to && !p.isEgg && p.heldItem!==this.teamPokemons.find(s=>s.uuid===from)?.heldItem),
+        allowed:()=>this.canTransferHeldItems,
+        changed:state=>{this.heldItemDrag=state;},
+        drop:(from,to)=>this.transferTeamHeldItem(from,to),
+        ended:()=>{this._teamDragClickUntil=performance.now()+300;}
+      });
+      this._heldItemDragController.start(event,uuid);
+    },
+    async transferTeamHeldItem(from,to) {
+      if (!this.canTransferHeldItems) return;
+      const source=this.teamPokemons.find(p=>p.uuid===from),target=this.teamPokemons.find(p=>p.uuid===to);
+      if (!source?.heldItem || !target || source===target || source.isEgg || target.isEgg || source.heldItem===target.heldItem) return;
+      const payload={teamId:this.teamId,sourceUuid:from,targetUuid:to,sourceItem:source.heldItem,targetItem:target.heldItem||null};
+      this.teamSaving=true;this.teamError='';this.teamOrderNotice='';
+      try {
+        const result=await new Promise((resolve,reject)=>{
+          const timer=setTimeout(()=>reject(Error('Le serveur ne répond pas. Vérification de l’équipe…')),5000);
+          this.socket.emit('transferHeldItem',payload,(reply={})=>{clearTimeout(timer);reply.success?resolve(reply):reject(Error(reply.message||'Objet non déplacé.'));});
+        });
+        for (const change of result.transfers || []) { const p=this.teamPokemons.find(p=>p.uuid===change.pokemonUuid);if(p)this.$set(p,'heldItem',change.heldItem); }
+        this.teamOrderNotice=payload.targetItem?`Objets de ${source.name} et ${target.name} échangés.`:`${this.heldItemName(payload.sourceItem)} confié à ${target.name}.`;
+      } catch(error) {
+        const message=error.message||'Objet non déplacé. Réessaie.';
+        await this.loadTeamPokemons();this.teamError=message;
+      } finally {this.teamSaving=false;}
+    },
     async repositionTeamPokemon(uuid, targetUuid) {
       if (this.teamSaving || this.teamLoading || !this.canReorderTeam) return;
       if (!Array.isArray(this.teamPokemons)) return;

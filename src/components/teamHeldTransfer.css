@@ -1,0 +1,10 @@
+.game-root .game-stage .team-held-controls{display:flex;align-items:stretch;gap:5px;margin-top:6px;min-width:0}
+.game-root .game-stage .team-held-controls .team-held-item-select{margin-top:0;flex:1;min-width:0}
+.game-root .game-stage .team-held-drag{flex:none;display:grid;place-items:center;width:44px;min-height:44px;padding:5px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);cursor:grab;touch-action:none;-webkit-touch-callout:none}
+.game-root .game-stage .team-held-drag .bag-object-icon{width:28px;height:28px}
+.game-root .game-stage .team-held-drag:disabled{opacity:.45;cursor:default}
+.game-root .game-stage .team-held-source .team-held-drag{opacity:.35}
+.game-root .game-stage .team-held-drop-target{outline:2px dashed var(--journal-accent);outline-offset:-2px;background:var(--journal-selected)}
+.team-held-ghost{position:fixed;z-index:3200;pointer-events:none;transform:translate(-50%,-110%);display:grid;justify-items:center;gap:4px;width:max-content;max-width:190px;padding:10px;border:2px solid var(--journal-progress);border-radius:12px;background:var(--journal-card);color:var(--journal-heading);box-shadow:var(--journal-shadow);font:12px var(--journal-font);text-align:center}
+.team-held-ghost span{font-size:11px;color:var(--journal-muted)}
+@media(min-width:921px){.game-root:not(.is-mobile) .game-stage .team-held-drag{width:32px;min-height:32px;padding:3px}.game-root:not(.is-mobile) .game-stage .team-held-drag .bag-object-icon{width:24px;height:24px}}

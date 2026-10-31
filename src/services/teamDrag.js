@@ -1,9 +1,9 @@
 // Sort UUIDs after a deliberate drop; keep the latest server-owned Pokémon.
-export function createTeamDrag({ root, roster, allowed, changed, drop, ended }) {
+export function createTeamDrag({ root, roster, snapshot = roster, canDrop = () => true, allowed, changed, drop, ended }) {
   let gesture = null, frame = 0;
   const targetAt = (x, y) => {
     const node = document.elementFromPoint(x, y)?.closest('[data-team-uuid]');
-    return node && root.contains(node) ? node.dataset.teamUuid : null;
+    return node && root.contains(node) && canDrop(gesture?.uuid, node.dataset.teamUuid) ? node.dataset.teamUuid : null;
   };
   function update() {
     frame = 0;
@@ -55,7 +55,7 @@ export function createTeamDrag({ root, roster, allowed, changed, drop, ended }) 
   function finish(event) {
     if (!gesture || event.pointerId !== gesture.pointerId) return;
     const current = gesture, target = current.active ? targetAt(event.clientX, event.clientY) : null;
-    const valid = current.active && allowed() && root.isConnected && JSON.stringify(roster()) === current.roster;
+    const valid = current.active && allowed() && root.isConnected && JSON.stringify(snapshot()) === current.roster;
     if (current.active) event.preventDefault();
     cancel();
     if (valid && target && target !== current.uuid) drop(current.uuid, target);
@@ -63,7 +63,7 @@ export function createTeamDrag({ root, roster, allowed, changed, drop, ended }) 
   return {
     start(event, uuid) {
       if (gesture || !allowed() || event.isPrimary === false || event.button !== 0 || !roster().includes(uuid)) return;
-      gesture = { pointerId: event.pointerId, uuid, roster: JSON.stringify(roster()), startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, active: false, to: null };
+      gesture = { pointerId: event.pointerId, uuid, roster: JSON.stringify(snapshot()), startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, active: false, to: null };
       window.addEventListener('pointermove', move, { passive: false });
       window.addEventListener('pointerup', finish);
       window.addEventListener('pointercancel', cancelled);
