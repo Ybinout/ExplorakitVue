@@ -1,19 +1,21 @@
 <template>
   <div class="reward-backdrop" @keydown.stop="onKey" @keyup.stop>
     <section ref="dialog" class="tournament-reward-panel" role="dialog" aria-modal="true" aria-labelledby="tournament-reward-title" :aria-busy="busy" tabindex="-1">
-      <header><div><small>SUPER TOURNOI · SALLE {{ offer.afterRoom }} REMPORTÉE</small><h2 id="tournament-reward-title">Un souffle pour la suite</h2><p>Choisis une carte. Elle agit maintenant sur ton équipe inscrite.</p></div><button class="reward-exit" aria-label="Quitter le parcours" :disabled="busy" @click="$emit('leave')">×</button></header>
+      <header><div><small>SUPER TOURNOI · SALLE {{ offer.afterRoom }} REMPORTÉE</small><h2 id="tournament-reward-title">À toi de choisir</h2><p>Soigne ton équipe ou repars avec une récompense.</p></div><button class="reward-exit" aria-label="Quitter le parcours" :disabled="busy" @click="$emit('leave')">×</button></header>
       <div class="reward-content">
         <div v-if="cash?.last?.room===offer.afterRoom" class="reward-cash" data-tournament-cash role="status">
           <span>Salle {{ cash.last.room }}<strong>+{{ money(cash.last.amount) }} ₽</strong><small v-if="cash.last.bonus&&!cash.last.limited">Bonus de cycle inclus : {{ money(cash.last.bonus) }} ₽</small><small v-if="cash.last.limited">Plafond du porte-monnaie atteint</small></span>
           <span>Total du parcours<b>{{ money(cash.earned) }} ₽</b><small>Déjà versés · gains conservés</small></span>
         </div>
-        <div class="reward-cards" role="group" aria-label="Choisir une carte de récupération">
+        <div class="reward-cards" role="group" aria-label="Choisir une récompense">
           <button v-for="card in offer.choices" :key="card.key" class="reward-card" :data-reward-card="card.key" :data-rarity="card.rarity" :aria-pressed="selectedKey===card.key" :disabled="busy || !card.usable" @click="select(card)">
             <span v-if="selectedKey===card.key" class="reward-check" aria-hidden="true">✓</span>
             <span class="reward-rarity">{{ card.rarityName }}</span>
             <span class="reward-emblem" aria-hidden="true">
-            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <template v-if="card.kind==='pp'"><path d="m27 5-17 23h13l-2 15 17-25H25Z" fill="var(--reward-tint)"/><path d="M7 9h5m-3-3v6m26 23h6m-3-3v6"/></template>
+            <bag-item-icon v-if="card.kind==='item'" :item-key="card.itemKey" pocket="training"/>
+            <svg v-else viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <template v-if="card.kind==='money'"><path d="m16 6 3 9h10l4-9-9 3Z" fill="var(--reward-tint)"/><path d="M19 15C9 22 5 40 15 42h18c10-2 6-20-4-27Z" fill="var(--reward-tint)"/><path d="M17 15h14m-7 8v13m-4-11h7a3 3 0 0 1 0 6h-7m0 3h8"/></template>
+              <template v-else-if="card.kind==='pp'"><path d="m27 5-17 23h13l-2 15 17-25H25Z" fill="var(--reward-tint)"/><path d="M7 9h5m-3-3v6m26 23h6m-3-3v6"/></template>
               <template v-else-if="card.kind==='revive' || card.kind==='reset'"><path d="m24 5 14 16-14 22L10 21Z" fill="var(--reward-tint)"/><path d="m10 21 14 5 14-5M24 5v21m0 0v17m-7-13 7-4 7 4"/><path v-if="card.kind==='reset'" d="M6 7h7m-3-3v7m26 28h8m-4-4v8"/></template>
               <template v-else-if="card.kind==='cure'"><path d="M9 33C7 14 18 5 38 7c2 22-12 32-29 26Zm0 0 21-18m-8 8 10 1m-10-1-1-9" fill="var(--reward-tint)"/></template>
               <template v-else><path d="M24 40 8 24C-3 11 16 1 24 14c8-13 27-3 16 10Z" fill="var(--reward-tint)"/><path d="M24 20v12m-6-6h12"/></template>
@@ -23,7 +25,13 @@
           </button>
         </div>
         <p v-if="offer.canSkip" class="reward-hint" role="status">Ton équipe est déjà au mieux : aucun soin n’est nécessaire.</p>
-        <section v-if="selected" class="reward-targets" aria-label="Cible et aperçu du soin">
+        <section v-if="selected?.target==='account'" class="reward-targets reward-account" data-reward-account aria-live="polite">
+          <h3>{{ selected.kind==='money'?'Pour ton porte-monnaie':'Pour ton sac d’Aventure' }}</h3>
+          <p v-if="selected.kind==='money'"><strong>+{{ money(selected.grant.amount) }} ₽</strong> versés dès confirmation, en plus de la prime de salle.</p>
+          <p v-else><strong>1 {{ selected.name }}</strong> ajouté au sac. Tu pourras l’utiliser après ta tentative.</p>
+          <small>Cette carte remplace le soin de cette salle. La récompense reste acquise, même en cas de défaite.</small>
+        </section>
+        <section v-else-if="selected" class="reward-targets" aria-label="Cible et aperçu du soin">
           <h3>{{ selected.target==='team'?'Pour toute l’équipe':'Pour quel Pokémon ?' }}</h3>
           <div class="reward-team">
             <button v-for="p in team" :key="p.uuid" :data-reward-target="p.uuid" :aria-pressed="selected.target!=='team' && pokemonUuid===p.uuid" :disabled="busy || selected.target==='team' || !target(p.uuid)" @click="pokemonUuid=p.uuid;moveIndex=null">
@@ -38,20 +46,21 @@
         </section>
         <p v-if="error" class="reward-error" role="alert">{{ error }}</p>
       </div>
-      <footer><span>Une seule carte · aucun gain d’XP</span><button v-if="offer.canSkip" data-reward-skip :disabled="busy" @click="$emit('choose',{offerId:offer.id,skip:true})">Continuer</button><button v-else class="reward-confirm" data-reward-confirm :disabled="busy || !canConfirm" @click="confirm">{{ busy?'Soin en cours…':'Appliquer le soin' }}</button></footer>
+      <footer><span>Une seule carte · aucun gain d’XP</span><button v-if="offer.canSkip" data-reward-skip :disabled="busy" @click="$emit('choose',{offerId:offer.id,skip:true})">Continuer</button><button v-else class="reward-confirm" data-reward-confirm :disabled="busy || !canConfirm" @click="confirm">{{ busy?'Confirmation…':selected?.target==='account'?'Récupérer la récompense':'Appliquer le soin' }}</button></footer>
     </section>
   </div>
 </template>
 <script>
 import PokemonPortrait from '../PokemonPortrait.vue';
+import BagItemIcon from './BagItemIcon.vue';
 import {localizeMoveName} from '@/services/i18n';
 export default {
-  components:{PokemonPortrait},props:{offer:{type:Object,required:true},cash:{type:Object,default:null},team:{type:Array,default:()=>[]},busy:Boolean,error:String},
+  components:{PokemonPortrait,BagItemIcon},props:{offer:{type:Object,required:true},cash:{type:Object,default:null},team:{type:Array,default:()=>[]},busy:Boolean,error:String},
   data(){return {selectedKey:null,pokemonUuid:null,moveIndex:null,previousFocus:null};},
   computed:{
     selected(){return this.offer.choices.find(c=>c.key===this.selectedKey);},
     chosenTarget(){return this.selected?.targets.find(t=>t.uuid===this.pokemonUuid);},
-    canConfirm(){return this.selected?.usable && (this.selected.target==='team' || !!this.chosenTarget && (this.selected.target!=='move'||this.chosenTarget.moves.some(m=>m.index===this.moveIndex)));},
+    canConfirm(){return this.selected?.usable && (this.selected.target==='account' || this.selected.target==='team' || !!this.chosenTarget && (this.selected.target!=='move'||this.chosenTarget.moves.some(m=>m.index===this.moveIndex)));},
     previewTargets(){return this.selected?.target==='team'?this.selected.targets:this.chosenTarget?[this.chosenTarget]:[];}
   },
   watch:{'offer.id'(){this.selectedKey=null;this.pokemonUuid=null;this.moveIndex=null;}},
@@ -70,6 +79,8 @@ export default {
 };
 </script>
 <style scoped>
+.reward-account p{font-size:13px;line-height:1.6;color:var(--journal-ink)}.reward-account strong{color:var(--journal-heading)}.reward-account small{font-size:11px;color:var(--journal-muted);line-height:1.5}
+
 .reward-cash{display:flex;justify-content:space-between;gap:12px;margin:0 0 16px;padding:12px 14px;border:1px solid var(--journal-border);border-left:4px solid #b99746;border-radius:9px;background:var(--journal-soft);color:var(--journal-ink)}.reward-cash>span{display:flex;flex-direction:column;gap:3px;font-size:11px}.reward-cash>span:last-child{text-align:right}.reward-cash strong{font-size:22px;color:var(--journal-heading)}.reward-cash b{font-size:17px}.reward-cash small{font-size:10px;color:var(--journal-muted)}
 .reward-backdrop{position:fixed;inset:0;z-index:1900;display:grid;place-items:center;padding:14px;background:var(--journal-backdrop);color:var(--journal-ink);font-family:var(--journal-font)}.tournament-reward-panel{display:flex;flex-direction:column;width:min(880px,100%);max-height:94dvh;overflow:hidden;background:var(--journal-paper);border:2px solid var(--journal-border);border-radius:16px;box-shadow:var(--journal-shadow);text-align:left}.tournament-reward-panel *{box-sizing:border-box}.tournament-reward-panel header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--journal-border);background:var(--journal-soft)}header small{font-size:10px;letter-spacing:.09em;color:var(--journal-muted)}header h2{margin:6px 0;color:var(--journal-heading);font:600 28px Georgia,serif}header p{margin:0;font-size:12px;color:var(--journal-muted)}.reward-exit{width:44px;height:44px;flex:none;margin-left:10px;border:1px solid var(--journal-border);border-radius:50%;background:var(--journal-card);color:var(--journal-ink);font:26px Arial;cursor:pointer}.reward-content{padding:18px 22px;overflow:auto;overscroll-behavior:contain;min-height:0}.reward-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}/* Rarity colours stay semantic, independently of the interface accent. */
 .reward-card {

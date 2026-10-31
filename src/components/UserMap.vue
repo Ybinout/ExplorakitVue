@@ -1855,6 +1855,7 @@ export default {
     },
     applyBagItems(items) {
       if (!Array.isArray(items)) return;
+      this._bagUpdateEpoch = (this._bagUpdateEpoch || 0) + 1;
       this.bagItems = items;
       this.bagLoading = false;
       this.bagError = '';
@@ -1877,12 +1878,14 @@ export default {
 
       this.bagLoading = true;
       this.bagError = '';
+      const bagEpoch = this._bagUpdateEpoch || 0;
 
       try {
         const response = await api.get(`/users/${userId}/items`);
         const receivedItems = response?.data?.items;
-        this.bagItems = Array.isArray(receivedItems) ? receivedItems : [];
+        if (bagEpoch === (this._bagUpdateEpoch || 0)) this.bagItems = Array.isArray(receivedItems) ? receivedItems : [];
       } catch (error) {
+        if (bagEpoch !== (this._bagUpdateEpoch || 0)) return;
         console.error('Erreur pendant le chargement du sac:', error);
         this.bagError = 'Impossible de charger le sac.';
         this.bagItems = [];
@@ -3449,7 +3452,11 @@ export default {
     this.socket.on('worldDevicesState', state=>{this.worldDevices=state;});
     this.socket.on('superTournamentPanel',async payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.tournamentError='';await this.loadTeamPokemons();this.tournamentPanel=payload;});
     this.socket.on('superTournamentState',state=>{if(state?.reward?.id!==this.superTournament.reward?.id)this.tournamentRewardError='';this.superTournament=state || {active:false};if(state?.active)this.applyTeamPokemons(state.team || []);else this.loadTeamPokemons();});
-    this.socket.on('superTournamentRewardApplied',result=>{if(result.changes?.length)this._feedbackAudio?.play('heal');this.showInteractionNotice(`${result.name} · soin appliqué à l’équipe inscrite.`);});
+    this.socket.on('superTournamentRewardApplied',result=>{
+      const g=result.grant;
+      if(g){this._feedbackAudio?.play('notification');this.showInteractionNotice(g.limited?'Limite du porte-monnaie ou du stock atteinte.':g.kind==='money'?`+${Number(g.amount).toLocaleString('fr-FR')} ₽ · récompense récupérée.`:`${g.quantity} ${g.name} ajouté au sac · utilisable après le parcours.`);}
+      else{if(result.changes?.length)this._feedbackAudio?.play('heal');this.showInteractionNotice(`${result.name} · soin appliqué à l’équipe inscrite.`);}
+    });
     this.socket.on('superTournamentPayout',result=>{if(Number.isSafeInteger(result.balance)&&result.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',result.balance);}});
     this.socket.on('superTournamentFinished',result=>{if(result.reason==='abandoned')this.completeTournamentAbandon();this.showInteractionNotice(`${result.reason==='abandoned'?'Tentative abandonnée':'Super Tournoi terminé'} · ${result.score} points${result.moneyEarned>0?` · ${Number(result.moneyEarned).toLocaleString('fr-FR')} ₽ gagnés`:''}`);});
     this.socket.on('uniqueItemReceived',item=>{this._feedbackAudio?.play('unique');this.showInteractionNotice(`${item.name} obtenu !`);});
