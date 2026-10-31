@@ -11,7 +11,9 @@
             <h3>Primes du premier cycle</h3>
             <dl><div v-for="tier in payload.payoutSchedule.tiers" :key="tier.from"><dt>Salles {{ tier.from }}–{{ tier.to }}</dt><dd>{{ money(tier.amount) }} ₽ <small>par salle</small></dd></div></dl>
             <p>Après Lucie : <b>+{{ money(payload.payoutSchedule.cycleBonus) }} ₽</b> de bonus. Soit <b>{{ money(payload.payoutSchedule.firstCycleTotal) }} ₽</b> pour les 16 salles.</p>
-            <p>Chaque cycle ajoute {{ payload.payoutSchedule.cycleIncreasePercent }} % du tarif initial, jusqu’à ×{{ payload.payoutSchedule.maxMultiplier }}. Les primes sont versées à chaque victoire et restent acquises, même en cas de défaite ou d’abandon.</p>
+            <p v-if="payload.payoutSchedule.cycleTotalIncrement">Chaque cycle de 16 salles rapporte {{ money(payload.payoutSchedule.cycleTotalIncrement) }} ₽ de plus : {{ money(payload.payoutSchedule.firstCycleTotal) }} ₽ au premier, {{ money(payload.payoutSchedule.firstCycleTotal + payload.payoutSchedule.cycleTotalIncrement) }} ₽ au deuxième, puis {{ money(payload.payoutSchedule.firstCycleTotal + 2 * payload.payoutSchedule.cycleTotalIncrement) }} ₽ au troisième. La progression continue sans plafond.</p>
+            <p v-else>Chaque cycle ajoute {{ payload.payoutSchedule.cycleIncreasePercent }} % du tarif initial<span v-if="payload.payoutSchedule.maxMultiplier">, jusqu’à ×{{ payload.payoutSchedule.maxMultiplier }}</span>.</p>
+            <p>Les primes sont versées à chaque victoire et restent acquises, même en cas de défaite ou d’abandon.</p>
           </section>
           <div class="registered-team" aria-label="Équipe à inscrire"><div v-for="pokemon in team" :key="pokemon.uuid"><img :src="sprite(pokemon)" alt=""><b>{{ pokemon.name || pokemon.truename }}</b><span>Niv. {{ pokemon.level }}</span></div></div>
           <p class="aside">Entre deux duels, avancez jusqu’à la porte du fond. Une déconnexion conserve votre tentative.</p>
