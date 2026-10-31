@@ -1183,7 +1183,10 @@ export default {
     },
     applyShopState(payload = {}) {
       if (!payload.success) return;
-      if (Array.isArray(payload.catalog)) this.shop.catalog = payload.catalog;
+      if (Array.isArray(payload.departmentCatalog) && payload.shopMeta?.department) this.shop.catalog = [
+        ...(payload.catalog || []).map(item=>({...item,department:payload.shopMeta.department})),...payload.departmentCatalog
+      ];
+      else if (Array.isArray(payload.catalog)) this.shop.catalog = payload.catalog;
       if(payload.shopMeta)this.shop.metadata=payload.shopMeta;
       this.applyBagItems(payload.items);
       this.shop.money = Number(payload.money) || 0;
@@ -1231,11 +1234,11 @@ export default {
         this.applyShopState(payload);
       });
     },
-    buyShopItem({ itemKey, quantity }) {
+    buyShopItem({ itemKey, quantity, department }) {
       if (!this.socket || !this.socket.connected || this.shop.loading) return;
       this.shop.loading = true;
       this.shop.error = '';
-      this.socket.emit('buyShopItem', { itemKey, quantity }, (payload = {}) => {
+      this.socket.emit('buyShopItem', { itemKey, quantity, department }, (payload = {}) => {
         this.shop.loading = false;
         if (!payload.success) {
           this.shop.error = payload.message || this.getShopError(payload.reason);

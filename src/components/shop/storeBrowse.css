@@ -1,0 +1,17 @@
+.shop-counter.is-store-browser .store-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;border-bottom:1px solid var(--journal-border);background:var(--journal-soft)}
+.shop-counter.is-store-browser .store-toolbar .shop-operations{flex:1;min-width:0;border:0;padding:8px 16px;gap:6px}
+.shop-counter.is-store-browser .store-toolbar .shop-wallet{padding:8px 16px 8px 0;border:0;gap:5px;white-space:nowrap;line-height:1.5;font-size:10px}
+.shop-counter.is-store-browser .store-toolbar .shop-wallet strong{font-size:15px;margin-left:6px}
+.shop-counter.is-store-browser .shop-header{padding:12px 18px}
+.shop-counter.is-store-browser .shop-search{margin-top:10px}
+.shop-counter.is-store-browser .shop-list{padding-top:12px}
+.shop-counter.is-store-browser .counter-heading h3{font-size:23px}
+.shop-counter.is-store-browser .store-result-department{color:var(--journal-accent);font-weight:600}
+.shop-counter.is-store-browser .training-goals-home .counter-heading{margin-bottom:8px}
+.shop-counter.is-store-browser .training-goals-home .counter-heading small{display:none}
+.shop-counter.is-store-browser .training-goals-home .counter-heading h3{margin:0}
+.store-training-back{flex:none;padding:8px 18px 0}
+.store-training-back button{min-height:36px;padding:5px 10px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);color:var(--journal-accent);font:12px var(--journal-font);cursor:pointer}
+.store-training-back button:focus-visible{outline:2px solid var(--journal-accent);outline-offset:2px}
+@media(max-width:600px){.shop-counter.is-store-browser .store-toolbar{gap:2px}.shop-counter.is-store-browser .store-toolbar .shop-operations{padding:6px 10px}.shop-counter.is-store-browser .store-toolbar .shop-wallet{padding-right:10px}.shop-counter.is-store-browser .store-toolbar .shop-wallet>span{display:flex;flex-direction:column;font-size:9px;text-align:right}.shop-counter.is-store-browser .store-toolbar .shop-wallet strong{margin-left:0;font-size:13px}.shop-counter.is-store-browser .shop-header{padding:10px 12px}.shop-counter.is-store-browser .shop-header p{font-size:9px}.shop-counter.is-store-browser .counter-sign{width:36px;height:36px}.shop-counter.is-store-browser .counter-heading h3{font-size:21px}.store-training-back{padding:6px 12px 0}.store-training-back button{min-height:44px;font-size:11px}}
+@media(max-height:500px){.shop-counter.is-store-browser .shop-header{padding:7px 12px}.shop-counter.is-store-browser .counter-sign{width:32px;height:32px}.shop-counter.is-store-browser .shop-header p,.shop-counter.is-store-browser .shop-header small{display:none}.shop-counter.is-store-browser .shop-header h2{font-size:21px}.shop-counter.is-store-browser .store-toolbar .shop-operations{padding-top:4px;padding-bottom:4px}.shop-counter.is-store-browser .shop-list{padding-top:8px}.store-training-back{padding-top:4px}.store-training-back button{min-height:32px}.shop-counter.is-store-browser .counter-heading h3{font-size:19px}}
