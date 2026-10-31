@@ -239,7 +239,10 @@
           <void-transition v-if="flight?.kind==='void'" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" />
           <flight-transition v-else-if="flight" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" />
           <button v-if="nearbySocialTrainer" class="nearby-social" data-nearby-social @pointerdown.stop @click.stop="openNearbySocial"><journal-icon name="friends"/><span>{{ nearbySocialTrainer.username || 'Dresseur' }}</span><small>Amis / Message</small></button>
-          <canvas class="test" ref="monCanvas" :aria-label="locationLabel"
+          <button v-if="showMobileControls && worldChatAvailable && !worldChatOpen" class="world-chat-toggle" data-world-chat-toggle aria-label="Parler sur cette carte" @pointerdown.stop @click.stop="openWorldChat"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8l-6 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7"/><path d="M7 9h10M7 13h7" stroke="currentColor" stroke-width="1.7"/></svg></button>
+          <world-chat-input v-if="worldChatOpen" :busy="worldChatBusy" :error="worldChatError" :language="preferences.language" @close="closeWorldChat" @send="sendWorldMessage" />
+          <span class="world-speech-announcement" role="status" aria-live="polite">{{ worldSpeechAnnouncement }}</span>
+          <canvas class="test" ref="monCanvas" tabindex="0" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
           <room-obstacle-action v-if="displayedRoomObstacleAction && !battle" :key="displayedRoomObstacleAction.id" :action="displayedRoomObstacleAction" :language="preferences.language" />
@@ -251,7 +254,7 @@
             <button v-if="mapLoadError" @click="loadMapImage">{{ preferences.language === 'en' ? 'Retry' : 'Réessayer' }}</button>
           </div>
         </div>
-        <div v-if="showMobileControls" class="mobile-control-dock"
+        <div v-if="showMobileControls && !worldChatOpen" class="mobile-control-dock"
           @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
           @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture">
         <div
@@ -414,6 +417,8 @@ import {drawMirrorGround,drawMirrorClone,mirrorScenePose,mirrorCameraTarget,rele
 import {BattleAudio} from '@/services/battleAudio';
 import { GameFeedbackAudio, teamWasRestored } from '@/services/gameFeedbackAudio';
 import { createTeamDrag } from '@/services/teamDrag';
+import { WorldSpeech, speechColors } from '@/services/worldSpeech';
+import WorldChatInput from './world/WorldChatInput.vue';
 import TeamPokemonTraits from './TeamPokemonTraits.vue';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
@@ -501,7 +506,7 @@ export default {
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    JournalIcon, BagPanel, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, TeamPokemonTraits,
+    WorldChatInput, JournalIcon, BagPanel, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, TeamPokemonTraits,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -637,6 +642,7 @@ export default {
       },
       chatMessages: [],
       chatDraft: '',
+      worldChatOpen: false, worldChatBusy: false, worldChatError: '', worldSpeechAnnouncement: '',
       menuItems: [
         { key: 'pokedex' },
         { key: 'progress' },
@@ -768,7 +774,9 @@ export default {
     mirrorVictoryReady(){return !this.isDrift&&this.mirrorRift?.stage==='won'&&this.battleResult?.outcome==='victory'&&!this.battle&&!this.pendingBattleResult;},
     mirrorWakeReady(){return this.mirrorRift?.stage==='won'&&!this.battle&&!this.battleResult&&!this.pendingBattleResult&&!this.mapLoading&&this.mirrorScene?.phase!=='closing';},
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
-    movementSuspended() {
+    worldChatAvailable(){return Boolean(!this.isDrift && this.socket?.connected && !this.worldInteractionBlocked && !this.mapLoading && !this.mapLoadError && !this.worldContextLost && this.renderedMap===this.map && this.players[this.socket.id]?.currentmap===this.map);},
+    movementSuspended(){return this.worldChatOpen || this.worldInteractionBlocked;},
+    worldInteractionBlocked() {
       return !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
@@ -780,6 +788,7 @@ export default {
     }
   },
   watch: {
+    worldChatAvailable(allowed){if(!allowed && this.worldChatOpen)this.closeWorldChat();},
     isTeamPanelOpen(open){if(!open)this.cancelTeamDrag();},
     canReorderTeam(allowed){if(!allowed)this.cancelTeamDrag();},
     teamLoading(loading){if(loading)this.cancelTeamDrag();},
@@ -802,7 +811,7 @@ export default {
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldNightActive(active) { if (!active) this._worldNight?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); } },
-    map() { this._worldRenderBudget?.reset(performance.now());this._worldMovement?.clear(); this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); },
+    map() { this.closeWorldChat(); this.clearWorldSpeech(); this._worldRenderBudget?.reset(performance.now());this._worldMovement?.clear(); this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); },
     dirtFootprintsActive(active) { if (!active) this._dirtFootprints?.suspend(); },
     snowFootprintsActive(active) { if (!active) this._snowFootprints?.suspend(); },
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
@@ -1338,6 +1347,31 @@ export default {
         this.showInteractionNotice('Demande refusee.');
       }
       this.clearIncomingRequest();
+    },
+    openWorldChat() {
+      if(!this.worldChatAvailable)return;
+      this.worldChatError='';this.worldChatOpen=true;this.releaseAllMovementKeys();
+    },
+    closeWorldChat() {this._worldChatEpoch=(this._worldChatEpoch||0)+1;this.worldChatOpen=false;this.worldChatBusy=false;this.worldChatError='';},
+    clearWorldSpeech(){this._worldSpeech?.clear();clearTimeout(this._speechAnnouncementTimer);this.worldSpeechAnnouncement='';},
+    sendWorldMessage(message) {
+      if(!this.worldChatOpen||!this.worldChatAvailable||this.worldChatBusy)return;
+      const epoch=this._worldChatEpoch||0;this.worldChatBusy=true;this.worldChatError='';
+      this.socket.timeout(4000).emit('world:chat',{message},(error,response)=>{
+        if(this._isDestroyed||epoch!==(this._worldChatEpoch||0))return;
+        this.worldChatBusy=false;
+        if(!error&&response?.success)this.closeWorldChat();
+        else this.worldChatError=response?.message||'Message non envoyé. Réessaie.';
+      });
+    },
+    receiveWorldSpeech(payload) {
+      if(payload?.map!==this.map||!this.players[payload?.fromId]||this.battle||this.mapLoading)return;
+      if(!this._worldSpeech)this._worldSpeech=new WorldSpeech();
+      this._worldSpeech.setColors(speechColors(this.$el));
+      if(!this._worldSpeech.receive(payload,performance.now()))return;
+      this.worldSpeechAnnouncement=(this.players[payload.fromId].username||'Dresseur')+' : '+payload.text;
+      clearTimeout(this._speechAnnouncementTimer);this._speechAnnouncementTimer=setTimeout(()=>{this.worldSpeechAnnouncement='';},7000);
+      this.drawPlayers();
     },
     appendChatMessage(messagePayload = {}) {
       const messageText = typeof messagePayload.message === 'string' ? messagePayload.message : '';
@@ -2076,6 +2110,7 @@ export default {
     updatePreferences(nextPreferences) {
       const previous=trainerPaletteKey(this.preferences);
       this.preferences = saveGamePreferences(nextPreferences);
+      this._worldSpeech?.setColors(speechColors(this.$el));
       this._mirrorAudio?.setVolume(this.preferences.masterVolume/100*.3);
       if(previous!==trainerPaletteKey(this.preferences) || this._trainerPaletteWanted)this.syncTrainerPalette();
       if (this.preferences.masterVolume > 0) {
@@ -2449,6 +2484,7 @@ export default {
       context.restore();
     },
     handleGamepad(event) {
+      if(this.worldChatOpen){event.preventDefault();this.releaseAllMovementKeys();if(event.detail?.action==='back')this.closeWorldChat();return;}
       const { action, direction } = event.detail;
       const consume = () => event.preventDefault();
       if (action === 'direction' && !direction) {
@@ -2493,6 +2529,7 @@ export default {
       else if (action === 'back') consume();
     },
     handleKeydown(e) {
+      if(this.worldChatOpen){if(e.key==='Escape'){e.preventDefault();this.closeWorldChat();}return;}
       if(this.battle&&['Space','KeyA','Enter'].includes(e.code)&&!e.repeat&&this.$refs.battleOverlay?.advanceExperience(e))return;
       if(this.flight){e.preventDefault();return;}
       if(this.fishing && e.key==='Escape'){e.preventDefault();this.cancelFishing();return;}
@@ -2523,9 +2560,13 @@ export default {
       if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey
         || e.target?.closest?.('input, textarea, select, [contenteditable="true"]')
         || this.pc.visible || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible || this.battle) return;
+      if((e.code==='Enter'||e.code==='NumpadEnter') && !e.defaultPrevented && !e.repeat && !e.target?.closest?.('button,a')) {
+        if(this.worldChatAvailable){e.preventDefault();this.openWorldChat();}return;
+      }
       const directionKey = this.getMovementKey(e);
       if (directionKey) {
         e.preventDefault();
+        this.$refs.monCanvas?.focus({preventScroll:true});
         const wasMoving = this._gamepadDirection || Object.values(this.keysPressed).some(Boolean);
         this.keysPressed[directionKey] = true;
         if (!wasMoving) this.restartMovementInput();
@@ -2807,6 +2848,7 @@ export default {
         if (!this._worldNight) this._worldNight = new WorldNightRenderer();
         this._worldNight.draw(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.mapImage);
       } else this._worldNight?.suspend();
+      if(!this.battle&&!document.hidden)this._worldSpeech?.draw(c,{players:this.players,map:this.map,camera,scale,position:(id,p)=>this.visualPlayer(id,p,now)},now);
       if(this.fishing && this.fishing.map===this.map && !document.hidden && !this.mapLoading && !this.battle)
         drawFishing(c,this.fishing,performance.now()-this.fishingReceivedAt,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       } finally {
@@ -3126,6 +3168,8 @@ export default {
       this.showInteractionNotice(`Chat lance avec ${payload.peerName || 'joueur'}.`);
     });
 
+    this.socket.on('world:speech', this.receiveWorldSpeech);
+
     this.socket.on('chatMessage', (payload = {}) => {
       if (!this.chatSession.visible) return;
       if (!payload?.chatId || payload.chatId !== this.chatSession.chatId) return;
@@ -3290,6 +3334,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.closeWorldChat();this.clearWorldSpeech();
       this.closeShop();this.shop.loading=false;
       clearTimeout(this._openingRetry);this.openingScene=null;
       clearTimeout(this._mirrorSceneTimer);clearInterval(this._mirrorWakeTimer);this.mirrorScene=null;this._mirrorAudio?.stop();
@@ -3457,6 +3502,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    this.closeWorldChat();this.clearWorldSpeech();
     this.cancelTeamDrag();
     releaseMirrorEffects();
     clearTimeout(this._mirrorSceneTimer);clearInterval(this._mirrorWakeTimer);
@@ -4602,6 +4648,7 @@ button:hover {
   }
 
 }
+.world-chat-toggle{position:absolute;z-index:23;right:12px;top:12px;display:grid;place-items:center;width:44px;height:44px;padding:10px;border:1px solid var(--journal-border);border-radius:12px;background:var(--journal-paper);color:var(--journal-accent);cursor:pointer}.world-chat-toggle svg{width:24px;height:24px}.world-chat-toggle:focus-visible{outline:2px solid var(--journal-progress);outline-offset:2px}.world-speech-announcement{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;pointer-events:none}
 </style>
 
 <style scoped>
