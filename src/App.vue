@@ -10,8 +10,19 @@ import { loadGamePreferences } from './services/gamePreferences';
 
 export default {
   name: 'App',
-  mounted() { this._gamepad = startGamepadControls(this.$el, loadGamePreferences()); },
-  beforeDestroy() { this._gamepad?.destroy(); },
+  mounted() {
+    this._gamepad = startGamepadControls(this.$el, loadGamePreferences());
+    // Safari can ignore viewport zoom limits. Cancel only its native gestures;
+    // pointer events still drive the minimap's own pinch and drag controls.
+    this._mobileZoomGuard = event => {
+      if (window.matchMedia('(any-pointer: coarse)').matches && event.cancelable) event.preventDefault();
+    };
+    for (const type of ['gesturestart', 'gesturechange']) document.addEventListener(type, this._mobileZoomGuard, { passive:false });
+  },
+  beforeDestroy() {
+    this._gamepad?.destroy();
+    for (const type of ['gesturestart', 'gesturechange']) document.removeEventListener(type, this._mobileZoomGuard);
+  },
   watch: { '$route'() { this._gamepad?.reset(); } }
 }
 </script>
@@ -26,6 +37,13 @@ body {
   margin: 0;
   min-height: 100%;
   background: #080611;
+}
+
+/* Keep native scrolling, while page pinch/double-tap zoom is disabled. */
+html,
+body,
+#app {
+  touch-action: pan-x pan-y;
 }
 
 button,
@@ -61,5 +79,14 @@ input {
   -webkit-user-select: text;
   user-select: text;
   -webkit-touch-callout: default;
+}
+
+/* Small fields trigger automatic focus zoom on iPhone. */
+@media (any-pointer: coarse) {
+  #app input,
+  #app textarea,
+  #app select {
+    font-size: 16px !important;
+  }
 }
 </style>
