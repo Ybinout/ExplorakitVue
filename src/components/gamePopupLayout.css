@@ -37,3 +37,35 @@
 .game-root.has-super-tournament .game-stage .location-name{white-space:nowrap}
 .game-root.is-mobile.has-super-tournament .battle-weather-anchor{top:64px}
 @media(min-width:921px){.game-root:not(.is-mobile) .super-tournament-exit{top:max(8px,calc(var(--game-popup-top,20px) - 6px));right:var(--game-popup-right,12px)}}
+
+/* Six companions fit in two rows on desktop; keep the header and save feedback
+   outside the scrolling fallback for short windows and touch screens. */
+.game-root .game-stage .team-panel{display:flex;flex-direction:column;overflow:hidden}
+.game-root .game-stage .team-panel>.team-title,.game-root .game-stage .team-order-status{flex:none}
+.game-root .game-stage .team-list{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.game-root .game-stage .team-row{flex:none}
+.game-root .game-stage .team-drag-handle{display:grid;place-items:center;min-width:44px;min-height:32px;padding:4px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-soft);color:var(--journal-accent);cursor:grab;touch-action:none}
+.team-drag-handle svg{width:16px;height:20px}.team-drag-handle:disabled{opacity:.35;cursor:default}
+.game-root .game-stage .team-drag-source{opacity:.35}
+.game-root .game-stage .team-drop-target{outline:2px solid var(--journal-accent);outline-offset:-2px;background:var(--journal-selected)}
+.team-drag-ghost{position:fixed;z-index:3200;pointer-events:none;transform:translate(-50%,-80%);display:grid;justify-items:center;width:100px;padding:8px;border:2px solid var(--journal-progress);border-radius:14px;background:var(--journal-card);color:var(--journal-heading);box-shadow:var(--journal-shadow);font:600 11px var(--journal-font)}
+.team-drag-ghost .pokemon-portrait{width:64px}.team-drag-ghost span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(min-width:921px){
+ #app .game-root:not(.is-mobile) .game-stage .team-panel{width:min(1040px,var(--game-popup-width,calc(100vw - 48px)));padding:16px}
+ .game-root:not(.is-mobile) .game-stage .team-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+ .game-root:not(.is-mobile) .game-stage .team-row{display:grid;grid-template-columns:44px minmax(0,1fr) 30px;gap:7px;padding:10px;cursor:grab;align-items:start}
+ .game-root:not(.is-mobile) .game-stage .team-row-visual{width:44px;min-width:44px;height:58px;cursor:grab}
+ .game-root:not(.is-mobile) .game-stage .team-pokemon-sprite{width:44px;height:44px}
+ .game-root:not(.is-mobile) .game-stage .team-detail-link{min-height:30px;font-size:12px}
+ .game-root:not(.is-mobile) .game-stage .team-row-top{gap:4px;margin-bottom:2px}
+ .game-root:not(.is-mobile) .game-stage .team-slot{font-size:9px}.game-root:not(.is-mobile) .game-stage .team-level{font-size:10px;padding:2px 4px}
+ .game-root:not(.is-mobile) .game-stage .team-row-meta{font-size:10px;line-height:1.5}
+ .game-root:not(.is-mobile) .game-stage .team-held-item-select{min-height:32px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;padding:6px}
+ .game-root:not(.is-mobile) .game-stage .team-item-description:not(.team-fainted-notice){display:none}
+ .game-root:not(.is-mobile) .game-stage .team-row-actions{gap:4px}
+ .game-root:not(.is-mobile) .game-stage :is(.team-order-btn,.team-drag-handle){min-width:30px;min-height:30px;width:30px;height:30px;font-size:16px}
+ .game-root:not(.is-mobile) .game-stage .team-order-status{margin:10px 0 0;color:var(--journal-muted);font-size:11px}
+ .game-root:not(.is-mobile) .game-stage .team-title{margin-bottom:12px;padding-bottom:10px}
+}
+
+.game-root .game-stage .team-order-status small{display:block;margin-top:3px;font-size:10px;color:var(--journal-muted)}

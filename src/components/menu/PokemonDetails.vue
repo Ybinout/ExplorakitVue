@@ -1,11 +1,13 @@
 <template>
   <div class="companion-backdrop" @mousedown.self="$emit('close')" @keydown.esc.stop="$emit('close')" @keydown.tab="trapFocus">
-    <section ref="dialog" class="companion-sheet" role="dialog" aria-modal="true" :aria-label="`Fiche de ${pokemon.name}`">
+    <section ref="dialog" class="companion-sheet" :data-companion-page="page" role="dialog" aria-modal="true" :aria-label="`Fiche de ${pokemon.name}`">
       <header class="companion-heading">
         <div><span class="companion-kicker">{{ contextLabel }} · {{ position }} / {{ total }}</span><h2>{{ pokemon.name }}</h2></div>
         <button ref="close" class="companion-close" aria-label="Fermer la fiche" @click="$emit('close')">×</button>
       </header>
       <nav class="companion-pagination" aria-label="Parcourir les Pokémon"><button data-companion-previous :disabled="position <= 1" @click="$emit('navigate', -1)">‹ Précédent</button><span>{{ position }} / {{ total }}</span><button data-companion-next :disabled="position >= total" @click="$emit('navigate', 1)">Suivant ›</button></nav>
+      <nav class="companion-pages" aria-label="Rubriques de la fiche"><button v-for="item in pages" :key="item.key" :data-companion-page-button="item.key" :aria-pressed="page===item.key" @click="showPage(item.key)">{{ item.label }}</button></nav>
+      <div ref="content" class="companion-content">
       <div class="companion-body">
         <div class="companion-identity">
           <div class="companion-art"><span class="companion-number">N° {{ String(pokemon.spriteId).padStart(3, '0') }}</span><pokemon-portrait :src="`${$assetBase}img/pokemon/front/${pokemon.spriteId}.png`" :alt="pokemon.truename || pokemon.name" /><span class="companion-level">Niv. {{ pokemon.level }}</span></div>
@@ -68,6 +70,7 @@
         </article>
         <p v-if="pokemon.currentHp <= 0 && evolutionOptions.length" class="evolution-help">Soigne ce Pokémon avant de le faire évoluer.</p>
       </section>
+      </div>
       <footer class="companion-footer"><span>{{ footerLabel }}</span></footer>
     </section>
   </div>
@@ -93,9 +96,10 @@ const stats = [
 export default {
   components: { ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender },
   props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, movesOrderAllowed:Boolean,movesOrderBusy:Boolean,movesOrderError:String,movesOrderNotice:String,contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
-  data: () => ({ mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
+  data: () => ({ page: 'profile', mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
     typeNames: { Grass: 'Plante', Fire: 'Feu', Water: 'Eau', Bug: 'Insecte', Flying: 'Vol', Electric: 'Électrik', Ground: 'Sol', Rock: 'Roche', Ice: 'Glace', Fighting: 'Combat', Psychic: 'Psy', Ghost: 'Spectre', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' } }),
   computed: {
+    pages(){return [{key:'profile',label:'Profil et statistiques'},{key:'moves',label:'Capacités'},...(!this.readOnly?[{key:'evolution',label:'Évolution'}]:[])];},
     progress() { return experienceProgress(this.pokemon); },
     hpPercent() { return Math.min(100, this.pokemon.currentHp / this.pokemon.maxHp * 100); },
     abilityName() { return localizeAbilityName(this.pokemon.passiveAbility, 'fr') || '—'; },
@@ -121,10 +125,11 @@ export default {
     chartDescription() { return this.stats.map((stat, index) => `${stat.full} : ${this.values[index]}`).join(', '); },
     chartCaption() { return this.mode === 'stats' ? `Échelle commune : 0 à ${this.scale}` : this.mode === 'iv' ? 'Qualités innées · IV de 0 à 31' : 'Points d’effort · EV de 0 à 252 par statistique'; }
   },
-  watch: { evolutionNotice(value) { if(value)this.$nextTick(()=>this.$refs.evolutionTitle?.focus()); } },
+  watch: { evolutionNotice(value) { if(value){this.page='evolution';this.$nextTick(()=>this.$refs.evolutionTitle?.focus());} } },
   mounted() { this.previousFocus = document.activeElement; this.$refs.close.focus(); },
   beforeDestroy() { this.previousFocus?.focus?.(); },
   methods: {
+    showPage(page){this.page=page;this.$nextTick(()=>{if(this.$refs.content)this.$refs.content.scrollTop=0;});},
     reorderMove(index,delta){
       if(!this.movesOrderAllowed || this.movesOrderBusy)return;
       const expectedMoves=[...(this.pokemon.abilities || [])],orderedIndexes=expectedMoves.map((_,i)=>i),next=index+delta;
@@ -146,7 +151,7 @@ export default {
       this.$nextTick(() => document.getElementById(`companion-tab-${this.mode}`).focus());
     },
     trapFocus(event) {
-      const elements = [...this.$refs.dialog.querySelectorAll('button:not(:disabled):not([tabindex="-1"])')];
+      const elements = [...this.$refs.dialog.querySelectorAll('button:not(:disabled):not([tabindex="-1"])')].filter(node => node.getClientRects().length);
       const first = elements[0], last = elements[elements.length - 1];
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
@@ -191,4 +196,36 @@ export default {
 .companion-traits{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--journal-border);font-size:12px}.companion-traits>span{display:flex;align-items:center;justify-content:space-between;gap:10px}.companion-traits small{font-size:10px;color:var(--journal-muted);margin-top:-4px}
 .companion-tabs{display:flex;border-bottom:2px solid var(--journal-border);gap:4px}.companion-tabs button{flex:1;min-height:44px;border:0;border-radius:10px 10px 0 0;background:var(--journal-soft);color:var(--journal-muted);font:bold 12px Arial;cursor:pointer;padding:8px}.companion-tabs button[aria-selected=true]{background:var(--journal-selected);color:var(--journal-heading);box-shadow:inset 0 -3px var(--journal-progress)}.companion-radar{display:block;width:100%;max-height:290px}.radar-ring{fill:none;stroke:#c6caba;stroke-width:1}.radar-axis{stroke:#d5d7cb;stroke-width:1}.radar-value{fill:#42a49e42;stroke:#388f98;stroke-width:2}.radar-dot{fill:#286579}.radar-label{font:9px Arial;fill:var(--journal-muted)}.radar-number{font:bold 12px Arial;fill:var(--journal-heading)}.companion-chart-caption{text-align:center;font-size:10px;color:var(--journal-muted);margin:0 0 15px}.companion-stat-lines{display:grid;grid-template-columns:1fr 1fr;gap:5px 18px}.companion-stat-lines>div{display:flex;justify-content:space-between;gap:5px;font-size:11px;padding:4px 0;border-bottom:1px dotted var(--journal-border)}.companion-stat-lines small{color:var(--journal-muted);font-size:9px;font-weight:normal}.companion-tip{font-size:11px;line-height:1.6;color:var(--journal-muted);background:var(--journal-soft);border-left:3px solid var(--journal-progress);padding:10px 12px;margin:16px 0 0}.companion-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 20px;border-top:1px solid var(--journal-border);background:var(--journal-soft)}.companion-footer button{min-height:44px;padding:6px 15px;background:var(--journal-accent);color:var(--journal-on-accent);border:1px solid var(--journal-accent);border-radius:9px;font-weight:bold;cursor:pointer}.companion-footer span{font-size:8px;letter-spacing:1.5px;color:var(--journal-muted)}.companion-footer button:disabled{opacity:.35;cursor:default}button:focus-visible{outline:3px solid var(--journal-accent);outline-offset:2px}
 @media(max-width:600px){.companion-backdrop{padding:10px}.companion-sheet{max-height:calc(100dvh - 20px);border-radius:16px}.companion-heading{padding:14px 16px}.companion-heading h2{font-size:24px}.companion-kicker{font-size:8px;letter-spacing:1px}.companion-body{grid-template-columns:1fr;padding:16px;gap:20px}.companion-identity{display:grid;grid-template-columns:115px 1fr;gap:5px 14px}.companion-art{grid-row:1 / 6;min-height:140px}.companion-art .pokemon-portrait{width:110px;height:110px}.companion-number{font-size:9px;left:8px;top:6px}.companion-level{font-size:10px;bottom:6px;right:8px}.companion-types{margin:0;align-self:end;justify-content:flex-start}.companion-types span{font-size:10px;padding:2px 8px}.companion-species{text-align:left;margin:0;font-size:11px}.companion-next{margin:0}.companion-traits{grid-column:1 / -1;margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}.companion-traits>small{grid-column:1 / -1;grid-row:2}.companion-traits>span:last-child{grid-column:1 / -1}.companion-footer{padding:10px 12px}.companion-footer span{display:none}.companion-radar{max-height:260px}.companion-stat-lines{gap:5px 12px}}
+
+.companion-pages{display:none}
+@media(min-width:921px){
+ .companion-sheet{width:min(980px,100%);display:flex;flex-direction:column;overflow:hidden}
+ .companion-heading,.companion-pagination,.companion-pages,.companion-footer{flex:none;position:static}
+ .companion-heading{padding:14px 22px}.companion-heading h2{font-size:25px}
+ .companion-pagination{padding:7px 22px}.companion-pagination button{min-height:36px}
+ .companion-pages{display:flex;gap:6px;padding:8px 22px;border-bottom:1px solid var(--journal-border);background:var(--journal-soft)}
+ .companion-pages button{flex:1;min-height:38px;padding:8px;border:1px solid transparent;border-radius:8px;background:none;color:var(--journal-muted);font:600 12px var(--journal-font);cursor:pointer}
+ .companion-pages [aria-pressed=true]{border-color:var(--journal-progress);background:var(--journal-card);color:var(--journal-heading)}
+ .companion-content{min-height:0;overflow:auto;overscroll-behavior:contain}
+ [data-companion-page=profile] .companion-content>:not(.companion-body),[data-companion-page=moves] .companion-content>:not(.companion-pc-moves),[data-companion-page=evolution] .companion-content>:not(.companion-evolutions){display:none}
+ .companion-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:18px 22px;gap:24px}
+ .companion-identity{display:grid;grid-template-columns:140px minmax(0,1fr);gap:6px 14px;align-content:start}
+ .companion-art{grid-row:1 / 6;min-height:160px}.companion-art .pokemon-portrait{width:125px;height:125px}
+ .companion-types{margin:0;justify-content:flex-start;align-self:end;flex-wrap:wrap}.companion-types span{padding:3px 8px}
+ .companion-species{text-align:left;margin:0}.companion-next{margin:0}
+ .companion-traits{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:8px;font-size:11px}
+ .companion-traits>small{grid-column:1 / -1;grid-row:2}.companion-traits>span:last-child{grid-column:1 / -1}
+ .companion-ability-description{margin:6px 0 0;font-size:11px;line-height:1.5;padding:8px 10px}
+ .companion-radar{max-height:160px}.companion-chart-caption{margin-bottom:8px}.companion-stat-lines{gap:3px 14px}
+ .companion-tip{font-size:10px;margin:10px 0 0;padding:8px 10px}
+ .companion-pc-moves{border-top:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;padding:16px 22px}
+ .companion-pc-moves>h3,.companion-pc-moves>p{grid-column:1 / -1;margin:0}
+ .companion-pc-moves>h3{font-size:23px}.companion-pc-moves>.evolution-help{font-size:11px;line-height:1.45}
+ .companion-pc-moves article{margin:0;padding:12px;gap:8px;font-size:12px}
+ .companion-pc-moves .companion-move-title strong{font-size:13px}.move-order-controls button{width:32px;height:32px}
+ .companion-pc-moves article:has(.move-order-controls){grid-template-columns:minmax(0,1fr) auto}
+ .companion-pc-moves dl{gap:10px}.companion-move-description{font-size:11px;line-height:1.5;padding-top:8px}
+ .companion-evolutions{border-top:0}.companion-evolutions h3{margin-top:16px}
+ .companion-footer{display:none}
+}
 </style>

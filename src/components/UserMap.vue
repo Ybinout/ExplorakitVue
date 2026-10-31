@@ -136,7 +136,7 @@
           </div>
           <p v-if="appearanceError" class="team-state team-error" role="alert">{{ appearanceError }}</p>
         </div>
-        <div v-if="isTeamPanelOpen" id="pokemon-team-panel" class="team-panel" ref="teamPanel">
+        <div v-if="isTeamPanelOpen" id="pokemon-team-panel" class="team-panel" ref="teamPanel" @click.capture="guardTeamDragClick" @dragstart.prevent>
           <div class="team-title"><span><small>COMPAGNONS DE VOYAGE</small>{{ tr('team') }}</span><button class="team-close" :aria-label="tr('close')" @click="closeTeamPanel">×</button></div>
           <div v-if="teamLoading" class="team-state">{{ tr('loading') }}</div>
           <p v-if="teamError" class="team-state team-error" role="alert">{{ teamError }}</p>
@@ -145,7 +145,7 @@
             <div
               v-for="(pokemon, index) in teamPokemons"
               :key="pokemon.uuid || `slot-${index}`"
-              class="team-row" :data-team-uuid="pokemon.uuid"
+              class="team-row" :data-team-uuid="pokemon.uuid" :class="{'team-drag-source':teamDrag?.uuid===pokemon.uuid,'team-drop-target':teamDrag?.to===pokemon.uuid && teamDrag?.uuid!==pokemon.uuid}" @pointerdown="startTeamDrag($event,pokemon.uuid)"
             >
               <button class="team-row-visual" :aria-label="`Voir la fiche de ${pokemon.name}`" @click="openPokemonDetails(pokemon)">
                 <pokemon-portrait
@@ -174,11 +174,12 @@
                   {{ tr('hp') }} {{ pokemon.currentHp }} / {{ pokemon.maxHp }}
                 </div>
                 <div class="team-row-meta">{{ tr('ability') }} : {{ localizedAbility(pokemon.passiveAbility) || tr('noAbility') }}</div>
-                <button class="team-held-item-select" data-open-held-picker :disabled="teamSaving || battle" @click="openHeldPicker(pokemon)">{{ pokemon.heldItem ? (heldItemName(pokemon.heldItem)+' · Changer') : '＋ Donner un objet' }}</button>
+                <button class="team-held-item-select" :title="pokemon.heldItem ? heldDescription(pokemon.heldItem) : undefined" data-open-held-picker :disabled="teamSaving || battle" @click="openHeldPicker(pokemon)">{{ pokemon.heldItem ? (heldItemName(pokemon.heldItem)+' · Changer') : '＋ Donner un objet' }}</button>
                 <p v-if="pokemon.heldItem" class="team-item-description">{{ heldDescription(pokemon.heldItem) }}</p>
-                <p v-if="pokemon.riftFainted" class="team-item-description">Sauvé par un talisman · K.O. jusqu’à un soin hors combat.</p>
+                <p v-if="pokemon.riftFainted" class="team-item-description team-fainted-notice">Sauvé par un talisman · K.O. jusqu’à un soin hors combat.</p>
               </div>
               <div class="team-row-actions">
+                <button class="team-drag-handle" data-team-drag :aria-label="`${preferences.language==='en'?'Drag to move':'Glisser pour déplacer'} ${pokemon.name}`" :disabled="teamSaving || teamLoading || !canReorderTeam" title="Glisser pour déplacer"><svg viewBox="0 0 20 24" aria-hidden="true"><circle v-for="n in 6" :key="n" :cx="n%2?6:14" :cy="4+Math.floor((n-1)/2)*8" r="2" fill="currentColor"/></svg></button>
                 <button
                   class="team-order-btn"
                   :aria-label="`${preferences.language === 'en' ? 'Move up' : 'Monter'} ${pokemon.name}`"
@@ -198,7 +199,7 @@
               </div>
             </div>
           </div>
-          <p class="team-order-status" role="status">{{ teamSaving ? tr('saving') : teamOrderNotice || tr('orderAutoSave') }}</p>
+          <p class="team-order-status" role="status">{{ teamSaving ? tr('saving') : teamOrderNotice || tr('orderAutoSave') }}<small v-if="canReorderTeam">{{ preferences.language==='en'?'Drag a companion or use the arrows to change its position.':'Glisse un Pokémon ou utilise les flèches pour changer sa place.' }}</small></p>
         </div>
         <game-info-panels
           :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @toggle-fullscreen="toggleGameFullscreen"
@@ -387,6 +388,7 @@
     </div>
 
     <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" :busy="evolutionBusy" :error="evolutionError" @resolve="resolveEvolutionPresentation" @continue="evolutionError='';evolutionQueue.shift()" />
+    <div v-if="teamDrag" class="team-drag-ghost" :style="{left:teamDrag.x+'px',top:teamDrag.y+'px'}" aria-hidden="true"><pokemon-portrait :src="getPokemonFrontSprite(teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.spriteId)"/><span>{{ teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.name }}</span></div>
     <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :moves-order-allowed="canReorderMoves" :moves-order-busy="moveOrderBusy" :moves-order-error="moveOrderError" :moves-order-notice="moveOrderNotice" @reorder-moves="reorderPokemonMoves" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
@@ -411,6 +413,7 @@ import { drawVoidJournals } from '@/services/voidJournals';
 import {drawMirrorGround,drawMirrorClone,mirrorScenePose,mirrorCameraTarget,releaseMirrorEffects} from '@/services/mirrorRiftRenderer';
 import {BattleAudio} from '@/services/battleAudio';
 import { GameFeedbackAudio, teamWasRestored } from '@/services/gameFeedbackAudio';
+import { createTeamDrag } from '@/services/teamDrag';
 import TeamPokemonTraits from './TeamPokemonTraits.vue';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
@@ -598,6 +601,7 @@ export default {
       teamPokemons: [],
       teamDirty: false,
       teamOrderNotice: '',
+      teamDrag: null,
       currentUserId: null,
       currentUsername: '',
       showMobileControls: false,
@@ -776,6 +780,10 @@ export default {
     }
   },
   watch: {
+    isTeamPanelOpen(open){if(!open)this.cancelTeamDrag();},
+    canReorderTeam(allowed){if(!allowed)this.cancelTeamDrag();},
+    teamLoading(loading){if(loading)this.cancelTeamDrag();},
+    teamSaving(saving){if(saving)this.cancelTeamDrag();},
     // Only a server-confirmed mirror victory proceeds straight into the epilogue.
     // The battle presentation has finished before its result becomes available.
     mirrorVictoryReady(ready){if(ready)this.dismissBattleResult();},
@@ -1958,16 +1966,34 @@ export default {
       }
     },
     async moveTeamPokemon(index, direction) {
+      const target = index + (direction === 'up' ? -1 : 1);
+      await this.repositionTeamPokemon(this.teamPokemons[index]?.uuid, this.teamPokemons[target]?.uuid);
+    },
+    startTeamDrag(event, uuid) {
+      const handle = event.target.closest('[data-team-drag]');
+      if ((event.pointerType === 'touch' && !handle) || (!handle && event.target.closest('button,input,select,a') && !event.target.closest('.team-row-visual'))) return;
+      if (!this._teamDragController) this._teamDragController = createTeamDrag({
+        root: this.$refs.teamPanel, roster: () => this.teamPokemons.map(p => p.uuid),
+        allowed: () => this.isTeamPanelOpen && this.canReorderTeam && !this.teamSaving && !this.teamLoading && !this.selectedPokemonUuid && !this.heldPickerUuid && !this.learningVisible,
+        changed: state => { this.teamDrag = state; },
+        drop: (from, to) => this.repositionTeamPokemon(from, to),
+        ended: () => { this._teamDragClickUntil = performance.now() + 300; }
+      });
+      this._teamDragController.start(event, uuid);
+    },
+    guardTeamDragClick(event) {
+      if (event.detail && performance.now() < (this._teamDragClickUntil || 0)) { event.preventDefault(); event.stopPropagation(); }
+    },
+    cancelTeamDrag() { this._teamDragController?.cancel(); this._teamDragController = null; },
+    async repositionTeamPokemon(uuid, targetUuid) {
       if (this.teamSaving || this.teamLoading || !this.canReorderTeam) return;
       if (!Array.isArray(this.teamPokemons)) return;
-      if (index < 0 || index >= this.teamPokemons.length) return;
-
-      const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= this.teamPokemons.length) return;
+      const index = this.teamPokemons.findIndex(p => p.uuid === uuid), targetIndex = this.teamPokemons.findIndex(p => p.uuid === targetUuid);
+      if (index < 0 || targetIndex < 0 || index === targetIndex) return;
 
       const previous = [...this.teamPokemons];
       const reordered = [...previous];
-      [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+      reordered.splice(targetIndex, 0, reordered.splice(index, 1)[0]);
       this.teamPokemons = reordered;
       this.teamDirty = true;
       if (!await this.saveTeamOrder()) {
@@ -3431,6 +3457,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    this.cancelTeamDrag();
     releaseMirrorEffects();
     clearTimeout(this._mirrorSceneTimer);clearInterval(this._mirrorWakeTimer);
     clearTimeout(this._openingRetry);
