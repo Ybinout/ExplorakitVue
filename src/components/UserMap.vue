@@ -1,5 +1,6 @@
 <template>
   <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift, 'is-mobile': showMobileControls, 'is-fullscreen': fullscreenState.active, 'has-super-tournament': superTournament.active }]">
+    <teleporter-charge-notice v-if="teleporterChargeNotice" :charge="teleporterChargeNotice" :in-battle="battle" :language="preferences.language"/>
     <adventure-opening v-if="openingScene && !mapLoadError" :ready="openingReady" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" @finished="finishAdventureOpening" />
     <div v-if="mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase)" :key="mirrorScene.id" class="mirror-scene-veil" :class="mirrorScene.phase" :style="{'--mirror-duration':mirrorScene.duration+'ms'}" :data-mirror-phase="mirrorScene.phase" role="status" aria-live="polite" aria-busy="true">
       <span v-if="mirrorScene.phase === 'closing'" class="mirror-ending-title">{{ preferences.language === 'en' ? 'The End' : 'Fin' }}</span>
@@ -440,6 +441,7 @@ import HeldItemPicker from './menu/HeldItemPicker.vue';
 import GameFriendsPanel from './social/GameFriendsPanel.vue';
 import socialGame from '@/services/socialGame';
 import NotificationBadge from './social/NotificationBadge.vue';
+import TeleporterChargeNotice from './menu/TeleporterChargeNotice.vue';
 import './social/socialNotifications.css';
 import tradeGame from '@/services/tradeGame';
 import GameTradePanel from './social/GameTradePanel.vue';
@@ -515,7 +517,7 @@ export default {
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    NotificationBadge, WorldChatInput, JournalIcon, BagPanel, BagItemIcon, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, TeamPokemonTraits,
+    TeleporterChargeNotice, NotificationBadge, WorldChatInput, JournalIcon, BagPanel, BagItemIcon, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, TeamPokemonTraits,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -642,6 +644,7 @@ export default {
       deferredBattleResult: null,
       roomObstacles: [],
       interactionNotice: '',
+      teleporterChargeNotice: 0,
       interactionNoticeKind: '',
       interactionNoticeTimer: null,
       chatSession: {
@@ -1837,6 +1840,19 @@ export default {
       } catch (error) { this.appearanceError = error.message || 'Apparence indisponible.'; }
       finally { this.appearanceBusy = false; }
     },
+    showTeleporterCharge(charge) {
+      if (this.isDrift || !Number.isInteger(charge) || charge < 1 || charge > 5 || this._lastTeleporterCharge === charge) return;
+      this._lastTeleporterCharge = charge;
+      this.teleporterChargeNotice = charge;
+      this._feedbackAudio?.play('notification');
+      clearTimeout(this._teleporterChargeTimer);
+      this._teleporterChargeTimer = setTimeout(() => { this.teleporterChargeNotice = 0; }, 3800);
+    },
+    clearTeleporterCharge() {
+      clearTimeout(this._teleporterChargeTimer);
+      this.teleporterChargeNotice = 0;
+      this._lastTeleporterCharge = null;
+    },
     applyBagItems(items) {
       if (!Array.isArray(items)) return;
       this.bagItems = items;
@@ -3009,7 +3025,7 @@ export default {
     });
 
     this.socket.on('adminArenaState', state => { this.arenaTestState = state?.allowed === true ? state : {allowed:false}; });
-    this.socket.on('voidEndingState',state=>{this.voidEnding=state;this.drawPlayers();});
+    this.socket.on('voidEndingState',state=>{if(!state?.found||state.charge===0)this.clearTeleporterCharge();this.voidEnding=state;this.drawPlayers();});
     this.socket.on('mirrorRiftState',state=>{this.mirrorRift=state;this.drawPlayers();});
     this.socket.on('mirrorRiftScene',scene=>{
       clearTimeout(this._mirrorSceneTimer);
@@ -3088,6 +3104,7 @@ export default {
     });
 
     this.socket.on('progressionNotice', (payload = {}) => {
+      if(payload.type==='teleporter_charge'){this.showTeleporterCharge(payload.charge);return;}
       if(payload.type==='room_obstacle')return; // Dedicated confirmation follows the last impact.
       this.showInteractionNotice(payload.message || 'Progression mise à jour.', 3800);
     });
@@ -3384,6 +3401,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.clearTeleporterCharge();
       this.closeWorldChat();this.clearWorldSpeech();
       this.closeShop();this.shop.loading=false;
       clearTimeout(this._openingRetry);this.openingScene=null;
@@ -3552,6 +3570,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    this.clearTeleporterCharge();
     this.closeWorldChat();this.clearWorldSpeech();
     this.cancelTeamDrag();
     releaseMirrorEffects();
