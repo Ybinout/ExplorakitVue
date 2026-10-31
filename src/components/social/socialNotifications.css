@@ -1,0 +1,13 @@
+.game-root .menu-toggle-btn{position:relative}
+.game-root .menu-toggle-btn.has-social-notification{border-color:#bc873d;box-shadow:inset 0 0 0 1px #edb65a66}
+.game-root .menu-toggle-btn.has-social-notification::after{content:"";position:absolute;inset:-3px;border:2px solid #e1a23f;border-radius:inherit;pointer-events:none;animation:social-button-pulse 2.4s ease-in-out infinite}
+.game-root .social-menu-alert.social-notification-badge{position:absolute;top:-4px;right:-5px;min-width:21px;height:21px;z-index:1;background:#f4bc5b;color:#263747;border:2px solid var(--journal-card);font-weight:800}
+.game-root .menu-dropdown-item.has-social-notification{background:linear-gradient(90deg,#edb65a26,transparent),var(--journal-card);box-shadow:inset 3px 0 #dfa240}
+.game-root .friends-tabs .has-social-notification{border-color:#bc873d;background:linear-gradient(90deg,#edb65a26,transparent),var(--journal-card)}
+.game-root .friends-panel .friend-row.has-unread{border-color:#bc873d;box-shadow:inset 3px 0 #dfa240;background:linear-gradient(90deg,#edb65a20,transparent),var(--journal-card)}
+.game-root .friends-panel .friend-request,.game-root .friends-panel .friend-trade-invite{border-color:#bc873d;box-shadow:inset 3px 0 #dfa240}
+.game-root .friends-panel .social-notification-badge{background:#f4bc5b;color:#263747}
+.game-root .menu-toggle-btn.has-social-notification .contract-reward-dot{top:auto;bottom:-4px}
+@keyframes social-button-pulse{0%,100%{opacity:.2}45%{opacity:.85}}
+.reduced-game-motion .social-notification-badge,.reduced-game-motion .has-social-notification::after{animation:none!important}
+@media(prefers-reduced-motion:reduce){.game-root .menu-toggle-btn.has-social-notification::after{animation:none}}

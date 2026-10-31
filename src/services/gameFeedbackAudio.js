@@ -5,6 +5,12 @@ import { BattleAudio } from './battleAudio.js';
 export class GameFeedbackAudio extends BattleAudio {
   play(kind) {
     if (!this.ready()) return;
+    if (kind === 'notification') {
+      // Mix quietly with an ongoing heal/unique-item jingle; never cut it off.
+      this.tone(880, .10, { type:'triangle', volume:.16 });
+      this.tone(1175, .14, { delay:.08, type:'triangle', volume:.11 });
+      return;
+    }
     this.stop();
     if(kind==='unique'){[523,659,784,1047,1319].forEach((note,index)=>this.tone(note,.22,{delay:index*.1,volume:.14}));}
     else if (kind === 'heal') {

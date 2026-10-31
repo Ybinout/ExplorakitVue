@@ -38,10 +38,10 @@
         <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
           <div class="header-actions">
-          <button ref="menuToggle" class="menu-toggle-btn" :class="{ 'has-contract-reward': readyContractCount > 0 }" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
+          <button ref="menuToggle" class="menu-toggle-btn" :class="{ 'has-contract-reward': readyContractCount > 0, 'has-social-notification':socialAlertCount>0 }" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
             <journal-icon name="menu" />
             {{ tr('menu') }}
-            <span v-if="socialAlertCount" class="social-menu-alert" data-social-notification :aria-label="`${socialAlertCount} notification${socialAlertCount>1?'s':''} du carnet d’amis`">{{ socialAlertCount>99?'99+':socialAlertCount }}</span>
+            <notification-badge class="social-menu-alert" data-social-notification :count="socialAlertCount" :label="`${socialAlertCount} notification${socialAlertCount>1?'s':''} du carnet d’amis`" role="status" aria-live="polite"/>
             <span v-if="readyContractCount" class="contract-reward-dot" data-contract-alert role="status" :aria-label="`${readyContractCount} récompense${readyContractCount > 1 ? 's' : ''} de contrat disponible${readyContractCount > 1 ? 's' : ''}`">{{ readyContractCount }}</span>
           </button>
           <button ref="teamToggle" class="team-toggle-btn" data-menu-action="pokemon" :aria-expanded="isTeamPanelOpen" aria-controls="pokemon-team-panel" @click="handleMenuAction('pokemon')">
@@ -65,7 +65,7 @@
               <journal-icon :name="item.key==='contracts'?'progress':item.key" /><span>{{ menuItemLabel(item) }}</span>
               <small v-if="item.key==='contracts' && readyContractCount" class="contract-reward-label">{{ readyContractCount }} à récupérer</small>
             </button>
-            <button class="menu-dropdown-item" data-menu-action="friends" @click="openFriends()"><journal-icon name="friends"/><span>Amis</span><small v-if="socialAlertCount" class="contract-reward-label" data-social-alert>{{ socialAlertCount }}</small></button>
+            <button class="menu-dropdown-item" :class="{'has-social-notification':socialAlertCount>0}" data-menu-action="friends" @click="openFriends()"><journal-icon name="friends"/><span>Amis</span><notification-badge :count="socialAlertCount" data-social-alert/></button>
             <button class="menu-dropdown-item" data-menu-action="minimap" @click="handleMenuAction('minimap')"><journal-icon name="minimap" /><span>Minimap</span></button>
             <button class="menu-dropdown-item" data-menu-action="quit" :disabled="quitting" @click="quitGame"><journal-icon name="quit" /><span>{{ quitting ? tr('saving') : tr('saveAndQuit') }}</span><small>Accueil</small></button>
             <small v-if="isDrift" class="menu-quit-hint">Le temps continue hors du jeu. Une déconnexion prolongée compte comme un abandon.</small>
@@ -114,7 +114,7 @@
           </template>
         </bag-panel>
         <game-trade-panel v-if="tradeModalVisible" :key="tradeState.id" :state="tradeState" :user-id="Number(currentUserId)" :busy="tradeBusy" :error="tradeError" :connected="tradeConnected" :command="tradeCommand" @action="runTradeAction" @cancel="cancelFriendTrade"/>
-        <game-friends-panel v-if="friendsOpen" :state="socialState" :presence-revision="socialPresenceRevision" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError || tradeError" :trade-invite="incomingTrade" :trading="tradeBusy" :can-trade="!isDrift" :request-trade="requestFriendTrade" @trade-answer="answerFriendTrade" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
+        <game-friends-panel v-if="friendsOpen" :state="socialState" :group-unread="socialGroupUnread" @reading="setSocialReading" :presence-revision="socialPresenceRevision" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError || tradeError" :trade-invite="incomingTrade" :trading="tradeBusy" :can-trade="!isDrift" :request-trade="requestFriendTrade" @trade-answer="answerFriendTrade" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
         <held-item-picker v-if="heldPickerPokemon" :pokemon="heldPickerPokemon" :items="heldBagItems" :busy="teamSaving" :error="teamError" @close="heldPickerUuid=null" @equip="equipPickedHeldItem"/>
         <training-feedback v-if="trainingFeedback" :entry="trainingFeedback" :busy="medicineBusy" @close="trainingFeedback=null" @confirm="confirmIvReroll"/>
         <pokemon-computer v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
@@ -439,6 +439,8 @@ import TrainingFeedback from './menu/TrainingFeedback.vue';
 import HeldItemPicker from './menu/HeldItemPicker.vue';
 import GameFriendsPanel from './social/GameFriendsPanel.vue';
 import socialGame from '@/services/socialGame';
+import NotificationBadge from './social/NotificationBadge.vue';
+import './social/socialNotifications.css';
 import tradeGame from '@/services/tradeGame';
 import GameTradePanel from './social/GameTradePanel.vue';
 import MachineItemUse from './menu/MachineItemUse.vue';
@@ -513,7 +515,7 @@ export default {
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    WorldChatInput, JournalIcon, BagPanel, BagItemIcon, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, TeamPokemonTraits,
+    NotificationBadge, WorldChatInput, JournalIcon, BagPanel, BagItemIcon, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, TeamPokemonTraits,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,

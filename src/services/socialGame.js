@@ -1,8 +1,9 @@
+import {SocialNotifications} from './socialNotifications.js';
 const emptyState=()=>({accepted:[],incoming:[],outgoing:[],group:null,groupInvites:[]});
 export default {
-  data:()=>({friendsOpen:false,friendsTarget:null,socialConnected:false,onlinePlayerCount:null,socialPresenceRevision:0,socialState:emptyState(),socialMessage:null,socialError:'',socialActionBusy:false}),
+  data:()=>({friendsOpen:false,friendsTarget:null,socialConnected:false,onlinePlayerCount:null,socialPresenceRevision:0,socialState:emptyState(),socialMessage:null,socialError:'',socialActionBusy:false,socialReading:null,socialGroupUnread:0}),
   computed:{
-    socialAlertCount(){return (this.incomingTrade?1:0)+this.socialState.incoming.length+this.socialState.groupInvites.length+this.socialState.accepted.reduce((n,p)=>n+(p.unread||0),0);},
+    socialAlertCount(){return (this.incomingTrade?1:0)+this.socialState.incoming.length+this.socialState.groupInvites.length+this.socialGroupUnread+this.socialState.accepted.reduce((n,p)=>n+(Number(p.unread)||0),0);},
     onlineCountLabel(){const count=this.onlinePlayerCount;if(count===null)return this.preferences.language==='en'?'Online player count unavailable while connecting':'Nombre de joueurs indisponible pendant la connexion';return this.preferences.language==='en'?`${count} player${count===1?'':'s'} online, all modes, including you`:`${count} dresseur${count===1?'':'s'} en ligne, tous modes, toi compris`;},
     nearbySocialTrainer(){
       if(this.battle||this.mapLoading||this.textImageSequence.length||this.movementSuspended||!this.socket?.id)return null;
@@ -13,24 +14,30 @@ export default {
   },
   beforeDestroy(){this._unbindSocial?.();},
   methods:{
+    socialReadingContext(){return this.friendsOpen&&!document.hidden?this.socialReading:null;},
+    setSocialReading(value){this.socialReading=value;if(value?.kind==='group'&&!document.hidden)this._socialNotifications?.readGroup();},
+    applySocialState(data){this._socialNotifications?.snapshot(data);this.socialState=data;this.socialError='';},
     bindSocialSocket(){
       this._unbindSocial?.();const socket=this.socket;
-      const state=data=>{this.socialState=data;this.socialError='';};
-      const message=data=>{this.socialMessage={...data,receivedAt:Date.now()};};
+      this.socialReading=null;this.socialGroupUnread=0;
+      this._socialNotifications=new SocialNotifications({userId:()=>this.currentUserId,reading:()=>this.socialReadingContext(),
+        notify:()=>{if(this.socialConnected&&!document.hidden)this._feedbackAudio?.play('notification');},groupUnread:count=>{this.socialGroupUnread=count;}});
+      const state=data=>this.applySocialState(data);
+      const message=data=>{this._socialNotifications.message(data);this.socialMessage={...data,receivedAt:Date.now()};};
       const presence=data=>{if(Number.isSafeInteger(data?.count)&&data.count>=0)this.onlinePlayerCount=data.count;};
       const directory=data=>{if(Number.isSafeInteger(data?.revision)&&data.revision>=0)this.socialPresenceRevision=data.revision;};
       const connected=()=>{this.socialConnected=true;this.onlinePlayerCount=null;};
-      const disconnected=()=>{this.socialConnected=false;this.onlinePlayerCount=null;this.socialState={...this.socialState,accepted:this.socialState.accepted.map(p=>({...p,online:false})),group:this.socialState.group?{...this.socialState.group,members:this.socialState.group.members.map(p=>({...p,online:false,location:null}))}:null};};
+      const disconnected=()=>{this._socialNotifications.reset();this.socialConnected=false;this.onlinePlayerCount=null;this.socialState={...this.socialState,accepted:this.socialState.accepted.map(p=>({...p,online:false})),group:this.socialState.group?{...this.socialState.group,members:this.socialState.group.members.map(p=>({...p,online:false,location:null}))}:null};};
       const error=data=>{this.socialError=data.message;};
       socket.on('social:state',state);socket.on('social:message',message);socket.on('social:error',error);socket.on('presence:count',presence);socket.on('social:presenceChanged',directory);socket.on('connect',connected);socket.on('disconnect',disconnected);this.socialConnected=socket.connected;
-      this._unbindSocial=()=>{for(const[event,fn]of [['social:state',state],['social:message',message],['social:error',error],['presence:count',presence],['social:presenceChanged',directory],['connect',connected],['disconnect',disconnected]])socket.off(event,fn);};
+      this._unbindSocial=()=>{for(const[event,fn]of [['social:state',state],['social:message',message],['social:error',error],['presence:count',presence],['social:presenceChanged',directory],['connect',connected],['disconnect',disconnected]])socket.off(event,fn);this._socialNotifications?.dispose();this._socialNotifications=null;};
     },
     socialCommand(event,data={}){
       if(!this.socket?.connected)return Promise.reject(Error('Reconnecte-toi pour utiliser le carnet.'));
       return new Promise((resolve,reject)=>this.socket.timeout(10000).emit(event,data,(error,result)=>{
         if(error)return reject(Error('Le carnet ne répond pas. Réessaie dans un instant.'));
         if(!result?.success)return reject(Error(result?.message||'Action indisponible.'));
-        if(result.state)this.socialState=result.state;resolve(result);
+        if(result.state)this.applySocialState(result.state);resolve(result);
       }));
     },
     async openFriends(target=null){
