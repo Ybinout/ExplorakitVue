@@ -21,7 +21,7 @@
       <drift-run-panel v-show="!learningVisible && !evolutionVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
       <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @abandon="abandonSuperTournament" />
-      <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :team="superTournament.team" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @leave="openTournamentAbandon" />
+      <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :cash="superTournament.cash" :team="superTournament.team" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @leave="openTournamentAbandon" />
       <battle-overlay
         ref="battleOverlay"
         :active="battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
@@ -2170,8 +2170,11 @@ export default {
       if (this.isDrift) return;
       const userId = this.currentUserId || this.getStoredUserId();
       if (!userId) return;
+      const walletEpoch=this._tournamentWalletEpoch||0;
       const response = await api.get(`/users/${userId}/progress`);
-      this.progressionState = response?.data || this.progressionState;
+      const progress=response?.data;
+      if(progress&&walletEpoch!==(this._tournamentWalletEpoch||0))progress.money=this.progressionState.money;
+      this.progressionState = progress || this.progressionState;
     },
     updatePreferences(nextPreferences) {
       const previous=trainerPaletteKey(this.preferences);
@@ -3447,7 +3450,8 @@ export default {
     this.socket.on('superTournamentPanel',async payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.tournamentError='';await this.loadTeamPokemons();this.tournamentPanel=payload;});
     this.socket.on('superTournamentState',state=>{if(state?.reward?.id!==this.superTournament.reward?.id)this.tournamentRewardError='';this.superTournament=state || {active:false};if(state?.active)this.applyTeamPokemons(state.team || []);else this.loadTeamPokemons();});
     this.socket.on('superTournamentRewardApplied',result=>{if(result.changes?.length)this._feedbackAudio?.play('heal');this.showInteractionNotice(`${result.name} · soin appliqué à l’équipe inscrite.`);});
-    this.socket.on('superTournamentFinished',result=>{if(result.reason==='abandoned')this.completeTournamentAbandon();this.showInteractionNotice(`${result.reason==='abandoned'?'Tentative abandonnée':'Super Tournoi terminé'} · ${result.score} points`);});
+    this.socket.on('superTournamentPayout',result=>{if(Number.isSafeInteger(result.balance)&&result.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',result.balance);}});
+    this.socket.on('superTournamentFinished',result=>{if(result.reason==='abandoned')this.completeTournamentAbandon();this.showInteractionNotice(`${result.reason==='abandoned'?'Tentative abandonnée':'Super Tournoi terminé'} · ${result.score} points${result.moneyEarned>0?` · ${Number(result.moneyEarned).toLocaleString('fr-FR')} ₽ gagnés`:''}`);});
     this.socket.on('uniqueItemReceived',item=>{this._feedbackAudio?.play('unique');this.showInteractionNotice(`${item.name} obtenu !`);});
     this.socket.on('pcOpened', state=>{if(!this.pc.visible)this._feedbackAudio?.play('pc');this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;this.pc={visible:true,busy:false,state,error:'',notice:''};});
     this.socket.on('pcUpdated',state=>{if(this.pc.visible)this.pc.state=state;});

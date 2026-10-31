@@ -3,6 +3,10 @@
     <section ref="dialog" class="tournament-reward-panel" role="dialog" aria-modal="true" aria-labelledby="tournament-reward-title" :aria-busy="busy" tabindex="-1">
       <header><div><small>SUPER TOURNOI · SALLE {{ offer.afterRoom }} REMPORTÉE</small><h2 id="tournament-reward-title">Un souffle pour la suite</h2><p>Choisis une carte. Elle agit maintenant sur ton équipe inscrite.</p></div><button class="reward-exit" aria-label="Quitter le parcours" :disabled="busy" @click="$emit('leave')">×</button></header>
       <div class="reward-content">
+        <div v-if="cash?.last?.room===offer.afterRoom" class="reward-cash" data-tournament-cash role="status">
+          <span>Salle {{ cash.last.room }}<strong>+{{ money(cash.last.amount) }} ₽</strong><small v-if="cash.last.bonus&&!cash.last.limited">Bonus de cycle inclus : {{ money(cash.last.bonus) }} ₽</small><small v-if="cash.last.limited">Plafond du porte-monnaie atteint</small></span>
+          <span>Total du parcours<b>{{ money(cash.earned) }} ₽</b><small>Déjà versés · gains conservés</small></span>
+        </div>
         <div class="reward-cards" role="group" aria-label="Choisir une carte de récupération">
           <button v-for="card in offer.choices" :key="card.key" class="reward-card" :data-reward-card="card.key" :data-rarity="card.rarity" :aria-pressed="selectedKey===card.key" :disabled="busy || !card.usable" @click="select(card)">
             <span v-if="selectedKey===card.key" class="reward-check" aria-hidden="true">✓</span>
@@ -42,7 +46,7 @@
 import PokemonPortrait from '../PokemonPortrait.vue';
 import {localizeMoveName} from '@/services/i18n';
 export default {
-  components:{PokemonPortrait},props:{offer:{type:Object,required:true},team:{type:Array,default:()=>[]},busy:Boolean,error:String},
+  components:{PokemonPortrait},props:{offer:{type:Object,required:true},cash:{type:Object,default:null},team:{type:Array,default:()=>[]},busy:Boolean,error:String},
   data(){return {selectedKey:null,pokemonUuid:null,moveIndex:null,previousFocus:null};},
   computed:{
     selected(){return this.offer.choices.find(c=>c.key===this.selectedKey);},
@@ -54,6 +58,7 @@ export default {
   mounted(){this.previousFocus=document.activeElement;this.$refs.dialog.focus({preventScroll:true});},
   beforeDestroy(){if(this.previousFocus?.isConnected)this.previousFocus.focus({preventScroll:true});},
   methods:{
+    money(n){return Number(n||0).toLocaleString('fr-FR');},
     sprite(p){return `${process.env.BASE_URL}img/pokemon/front/${p.pokemonId || p.data?.id || p.id}.png`;},
     select(card){this.selectedKey=card.key;this.pokemonUuid=null;this.moveIndex=null;},
     target(uuid){return this.selected?.targets.find(t=>t.uuid===uuid);},
@@ -65,6 +70,7 @@ export default {
 };
 </script>
 <style scoped>
+.reward-cash{display:flex;justify-content:space-between;gap:12px;margin:0 0 16px;padding:12px 14px;border:1px solid var(--journal-border);border-left:4px solid #b99746;border-radius:9px;background:var(--journal-soft);color:var(--journal-ink)}.reward-cash>span{display:flex;flex-direction:column;gap:3px;font-size:11px}.reward-cash>span:last-child{text-align:right}.reward-cash strong{font-size:22px;color:var(--journal-heading)}.reward-cash b{font-size:17px}.reward-cash small{font-size:10px;color:var(--journal-muted)}
 .reward-backdrop{position:fixed;inset:0;z-index:1900;display:grid;place-items:center;padding:14px;background:var(--journal-backdrop);color:var(--journal-ink);font-family:var(--journal-font)}.tournament-reward-panel{display:flex;flex-direction:column;width:min(880px,100%);max-height:94dvh;overflow:hidden;background:var(--journal-paper);border:2px solid var(--journal-border);border-radius:16px;box-shadow:var(--journal-shadow);text-align:left}.tournament-reward-panel *{box-sizing:border-box}.tournament-reward-panel header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--journal-border);background:var(--journal-soft)}header small{font-size:10px;letter-spacing:.09em;color:var(--journal-muted)}header h2{margin:6px 0;color:var(--journal-heading);font:600 28px Georgia,serif}header p{margin:0;font-size:12px;color:var(--journal-muted)}.reward-exit{width:44px;height:44px;flex:none;margin-left:10px;border:1px solid var(--journal-border);border-radius:50%;background:var(--journal-card);color:var(--journal-ink);font:26px Arial;cursor:pointer}.reward-content{padding:18px 22px;overflow:auto;overscroll-behavior:contain;min-height:0}.reward-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}/* Rarity colours stay semantic, independently of the interface accent. */
 .reward-card {
   --reward-bg:#efe4cd; --reward-ink:#463923; --reward-accent:#76572e;
