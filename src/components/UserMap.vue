@@ -2214,9 +2214,16 @@ export default {
     },
     async registerSuperTournament(){
       if(this.tournamentBusy)return;this.tournamentBusy=true;this.tournamentError='';
-      const offerId=this.tournamentPanel?.offerId;this._feedbackAudio?.play('heal');await new Promise(resolve=>setTimeout(resolve,1400));this.tournamentPanel=null;
-      await this.flyToTown('super_tournament_sas',{kind:'void',event:'superTournament:register',data:{offerId}});
-      this.tournamentBusy=false;
+      const panel=this.tournamentPanel,offerId=panel?.offerId;
+      const showError=error=>{this.tournamentPanel=panel;this.tournamentError=error.message;};
+      try{
+        const response=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('superTournament:validateRegistration',{offerId},(error,result)=>error?reject(Error('Connexion interrompue. Réessaie ton inscription.')):resolve(result)));
+        if(!response?.success)throw Error(response?.message||'Vérifie ton équipe avant de t’inscrire.');
+        this._feedbackAudio?.play('heal');await new Promise(resolve=>setTimeout(resolve,1400));
+        if(!this.socket?.connected)throw Error('Connexion interrompue. Réessaie ton inscription.');
+        this.tournamentPanel=null;
+        await this.flyToTown('super_tournament_sas',{kind:'void',event:'superTournament:register',data:{offerId},onError:showError});
+      }catch(error){showError(error);}finally{this.tournamentBusy=false;}
     },
     openTournamentAbandon(){
       if(!this.superTournament.active||this.tournamentBusy)return;
@@ -2253,7 +2260,7 @@ export default {
       try{const result=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit('superTournament:reward',data,(error,r)=>error?reject(new Error('Connexion interrompue. Reconnecte-toi : ton choix est conservé.')):resolve(r)));if(!result?.success)throw Error(result?.message||'Soin indisponible.');}
       catch(error){this.tournamentRewardError=error.message;}finally{this.tournamentBusy=false;}
     },
-    async flyToTown(map,{kind='flight',event='flyToTown',departureReady=null,data={}}={}) {
+    async flyToTown(map,{kind='flight',event='flyToTown',departureReady=null,data={},onError=null}={}) {
       if(this.flight||this.isDrift||this.battle||this.battleResult||!this.socket?.connected)return;
       this.releaseAllMovementKeys();this.closeInfoPanel();this.isMenuOpen=false;if(kind==='void')this.isBagOpen=false;
       const reduced=!this.preferences.animationsEnabled||this.worldWeatherReducedMotion;
@@ -2276,7 +2283,7 @@ export default {
         if(!alive())return;
         this.flight={...this.flight,origin:origin(),phase:'arrival',startedAt:performance.now()};
         if(!reduced)await wait(650);
-      } catch(error) { if(alive())this.showInteractionNotice(error.message); }
+      } catch(error) { if(alive()){if(onError)onError(error);else this.showInteractionNotice(error.message);} }
       finally { if(this.flight?.epoch===epoch){this.flight=null;if(!this._isDestroyed&&!this._isBeingDestroyed)this.drawPlayers();} }
     },
     async rearmArenas() {
