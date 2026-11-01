@@ -214,5 +214,9 @@
   "heavy_duty_boots": {
     "name": "Grosses Bottes",
     "description": "Tenues, elles protègent de Piège de Roc, des Picots, des Pics Toxik et de la Toile Gluante à l’entrée en combat. Réutilisables."
+  },
+  "toxic_orb": {
+    "name": "Orbe Poison",
+    "description": "Empoisonne gravement le porteur en fin de tour s’il n’a aucun statut. Respecte les immunités au poison. N’est pas consommée."
   }
 }

@@ -47,6 +47,13 @@
       <path d="m24 12 9 12-9 12-9-12Z" fill="var(--item-accent)"/>
       <path d="m13 17 3-4m19 17-3 4" stroke="var(--item-light)" stroke-width="3"/>
     </g>
+    <g v-else-if="kind==='toxic_orb'">
+      <circle cx="24" cy="25" r="16" fill="var(--item-main)"/>
+      <path d="M13 28q4-10 10-3t13-2v10q-12 11-23 0Z" fill="var(--item-accent)"/>
+      <circle cx="19" cy="18" r="3" fill="var(--item-light)"/>
+      <circle cx="30" cy="12" r="2" fill="var(--item-accent)"/>
+      <path d="m15 9 2-3m18 13 3-1"/>
+    </g>
     <g v-else-if="kind==='choice_specs'">
       <path d="m4 25 4-14h6m30 14-4-14h-6"/>
       <path d="M3 24q0-4 4-4h11q4 0 4 4v7q0 5-6 5H9q-6 0-6-5Zm23 0q0-4 4-4h11q4 0 4 4v7q0 5-6 5h-7q-6 0-6-5Z" fill="var(--item-main)"/>
