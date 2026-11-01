@@ -22,7 +22,7 @@
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
       <whitepeak-club-panel v-if="clubPanel && !battle && !battleResult && !clubWatch" :tab="clubPanel.tab" :roulette="clubRoulette" :duel="clubDuel" :balance="Number(progressionState.money)||0" :user-id="Number(currentUserId)" :busy="clubBusy" :error="clubError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled && !worldWeatherReducedMotion" :rows="clubRows" @close="clubPanel=null" @tab="clubPanel={tab:$event}" @command="clubCommand" />
       <club-spectator v-if="clubWatch" :key="clubWatch.id" :start="clubWatch" :events="clubWatchEvents" :result="clubWatchResult" :mobile="showMobileControls" :preferences="preferences" @close="closeClubWatch" />
-      <button v-if="map==='ville5_maison1' && !battle && !battleResult && !clubWatch && !clubPanel" class="club-room-access" data-club-room-access @pointerdown.stop @click="openClubPanel">{{ clubDuel ? clubDuel.phase==='review'?'Vérifier les mises':clubDuel.phase==='battle'?'Duel en cours · Tribunes':'Duel · Socles disponibles':'Maison des combats' }}</button>
+      <button v-if="map==='ville5_maison1' && !battle && !battleResult && !clubWatch && !clubPanel" class="club-room-access" data-club-room-access @pointerdown.stop @click="openClubPanel">{{ clubDuel&&clubDuel.phase!=='finished' ? clubDuel.phase==='review'?'Vérifier les mises':clubDuel.phase==='battle'?'Duel en cours · Tribunes':'Combat préparé':'Organiser' }}</button>
       <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :passives="superTournament.passives" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @abandon="abandonSuperTournament" />
       <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :cash="superTournament.cash" :team="superTournament.team" :passives="superTournament.passives" :victory-recovery="superTournament.victoryRecovery" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @leave="openTournamentAbandon" />
       <battle-overlay
@@ -484,6 +484,7 @@ import BattleOverlay from './battle/BattleOverlay.vue';
 import WhitepeakClubPanel from './whitepeak/WhitepeakClubPanel.vue';
 import ClubSpectator from './whitepeak/ClubSpectator.vue';
 import {drawWhitepeakRoom} from '@/services/whitepeakRoulette';
+import {drawWhitepeakSnow, clipWhitepeakHost} from '@/services/whitepeakScenery';
 import SuperTournamentPanel from './menu/SuperTournamentPanel.vue';
 import TournamentRewardPanel from './menu/TournamentRewardPanel.vue';
 import BattleResultPanel from './battle/BattleResultPanel.vue';
@@ -1785,7 +1786,7 @@ export default {
         let { x, y, progress, moving } = this.pnjWorldPosition(pnj, now);
         const phase=teleport?.name===pnj.name?npcTeleportPose(teleport,now,motion):null;
         if(phase){x=phase.x*32+16;y=phase.y*32+16-phase.lift;moving=false;}
-        context.save();if(phase)context.globalAlpha=phase.alpha;
+        context.save();clipWhitepeakHost(context,this.map,pnj.name);if(phase)context.globalAlpha=phase.alpha;
         if(departure && pnj.name===(departure.actor||'lucie_route2')) {
           const pose=departurePose(departure,now,motion),cx=departure.x*32+16,cy=departure.y*32+34;
           context.globalAlpha=pose.alpha;context.translate(cx,cy+pose.drop);context.rotate(pose.rotation);context.scale(pose.scale,pose.scale);context.translate(-cx,-cy);
@@ -2231,7 +2232,7 @@ export default {
       this.tournamentPanel=null;this.tournamentError='';this.tournamentRewardError='';this.lock=false;
       this.$refs.battleOverlay?.resetBattleUi();this.$nextTick(this.restoreWorldView);
     },
-    openClubPanel(){this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubError='';this.clubPanel={tab:'duel'};},
+    openClubPanel(){this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubError='';this.clubPanel={tab:this.clubDuel?.canWatch?'watch':'duel'};},
     async clubCommand(name,data={},done){
       if(this.clubBusy||!this.socket?.connected)return;this.clubBusy=true;this.clubError='';
       try{const response=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('whitepeak:'+name,data,(e,r)=>e?reject(new Error('Connexion interrompue. Vérifie la table avant de renouveler une mise.')):resolve(r)));
@@ -2860,6 +2861,7 @@ export default {
       drawVoidTeleporter(c, this.map, this.voidEnding);
       drawVoidJournals(c, this.map, this.voidEnding);
       if(this.map!=='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
+      if(!document.hidden)drawWhitepeakSnow(c,this.map,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       drawWhitepeakRoom(c,this.map,this.clubRoulette,Date.now()+(this.clubRoulette?.serverOffset||0),this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       drawPokemonComputers(c,this.worldDevices,this.map);
       this.drawPnjs(c, now);
@@ -3472,7 +3474,7 @@ export default {
     this.socket.on('mapWeatherState', state => { this.mapWeather = state; });
     this.socket.on('whitepeak:open',payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubError='';this.clubPanel=payload;if(payload.rows)this.clubRows=payload.rows;});
     this.socket.on('whitepeak:roulette',state=>{this.clubRoulette={...state,serverOffset:state.serverNow-Date.now()};});
-    this.socket.on('whitepeak:duel',state=>{const before=this.clubDuel?.phase;this.clubDuel=state;if(state?.phase==='finished'&&state.you>=0&&['starting','battle','settling'].includes(before))this.clubPanel={tab:'duel'};if(state?.phase==='review'&&state.you>=0){this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubPanel={tab:'duel'};}if(['starting','battle','settling'].includes(state?.phase))this.clubPanel=null;});
+    this.socket.on('whitepeak:duel',state=>{const before=this.clubDuel?.phase;this.clubDuel=state?{...state,serverOffset:state.serverNow-Date.now()}:null;if(state?.phase==='finished'&&state.you>=0&&['starting','battle','settling'].includes(before))this.clubPanel={tab:'duel'};if(state?.phase==='review'&&state.you>=0){this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubPanel={tab:'duel'};}if(['starting','battle','settling'].includes(state?.phase))this.clubPanel=null;});
     this.socket.on('whitepeak:wallet',data=>{if(Number.isSafeInteger(data.balance)&&data.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',data.balance);}});
     this.socket.on('whitepeak:rouletteResult',data=>{if(data.amount>0)this.interactionNotice=`Roulette : +${Number(data.amount).toLocaleString('fr-FR')} ₽`;});
     this.socket.on('whitepeak:watchStart',payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubPanel=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.clubWatch=payload;this.syncWorldMusic();});
