@@ -485,6 +485,7 @@ import WhitepeakClubPanel from './whitepeak/WhitepeakClubPanel.vue';
 import ClubSpectator from './whitepeak/ClubSpectator.vue';
 import {drawWhitepeakRoom} from '@/services/whitepeakRoulette';
 import {drawWhitepeakSnow, clipWhitepeakHost} from '@/services/whitepeakScenery';
+import {drawWhitepeakPodiums} from '@/services/whitepeakPodiums';
 import SuperTournamentPanel from './menu/SuperTournamentPanel.vue';
 import TournamentRewardPanel from './menu/TournamentRewardPanel.vue';
 import BattleResultPanel from './battle/BattleResultPanel.vue';
@@ -2869,6 +2870,7 @@ export default {
       drawVoidJournals(c, this.map, this.voidEnding);
       if(this.map!=='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
       if(!document.hidden)drawWhitepeakSnow(c,this.map,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+      if(!document.hidden)drawWhitepeakPodiums(c,this.map,this.players,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       drawWhitepeakRoom(c,this.map,this.clubRoulette,Date.now()+(this.clubRoulette?.serverOffset||0),this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       drawPokemonComputers(c,this.worldDevices,this.map);
       this.drawPnjs(c, now);
