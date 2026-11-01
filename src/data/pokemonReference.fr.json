@@ -5709,6 +5709,24 @@
       "accuracy": null,
       "pp": 20,
       "description": "Soigne le problème de statut de la cible, puis rend au lanceur la moitié de ses PV maximum. Échoue si la cible n’a aucun problème de statut."
+    },
+    "Wave Crash": {
+      "type": "Water",
+      "category": "physical",
+      "power": 120,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 10,
+      "description": "Le lanceur charge sa cible en s’enveloppant d’eau. Il subit un contrecoup égal à environ un tiers des dégâts infligés. Attaque de contact."
+    },
+    "Ice Spinner": {
+      "type": "Ice",
+      "category": "physical",
+      "power": 80,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 15,
+      "description": "Le lanceur fait une pirouette glacée qui frappe la cible et dissipe le terrain actif si elle touche. La météo reste inchangée. Attaque de contact."
     }
   },
   "abilities": {
