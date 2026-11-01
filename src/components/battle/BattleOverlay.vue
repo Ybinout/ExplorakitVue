@@ -304,7 +304,7 @@ import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
 import { battleMusicTrack, trainerPreludeMusicTrack } from '@/services/battleMusic';
 import { SequencedMusic } from '@/services/sequencedMusic';
-import moveLearning from '@/data/moveLearning.json';
+import moveReference from '@/data/pokemonReference.fr.json';
 import { localizeTypeName } from '@/services/pokemonTypes';
 import PotentialStar from '../PotentialStar.vue';
 import PokemonGender from '../PokemonGender.vue';
@@ -932,7 +932,7 @@ export default {
     typeLabel: localizeTypeName,
     moveButtonType(index) {
       if (Array.isArray(this.usableMoveIndexes) && !this.usableMoveIndexes.length && index === 0) return 'Normal';
-      return this.resolvedMoveTypes?.[index] || moveLearning[this.currentPokemon?.abilities?.[index]]?.type || '';
+      return this.resolvedMoveTypes?.[index] || moveReference.moves[this.currentPokemon?.abilities?.[index]]?.type || '';
     },
     moveButtonStyle(index) {
       return {'--move-choice-color':MOVE_COLORS[this.moveButtonType(index).toLowerCase()] || MOVE_COLORS.normal};
