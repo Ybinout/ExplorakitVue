@@ -1,7 +1,8 @@
 <template>
   <div class="reward-backdrop" @keydown.stop="onKey" @keyup.stop>
     <section ref="dialog" class="tournament-reward-panel" :class="{'has-four':offer.choices.length===4}" role="dialog" aria-modal="true" aria-labelledby="tournament-reward-title" :aria-busy="busy" tabindex="-1">
-      <header><div><small>SUPER TOURNOI · SALLE {{ offer.afterRoom }} REMPORTÉE</small><h2 id="tournament-reward-title">À toi de choisir</h2><p>Soigne ton équipe ou repars avec une récompense.</p></div><button class="reward-exit" aria-label="Quitter le parcours" :disabled="busy" @click="$emit('leave')">×</button></header>
+      <header><div><small>SUPER TOURNOI · SALLE {{ offer.afterRoom }} REMPORTÉE</small><h2 id="tournament-reward-title">À toi de choisir</h2><p>Un soin, un pouvoir… ou un pacte à double tranchant.</p></div><button class="reward-exit" aria-label="Quitter le parcours" :disabled="busy" @click="$emit('leave')">×</button></header>
+      <div class="reward-reroll-bar"><div><strong>{{ rerolls.remaining || 0 }} relance{{ rerolls.remaining===1?'':'s' }} disponible{{ rerolls.remaining===1?'':'s' }}</strong><small>+1 par cycle de 16 salles · les inutilisées sont conservées</small></div><button data-reward-reroll :disabled="busy || !rerolls.remaining" @click="$emit('reroll',{offerId:offer.id})"><span aria-hidden="true">↻</span> Relancer les cartes</button></div>
       <div class="reward-content">
         <details v-if="passives.length" class="reward-powers"><summary>✦ Augmentations actives · {{ passives.length }}</summary><tournament-power-list :passives="passives"/></details>
         <p v-if="victoryRecovery.length" class="reward-victory-heal">Sanctuaire de victoire : {{ victoryRecovery.reduce((n,c)=>n+c.amount,0) }} PV rendus à l’équipe.</p>
@@ -9,14 +10,16 @@
           <span>Salle {{ cash.last.room }}<strong>+{{ money(cash.last.amount) }} ₽</strong><small v-if="cash.last.bonus&&!cash.last.limited">Bonus de cycle inclus : {{ money(cash.last.bonus) }} ₽</small><small v-if="cash.last.limited">Plafond du porte-monnaie atteint</small></span>
           <span>Total du parcours<b>{{ money(cash.earned) }} ₽</b><small>Déjà versés · gains conservés</small></span>
         </div>
-        <div class="reward-cards" role="group" aria-label="Choisir une récompense">
+        <div :key="offer.id" class="reward-cards" role="group" aria-label="Choisir une récompense">
           <button v-for="card in offer.choices" :key="card.key" class="reward-card" :data-reward-card="card.key" :data-rarity="card.rarity" :aria-pressed="selectedKey===card.key" :disabled="busy || !card.usable" @click="select(card)">
             <span v-if="selectedKey===card.key" class="reward-check" aria-hidden="true">✓</span>
             <span class="reward-rarity">{{ card.rarityName }}</span>
             <span class="reward-emblem" aria-hidden="true">
             <bag-item-icon v-if="card.kind==='item'" :item-key="card.itemKey" pocket="training"/>
             <svg v-else viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <template v-if="card.kind==='passive'"><path d="m24 4 15 7v12c0 11-15 20-15 20S9 34 9 23V11Z" fill="var(--reward-tint)"/><path d="m24 12 3 9 9 3-9 3-3 9-3-9-9-3 9-3Z"/></template>
+              <template v-if="card.kind==='pact'"><path d="M24 6v35M9 42h30M8 15h32M13 15 5 29h16Zm22 0-8 14h16Z"/><path d="M5 29a8 7 0 0 0 16 0m6 0a8 7 0 0 0 16 0" fill="var(--reward-tint)"/><circle cx="24" cy="10" r="4" fill="var(--reward-tint)"/></template>
+              <template v-else-if="card.kind==='opponent'"><circle cx="24" cy="24" r="17" fill="var(--reward-tint)"/><path d="M7 24h34"/><circle cx="24" cy="24" r="5" fill="var(--reward-bg)"/><path d="m35 6 8 8m-8 0 8-8"/></template>
+              <template v-else-if="card.kind==='passive'"><path d="m24 4 15 7v12c0 11-15 20-15 20S9 34 9 23V11Z" fill="var(--reward-tint)"/><path d="m24 12 3 9 9 3-9 3-3 9-3-9-9-3 9-3Z"/></template>
               <template v-else-if="card.kind==='money'"><path d="m16 6 3 9h10l4-9-9 3Z" fill="var(--reward-tint)"/><path d="M19 15C9 22 5 40 15 42h18c10-2 6-20-4-27Z" fill="var(--reward-tint)"/><path d="M17 15h14m-7 8v13m-4-11h7a3 3 0 0 1 0 6h-7m0 3h8"/></template>
               <template v-else-if="card.kind==='pp'"><path d="m27 5-17 23h13l-2 15 17-25H25Z" fill="var(--reward-tint)"/><path d="M7 9h5m-3-3v6m26 23h6m-3-3v6"/></template>
               <template v-else-if="card.kind==='revive' || card.kind==='reset'"><path d="m24 5 14 16-14 22L10 21Z" fill="var(--reward-tint)"/><path d="m10 21 14 5 14-5M24 5v21m0 0v17m-7-13 7-4 7 4"/><path v-if="card.kind==='reset'" d="M6 7h7m-3-3v7m26 28h8m-4-4v8"/></template>
@@ -24,11 +27,11 @@
               <template v-else><path d="M24 40 8 24C-3 11 16 1 24 14c8-13 27-3 16 10Z" fill="var(--reward-tint)"/><path d="M24 20v12m-6-6h12"/></template>
             </svg>
             </span>
-            <strong>{{ card.name }}</strong><span class="reward-description">{{ card.description }}</span><span class="reward-selected">{{ selectedKey===card.key?'✓ Carte choisie':'Choisir cette carte' }}</span>
+            <strong>{{ card.name }}</strong><span v-if="card.boon" class="reward-description reward-pact-effects"><span data-reward-boon><b>Bonus</b> {{ card.boon }}</span><span data-reward-cost><b>Malus</b> {{ card.cost }}</span></span><span v-else class="reward-description">{{ card.description }}</span><small v-if="card.duration" class="reward-duration">{{ card.duration }}</small><span class="reward-selected">{{ selectedKey===card.key?'✓ Carte choisie':'Choisir cette carte' }}</span>
           </button>
         </div>
         <p v-if="offer.canSkip" class="reward-hint" role="status">Ton équipe est déjà au mieux : aucun soin n’est nécessaire.</p>
-        <section v-if="selected?.target==='run'" class="reward-targets reward-account" data-reward-passive aria-live="polite"><h3>Pour toute la tentative</h3><p>{{ selected.description }}</p><small>Non cumulable avec la même augmentation. Tu conserves ce pouvoir en changeant de salle ou en te reconnectant.</small></section>
+        <section v-if="selected?.target==='run' || selected?.target==='nextBattle'" class="reward-targets reward-account" data-reward-passive aria-live="polite"><h3>{{ selected.kind==='opponent'?'Prochain adversaire uniquement':'Pour toute l’équipe · toute la tentative' }}</h3><p>{{ selected.description }}</p><small>{{ selected.kind==='opponent'?'Les Pokémon absents ne rapportent pas de points. L’équipe suivante sera de nouveau complète.':'Non cumulable avec la même carte. Bonus et malus restent actifs en changeant de salle ou en te reconnectant.' }}</small></section>
         <section v-else-if="selected?.target==='account'" class="reward-targets reward-account" data-reward-account aria-live="polite">
           <h3>{{ selected.kind==='money'?'Pour ton porte-monnaie':'Pour ton sac d’Aventure' }}</h3>
           <p v-if="selected.kind==='money'"><strong>+{{ money(selected.grant.amount) }} ₽</strong> versés dès confirmation, en plus de la prime de salle.</p>
@@ -50,7 +53,7 @@
         </section>
         <p v-if="error" class="reward-error" role="alert">{{ error }}</p>
       </div>
-      <footer><span>Un choix parmi {{ offer.choices.length }} · aucun gain d’XP</span><button v-if="offer.canSkip" data-reward-skip :disabled="busy" @click="$emit('choose',{offerId:offer.id,skip:true})">Continuer</button><button v-else class="reward-confirm" data-reward-confirm :disabled="busy || !canConfirm" @click="confirm">{{ busy?'Confirmation…':selected?.target==='run'?'Activer l’augmentation':selected?.target==='account'?'Récupérer la récompense':'Appliquer le soin' }}</button></footer>
+      <footer><span>Un choix parmi {{ offer.choices.length }} · aucun gain d’XP</span><button v-if="offer.canSkip || offer.canDecline" data-reward-skip class="reward-decline" :disabled="busy" @click="$emit('choose',{offerId:offer.id,skip:true})">{{ offer.canSkip?'Continuer':'Passer cette récompense' }}</button><button v-if="!offer.canSkip" class="reward-confirm" data-reward-confirm :disabled="busy || !canConfirm" @click="confirm">{{ busy?'Confirmation…':selected?.kind==='pact'?'Accepter le pacte':['run','nextBattle'].includes(selected?.target)?'Activer la carte':selected?.target==='account'?'Récupérer la récompense':'Appliquer le soin' }}</button></footer>
     </section>
   </div>
 </template>
@@ -60,12 +63,12 @@ import BagItemIcon from './BagItemIcon.vue';
 import TournamentPowerList from './TournamentPowerList.vue';
 import {localizeMoveName} from '@/services/i18n';
 export default {
-  components:{PokemonPortrait,BagItemIcon,TournamentPowerList},props:{offer:{type:Object,required:true},cash:{type:Object,default:null},team:{type:Array,default:()=>[]},passives:{type:Array,default:()=>[]},victoryRecovery:{type:Array,default:()=>[]},busy:Boolean,error:String},
+  components:{PokemonPortrait,BagItemIcon,TournamentPowerList},props:{offer:{type:Object,required:true},rerolls:{type:Object,default:()=>({remaining:0})},cash:{type:Object,default:null},team:{type:Array,default:()=>[]},passives:{type:Array,default:()=>[]},victoryRecovery:{type:Array,default:()=>[]},busy:Boolean,error:String},
   data(){return {selectedKey:null,pokemonUuid:null,moveIndex:null,previousFocus:null};},
   computed:{
     selected(){return this.offer.choices.find(c=>c.key===this.selectedKey);},
     chosenTarget(){return this.selected?.targets.find(t=>t.uuid===this.pokemonUuid);},
-    canConfirm(){return this.selected?.usable && (this.selected.target==='run' || this.selected.target==='account' || this.selected.target==='team' || !!this.chosenTarget && (this.selected.target!=='move'||this.chosenTarget.moves.some(m=>m.index===this.moveIndex)));},
+    canConfirm(){return this.selected?.usable && (['run','nextBattle','account','team'].includes(this.selected.target) || !!this.chosenTarget && (this.selected.target!=='move'||this.chosenTarget.moves.some(m=>m.index===this.moveIndex)));},
     previewTargets(){return this.selected?.target==='team'?this.selected.targets:this.chosenTarget?[this.chosenTarget]:[];}
   },
   watch:{'offer.id'(){this.selectedKey=null;this.pokemonUuid=null;this.moveIndex=null;}},
@@ -84,6 +87,12 @@ export default {
 };
 </script>
 <style scoped>
+.reward-reroll-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;flex:none;border-bottom:1px solid var(--journal-border);background:var(--journal-card)}.reward-reroll-bar>div{min-width:0}.reward-reroll-bar strong{display:block;font-size:12px;color:var(--journal-heading)}.reward-reroll-bar small{display:block;font-size:10px;line-height:1.5;color:var(--journal-muted);margin-top:3px}.reward-reroll-bar button{flex:none;min-height:44px;padding:8px 12px;border:1px solid var(--journal-accent);border-radius:8px;color:var(--journal-heading);background:var(--journal-selected);font:600 12px var(--journal-font);cursor:pointer}.reward-reroll-bar button span{font-size:20px;vertical-align:middle;margin-right:4px}.reward-reroll-bar button:disabled{opacity:.5;cursor:default}.reward-pact-effects{display:grid;gap:7px}.reward-pact-effects>span{display:block}.reward-pact-effects b{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-right:3px}.reward-pact-effects [data-reward-boon] b{color:#236b4f}.reward-pact-effects [data-reward-cost] b{color:#9a3b46}.reward-duration{grid-column:2;font-size:10px;color:var(--reward-accent);font-weight:600}.reward-pact-effects [data-reward-cost]{border-top:1px solid var(--reward-line);padding-top:6px}
+@media(max-width:420px){.reward-reroll-bar{padding:8px 13px;gap:8px}.reward-reroll-bar button{font-size:11px;max-width:142px}.reward-reroll-bar small{font-size:9px}}
+@media(prefers-reduced-motion:no-preference){.reward-cards{animation:reward-deal .2s ease-out}@keyframes reward-deal{from{opacity:.4;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}}
+html[data-game-theme-mode=dark] .reward-pact-effects [data-reward-boon] b{color:#a8dfbb}html[data-game-theme-mode=dark] .reward-pact-effects [data-reward-cost] b{color:#ffb2b9}
+
+.reward-decline{background:var(--journal-card);color:var(--journal-heading);border-color:var(--journal-border)}
 .reward-account p{font-size:13px;line-height:1.6;color:var(--journal-ink)}.reward-account strong{color:var(--journal-heading)}.reward-account small{font-size:11px;color:var(--journal-muted);line-height:1.5}
 
 .reward-cash{display:flex;justify-content:space-between;gap:12px;margin:0 0 16px;padding:12px 14px;border:1px solid var(--journal-border);border-left:4px solid #b99746;border-radius:9px;background:var(--journal-soft);color:var(--journal-ink)}.reward-cash>span{display:flex;flex-direction:column;gap:3px;font-size:11px}.reward-cash>span:last-child{text-align:right}.reward-cash strong{font-size:22px;color:var(--journal-heading)}.reward-cash b{font-size:17px}.reward-cash small{font-size:10px;color:var(--journal-muted)}

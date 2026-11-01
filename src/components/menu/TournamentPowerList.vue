@@ -1,8 +1,8 @@
 <template>
   <div class="tournament-powers" data-tournament-powers>
-    <p v-if="!passives.length">Aucune augmentation active. Les cartes mythiques peuvent te donner un pouvoir pour toute la tentative.</p>
-    <ul v-else><li v-for="power in passives" :key="power.key" :data-active-power="power.key"><span aria-hidden="true">✦</span><div><strong>{{ power.name }}</strong><p>{{ power.description }}</p></div></li></ul>
-    <small>Ces pouvoirs disparaissent à la fin de la tentative.</small>
+    <p v-if="!passives.length">Aucune augmentation active. Les cartes de pouvoir et les pactes peuvent renforcer cette tentative.</p>
+    <ul v-else><li v-for="power in passives" :key="power.key" :data-active-power="power.key"><span aria-hidden="true">{{ power.cost?'⚖':'✦' }}</span><div><strong>{{ power.name }}</strong><template v-if="power.boon"><p class="power-boon"><b>Bonus :</b> {{ power.boon }}</p><p class="power-cost"><b>Malus :</b> {{ power.cost }}</p></template><p v-else>{{ power.description }}</p><small v-if="power.duration">{{ power.duration }}</small></div></li></ul>
+    <small>Les pactes et pouvoirs disparaissent à la fin de la tentative. Une carte « prochain combat » est consommée à l’entrée du duel.</small>
   </div>
 </template>
 <script>

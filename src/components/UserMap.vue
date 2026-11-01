@@ -24,7 +24,7 @@
       <club-spectator v-if="clubWatch" :key="clubWatch.id" :start="clubWatch" :events="clubWatchEvents" :result="clubWatchResult" :mobile="showMobileControls" :preferences="preferences" @close="closeClubWatch" />
       <button v-if="map==='ville5_maison1' && !battle && !battleResult && !clubWatch && !clubPanel" class="club-room-access" data-club-room-access @pointerdown.stop @click="openClubPanel">{{ clubDuel&&clubDuel.phase!=='finished' ? clubDuel.phase==='review'?'Vérifier les mises':clubDuel.phase==='battle'?'Duel en cours · Tribunes':'Combat préparé':'Organiser' }}</button>
       <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :passives="superTournament.passives" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @abandon="abandonSuperTournament" />
-      <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :cash="superTournament.cash" :team="superTournament.team" :passives="superTournament.passives" :victory-recovery="superTournament.victoryRecovery" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @leave="openTournamentAbandon" />
+      <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :rerolls="superTournament.rerolls" :cash="superTournament.cash" :team="superTournament.team" :passives="superTournament.passives" :victory-recovery="superTournament.victoryRecovery" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @reroll="rerollTournamentRewards" @leave="openTournamentAbandon" />
       <battle-overlay
         ref="battleOverlay"
         :active="battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
@@ -2256,6 +2256,11 @@ export default {
         if(!result?.success)throw Error(result?.message||'Abandon indisponible.');this.completeTournamentAbandon();
       }catch(error){this.tournamentError=error.message;}finally{this.tournamentBusy=false;}
     },
+    async rerollTournamentRewards(data){
+      if(this.tournamentBusy||!this.socket?.connected)return;this.tournamentBusy=true;this.tournamentRewardError='';
+      try{const result=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit('superTournament:reroll',data,(error,r)=>error?reject(new Error('Connexion interrompue. Reconnecte-toi pour retrouver ton tirage.')):resolve(r)));if(!result?.success)throw Error(result?.message||'Relance indisponible.');}
+      catch(error){this.tournamentRewardError=error.message;}finally{this.tournamentBusy=false;}
+    },
     async chooseTournamentReward(data){
       if(this.tournamentBusy||!this.socket?.connected)return;this.tournamentBusy=true;this.tournamentRewardError='';
       try{const result=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit('superTournament:reward',data,(error,r)=>error?reject(new Error('Connexion interrompue. Reconnecte-toi : ton choix est conservé.')):resolve(r)));if(!result?.success)throw Error(result?.message||'Soin indisponible.');}
@@ -3493,7 +3498,8 @@ export default {
     this.socket.on('superTournamentPanel',async payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.tournamentError='';await this.loadTeamPokemons();this.tournamentPanel=payload;});
     this.socket.on('superTournamentState',state=>{if(state?.reward?.id!==this.superTournament.reward?.id)this.tournamentRewardError='';this.superTournament=state || {active:false};if(state?.active)this.applyTeamPokemons(state.team || []);else this.loadTeamPokemons();});
     this.socket.on('superTournamentRewardApplied',result=>{
-      if(result.passive){this._feedbackAudio?.play('notification');this.showInteractionNotice(`${result.name} · augmentation active pour cette tentative.`);return;}
+      if(result.skipped){this.showInteractionNotice(`${result.name}.`);return;}
+      if(result.passive){this._feedbackAudio?.play('notification');this.showInteractionNotice(`${result.name} · ${result.passive.duration || 'augmentation active pour cette tentative'}.`);return;}
       const g=result.grant;
       if(g){this._feedbackAudio?.play('notification');this.showInteractionNotice(g.limited?'Limite du porte-monnaie ou du stock atteinte.':g.kind==='money'?`+${Number(g.amount).toLocaleString('fr-FR')} ₽ · récompense récupérée.`:`${g.quantity} ${g.name} ajouté au sac · utilisable après le parcours.`);}
       else{if(result.changes?.length)this._feedbackAudio?.play('heal');this.showInteractionNotice(`${result.name} · soin appliqué à l’équipe inscrite.`);}
