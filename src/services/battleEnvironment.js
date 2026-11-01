@@ -1,4 +1,5 @@
 export function battleEnvironment(mapName, colosseum = false, weather = null, encounter = null) {
+  if (mapName === 'ville5_maison1') return 'whitepeak-club';
   if (mapName === 'super_tournament_room') return 'super-tournament';
   if (colosseum) return 'colosseum';
   if (mapName === 'void_arena') return 'void-arena';

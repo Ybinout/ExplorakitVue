@@ -20,6 +20,9 @@
       <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
       <drift-run-panel v-show="!learningVisible && !evolutionVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
+      <whitepeak-club-panel v-if="clubPanel && !battle && !battleResult && !clubWatch" :tab="clubPanel.tab" :roulette="clubRoulette" :duel="clubDuel" :balance="Number(progressionState.money)||0" :user-id="Number(currentUserId)" :busy="clubBusy" :error="clubError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled && !worldWeatherReducedMotion" :rows="clubRows" @close="clubPanel=null" @tab="clubPanel={tab:$event}" @command="clubCommand" />
+      <club-spectator v-if="clubWatch" :key="clubWatch.id" :start="clubWatch" :events="clubWatchEvents" :result="clubWatchResult" :mobile="showMobileControls" :preferences="preferences" @close="closeClubWatch" />
+      <button v-if="map==='ville5_maison1' && !battle && !battleResult && !clubWatch && !clubPanel" class="club-room-access" data-club-room-access @pointerdown.stop @click="openClubPanel">{{ clubDuel ? clubDuel.phase==='review'?'Vérifier les mises':clubDuel.phase==='battle'?'Duel en cours · Tribunes':'Duel · Socles disponibles':'Maison des combats' }}</button>
       <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :passives="superTournament.passives" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @abandon="abandonSuperTournament" />
       <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :cash="superTournament.cash" :team="superTournament.team" :passives="superTournament.passives" :victory-recovery="superTournament.victoryRecovery" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @leave="openTournamentAbandon" />
       <battle-overlay
@@ -478,6 +481,9 @@ import './worldViewport.css';
 import './gamePopupLayout.css';
 import { attachGamePopupLayout } from './gamePopupLayout';
 import BattleOverlay from './battle/BattleOverlay.vue';
+import WhitepeakClubPanel from './whitepeak/WhitepeakClubPanel.vue';
+import ClubSpectator from './whitepeak/ClubSpectator.vue';
+import {drawWhitepeakRoom} from '@/services/whitepeakRoulette';
 import SuperTournamentPanel from './menu/SuperTournamentPanel.vue';
 import TournamentRewardPanel from './menu/TournamentRewardPanel.vue';
 import BattleResultPanel from './battle/BattleResultPanel.vue';
@@ -528,7 +534,7 @@ export default {
     PokemonDetails,
     ExperienceBar,
     TextWithImage,
-    BattleOverlay,
+    BattleOverlay,WhitepeakClubPanel,ClubSpectator,
     GameInfoPanels,
     ShopPanel
   },
@@ -541,6 +547,7 @@ export default {
       trainerMusicPrelude: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
+      clubPanel:null,clubDuel:null,clubRoulette:null,clubRows:[],clubBusy:false,clubError:'',clubWatch:null,clubWatchEvents:[],clubWatchResult:null,
       superTournament:{active:false},tournamentPanel:null,tournamentBusy:false,tournamentError:'',tournamentRewardError:'',
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
       repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{}, trainingFeedback:null, heldTargets:{}, heldPickerUuid:null,
@@ -718,7 +725,7 @@ export default {
         volume: this.preferences.masterVolume / 100,
         // Keep playing while the next map decodes, including route → route.
         active: this.worldAudioConnected && Boolean(this.renderedMap) && !this.trainerMusicPrelude && !this.battle && !this.battleResult
-          && !this.pendingBattleResult && !this.driftSpectator
+          && !this.pendingBattleResult && !this.driftSpectator && !this.clubWatch
           && (!this.isDrift || this.driftState?.phase === 'exploration')
       };
     },
@@ -795,7 +802,7 @@ export default {
     worldChatAvailable(){return Boolean(!this.isDrift && this.socket?.connected && !this.worldInteractionBlocked && !this.mapLoading && !this.mapLoadError && !this.worldContextLost && this.renderedMap===this.map && this.players[this.socket.id]?.currentmap===this.map);},
     movementSuspended(){return this.worldChatOpen || this.worldInteractionBlocked;},
     worldInteractionBlocked() {
-      return !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
@@ -2224,6 +2231,16 @@ export default {
       this.tournamentPanel=null;this.tournamentError='';this.tournamentRewardError='';this.lock=false;
       this.$refs.battleOverlay?.resetBattleUi();this.$nextTick(this.restoreWorldView);
     },
+    openClubPanel(){this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubError='';this.clubPanel={tab:'duel'};},
+    async clubCommand(name,data={},done){
+      if(this.clubBusy||!this.socket?.connected)return;this.clubBusy=true;this.clubError='';
+      try{const response=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('whitepeak:'+name,data,(e,r)=>e?reject(new Error('Connexion interrompue. Vérifie la table avant de renouveler une mise.')):resolve(r)));
+        if(!response?.success)throw new Error(response?.message||'Action indisponible.');
+        if(name==='board'){this.clubRows=response.state?.rows||[];this.clubPanel={tab:'board'};}
+        if(name==='leave')this.clubPanel=null;done?.(true);
+      }catch(e){this.clubError=e.message;done?.(false);}finally{this.clubBusy=false;}
+    },
+    closeClubWatch(){this.clubWatch=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.socket?.emit('whitepeak:unwatch',{});this.syncWorldMusic();},
     async abandonSuperTournament(){if(this.tournamentBusy||!this.socket?.connected)return;this.tournamentBusy=true;this.tournamentError='';
       try{
         const result=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('superTournament:abandon',{},(error,r)=>error?reject(new Error('Connexion interrompue. Vérifie ta position après reconnexion.')):resolve(r)));
@@ -2705,7 +2722,7 @@ export default {
       // Queue the next frame before drawing: one failed image/effect must not
       // leave a non-null frame ID that prevents the world from ever restarting.
       this.animationFrameId = window.requestAnimationFrame(this.animate);
-      if (this.worldContextLost || document.hidden || this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible) {
+      if (this.worldContextLost || document.hidden || this.clubWatch || this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible) {
         this.lastAnimationTimestamp=null;this._worldRenderBudget?.reset();return;
       }
       const now = Number.isFinite(timestamp) ? timestamp : performance.now();
@@ -2843,6 +2860,7 @@ export default {
       drawVoidTeleporter(c, this.map, this.voidEnding);
       drawVoidJournals(c, this.map, this.voidEnding);
       if(this.map!=='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
+      drawWhitepeakRoom(c,this.map,this.clubRoulette,Date.now()+(this.clubRoulette?.serverOffset||0),this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       drawPokemonComputers(c,this.worldDevices,this.map);
       this.drawPnjs(c, now);
       drawMirrorClone(c,this.map,this.mirrorRift,this.mirrorScene,now,this.mirrorRift?.appearance?.sprite?this.ensureSpriteSheet(this.mirrorRift.appearance.sprite):null,mirrorMotion);
@@ -3334,6 +3352,7 @@ export default {
     });
 
     this.socket.on('newmap', ({ mapname, playersList }) => {
+      this.clubPanel=null;if(this.clubWatch)this.closeClubWatch();
       clearTimeout(this._lucieDepartureTimer);this.lucieDeparture=null;this._lucieDepartureResult=null;
       this._npcTeleport=null;
       this._worldMovement?.clear();
@@ -3408,6 +3427,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.clubPanel=null;this.clubWatch=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.clubBusy=false;this.clubError='';
       this.clearTeleporterCharge();
       this.closeWorldChat();this.clearWorldSpeech();
       this.closeShop();this.shop.loading=false;
@@ -3450,6 +3470,14 @@ export default {
       this.fishing=state;this.fishingReceivedAt=performance.now();
     });
     this.socket.on('mapWeatherState', state => { this.mapWeather = state; });
+    this.socket.on('whitepeak:open',payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubError='';this.clubPanel=payload;if(payload.rows)this.clubRows=payload.rows;});
+    this.socket.on('whitepeak:roulette',state=>{this.clubRoulette={...state,serverOffset:state.serverNow-Date.now()};});
+    this.socket.on('whitepeak:duel',state=>{const before=this.clubDuel?.phase;this.clubDuel=state;if(state?.phase==='finished'&&state.you>=0&&['starting','battle','settling'].includes(before))this.clubPanel={tab:'duel'};if(state?.phase==='review'&&state.you>=0){this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubPanel={tab:'duel'};}if(['starting','battle','settling'].includes(state?.phase))this.clubPanel=null;});
+    this.socket.on('whitepeak:wallet',data=>{if(Number.isSafeInteger(data.balance)&&data.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',data.balance);}});
+    this.socket.on('whitepeak:rouletteResult',data=>{if(data.amount>0)this.interactionNotice=`Roulette : +${Number(data.amount).toLocaleString('fr-FR')} ₽`;});
+    this.socket.on('whitepeak:watchStart',payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubPanel=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.clubWatch=payload;this.syncWorldMusic();});
+    this.socket.on('whitepeak:watchEvent',packet=>{if(this.clubWatch?.id===packet.id)this.clubWatchEvents=[...this.clubWatchEvents.slice(-63),packet];});
+    this.socket.on('whitepeak:watchEnd',payload=>{if(this.clubWatch?.id===payload.id)this.clubWatchResult=payload.result;});
     this.socket.on('worldDevicesState', state=>{this.worldDevices=state;});
     this.socket.on('superTournamentPanel',async payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.tournamentError='';await this.loadTeamPokemons();this.tournamentPanel=payload;});
     this.socket.on('superTournamentState',state=>{if(state?.reward?.id!==this.superTournament.reward?.id)this.tournamentRewardError='';this.superTournament=state || {active:false};if(state?.active)this.applyTeamPokemons(state.team || []);else this.loadTeamPokemons();});
@@ -4781,4 +4809,5 @@ button:hover {
 @keyframes contract-ready-pulse{0%,100%{box-shadow:0 0 0 3px var(--journal-paper),0 0 0 4px #bc913a55}50%{box-shadow:0 0 0 3px var(--journal-paper),0 0 0 8px #bc913a10}}
 .reduced-game-motion .contract-reward-dot{animation:none}
 @media(prefers-reduced-motion:reduce){.contract-reward-dot{animation:none}}
+.club-room-access{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:1100;min-height:44px;padding:9px 16px;border:1px solid var(--journal-border);border-radius:10px;background:var(--journal-card);color:var(--journal-heading);box-shadow:0 3px 12px #06172822;font:600 12px var(--journal-font);cursor:pointer}.is-mobile .club-room-access{bottom:calc(var(--mobile-controls-height,150px) + 8px);max-width:calc(100% - 24px)}
 </style>

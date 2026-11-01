@@ -284,9 +284,9 @@
         <div v-else class="battle-text-box battle-text-box-muted">{{ tr('chooseAction') }}</div>
       </div>
 
-      <div class="battle-main-actions">
+      <div v-if="!readOnly" class="battle-main-actions">
         <button class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
-        <button v-if="!opponent?.storyActor" class="battle-main-btn action-bag" :disabled="tournament || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
+        <button v-if="!opponent?.storyActor" class="battle-main-btn action-bag" :disabled="tournament || environment==='whitepeak-club' || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
         <button class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
         <button class="battle-main-btn action-flee" :disabled="!canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
       </div>
@@ -343,6 +343,7 @@ const SNOW_BACKGROUNDS = Object.freeze({
   wide: require('@/assets/battle/snow-wide-v1.webp')
 });
 const GYM_BACKGROUNDS = Object.freeze({
+  'whitepeak-club':{wide:require('@/assets/battle/whitepeak-club.png'),mobile:require('@/assets/battle/whitepeak-club.png'),platform:{'--gym-ground':'#728b9b','--gym-rim':'#b79f6b','--gym-edge':'#394f66','--gym-light':'#d3dfe4'}},
   'super-tournament': {
     wide: require('@/assets/battle/tournament-wide-v1.png'), mobile: require('@/assets/battle/tournament-mobile-v1.png'),
     platform: { '--gym-ground': '#7197bd', '--gym-rim': '#d8bd79', '--gym-edge': '#2c527b', '--gym-light': '#aecde4' }
@@ -411,6 +412,7 @@ export default {
   name: 'BattleOverlay',
   components: { BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
+    readOnly:{type:Boolean,default:false},
     tournament:{type:Boolean,default:false},
     mobile: Boolean,
     daylight: { type: Object, default: () => ({ night: 0, warmth: 0, phase: 'day' }) },
@@ -539,9 +541,10 @@ export default {
         });
     },
     canChooseAction() {
-      return this.canAct && !this.entranceActive && !this.presentationBusy && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
+      return !this.readOnly && this.canAct && !this.entranceActive && !this.presentationBusy && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
     },
     turnLabel() {
+      if(this.readOnly)return this.preferences.language==='en'?'Watching the duel':'Le duel en direct';
       if (this.captureFx.visible && this.captureFx.state !== 'caught') return this.tr('captureRunning');
       if (this.replacementChoice) return this.preferences.language === 'en' ? 'Choose your next Pokémon' : 'Choisis ton prochain Pokémon';
       return this.canChooseAction ? this.tr('yourTurn') : this.tr('resolvingTurn');
@@ -968,7 +971,7 @@ export default {
       this.actionState.bagPanel = false;
     },
     openBag() {
-      if(this.tournament)return;
+      if(this.tournament||this.environment==='whitepeak-club')return;
       if (!this.canChooseAction) {
         this.showMessage(this.tr('waitTurnBag'));
         return;
