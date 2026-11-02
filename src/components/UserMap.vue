@@ -3,7 +3,7 @@
     <teleporter-charge-notice v-if="teleporterChargeNotice" :charge="teleporterChargeNotice" :in-battle="battle" :language="preferences.language"/>
     <adventure-opening v-if="openingScene && !mapLoadError" :ready="openingReady" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" @finished="finishAdventureOpening" />
     <div v-if="mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase)" :key="mirrorScene.id" class="mirror-scene-veil" :class="mirrorScene.phase" :style="{'--mirror-duration':mirrorScene.duration+'ms'}" :data-mirror-phase="mirrorScene.phase" role="status" aria-live="polite" aria-busy="true">
-      <span v-if="mirrorScene.phase === 'closing'" class="mirror-ending-title">{{ preferences.language === 'en' ? 'The End' : 'Fin' }}</span>
+      <span v-if="mirrorScene.phase === 'closing'" class="mirror-ending-title">{{ preferences.language === 'en' ? 'The End' : 'Fin' }}<small class="mirror-ending-subtitle">{{ preferences.language === 'en' ? '.... or almost' : '.... ou presque' }}</small></span>
     </div>
     <!-- <navBar></navBar> -->
     <div class="game-layout" :inert="(openingScene && !mapLoadError) || (mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase)) ? '' : null">
@@ -95,7 +95,7 @@
               <button v-else-if="item.darkContinentTravel && !isDrift" class="bag-use-button" data-use-dark-card :disabled="superTournament.active || battle || mapLoading || !!flight" @click="flyToTown(/^jungle[1-9]$/.test(map)?'super_tournament_lobby':'jungle1',{kind:'void',event:'dark:travel'})">{{ /^jungle[1-9]$/.test(map)?'Revenir à l’accueil':'Rejoindre le continent' }}</button>
               <button v-else-if="item.superTournamentTravel && !isDrift" class="bag-use-button" data-use-tournament-pass :disabled="superTournament.active || battle || mapLoading || !!flight" @click="flyToTown('super_tournament_lobby',{kind:'void',event:'superTournament:travel'})">Utiliser</button>
               <button v-else-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="!item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
-              <template v-else-if="item.category==='corruption'"><button class="bag-use-button" data-use-corruption-module :disabled="isDrift || !!battle || superTournament.active || mapLoading" @click="openCorruptionItem(item)">Installer sur un Pokémon</button><small class="bag-use-hint">Mutation définitive · un seul porteur corrompu dans l’équipe.</small></template>
+              <template v-else-if="item.category==='corruption'"><button class="bag-use-button" data-use-corruption-module :disabled="isDrift || !!battle || superTournament.active || mapLoading" @click="openCorruptionItem(item)">Installer sur un Pokémon</button><small class="bag-use-hint">Usage unique · le module est consommé à l’installation. Un seul porteur corrompu dans l’équipe.</small></template>
               <machine-item-use v-else-if="item.category==='machine'" :key="item.key" :item="item" :team="teamPokemons" :busy="medicineBusy || teamLoading" :allowed="canUseBagItem(item)" @use="useBagMachine" />
               <template v-else-if="isBagConsumable(item)">
                 <select data-medicine-target :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
@@ -406,7 +406,7 @@
     <div v-if="heldItemDrag && heldDragPokemon" class="team-held-ghost" :style="{left:heldItemDrag.x+'px',top:heldItemDrag.y+'px'}" aria-hidden="true"><bag-item-icon :item-key="heldDragPokemon.heldItem" :pocket="heldDragPokemon.heldItem?.endsWith('_berry')?'berries':'held'"/><strong>{{ heldItemName(heldDragPokemon.heldItem) }}</strong><span v-if="heldDragTarget">{{ heldDragTarget.heldItem?'Échanger avec':'Donner à' }} {{ heldDragTarget.name }}</span></div>
     <corruption-workbench v-if="corruptionWorkshop && !mapLoading && !battle" :panel="corruptionWorkshop" :items="bagItems" :command="corruptionCommand" @close="corruptionWorkshop=null" @crafted="showInteractionNotice($event.created?'Module ajouté au sac.':'Synthèse échouée : composants consommés.')" @bag="showCorruptionBag"/>
     <corruption-installer v-if="corruptionInstall && !battle" :key="corruptionInstall.id" :items="bagItems" :team="teamPokemons" :preset-item="corruptionInstall.item" :target-pokemon="corruptionInstall.pokemon" :source="corruptionInstall.source" :initial-family="corruptionInstall.family" :command="corruptionCommand" @close="corruptionInstall=null"/>
-    <dark-continent-panel v-if="darkPanel && !mapLoading && !flight && !battle && !battleResult && !pendingBattleResult" :panel="darkPanel" :busy="darkBusy" :error="darkError" :notice="darkNotice" :team-size="teamPokemons.length" @rules="darkPanel={...darkPanel,mode:'rules'}" @close="darkPanel=null" @command="darkCommand"/>
+    <dark-continent-panel v-if="darkPanel && !mapLoading && !flight && !battle && !battleResult && !pendingBattleResult" :panel="darkPanel" :busy="darkBusy" :error="darkError" :notice="darkNotice" :team-size="teamPokemons.length" :money="progressionState.money" @rules="darkPanel={...darkPanel,mode:'rules'}" @close="darkPanel=null" @command="darkCommand"/>
     <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :corruption-allowed="!isDrift && !battle && !superTournament.active" @corruption="openCorruptionSheet" :rename-allowed="(canReorderMoves || renameBusy) && !superTournament.active" :rename-busy="renameBusy" :rename-error="renameError" :rename-notice="renameNotice" @rename="renamePokemon" :moves-order-allowed="canReorderMoves" :moves-order-busy="moveOrderBusy" :moves-order-error="moveOrderError" :moves-order-notice="moveOrderNotice" @reorder-moves="reorderPokemonMoves" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
@@ -1175,10 +1175,10 @@ export default {
     async darkCommand(event){
       if(this.darkBusy || !this.socket?.connected)return;
       this.darkBusy=true;this.darkError='';this.darkNotice='';
-      try{const result=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit(event,{},(e,r)=>e?reject(new Error('Connexion interrompue. Réessaie après reconnexion.')):resolve(r)));
+      try{const result=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit(event,event==='dark:claim'?{price:this.darkPanel?.cardPrice}:event==='dark:heal'?{price:this.darkPanel?.healPrice}:{},(e,r)=>e?reject(new Error('Connexion interrompue. Réessaie après reconnexion.')):resolve(r)));
         if(!result?.success)throw new Error(result?.message || 'Action indisponible.');
         if(result.equipe)this.applyTeamPokemons(result.equipe.pokemons);
-        if(event==='dark:heal')this.darkNotice='Tes compagnons sont soignés. PV, statuts et PP restaurés.';else this.darkPanel=null;
+        if(Number.isSafeInteger(result.money)){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',result.money);}if(event==='dark:heal')this.darkNotice=result.charged?'Premiers secours terminés · 50 000 ₽. PV, statuts et PP restaurés.':'Tes compagnons sont déjà en pleine forme. Aucun paiement nécessaire.';else this.darkPanel=null;
       }catch(error){this.darkError=error.message;}finally{this.darkBusy=false;}
     },
     async renamePokemon(payload){
@@ -2913,7 +2913,7 @@ export default {
       if(!document.hidden)drawWhitepeakSnow(c,this.map,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       if(!document.hidden)drawWhitepeakPodiums(c,this.map,this.players,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       drawWhitepeakRoom(c,this.map,this.clubRoulette,Date.now()+(this.clubRoulette?.serverOffset||0),this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
-      drawPokemonComputers(c,this.worldDevices,this.map);
+      drawPokemonComputers(c,this.worldDevices,this.map,now,this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
       this.drawPnjs(c, now);
       drawMirrorClone(c,this.map,this.mirrorRift,this.mirrorScene,now,this.mirrorRift?.appearance?.sprite?this.ensureSpriteSheet(this.mirrorRift.appearance.sprite):null,mirrorMotion);
 

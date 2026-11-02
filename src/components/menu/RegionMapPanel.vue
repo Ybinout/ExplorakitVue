@@ -24,12 +24,12 @@
               <pattern id="region-snow" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="#d9ead9"/><path d="M2 4h4v2H2m10 8h6v2h-6" fill="#bdd6cd"/></pattern>
             </defs>
             <g shape-rendering="crispEdges">
-              <path fill="url(#region-sea)" d="M0 0H800V448H0Z"/>
+              <path fill="url(#region-sea)" :d="`M0 0H${atlas.width}V${atlas.height}H0Z`"/><g :transform="`translate(${atlas.darkContinent?.offsetX || 0},0)`" data-dark-continent-scenery>
               <path d="M552 132H720V144H748V168H764V324H748V350H716V366H566V352H538V328H526V176H538V150H552Z" fill="#7cbdab" stroke="#68bba8" stroke-width="18"/>
               <path d="M552 132H720V144H748V168H764V324H748V350H716V366H566V352H538V328H526V176H538V150H552Z" fill="#4d8e61" stroke="#e1d29a" stroke-width="7"/>
               <path d="M548 160H740V340H548Z" fill="url(#region-forest)"/>
               <path d="M603 206h30v24h-30m66 55h36v32h-36" stroke="#8ed6cd" stroke-width="4" fill="#54aabc"/>
-              <text x="646" y="398" text-anchor="middle" font-size="12" font-weight="700" fill="#153f4a" letter-spacing="2">DARK CONTINENT</text>
+              <text x="646" y="398" text-anchor="middle" font-size="12" font-weight="700" fill="#153f4a" letter-spacing="2">DARK CONTINENT</text></g>
               <path d="M24 96H40V80H88V92H112V124H124V180H144V196H240V168H272V176H308V188H348V176H400V188H480V204H496V304H476V326H404V352H392V432H40V424H24V396H32V288H20V248H28V168H16V124H24Z" fill="#76c6b1" stroke="#76c6b1" stroke-width="16"/>
               <path d="M24 96H40V80H88V92H112V124H124V180H144V196H240V168H272V176H308V188H348V176H400V188H480V204H496V304H476V326H404V352H392V432H40V424H24V396H32V288H20V248H28V168H16V124H24Z" fill="#b3ce70" stroke="#e4d68a" stroke-width="6"/>
               <path d="M32 104H48V88H84V100H104V136H116V176H104V200H36V164H24V128H32Z" fill="url(#region-snow)"/>
@@ -45,7 +45,7 @@
                 <path :d="edge.path" fill="none" :stroke="edge.cave ? '#7e8765' : '#d1aa65'" stroke-width="10"/>
                 <path :d="edge.path" fill="none" :stroke="edge.cave ? '#d0c2a1' : '#f4db8b'" stroke-width="6" :stroke-dasharray="edge.cave ? '5 3' : null"/>
               </g>
-              <g v-for="node in atlas.nodes" :key="node.id" :data-map-node="node.id" class="map-node" role="button" tabindex="0" :aria-label="label(node.id)" :aria-pressed="selected === node.id" @click="selected = node.id" @keydown.enter.prevent="selected = node.id" @keydown.space.prevent="selected = node.id">
+              <g v-for="node in displayNodes" :key="node.id" :data-map-node="node.id" class="map-node" role="button" tabindex="0" :aria-label="label(node.id)" :aria-pressed="selected === node.id" @click="selected = node.id" @keydown.enter.prevent="selected = node.id" @keydown.space.prevent="selected = node.id">
                 <title>{{ label(node.id) }}</title>
                 <rect :x="node.x-12" :y="node.y-12" width="24" height="24" fill="transparent"/>
                 <rect v-if="node.kind === 'town'" :x="node.x-7" :y="node.y-6" width="14" height="12" fill="#f7f0c5" stroke="#94745b" stroke-width="1"/>
@@ -122,12 +122,13 @@ export default {
     legendaryNote(){const rare=this.habitat.legendary;if(!rare)return '';const odds=Number(rare.oneIn).toLocaleString(this.en?'en-US':'fr-FR');return this.en?`1 in ${odds} chance of a legendary, then a draw among ${rare.poolSize} species.`:`1 chance sur ${odds} pour un légendaire, puis tirage parmi ${rare.poolSize} espèces.`;},
     locations(){return this.habitat.kind==='evolution' ? (this.habitat.ancestors || []).flatMap(a=>a.locations.map(l=>({...l,speciesId:a.speciesId}))) : this.habitat.locations || [];},
     currentNode(){return this.atlas?.nodes.find(n=>n.id===(this.currentRegion || this.atlas.aliases[this.currentMap]));},
-    currentLabel(){return this.currentNode ? this.label(this.currentNode.id) : this.label(this.currentMap);},
-    selectedNode(){return this.atlas?.nodes.find(n=>n.id===this.selected);},
+    currentLabel(){return this.isDark(this.currentNode?.id)?'Dark Continent':this.currentNode ? this.label(this.currentNode.id) : this.label(this.currentMap);},
+    displayNodes(){return (this.atlas?.nodes||[]).filter(n=>!this.isDark(n.id));},
+    selectedNode(){return this.displayNodes.find(n=>n.id===this.selected);},
     selectedHabitats(){return this.locations.filter(l=>l.map===this.selected);},
     habitatNodes(){const ids=new Set(this.locations.map(l=>l.map));return (this.atlas?.nodes || []).filter(n=>ids.has(n.id));},
-    selectableNodes(){return this.pokemon ? this.habitatNodes : this.atlas?.nodes || [];},
-    edges(){return (this.atlas?.edges || []).map(([a,b])=>{const from=this.atlas.nodes.find(n=>n.id===a),to=this.atlas.nodes.find(n=>n.id===b);return {id:a+':'+b,path:`M${from.x} ${from.y}H${to.x}V${to.y}`,cave:from.kind==='cave'||to.kind==='cave'};});}
+    selectableNodes(){return this.pokemon ? this.habitatNodes : this.displayNodes;},
+    edges(){return (this.atlas?.edges || []).filter(([a,b])=>!this.isDark(a)&&!this.isDark(b)).map(([a,b])=>{const from=this.atlas.nodes.find(n=>n.id===a),to=this.atlas.nodes.find(n=>n.id===b);return {id:a+':'+b,path:`M${from.x} ${from.y}H${to.x}V${to.y}`,cave:from.kind==='cave'||to.kind==='cave'};});}
   },
   mounted(){this.previousFocus=document.activeElement;this.$refs.close.focus({preventScroll:true});this.load();},
   beforeDestroy(){this.disposed=true;this._resizeObserver?.disconnect();window.removeEventListener('resize',this.measureViewport);this._pointers?.clear();if(this.previousFocus?.isConnected)this.previousFocus.focus({preventScroll:true});},
@@ -135,7 +136,8 @@ export default {
     modeLabel(mode){return {adventure:'Aventure',rift:'Rift',colosseum:'Colosseum'}[mode]||'';},
     selectGroupMember(member){this.selected=member.nodeId;this.centerOn(this.atlas.nodes.find(n=>n.id===member.nodeId));},
 
-    label(id){return getMapLocationLabel(id,this.language);},
+    isDark(id){return /^jungle[1-9]$/.test(id||'');},
+    label(id){return this.isDark(id)?'Dark Continent':getMapLocationLabel(id,this.language);},
     routeLabel(id){return /^jungle[1-9]$/.test(id)?'Jungle '+id.slice(6):this.label(id).replace('Route ','');},
     shortLabel(id){return id==='start' ? (this.en?'Home village':'Village de départ') : this.label(id);},
     speciesName(id){return this.entries.find(p=>p.id===id)?.name || `#${id}`;},

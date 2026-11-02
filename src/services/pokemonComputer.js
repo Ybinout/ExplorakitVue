@@ -1,8 +1,26 @@
 // Native canvas pixel art: no interpolation, transparent sheet or external loading.
-export function drawPokemonComputers(context, state, map) {
+// Bounded to the liquid inside the existing glassware, in 448 × 320 artwork coordinates.
+export const LAB_VIALS = Object.freeze([[66,94,12,22],[369,94,11,21],[69,177,10,18],[369,179,11,21],[120,231,5,8],[130,232,5,8],[317,232,5,8],[327,232,5,8]]);
+export function drawLaboratoryGlass(context,map,now=0,motion=true){
+  if(map!=='professor_lab')return;
+  const tick=motion?Math.floor(Math.max(0,now)/100):0;
+  context.save();context.scale(2,2);
+  for(let i=0;i<LAB_VIALS.length;i++){
+    const [x,y,w,h]=LAB_VIALS[i];context.save();context.beginPath();context.rect(x,y,w,h);context.clip();
+    context.fillStyle=`rgba(172,94,235,${.07+(tick+i)%8/160})`;context.fillRect(x,y,w,h);
+    for(let b=0;b<(w>5?4:2);b++){
+      const rise=(tick+b*7+i*3)%h,bx=x+1+(b*3+i)%(w-2),by=y+h-rise;
+      context.fillStyle=b%2?'#deb6f5':'#a78cda';context.globalAlpha=.45+(b%2)*.25;context.fillRect(bx,by,1,b%2+1);
+    }
+    context.restore();
+  }
+  context.restore();
+}
+export function drawPokemonComputers(context, state, map,now=0,motion=true) {
+  drawLaboratoryGlass(context,map,now,motion);
   if(state?.map!==map)return;
   for(const device of state.devices || []){
-    if(device.kind==='corruption'){context.save();const x=device.screen.x*32+8,y=device.screen.y*32+10;context.fillStyle='#4d365f';context.fillRect(x,y,24,17);context.fillStyle='#e1cef1';context.font='bold 9px monospace';context.textAlign='center';context.fillText({move:'CS',ability:'T',type:'Ty',combat:'±'}[device.family],x+12,y+12);context.restore();continue;}
+    if(device.kind==='corruption'){context.save();const x=device.screen.x*32+8,y=device.screen.y*32+10,tick=motion?Math.floor(now/120):0;context.fillStyle='#352845';context.fillRect(x,y,24,17);context.fillStyle='#a980c4';context.globalAlpha=.25;context.fillRect(x,y+tick%17,24,1);context.globalAlpha=1;context.fillStyle='#e1cef1';context.font='bold 9px monospace';context.textAlign='center';context.fillText({move:'CS',ability:'T',type:'Ty',combat:'±'}[device.family],x+12,y+10);context.fillStyle='#a5e4c6';for(let n=0;n<5;n++)context.fillRect(x+3+n*4,y+15-((tick+n*3)%3),2,1+((tick+n*3)%3));context.restore();continue;}
     if(device.kind!=='pc')continue;
     // Seat the screen inside the counter opening without moving its interaction tile.
     context.save();context.translate(device.x*32+8,device.y*32-16);
