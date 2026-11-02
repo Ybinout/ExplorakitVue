@@ -2907,7 +2907,7 @@ export default {
         if (!this._worldNight) this._worldNight = new WorldNightRenderer();
         this._worldNight.drawGround(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.mapImage);
       } else this._worldNight?.suspend();
-      drawVoidTeleporter(c, this.map, this.voidEnding);
+      drawVoidTeleporter(c, this.map, this.voidEnding, now, mirrorMotion);
       drawVoidJournals(c, this.map, this.voidEnding);
       if(this.map!=='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
       if(!document.hidden)drawWhitepeakSnow(c,this.map,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
