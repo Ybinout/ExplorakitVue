@@ -402,7 +402,7 @@
     <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" :busy="evolutionBusy" :error="evolutionError" @resolve="resolveEvolutionPresentation" @continue="evolutionError='';evolutionQueue.shift()" />
     <div v-if="teamDrag" class="team-drag-ghost" :style="{left:teamDrag.x+'px',top:teamDrag.y+'px'}" aria-hidden="true"><pokemon-portrait :src="getPokemonFrontSprite(teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.spriteId)"/><span>{{ teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.name }}</span></div>
     <div v-if="heldItemDrag && heldDragPokemon" class="team-held-ghost" :style="{left:heldItemDrag.x+'px',top:heldItemDrag.y+'px'}" aria-hidden="true"><bag-item-icon :item-key="heldDragPokemon.heldItem" :pocket="heldDragPokemon.heldItem?.endsWith('_berry')?'berries':'held'"/><strong>{{ heldItemName(heldDragPokemon.heldItem) }}</strong><span v-if="heldDragTarget">{{ heldDragTarget.heldItem?'Échanger avec':'Donner à' }} {{ heldDragTarget.name }}</span></div>
-    <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :moves-order-allowed="canReorderMoves" :moves-order-busy="moveOrderBusy" :moves-order-error="moveOrderError" :moves-order-notice="moveOrderNotice" @reorder-moves="reorderPokemonMoves" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
+    <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :rename-allowed="(canReorderMoves || renameBusy) && !superTournament.active" :rename-busy="renameBusy" :rename-error="renameError" :rename-notice="renameNotice" @rename="renamePokemon" :moves-order-allowed="canReorderMoves" :moves-order-busy="moveOrderBusy" :moves-order-error="moveOrderError" :moves-order-notice="moveOrderNotice" @reorder-moves="reorderPokemonMoves" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
 
@@ -570,6 +570,7 @@ export default {
       positionRecoveryBusy: false, positionRecoveryNotice: '',
       arenaTestState: {allowed:false}, arenaTestBusy:false, arenaTestNotice:'',
       evolutionOptions: [], evolutionLoading: false, evolutionBusy: false, evolutionError: '', evolutionNotice: '',
+      renameBusy:false,renameError:'',renameNotice:'',
       moveOrderBusy:false,moveOrderError:'',moveOrderNotice:'',
       user: {
         nom: '',
@@ -763,7 +764,7 @@ export default {
     canTransferHeldItems(){return this.isTeamPanelOpen && this.canReorderTeam && !this.superTournament.active && this.canUseBagConsumables && !this.teamSaving && !this.teamLoading && !this.selectedPokemonUuid && !this.heldPickerUuid && !this.learningVisible;},
     heldDragPokemon(){return this.teamPokemons.find(p=>p.uuid===this.heldItemDrag?.uuid);},
     heldDragTarget(){return this.teamPokemons.find(p=>p.uuid===this.heldItemDrag?.to);},
-    canReorderMoves(){return Boolean(this.socket?.connected && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.evolutionVisible && !this.evolutionBusy && !this.medicineBusy && !this.selectedPokemon?.isEgg && (!this.isDrift || this.driftState?.alive && !this.driftState?.storagePaused && !this.driftState?.recoveryWaiting && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase)));},
+    canReorderMoves(){return Boolean(this.socket?.connected && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.evolutionVisible && !this.evolutionBusy && !this.medicineBusy && !this.renameBusy && !this.selectedPokemon?.isEgg && (!this.isDrift || this.driftState?.alive && !this.driftState?.storagePaused && !this.driftState?.recoveryWaiting && ['exploration','preparation','tournament','colosseum_ready'].includes(this.driftState?.phase)));},
     evolutionLookupKey() { const p = this.selectedPokemon; return p ? [p.uuid,p.data?.id,p.level,p.currentHp,p.attack,p.defense,(p.abilities || []).join(',')].join(':') : ''; },
     locationLabel() {
       if (this.isColosseum && this.map === 'ville1_arene' && this.driftState?.phase !== 'exploration') return 'Colosseum';
@@ -845,7 +846,7 @@ export default {
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
     mapLoadError(error) { if (error) {this.releaseAllMovementKeys();this.mirrorScene=null;} },
     evolutionLookupKey() { this.loadEvolutionOptions(); },
-    selectedPokemonUuid() { this.evolutionNotice = '';this.moveOrderError='';this.moveOrderNotice=''; },
+    selectedPokemonUuid() { this.renameError='';this.renameNotice='';this.evolutionNotice = '';this.moveOrderError='';this.moveOrderNotice=''; },
     movementSuspended(blocked) { if (blocked) { this.cancelFishing(); this.releaseAllMovementKeys(); } },
     movementBlocked(blocked) {
       if (blocked) {
@@ -1016,7 +1017,7 @@ export default {
         this.pc.state=result.state;
         if(result.equipe)this.applyTeamPokemons(result.equipe.pokemons);
         if(result.items)this.applyBagItems(result.items);
-        this.pc.notice={takeItem:'L’objet tenu a été remis dans ton sac.',reorderMoves:'Ordre des capacités enregistré.',move:'Nouvel emplacement sauvegardé.',deposit:'Compagnon déposé dans le PC.',withdraw:'Compagnon ajouté à ton équipe.',swap:'Les deux Pokémon ont échangé leur place.',release:'Pokémon relâché. Son éventuel objet tenu est dans ton sac.'}[payload.action];
+        this.pc.notice={renameBox:'Nom de la boîte enregistré.',renamePokemon:'Surnom enregistré.',takeItem:'L’objet tenu a été remis dans ton sac.',reorderMoves:'Ordre des capacités enregistré.',move:'Nouvel emplacement sauvegardé.',deposit:'Compagnon déposé dans le PC.',withdraw:'Compagnon ajouté à ton équipe.',swap:'Les deux Pokémon ont échangé leur place.',release:'Pokémon relâché. Son éventuel objet tenu est dans ton sac.'}[payload.action];
       }catch(error){this.pc.error=error.message;}
       finally{this.pc.busy=false;}
     },
@@ -1157,6 +1158,18 @@ export default {
       } catch (error) { this.showInteractionNotice(error.message); return false; }
     },
     openPokemonDetails(pokemon) { this.releaseAllMovementKeys(); this.selectedPokemonUuid = pokemon.uuid; },
+    async renamePokemon(payload){
+      if(this.renameBusy || !this.canReorderMoves || this.superTournament.active)return;
+      this.renameBusy=true;this.renameError='';this.renameNotice='';
+      try{
+        const event=this.isDrift?'drift:renamePokemon':'renamePokemon';
+        const result=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit(event,payload,(error,response)=>error?reject(new Error('Connexion interrompue. Rouvre la fiche pour vérifier le surnom.')):resolve(response)));
+        if(!result?.success)throw new Error(result?.message || 'Surnom non enregistré.');
+        if(result.equipe)this.applyTeamPokemons(result.equipe.pokemons);
+        if(this.selectedPokemonUuid===payload.pokemonUuid)this.renameNotice='Surnom enregistré.';
+      }catch(error){if(this.selectedPokemonUuid===payload.pokemonUuid)this.renameError=error.message;}
+      finally{this.renameBusy=false;}
+    },
     async reorderPokemonMoves(payload){
       if(this.moveOrderBusy || !this.canReorderMoves)return;
       this.moveOrderBusy=true;this.moveOrderError='';this.moveOrderNotice='';

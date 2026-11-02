@@ -1,5 +1,5 @@
 <template>
-  <div class="companion-backdrop" @mousedown.self="$emit('close')" @keydown.esc.stop="$emit('close')" @keydown.tab="trapFocus">
+  <div class="companion-backdrop" @mousedown.self="$emit('close')" @keydown.esc.stop="!renameBusy && $emit('close')" @keydown.tab="trapFocus">
     <section ref="dialog" class="companion-sheet" :data-companion-page="page" role="dialog" aria-modal="true" :aria-label="`Fiche de ${pokemon.name}`">
       <header class="companion-heading">
         <div><span class="companion-kicker">{{ contextLabel }} · {{ position }} / {{ total }}</span><h2>{{ pokemon.name }}</h2></div>
@@ -13,6 +13,7 @@
           <div class="companion-art"><span class="companion-number">N° {{ String(pokemon.spriteId).padStart(3, '0') }}</span><pokemon-portrait :src="`${$assetBase}img/pokemon/front/${pokemon.spriteId}.png`" :alt="pokemon.truename || pokemon.name" /><span class="companion-level">Niv. {{ pokemon.level }}</span></div>
           <div class="companion-types"><span v-for="type in pokemon.data.type" :key="type">{{ typeNames[type] || type }}</span></div>
           <p class="companion-species">{{ pokemon.truename }}</p>
+          <owned-name-editor v-if="renameAllowed" :key="pokemon.uuid" kind="pokemon" label="Surnom du Pokémon" :value="pokemon.name" :default-name="pokemon.truename" :busy="renameBusy" :error="renameError" :notice="renameNotice" @save="$emit('rename',{pokemonUuid:pokemon.uuid,expectedName:pokemon.nickname || pokemon.name,name:$event})"/>
           <div class="companion-health"><strong>PV</strong><span>{{ pokemon.currentHp }} / {{ pokemon.maxHp }}</span><div><i :style="{ width: hpPercent + '%' }"></i></div></div>
           <experience-bar :pokemon="pokemon" detailed />
           <p class="companion-next">Prochain niveau : {{ progress.remaining }} XP</p>
@@ -86,6 +87,7 @@ import { localizeAbilityName, localizeMoveName } from '@/services/i18n';
 import { createPokemonReference } from '@/services/pokemonReference';
 import referenceData from '@/data/pokemonReference.fr.json';
 import {natures} from '@/services/pokemonNatures';
+import OwnedNameEditor from './OwnedNameEditor.vue';
 const reference=createPokemonReference(referenceData);
 const stats = [
   { key: 'hp', label: 'PV', full: 'Points de vie' }, { key: 'attack', label: 'ATQ', full: 'Attaque' },
@@ -94,8 +96,8 @@ const stats = [
 ];
 
 export default {
-  components: { ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender },
-  props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, movesOrderAllowed:Boolean,movesOrderBusy:Boolean,movesOrderError:String,movesOrderNotice:String,contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
+  components: { ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender, OwnedNameEditor },
+  props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, renameAllowed:Boolean,renameBusy:Boolean,renameError:String,renameNotice:String, movesOrderAllowed:Boolean,movesOrderBusy:Boolean,movesOrderError:String,movesOrderNotice:String,contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
   data: () => ({ page: 'profile', mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
     typeNames: { Grass: 'Plante', Fire: 'Feu', Water: 'Eau', Bug: 'Insecte', Flying: 'Vol', Electric: 'Électrik', Ground: 'Sol', Rock: 'Roche', Ice: 'Glace', Fighting: 'Combat', Psychic: 'Psy', Ghost: 'Spectre', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' } }),
   computed: {
@@ -151,7 +153,7 @@ export default {
       this.$nextTick(() => document.getElementById(`companion-tab-${this.mode}`).focus());
     },
     trapFocus(event) {
-      const elements = [...this.$refs.dialog.querySelectorAll('button:not(:disabled):not([tabindex="-1"])')].filter(node => node.getClientRects().length);
+      const elements = [...this.$refs.dialog.querySelectorAll('button:not(:disabled):not([tabindex="-1"]),input:not(:disabled)')].filter(node => node.getClientRects().length);
       const first = elements[0], last = elements[elements.length - 1];
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
