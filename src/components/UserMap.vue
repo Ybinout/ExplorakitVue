@@ -92,9 +92,9 @@
                 <p class="bag-use-hint" data-experience-module-state><strong>{{ item.active ? (preferences.language==='en'?'Active':'Actif') : (preferences.language==='en'?'Inactive':'Inactif') }}</strong> · {{ item.active ? `+${item.levelBonus} ${preferences.language==='en'?'levels for wild encounters':'niveaux pour les rencontres sauvages'}` : (preferences.language==='en'?'Usual encounter levels':'Niveaux habituels des rencontres') }}</p>
                 <button class="bag-use-button" data-experience-module-toggle :aria-pressed="item.active ? 'true' : 'false'" :disabled="medicineBusy || !!battle || mapLoading || !socket?.connected" @click="toggleExperienceModule(item)">{{ medicineBusy ? (preferences.language==='en'?'Saving…':'Sauvegarde…') : item.active ? (preferences.language==='en'?'Deactivate module':'Désactiver le module') : (preferences.language==='en'?'Activate module':'Activer le module') }}</button>
               </template>
-              <button v-else-if="item.darkContinentTravel && !isDrift" class="bag-use-button" data-use-dark-card :disabled="superTournament.active || battle || mapLoading || !!flight" @click="flyToTown(/^jungle[1-9]$/.test(map)?'super_tournament_lobby':'jungle1',{kind:'void',event:'dark:travel'})">{{ /^jungle[1-9]$/.test(map)?'Revenir à l’accueil':'Rejoindre le continent' }}</button>
-              <button v-else-if="item.superTournamentTravel && !isDrift" class="bag-use-button" data-use-tournament-pass :disabled="superTournament.active || battle || mapLoading || !!flight" @click="flyToTown('super_tournament_lobby',{kind:'void',event:'superTournament:travel'})">Utiliser</button>
-              <button v-else-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="!item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
+              <button v-else-if="item.darkContinentTravel && !isDrift" class="bag-use-button" data-use-dark-card :disabled="onDarkContinent || superTournament.active || battle || mapLoading || !!flight" @click="flyToTown('jungle1',{kind:'void',event:'dark:travel'})">{{ onDarkContinent?'Retour auprès du guide':'Rejoindre le continent' }}</button>
+              <button v-else-if="item.superTournamentTravel && !isDrift" class="bag-use-button" data-use-tournament-pass :disabled="onDarkContinent || superTournament.active || battle || mapLoading || !!flight" @click="flyToTown('super_tournament_lobby',{kind:'void',event:'superTournament:travel'})">Utiliser</button>
+              <button v-else-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="onDarkContinent || !item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
               <template v-else-if="item.category==='corruption'"><button class="bag-use-button" data-use-corruption-module :disabled="isDrift || !!battle || superTournament.active || mapLoading" @click="openCorruptionItem(item)">Installer sur un Pokémon</button><small class="bag-use-hint">Usage unique · le module est consommé à l’installation. Un seul porteur corrompu dans l’équipe.</small></template>
               <machine-item-use v-else-if="item.category==='machine'" :key="item.key" :item="item" :team="teamPokemons" :busy="medicineBusy || teamLoading" :allowed="canUseBagItem(item)" @use="useBagMachine" />
               <template v-else-if="isBagConsumable(item)">
@@ -214,7 +214,7 @@
         </div>
         <game-info-panels
           :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @toggle-fullscreen="toggleGameFullscreen"
-          :flight-allowed="!isDrift && !superTournament.active" @fly="flyToTown"
+          :flight-allowed="!isDrift && !superTournament.active && !onDarkContinent" @fly="flyToTown"
           :active="activeInfoPanel"
           :group-members="(socialState.group?.members || []).filter(p=>p.id!==Number(currentUserId))"
           :current-map="map" :current-region="players[socket?.id]?.regionLocation"
@@ -406,7 +406,7 @@
     <div v-if="heldItemDrag && heldDragPokemon" class="team-held-ghost" :style="{left:heldItemDrag.x+'px',top:heldItemDrag.y+'px'}" aria-hidden="true"><bag-item-icon :item-key="heldDragPokemon.heldItem" :pocket="heldDragPokemon.heldItem?.endsWith('_berry')?'berries':'held'"/><strong>{{ heldItemName(heldDragPokemon.heldItem) }}</strong><span v-if="heldDragTarget">{{ heldDragTarget.heldItem?'Échanger avec':'Donner à' }} {{ heldDragTarget.name }}</span></div>
     <corruption-workbench v-if="corruptionWorkshop && !mapLoading && !battle" :panel="corruptionWorkshop" :items="bagItems" :command="corruptionCommand" @close="corruptionWorkshop=null" @crafted="showInteractionNotice($event.created?'Module ajouté au sac.':'Synthèse échouée : composants consommés.')" @bag="showCorruptionBag"/>
     <corruption-installer v-if="corruptionInstall && !battle" :key="corruptionInstall.id" :items="bagItems" :team="teamPokemons" :preset-item="corruptionInstall.item" :target-pokemon="corruptionInstall.pokemon" :source="corruptionInstall.source" :initial-family="corruptionInstall.family" :command="corruptionCommand" @close="corruptionInstall=null"/>
-    <dark-continent-panel v-if="darkPanel && !mapLoading && !flight && !battle && !battleResult && !pendingBattleResult" :panel="darkPanel" :busy="darkBusy" :error="darkError" :notice="darkNotice" :team-size="teamPokemons.length" :money="progressionState.money" @rules="darkPanel={...darkPanel,mode:'rules'}" @close="darkPanel=null" @command="darkCommand"/>
+    <dark-continent-panel v-if="darkPanel && !mapLoading && !flight && !battle && !battleResult && !pendingBattleResult" :panel="darkPanel" :busy="darkBusy" :error="darkError" :notice="darkNotice" :team-size="teamPokemons.length" :money="progressionState.money" @return="returnFromDark" @rules="darkPanel={...darkPanel,mode:'rules'}" @close="darkPanel=null" @command="darkCommand"/>
     <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :corruption-allowed="!isDrift && !battle && !superTournament.active" @corruption="openCorruptionSheet" :rename-allowed="(canReorderMoves || renameBusy) && !superTournament.active" :rename-busy="renameBusy" :rename-error="renameError" :rename-notice="renameNotice" @rename="renamePokemon" :moves-order-allowed="canReorderMoves" :moves-order-busy="moveOrderBusy" :moves-order-error="moveOrderError" :moves-order-notice="moveOrderNotice" @reorder-moves="reorderPokemonMoves" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
@@ -770,6 +770,7 @@ export default {
     driftPhaseLabel() { return { selection:'Choix du compagnon', exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', colosseum_ready: 'Colosseum · prêt ?', colosseum_battle: 'Colosseum', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
     driftCountdown() { const end = this.driftState?.phase === 'exploration' ? this.driftState.endsAt : ['preparation','tournament'].includes(this.driftState?.phase) ? this.driftState.preparationEndsAt : null; if (!end) return this.isColosseum && this.driftState?.colosseum ? `${this.driftState.colosseum.score} pts` : ''; const seconds = Math.max(0, Math.ceil((end - this.driftClock - this.driftOffset) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; },
     selectedPokemon() { return this.teamPokemons.find(pokemon => pokemon.uuid === this.selectedPokemonUuid); },
+    onDarkContinent(){return /^jungle[1-9]$/.test(this.map);},
     canReorderTeam(){return Boolean(this.socket?.connected && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.flight && (!this.superTournament.active || ['sas','ready','reward','cleared'].includes(this.superTournament.phase)));},
     canTransferHeldItems(){return this.isTeamPanelOpen && this.canReorderTeam && !this.superTournament.active && this.canUseBagConsumables && !this.teamSaving && !this.teamLoading && !this.selectedPokemonUuid && !this.heldPickerUuid && !this.learningVisible;},
     heldDragPokemon(){return this.teamPokemons.find(p=>p.uuid===this.heldItemDrag?.uuid);},
@@ -1178,7 +1179,7 @@ export default {
       try{const result=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit(event,event==='dark:claim'?{price:this.darkPanel?.cardPrice}:event==='dark:heal'?{price:this.darkPanel?.healPrice}:{},(e,r)=>e?reject(new Error('Connexion interrompue. Réessaie après reconnexion.')):resolve(r)));
         if(!result?.success)throw new Error(result?.message || 'Action indisponible.');
         if(result.equipe)this.applyTeamPokemons(result.equipe.pokemons);
-        if(Number.isSafeInteger(result.money)){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',result.money);}if(event==='dark:heal')this.darkNotice=result.charged?'Premiers secours terminés · 50 000 ₽. PV, statuts et PP restaurés.':'Tes compagnons sont déjà en pleine forme. Aucun paiement nécessaire.';else this.darkPanel=null;
+        if(Number.isSafeInteger(result.money)){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',result.money);}if(event==='dark:heal')this.darkNotice=result.charged?`Premiers secours terminés · ${result.charged.toLocaleString('fr-FR')} ₽. PV, statuts et PP restaurés.`:'Tes compagnons sont déjà en pleine forme. Aucun paiement nécessaire.';else this.darkPanel=null;
       }catch(error){this.darkError=error.message;}finally{this.darkBusy=false;}
     },
     async renamePokemon(payload){
@@ -2302,8 +2303,10 @@ export default {
       try{const result=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit('superTournament:reward',data,(error,r)=>error?reject(new Error('Connexion interrompue. Reconnecte-toi : ton choix est conservé.')):resolve(r)));if(!result?.success)throw Error(result?.message||'Soin indisponible.');}
       catch(error){this.tournamentRewardError=error.message;}finally{this.tournamentBusy=false;}
     },
+    returnFromDark(){if(this.darkBusy)return;this.darkPanel=null;return this.flyToTown('start',{kind:'void',event:'dark:return'});},
     async flyToTown(map,{kind='flight',event='flyToTown',departureReady=null,data={},onError=null}={}) {
       if(this.flight||this.isDrift||this.battle||this.battleResult||!this.socket?.connected)return;
+      if(this.onDarkContinent&&event!=='dark:return'){this.showInteractionNotice('Parle au guide de la plage pour rentrer chez toi.',3800);return;}
       this.releaseAllMovementKeys();this.closeInfoPanel();this.isMenuOpen=false;if(kind==='void')this.isBagOpen=false;
       const reduced=!this.preferences.animationsEnabled||this.worldWeatherReducedMotion;
       const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
