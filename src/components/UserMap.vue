@@ -3534,7 +3534,7 @@ export default {
     this.socket.on('superTournamentPanel',async payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.tournamentError='';await this.loadTeamPokemons();this.tournamentPanel=payload;});
     this.socket.on('superTournamentState',state=>{if(state?.reward?.id!==this.superTournament.reward?.id)this.tournamentRewardError='';this.superTournament=state || {active:false};if(state?.active)this.applyTeamPokemons(state.team || []);else this.loadTeamPokemons();});
     this.socket.on('superTournamentRewardApplied',result=>{
-      if(result.skipped){this.showInteractionNotice(`${result.name}.`);return;}
+      if(result.skipped){this.showInteractionNotice(`${result.name} · +${result.rerollsGained || 0} relance.`);return;}
       if(result.passive){this._feedbackAudio?.play('notification');this.showInteractionNotice(`${result.name} · ${result.passive.duration || 'augmentation active pour cette tentative'}.`);return;}
       const g=result.grant;
       if(g){this._feedbackAudio?.play('notification');this.showInteractionNotice(g.limited?'Limite du porte-monnaie ou du stock atteinte.':g.kind==='money'?`+${Number(g.amount).toLocaleString('fr-FR')} ₽ · récompense récupérée.`:`${g.quantity} ${g.name} ajouté au sac · utilisable après le parcours.`);}
