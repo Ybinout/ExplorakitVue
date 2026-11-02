@@ -24,7 +24,12 @@
               <pattern id="region-snow" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="#d9ead9"/><path d="M2 4h4v2H2m10 8h6v2h-6" fill="#bdd6cd"/></pattern>
             </defs>
             <g shape-rendering="crispEdges">
-              <path fill="url(#region-sea)" d="M0 0H512V448H0Z"/>
+              <path fill="url(#region-sea)" d="M0 0H800V448H0Z"/>
+              <path d="M552 132H720V144H748V168H764V324H748V350H716V366H566V352H538V328H526V176H538V150H552Z" fill="#7cbdab" stroke="#68bba8" stroke-width="18"/>
+              <path d="M552 132H720V144H748V168H764V324H748V350H716V366H566V352H538V328H526V176H538V150H552Z" fill="#4d8e61" stroke="#e1d29a" stroke-width="7"/>
+              <path d="M548 160H740V340H548Z" fill="url(#region-forest)"/>
+              <path d="M603 206h30v24h-30m66 55h36v32h-36" stroke="#8ed6cd" stroke-width="4" fill="#54aabc"/>
+              <text x="646" y="398" text-anchor="middle" font-size="12" font-weight="700" fill="#153f4a" letter-spacing="2">DARK CONTINENT</text>
               <path d="M24 96H40V80H88V92H112V124H124V180H144V196H240V168H272V176H308V188H348V176H400V188H480V204H496V304H476V326H404V352H392V432H40V424H24V396H32V288H20V248H28V168H16V124H24Z" fill="#76c6b1" stroke="#76c6b1" stroke-width="16"/>
               <path d="M24 96H40V80H88V92H112V124H124V180H144V196H240V168H272V176H308V188H348V176H400V188H480V204H496V304H476V326H404V352H392V432H40V424H24V396H32V288H20V248H28V168H16V124H24Z" fill="#b3ce70" stroke="#e4d68a" stroke-width="6"/>
               <path d="M32 104H48V88H84V100H104V136H116V176H104V200H36V164H24V128H32Z" fill="url(#region-snow)"/>
@@ -46,7 +51,7 @@
                 <rect v-if="node.kind === 'town'" :x="node.x-7" :y="node.y-6" width="14" height="12" fill="#f7f0c5" stroke="#94745b" stroke-width="1"/>
                 <path v-if="node.kind === 'town'" :d="`M${node.x-5} ${node.y-4}h10v8h-10Z`" fill="#d87765"/>
                 <rect v-else :x="node.x-3" :y="node.y-3" width="6" height="6" :fill="node.kind==='cave' ? '#6b7967' : '#f7edb4'"/>
-                <text v-if="node.kind==='route'" :x="node.x+10" :y="node.y+3" class="route-label">{{ label(node.id).replace('Route ','') }}</text>
+                <text v-if="node.kind==='route'" :x="node.x+10" :y="node.y+3" class="route-label">{{ routeLabel(node.id) }}</text>
                 <text v-if="node.kind === 'town' || node.kind === 'event'" :x="node.x" :y="node.y - (currentNode?.id === node.id ? 28 : 14)" text-anchor="middle" class="town-label">{{ shortLabel(node.id) }}</text>
               </g>
             </g>
@@ -131,6 +136,7 @@ export default {
     selectGroupMember(member){this.selected=member.nodeId;this.centerOn(this.atlas.nodes.find(n=>n.id===member.nodeId));},
 
     label(id){return getMapLocationLabel(id,this.language);},
+    routeLabel(id){return /^jungle[1-9]$/.test(id)?'Jungle '+id.slice(6):this.label(id).replace('Route ','');},
     shortLabel(id){return id==='start' ? (this.en?'Home village':'Village de départ') : this.label(id);},
     speciesName(id){return this.entries.find(p=>p.id===id)?.name || `#${id}`;},
     methodLabel(method){return ({grass:this.en?'Tall grass':'Hautes herbes',fishing:this.en?'Fishing · Fishing Rod required':'Pêche · Canne nécessaire',cave:this.en?'Cave encounters':'Rencontres en grotte'})[method];},

@@ -2,6 +2,7 @@ import { WaterfallRenderer } from './waterfalls.js';
 // Pixel currents stay inside each mapped lake, never across its shoreline.
 const WIDTH = 448, HEIGHT = 320, FRAME_MS = 1000 / 15, CREST_COLOR = [190,235,255];
 const LAKES = {
+  ...Object.fromEntries(Array.from({length:9},(_,i)=>['jungle'+(i+1),{bounds:{left:0,right:448,top:0,bottom:320},palette:'jungle-water',ripples:true}])),
   ville1_arene: {
     bounds: { left: 29, right: 420, top: 68, bottom: 269 },
     regions: [{ left: 29, right: 100, top: 68, bottom: 269 }, { left: 348, right: 420, top: 68, bottom: 269 }],
@@ -28,7 +29,7 @@ export function villageWaterMask(data, map = 'start') {
     const r = data[i], g = data[i + 1], b = data[i + 2];
     const matches = profile.palette === 'mounir-basins'
       ? r < 100 && g > 75 && g < 195 && g - r > 55 && b >= g && b - g < 55
-      : WATER.has(`${r},${g},${b}`);
+      : profile.palette==='jungle-water'?b>g+8 && b>r*1.35 && g>65:WATER.has(`${r},${g},${b}`);
     if (data[i + 3] === 255 && matches) water[index] = 1;
   }
   // Leave a fixed one-pixel margin around banks, rocks, highlights and plants.

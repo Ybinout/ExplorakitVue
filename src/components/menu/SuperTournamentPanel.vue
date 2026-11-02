@@ -3,7 +3,7 @@
     <section id="super-tournament-dialog" ref="panel" class="tournament-panel" :data-tournament-view="view" role="dialog" aria-modal="true" aria-labelledby="tournament-title" tabindex="-1">
       <header><div><small>RIFTMON / ÎLE DU SUPER TOURNOI</small><h2 id="tournament-title">{{ view==='abandon' ? 'Quitter le parcours ?' : view==='ranking' ? 'Classement' : view==='powers' ? 'Augmentations' : 'Inscription' }}</h2></div><button class="close" aria-label="Fermer" :disabled="busy" @click="$emit('close')">×</button></header>
       <div class="tournament-content">
-        <template v-if="view==='abandon'"><p>Ton score et les Pokédollars déjà gagnés seront conservés. Cette tentative s’arrêtera et tu retourneras dans ton dernier Centre Pokémon.</p><p>Tu retrouveras ton équipe d’Aventure et ses objets.</p></template>
+        <template v-if="view==='abandon'"><p>Ton score et les Pokédollars déjà gagnés seront conservés. Cette tentative s’arrêtera et tu retourneras à l’accueil du Super Tournoi.</p><p>Tu retrouveras ton équipe d’Aventure et ses objets.</p></template>
         <template v-else-if="view==='powers'"><tournament-power-list :passives="passives"/></template>
         <template v-else-if="view==='entry'">
           <p class="host">Hôtesse</p><p v-if="busy">Je vérifie votre équipe et prépare votre inscription…</p><p v-else>Bienvenue ! Votre PASS vous ouvre les portes du Super Tournoi. Souhaitez-vous inscrire cette équipe ?</p>

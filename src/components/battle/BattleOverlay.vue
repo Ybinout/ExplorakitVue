@@ -288,7 +288,7 @@
         <button class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
         <button v-if="!opponent?.storyActor" class="battle-main-btn action-bag" :disabled="tournament || environment==='whitepeak-club' || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
         <button class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
-        <button class="battle-main-btn action-flee" :disabled="!canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
+        <button class="battle-main-btn action-flee" :disabled="environment==='dark-jungle' || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
       </div>
     </div>
   </div>
@@ -343,6 +343,7 @@ const SNOW_BACKGROUNDS = Object.freeze({
   wide: require('@/assets/battle/snow-wide-v1.webp')
 });
 const GYM_BACKGROUNDS = Object.freeze({
+  'dark-jungle':{wide:require('@/assets/battle/dark-jungle-wide-v1.webp'),mobile:require('@/assets/battle/dark-jungle-mobile-v1.webp'),platform:{'--gym-ground':'#677849','--gym-rim':'#92a66a','--gym-edge':'#34492b','--gym-light':'#bbc18a'}},
   'whitepeak-club':{wide:require('@/assets/battle/whitepeak-club.png'),mobile:require('@/assets/battle/whitepeak-club.png'),platform:{'--gym-ground':'#728b9b','--gym-rim':'#b79f6b','--gym-edge':'#394f66','--gym-light':'#d3dfe4'}},
   'super-tournament': {
     wide: require('@/assets/battle/tournament-wide-v1.png'), mobile: require('@/assets/battle/tournament-mobile-v1.png'),
@@ -562,6 +563,7 @@ export default {
     capturePolicyText() {
       if(!this.capturePolicy)return '';
       const p=this.capturePolicy,en=this.preferences.language==='en';
+      if(p.darkContinent)return en?'Capture impossible · Dark Continent Pokémon are too powerful.':'Capture impossible · Les Pokémon du Dark Continent sont trop puissants.';
       if(p.excessLevels>0)return en?`Very difficult capture · level ${this.opponent?.level}, badge tier ${p.comfortableLevel}. More badges greatly improve your chances.`:`Capture très difficile · Niv. ${this.opponent?.level}, palier ${p.comfortableLevel}. Gagne des badges pour améliorer tes chances.`;
       return en?`${p.badgeCount} badge(s) · capture tier: level ${p.comfortableLevel}. Above it, captures remain possible but much harder.`:`${p.badgeCount} badge${p.badgeCount>1?'s':''} · palier de capture : Niv. ${p.comfortableLevel}. Au-delà, les captures restent possibles mais bien plus difficiles.`;
     },
@@ -812,7 +814,7 @@ export default {
       if (kind === 'gwenn') {
         this.music=this.preloadTrainerSequence();this.syncMusic();return;
       }
-      const tracks = { void:require('@/assets/msc/lucie-maison.mp3'), mounir: require('@/assets/msc/mounir.mp3'), hoze: require('@/assets/msc/hoze.mp3'), lucie: require('@/assets/msc/lucie-combat.mp3'), ana: require('@/assets/msc/ana.mp3'), wanda: require('@/assets/msc/wanda.mp3'), '7p': require('@/assets/msc/7p.mp3'), raph: require('@/assets/msc/raph.mp3'), wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
+      const tracks = { dark:require('@/assets/msc/dark-battle.mp3'),legendary:require('@/assets/msc/legendary-battle.mp3'),void:require('@/assets/msc/lucie-maison.mp3'), mounir: require('@/assets/msc/mounir.mp3'), hoze: require('@/assets/msc/hoze.mp3'), lucie: require('@/assets/msc/lucie-combat.mp3'), ana: require('@/assets/msc/ana.mp3'), wanda: require('@/assets/msc/wanda.mp3'), '7p': require('@/assets/msc/7p.mp3'), raph: require('@/assets/msc/raph.mp3'), wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
       this.music = new Audio(tracks[kind] || tracks.wild);
       this.music.loop = true;
       this.syncMusic();

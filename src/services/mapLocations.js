@@ -1,5 +1,6 @@
 const labels = {
   fr: {
+    jungle1:'Dark Continent · Jungle 1',jungle2:'Dark Continent · Jungle 2',jungle3:'Dark Continent · Jungle 3',jungle4:'Dark Continent · Jungle 4',jungle5:'Dark Continent · Jungle 5',jungle6:'Dark Continent · Jungle 6',jungle7:'Dark Continent · Jungle 7',jungle8:'Dark Continent · Jungle 8',jungle9:'Dark Continent · Jungle 9',
     super_tournament_lobby:'Super Tournoi · Accueil',super_tournament_sas:'Super Tournoi · SAS',super_tournament_room:'Super Tournoi · Salle de duel',
     void_arena:'Arène oubliée', professor_lab:'Laboratoire du Professeur',
     ville_commerciale:'Comptoirville',tour_rdc:'Grand Comptoir · 1 · Fournitures',tour_etage1:'Grand Comptoir · 2 · Entraînement',tour_etage2:'Grand Comptoir · 3 · Stratégie',tour_etage3:'Grand Comptoir · 4 · Baies',
@@ -21,6 +22,7 @@ const labels = {
     gen_arene5: 'Arène d’Ocreville · Raphael'
   },
   en: {
+    jungle1:'Dark Continent · Jungle 1',jungle2:'Dark Continent · Jungle 2',jungle3:'Dark Continent · Jungle 3',jungle4:'Dark Continent · Jungle 4',jungle5:'Dark Continent · Jungle 5',jungle6:'Dark Continent · Jungle 6',jungle7:'Dark Continent · Jungle 7',jungle8:'Dark Continent · Jungle 8',jungle9:'Dark Continent · Jungle 9',
     super_tournament_lobby:'Super Tournoi · Accueil',super_tournament_sas:'Super Tournoi · SAS',super_tournament_room:'Super Tournoi · Salle de duel',
     void_arena:'Forgotten Arena', professor_lab:'Professor’s Laboratory',
     ville_commerciale:'Market Town',tour_rdc:'Grand Store · 1 · Supplies',tour_etage1:'Grand Store · 2 · Training',tour_etage2:'Grand Store · 3 · Strategy',tour_etage3:'Grand Store · 4 · Berries',
