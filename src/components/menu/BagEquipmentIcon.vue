@@ -54,7 +54,31 @@
       <circle cx="30" cy="12" r="2" fill="var(--item-accent)"/>
       <path d="m15 9 2-3m18 13 3-1"/>
     </g>
-    <g v-else-if="kind==='choice_specs'">
+    <g v-else-if="kind==='flame_orb'">
+      <circle cx="24" cy="25" r="17" fill="var(--item-main)"/>
+      <path d="M25 9c4 9-4 9 3 15l4-7c10 12 4 23-8 23S8 26 17 18c-1 8 6 8 6 2Z" fill="var(--item-accent)"/>
+      <path d="M24 25c-8 9-3 13 1 13 7-2 3-7-1-13Z" fill="var(--item-light)"/>
+    </g>
+    <g v-else-if="kind==='macho_brace'">
+      <path d="M9 9h30v30H9Z" fill="var(--item-main)"/>
+      <path d="M5 14h10v20H5Zm28 0h10v20H33ZM18 7h12v34H18Z" fill="var(--item-accent)"/>
+      <path d="M21 12h6v6h-6Zm0 18h6v6h-6Z" fill="var(--item-light)"/>
+      <path d="M10 19v10m28-10v10M19 24h10"/>
+    </g>
+    <g v-else-if="kind==='wide_lens'">
+      <path d="m29 29 13 12-5 5-12-13Z" fill="var(--item-main)"/>
+      <circle cx="21" cy="20" r="16" fill="var(--item-main)"/>
+      <circle cx="21" cy="20" r="11" fill="var(--item-accent)"/>
+      <path d="m14 17 7-6m-7 13 14-13" stroke="var(--item-light)" stroke-width="3"/>
+    </g>
+    <g v-else-if="kind==='scope_lens'">
+      <path d="M16 6h16l5 36H11Z" fill="var(--item-main)"/>
+      <circle cx="24" cy="23" r="16" fill="var(--item-accent)"/>
+      <circle cx="24" cy="23" r="10" fill="var(--item-light)"/>
+      <path d="M24 11v7m0 10v7M12 23h7m10 0h7"/>
+      <circle cx="24" cy="23" r="2" fill="var(--item-main)"/>
+    </g>
+    <g v-else-if="kind==='choice_specs' || kind==='wise_glasses'">
       <path d="m4 25 4-14h6m30 14-4-14h-6"/>
       <path d="M3 24q0-4 4-4h11q4 0 4 4v7q0 5-6 5H9q-6 0-6-5Zm23 0q0-4 4-4h11q4 0 4 4v7q0 5-6 5h-7q-6 0-6-5Z" fill="var(--item-main)"/>
       <path d="M8 25h9v6H8Zm23 0h9v6h-9Z" fill="var(--item-accent)"/>
@@ -65,7 +89,7 @@
       <path d="m11 16 12 6 15-6" stroke="var(--item-accent)" stroke-width="4"/>
       <path d="m20 23 3 4m4-6 1 5"/>
     </g>
-    <g v-else-if="kind==='choice_band'">
+    <g v-else-if="kind==='choice_band' || kind==='muscle_band'">
       <path d="M6 16q18-10 36 0v11q-18 9-36 0Zm30 11 7 13-10-2-4-10m7-1-1 16-8-6 2-9" fill="var(--item-main)"/>
       <path d="M10 20q14-6 28 0" stroke="var(--item-accent)" stroke-width="3"/>
       <circle cx="32" cy="26" r="4" fill="var(--item-accent)"/>

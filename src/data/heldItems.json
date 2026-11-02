@@ -218,5 +218,29 @@
   "toxic_orb": {
     "name": "Orbe Poison",
     "description": "Empoisonne gravement le porteur en fin de tour s’il n’a aucun statut. Respecte les immunités au poison. N’est pas consommée."
+  },
+  "macho_brace": {
+    "name": "Bracelet Macho",
+    "description": "Double les EV reçus en combat par le porteur, dans les limites habituelles. Divise sa Vitesse par deux tant qu’il est équipé. Ne modifie pas l’XP ni les vitamines."
+  },
+  "muscle_band": {
+    "name": "Bandeau Muscle",
+    "description": "Augmente de 10 % la puissance des capacités physiques du porteur, sans le bloquer sur une attaque."
+  },
+  "wise_glasses": {
+    "name": "Lunettes Sages",
+    "description": "Augmente de 10 % la puissance des capacités spéciales du porteur, sans le bloquer sur une attaque."
+  },
+  "wide_lens": {
+    "name": "Loupe",
+    "description": "Multiplie la précision des capacités du porteur par 1,1. Ne modifie pas les attaques à K.O. en un coup ni celles qui touchent toujours."
+  },
+  "scope_lens": {
+    "name": "Lentilscope",
+    "description": "Augmente d’un cran le taux de coups critiques du porteur. Respecte les talents et protections qui empêchent les critiques."
+  },
+  "flame_orb": {
+    "name": "Orbe Flamme",
+    "description": "Brûle le porteur en fin de tour s’il n’a aucun statut. Respecte les immunités à la brûlure. N’est pas consommée."
   }
 }
