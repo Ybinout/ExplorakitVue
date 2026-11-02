@@ -11,7 +11,7 @@
     <template v-if="pokemon">
       <p v-if="expectedMoves.length===4">Choisis l’attaque à oublier.</p>
       <div v-if="expectedMoves.length===4" class="machine-slots">
-        <button v-for="(move,index) in expectedMoves" :key="index" :data-machine-slot="index" :aria-pressed="slot===index" :disabled="busy || !allowed" @click="slot=index"><strong>{{ label(move) }}</strong><small>{{ details(move) }}</small><span class="machine-description" data-machine-description>{{ description(move) }}</span></button>
+        <button v-for="(move,index) in expectedMoves" :key="index" :data-machine-slot="index" :aria-pressed="slot===index" :disabled="busy || !allowed || !!corruptedMove && move===corruptedMove" @click="slot=index"><strong>{{ label(move) }}</strong><small>{{ details(move) }}</small><span class="machine-description" data-machine-description>{{ description(move) }}</span></button>
       </div>
       <p v-if="slot!==null" class="machine-preview" role="status">{{ slot < expectedMoves.length ? label(expectedMoves[slot]) + ' → ' : '' }}{{ label(machine.move) }}</p>
       <div class="machine-confirm">
@@ -23,6 +23,7 @@
   </div>
 </template>
 <script>
+import {moduleAt} from '@/services/corruption';
 import machines from '@/data/machines.json';
 import moves from '@/data/moveLearning.json';
 import reference from '@/data/pokemonReference.fr.json';
@@ -31,7 +32,7 @@ import { localizeTypeName } from '@/services/pokemonTypes';
 export default {
   props:{item:{type:Object,required:true},team:{type:Array,default:()=>[]},busy:Boolean,allowed:Boolean},
   data:()=>({target:'',slot:null,expectedMoves:[]}),
-  computed:{machine(){return machines[this.item.key];},pokemon(){return this.team.find(p=>p.uuid===this.target);},teamMoves(){return JSON.stringify(this.team.map(p=>[p.uuid,p.abilities]));}},
+  computed:{corruptedMove(){return moduleAt(this.pokemon,'move')?.corruptionModule.move;},machine(){return machines[this.item.key];},pokemon(){return this.team.find(p=>p.uuid===this.target);},teamMoves(){return JSON.stringify(this.team.map(p=>[p.uuid,p.abilities]));}},
   watch:{teamMoves(){this.choose('');}},
   methods:{
     stats(name){const m=moves[name]||{};return [{label:'Type',value:localizeTypeName(m.type)},{label:'Catégorie',value:{physical:'Physique',special:'Spéciale',status:'Statut'}[reference.moves[name]?.category]||'—'},{label:'Puissance',value:m.power||'—'},{label:'Précision',value:m.accuracy?m.accuracy+' %':'—'},{label:'PP',value:m.pp||'—'}];},

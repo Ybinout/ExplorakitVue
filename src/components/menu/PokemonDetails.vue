@@ -1,6 +1,6 @@
 <template>
   <div class="companion-backdrop" @mousedown.self="$emit('close')" @keydown.esc.stop="!renameBusy && $emit('close')" @keydown.tab="trapFocus">
-    <section ref="dialog" class="companion-sheet" :data-companion-page="page" role="dialog" aria-modal="true" :aria-label="`Fiche de ${pokemon.name}`">
+    <section ref="dialog" class="companion-sheet" :data-companion-page="page" :class="{'is-corrupted':pokemon.corruption?.permanent}" role="dialog" aria-modal="true" :aria-label="`Fiche de ${pokemon.name}`">
       <header class="companion-heading">
         <div><span class="companion-kicker">{{ contextLabel }} · {{ position }} / {{ total }}</span><h2>{{ pokemon.name }}</h2></div>
         <button ref="close" class="companion-close" aria-label="Fermer la fiche" @click="$emit('close')">×</button>
@@ -56,6 +56,7 @@
         </article>
         <p v-if="pokemon.heldItemName" class="evolution-help">Objet tenu : <strong>{{ pokemon.heldItemName }}</strong></p>
       </section>
+      <section class="companion-corruption" aria-labelledby="companion-corruption-title"><h3 id="companion-corruption-title">{{ pokemon.corruption?'Pokémon corrompu':'Aucune corruption' }}</h3><p>{{ pokemon.corruption?'Cette mutation est définitive. Les quatre familles de modules sont remplaçables, une par famille.':'Un module corrompt définitivement son porteur. Un seul Pokémon corrompu peut rejoindre ton équipe à la fois.' }}</p><p v-if="pokemon.corruption">{{ Object.keys(pokemon.corruption.modules).length }} / 4 modules · Types actuels : {{ pokemon.data.type.map(t=>typeNames[t]||t).join(' / ') }}</p><div class="companion-corruption-grid"><article v-for="family in mutationFamilies" :key="family.key" :data-corruption-equipped="family.key"><bag-item-icon :item-key="corruptionSlot(family.key)?.key || 'cmod_'+({move:'move_53',ability:'ability_levitate',type:'type_fire',combat:'offense_fire'}[family.key])" pocket="corruption"/><div><small>{{ family.label }}</small><strong>{{ corruptionSlot(family.key)?.name || 'Emplacement libre' }}</strong><p v-if="corruptionSlot(family.key)">{{ corruptionEffect(corruptionSlot(family.key)) }}</p></div><button v-if="corruptionAllowed" :data-corruption-open="family.key" @click="$emit('corruption',{pokemon,family:family.key})">{{ corruptionSlot(family.key)?'Remplacer':'Installer' }}</button></article></div><p v-if="!corruptionAllowed" class="evolution-help">Consultation des modules. Pour modifier un compagnon, ouvre sa fiche hors combat.</p><p class="evolution-help">Les changements de type modifient résistances, faiblesses et bonus offensifs. Le movepool classique dépend toujours de l’espèce.</p></section>
       <section v-if="!readOnly" class="companion-evolutions" aria-labelledby="companion-evolution-title">
         <h3 ref="evolutionTitle" id="companion-evolution-title" tabindex="-1">Évolution</h3>
         <p v-if="evolutionLoading" role="status">Chargement des conditions…</p>
@@ -87,6 +88,8 @@ import { localizeAbilityName, localizeMoveName } from '@/services/i18n';
 import { createPokemonReference } from '@/services/pokemonReference';
 import referenceData from '@/data/pokemonReference.fr.json';
 import {natures} from '@/services/pokemonNatures';
+import BagItemIcon from './BagItemIcon.vue';
+import {CORRUPTION_FAMILIES,moduleAt,moduleEffect} from '@/services/corruption';
 import OwnedNameEditor from './OwnedNameEditor.vue';
 const reference=createPokemonReference(referenceData);
 const stats = [
@@ -96,12 +99,13 @@ const stats = [
 ];
 
 export default {
-  components: { ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender, OwnedNameEditor },
-  props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, renameAllowed:Boolean,renameBusy:Boolean,renameError:String,renameNotice:String, movesOrderAllowed:Boolean,movesOrderBusy:Boolean,movesOrderError:String,movesOrderNotice:String,contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
+  components: { ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender, OwnedNameEditor, BagItemIcon },
+  props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, corruptionAllowed:Boolean, renameAllowed:Boolean,renameBusy:Boolean,renameError:String,renameNotice:String, movesOrderAllowed:Boolean,movesOrderBusy:Boolean,movesOrderError:String,movesOrderNotice:String,contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
   data: () => ({ page: 'profile', mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
     typeNames: { Grass: 'Plante', Fire: 'Feu', Water: 'Eau', Bug: 'Insecte', Flying: 'Vol', Electric: 'Électrik', Ground: 'Sol', Rock: 'Roche', Ice: 'Glace', Fighting: 'Combat', Psychic: 'Psy', Ghost: 'Spectre', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' } }),
   computed: {
-    pages(){return [{key:'profile',label:'Profil et statistiques'},{key:'moves',label:'Capacités'},...(!this.readOnly?[{key:'evolution',label:'Évolution'}]:[])];},
+    pages(){return [{key:'profile',label:'Profil et statistiques'},{key:'moves',label:'Capacités'},{key:'corruption',label:'Corruption'},...(!this.readOnly?[{key:'evolution',label:'Évolution'}]:[])];},
+    mutationFamilies(){return CORRUPTION_FAMILIES;},
     progress() { return experienceProgress(this.pokemon); },
     hpPercent() { return Math.min(100, this.pokemon.currentHp / this.pokemon.maxHp * 100); },
     abilityName() { return localizeAbilityName(this.pokemon.passiveAbility, 'fr') || '—'; },
@@ -131,6 +135,8 @@ export default {
   mounted() { this.previousFocus = document.activeElement; this.$refs.close.focus(); },
   beforeDestroy() { this.previousFocus?.focus?.(); },
   methods: {
+    corruptionSlot(family){return moduleAt(this.pokemon,family);},
+    corruptionEffect:moduleEffect,
     showPage(page){this.page=page;this.$nextTick(()=>{if(this.$refs.content)this.$refs.content.scrollTop=0;});},
     reorderMove(index,delta){
       if(!this.movesOrderAllowed || this.movesOrderBusy)return;
@@ -162,6 +168,8 @@ export default {
 };
 </script>
 <style scoped>
+.companion-content>.companion-corruption{display:none}.companion-sheet[data-companion-page=corruption] .companion-content>.companion-corruption{display:block}.companion-sheet[data-companion-page=corruption] .companion-content>:not(.companion-corruption){display:none}.companion-corruption{padding:20px 22px}.companion-corruption h3{font:24px Georgia,serif;color:var(--journal-heading);margin:0 0 12px}.companion-corruption>p{font-size:12px;line-height:1.65;color:var(--journal-muted)}.companion-corruption-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.companion-corruption-grid article{display:flex;gap:12px;padding:13px;border:1px solid #a98cbb;background:var(--journal-card);border-radius:10px;align-items:center;flex-wrap:wrap}.companion-corruption-grid article>div{flex:1;min-width:110px}.companion-corruption-grid small{font-size:10px;color:var(--journal-muted)}.companion-corruption-grid strong{display:block;font-size:12px;color:var(--journal-heading)}.companion-corruption-grid p{font-size:11px;color:var(--journal-muted);margin:6px 0}.companion-corruption-grid button{min-height:44px;width:100%;border:1px solid #a98cbb;border-radius:7px;background:var(--journal-selected);color:var(--journal-ink);cursor:pointer}.is-corrupted .companion-art{background:#e9ddf3;border-color:#a184b6}[data-game-theme-mode=dark] .is-corrupted .companion-art{background:#372846;border-color:#a184b6}@media(max-width:540px){.companion-corruption{padding:16px}.companion-corruption-grid{grid-template-columns:1fr}.companion-corruption-grid button{width:auto;flex:none;padding:8px}}
+
 .companion-pagination{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 24px;background:var(--journal-paper);border-bottom:1px solid var(--journal-border);color:var(--journal-muted);font:12px var(--journal-font)}.companion-pagination button{min-height:44px;padding:8px 14px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);color:var(--journal-ink);font:inherit;cursor:pointer}.companion-pagination button:disabled{opacity:.4;cursor:default}.companion-pagination button:focus-visible{outline:2px solid var(--journal-accent);outline-offset:2px}@media(max-width:400px){.companion-pagination{padding:8px 12px}.companion-pagination button{padding:8px 10px}}
 
 /* Learned moves are shared by team and PC sheets. */
@@ -199,7 +207,8 @@ export default {
 .companion-tabs{display:flex;border-bottom:2px solid var(--journal-border);gap:4px}.companion-tabs button{flex:1;min-height:44px;border:0;border-radius:10px 10px 0 0;background:var(--journal-soft);color:var(--journal-muted);font:bold 12px Arial;cursor:pointer;padding:8px}.companion-tabs button[aria-selected=true]{background:var(--journal-selected);color:var(--journal-heading);box-shadow:inset 0 -3px var(--journal-progress)}.companion-radar{display:block;width:100%;max-height:290px}.radar-ring{fill:none;stroke:#c6caba;stroke-width:1}.radar-axis{stroke:#d5d7cb;stroke-width:1}.radar-value{fill:#42a49e42;stroke:#388f98;stroke-width:2}.radar-dot{fill:#286579}.radar-label{font:9px Arial;fill:var(--journal-muted)}.radar-number{font:bold 12px Arial;fill:var(--journal-heading)}.companion-chart-caption{text-align:center;font-size:10px;color:var(--journal-muted);margin:0 0 15px}.companion-stat-lines{display:grid;grid-template-columns:1fr 1fr;gap:5px 18px}.companion-stat-lines>div{display:flex;justify-content:space-between;gap:5px;font-size:11px;padding:4px 0;border-bottom:1px dotted var(--journal-border)}.companion-stat-lines small{color:var(--journal-muted);font-size:9px;font-weight:normal}.companion-tip{font-size:11px;line-height:1.6;color:var(--journal-muted);background:var(--journal-soft);border-left:3px solid var(--journal-progress);padding:10px 12px;margin:16px 0 0}.companion-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 20px;border-top:1px solid var(--journal-border);background:var(--journal-soft)}.companion-footer button{min-height:44px;padding:6px 15px;background:var(--journal-accent);color:var(--journal-on-accent);border:1px solid var(--journal-accent);border-radius:9px;font-weight:bold;cursor:pointer}.companion-footer span{font-size:8px;letter-spacing:1.5px;color:var(--journal-muted)}.companion-footer button:disabled{opacity:.35;cursor:default}button:focus-visible{outline:3px solid var(--journal-accent);outline-offset:2px}
 @media(max-width:600px){.companion-backdrop{padding:10px}.companion-sheet{max-height:calc(100dvh - 20px);border-radius:16px}.companion-heading{padding:14px 16px}.companion-heading h2{font-size:24px}.companion-kicker{font-size:8px;letter-spacing:1px}.companion-body{grid-template-columns:1fr;padding:16px;gap:20px}.companion-identity{display:grid;grid-template-columns:115px 1fr;gap:5px 14px}.companion-art{grid-row:1 / 6;min-height:140px}.companion-art .pokemon-portrait{width:110px;height:110px}.companion-number{font-size:9px;left:8px;top:6px}.companion-level{font-size:10px;bottom:6px;right:8px}.companion-types{margin:0;align-self:end;justify-content:flex-start}.companion-types span{font-size:10px;padding:2px 8px}.companion-species{text-align:left;margin:0;font-size:11px}.companion-next{margin:0}.companion-traits{grid-column:1 / -1;margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}.companion-traits>small{grid-column:1 / -1;grid-row:2}.companion-traits>span:last-child{grid-column:1 / -1}.companion-footer{padding:10px 12px}.companion-footer span{display:none}.companion-radar{max-height:260px}.companion-stat-lines{gap:5px 12px}}
 
-.companion-pages{display:none}
+.companion-sheet{display:flex;flex-direction:column;overflow:hidden}.companion-heading,.companion-pagination,.companion-pages,.companion-footer{flex:none}.companion-content{min-height:0;overflow:auto;overscroll-behavior:contain}.companion-pages{display:flex;flex-wrap:wrap;gap:5px;padding:8px 14px;border-bottom:1px solid var(--journal-border);background:var(--journal-soft)}.companion-pages button{flex:1;min-height:44px;min-width:80px;padding:8px;border:1px solid transparent;border-radius:8px;background:none;color:var(--journal-muted);font:600 11px var(--journal-font);cursor:pointer}.companion-pages [aria-pressed=true]{background:var(--journal-card);color:var(--journal-heading);border-color:var(--journal-border)}
+[data-companion-page=profile] .companion-content>:not(.companion-body),[data-companion-page=moves] .companion-content>:not(.companion-pc-moves),[data-companion-page=evolution] .companion-content>:not(.companion-evolutions){display:none}
 @media(min-width:921px){
  .companion-sheet{width:min(980px,100%);display:flex;flex-direction:column;overflow:hidden}
  .companion-heading,.companion-pagination,.companion-pages,.companion-footer{flex:none;position:static}
@@ -209,7 +218,7 @@ export default {
  .companion-pages button{flex:1;min-height:38px;padding:8px;border:1px solid transparent;border-radius:8px;background:none;color:var(--journal-muted);font:600 12px var(--journal-font);cursor:pointer}
  .companion-pages [aria-pressed=true]{border-color:var(--journal-progress);background:var(--journal-card);color:var(--journal-heading)}
  .companion-content{min-height:0;overflow:auto;overscroll-behavior:contain}
- [data-companion-page=profile] .companion-content>:not(.companion-body),[data-companion-page=moves] .companion-content>:not(.companion-pc-moves),[data-companion-page=evolution] .companion-content>:not(.companion-evolutions){display:none}
+ [data-companion-page=profile] .companion-content>:not(.companion-body),[data-companion-page=moves] .companion-content>:not(.companion-pc-moves),[data-companion-page=corruption] .companion-content>:not(.companion-corruption),[data-companion-page=evolution] .companion-content>:not(.companion-evolutions){display:none}
  .companion-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:18px 22px;gap:24px}
  .companion-identity{display:grid;grid-template-columns:140px minmax(0,1fr);gap:6px 14px;align-content:start}
  .companion-art{grid-row:1 / 6;min-height:160px}.companion-art .pokemon-portrait{width:125px;height:125px}

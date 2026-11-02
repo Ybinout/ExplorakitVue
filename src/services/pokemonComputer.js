@@ -2,6 +2,7 @@
 export function drawPokemonComputers(context, state, map) {
   if(state?.map!==map)return;
   for(const device of state.devices || []){
+    if(device.kind==='corruption'){context.save();const x=device.screen.x*32+8,y=device.screen.y*32+10;context.fillStyle='#4d365f';context.fillRect(x,y,24,17);context.fillStyle='#e1cef1';context.font='bold 9px monospace';context.textAlign='center';context.fillText({move:'CS',ability:'T',type:'Ty',combat:'±'}[device.family],x+12,y+12);context.restore();continue;}
     if(device.kind!=='pc')continue;
     // Seat the screen inside the counter opening without moving its interaction tile.
     context.save();context.translate(device.x*32+8,device.y*32-16);

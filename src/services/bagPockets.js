@@ -2,6 +2,7 @@
 export const BAG_POCKETS = Object.freeze([
   {key:'medicine',name:'Soins',en:'Medicine',hint:'Pour remettre ton équipe sur pied.',enHint:'Keep your team ready for the road.'},
   {key:'training',name:'Entraînement',en:'Training',hint:'Vitamines, natures, talents, relances d’IV et remise à zéro des EV.',enHint:'Vitamins, natures, abilities, IV rolls and EV resets.'},
+  {key:'corruption',name:'Corruption',en:'Corruption',hint:'Modules CS, Talent, Type et Combat. Un Pokémon corrompu par équipe.',enHint:'Move, Ability, Type and Combat modules. One corrupted Pokémon per team.'},
   {key:'machines',name:'CS',en:'CS',hint:'Apprends une attaque à un Pokémon compatible.',enHint:'Teach a move to a compatible Pokémon.'},
   {key:'balls',name:'Balls',en:'Balls',hint:'Pour tes prochaines rencontres.',enHint:'Ready for your next encounter.'},
   {key:'field',name:'Objets',en:'Field items',hint:'Pour explorer plus tranquillement.',enHint:'For a quieter journey.'},
@@ -22,6 +23,7 @@ export function trainingGroup(item) {
   return item.fieldUse?.levelUp?'levels':item.fieldUse?.ivReroll?'iv':item.fieldUse?.effortReset?'ev':item.fieldUse?.abilityReroll?'abilities':item.fieldUse?.natureReroll?'natures':'vitamins';
 }
 export function bagPocket(item) {
+  if(item.category==='corruption')return 'corruption';
   if(item.category==='treasure')return 'treasures';
   if(item.category==='machine')return 'machines';
   if(item.category==='ball')return 'balls';

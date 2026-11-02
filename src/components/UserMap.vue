@@ -86,7 +86,7 @@
           <button v-if="isShopMap" class="location-shop-btn" data-open-sell type="button" @click="openShop('sell')">{{ preferences.language==='en'?'Sell':'Vendre' }}</button>
         </div>
         </div>
-        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid?'':null" :aria-hidden="trainingFeedback || heldPickerUuid?'true':null" ref="bagPanel" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
+        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid || corruptionInstall?'':null" :aria-hidden="trainingFeedback || heldPickerUuid || corruptionInstall?'true':null" ref="bagPanel" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
               <template v-if="item.experienceModule && !isDrift">
                 <p class="bag-use-hint" data-experience-module-state><strong>{{ item.active ? (preferences.language==='en'?'Active':'Actif') : (preferences.language==='en'?'Inactive':'Inactif') }}</strong> · {{ item.active ? `+${item.levelBonus} ${preferences.language==='en'?'levels for wild encounters':'niveaux pour les rencontres sauvages'}` : (preferences.language==='en'?'Usual encounter levels':'Niveaux habituels des rencontres') }}</p>
@@ -95,6 +95,7 @@
               <button v-else-if="item.darkContinentTravel && !isDrift" class="bag-use-button" data-use-dark-card :disabled="superTournament.active || battle || mapLoading || !!flight" @click="flyToTown(/^jungle[1-9]$/.test(map)?'super_tournament_lobby':'jungle1',{kind:'void',event:'dark:travel'})">{{ /^jungle[1-9]$/.test(map)?'Revenir à l’accueil':'Rejoindre le continent' }}</button>
               <button v-else-if="item.superTournamentTravel && !isDrift" class="bag-use-button" data-use-tournament-pass :disabled="superTournament.active || battle || mapLoading || !!flight" @click="flyToTown('super_tournament_lobby',{kind:'void',event:'superTournament:travel'})">Utiliser</button>
               <button v-else-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="!item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
+              <template v-else-if="item.category==='corruption'"><button class="bag-use-button" data-use-corruption-module :disabled="isDrift || !!battle || superTournament.active || mapLoading" @click="openCorruptionItem(item)">Installer sur un Pokémon</button><small class="bag-use-hint">Mutation définitive · un seul porteur corrompu dans l’équipe.</small></template>
               <machine-item-use v-else-if="item.category==='machine'" :key="item.key" :item="item" :team="teamPokemons" :busy="medicineBusy || teamLoading" :allowed="canUseBagItem(item)" @use="useBagMachine" />
               <template v-else-if="isBagConsumable(item)">
                 <select data-medicine-target :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
@@ -123,7 +124,7 @@
         <game-friends-panel v-if="friendsOpen" :state="socialState" :group-unread="socialGroupUnread" @reading="setSocialReading" :presence-revision="socialPresenceRevision" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError || tradeError" :trade-invite="incomingTrade" :trading="tradeBusy" :can-trade="!isDrift" :request-trade="requestFriendTrade" @trade-answer="answerFriendTrade" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
         <held-item-picker v-if="heldPickerPokemon" :pokemon="heldPickerPokemon" :items="heldBagItems" :busy="teamSaving" :error="teamError" @close="heldPickerUuid=null" @equip="equipPickedHeldItem"/>
         <training-feedback v-if="trainingFeedback" :entry="trainingFeedback" :busy="medicineBusy" @close="trainingFeedback=null" @confirm="confirmIvReroll"/>
-        <pokemon-computer v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
+        <pokemon-computer v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :corruption-allowed="!isDrift && !superTournament.active && !battle" @corruption="openCorruptionSheet" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
         <div v-if="isAppearancePanelOpen" class="appearance-panel" ref="appearancePanel">
           <div class="appearance-title"><span><small>RiftMon</small>{{ tr('appearance') }}</span><button class="panel-close" :aria-label="tr('close')" @click="isAppearancePanelOpen = false">×</button></div>
           <div class="appearance-grid">
@@ -152,7 +153,7 @@
             <div
               v-for="(pokemon, index) in teamPokemons"
               :key="pokemon.uuid || `slot-${index}`"
-              class="team-row" :data-team-uuid="pokemon.uuid" :class="{'team-drag-source':teamDrag?.uuid===pokemon.uuid,'team-drop-target':teamDrag?.to===pokemon.uuid && teamDrag?.uuid!==pokemon.uuid,'team-held-drop-target':heldItemDrag?.to===pokemon.uuid,'team-held-source':heldItemDrag?.uuid===pokemon.uuid}" @pointerdown="startTeamDrag($event,pokemon.uuid)"
+              class="team-row" :data-team-uuid="pokemon.uuid" :class="{'is-corrupted':!!pokemon.corruption?.permanent,'team-drag-source':teamDrag?.uuid===pokemon.uuid,'team-drop-target':teamDrag?.to===pokemon.uuid && teamDrag?.uuid!==pokemon.uuid,'team-held-drop-target':heldItemDrag?.to===pokemon.uuid,'team-held-source':heldItemDrag?.uuid===pokemon.uuid}" @pointerdown="startTeamDrag($event,pokemon.uuid)"
             >
               <button class="team-row-visual" :aria-label="`Voir la fiche de ${pokemon.name}`" @click="openPokemonDetails(pokemon)">
                 <pokemon-portrait
@@ -403,8 +404,10 @@
     <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" :busy="evolutionBusy" :error="evolutionError" @resolve="resolveEvolutionPresentation" @continue="evolutionError='';evolutionQueue.shift()" />
     <div v-if="teamDrag" class="team-drag-ghost" :style="{left:teamDrag.x+'px',top:teamDrag.y+'px'}" aria-hidden="true"><pokemon-portrait :src="getPokemonFrontSprite(teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.spriteId)"/><span>{{ teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.name }}</span></div>
     <div v-if="heldItemDrag && heldDragPokemon" class="team-held-ghost" :style="{left:heldItemDrag.x+'px',top:heldItemDrag.y+'px'}" aria-hidden="true"><bag-item-icon :item-key="heldDragPokemon.heldItem" :pocket="heldDragPokemon.heldItem?.endsWith('_berry')?'berries':'held'"/><strong>{{ heldItemName(heldDragPokemon.heldItem) }}</strong><span v-if="heldDragTarget">{{ heldDragTarget.heldItem?'Échanger avec':'Donner à' }} {{ heldDragTarget.name }}</span></div>
+    <corruption-workbench v-if="corruptionWorkshop && !mapLoading && !battle" :panel="corruptionWorkshop" :items="bagItems" :command="corruptionCommand" @close="corruptionWorkshop=null" @crafted="showInteractionNotice($event.created?'Module ajouté au sac.':'Synthèse échouée : composants consommés.')" @bag="showCorruptionBag"/>
+    <corruption-installer v-if="corruptionInstall && !battle" :key="corruptionInstall.id" :items="bagItems" :team="teamPokemons" :preset-item="corruptionInstall.item" :target-pokemon="corruptionInstall.pokemon" :source="corruptionInstall.source" :initial-family="corruptionInstall.family" :command="corruptionCommand" @close="corruptionInstall=null"/>
     <dark-continent-panel v-if="darkPanel && !mapLoading && !flight && !battle && !battleResult && !pendingBattleResult" :panel="darkPanel" :busy="darkBusy" :error="darkError" :notice="darkNotice" :team-size="teamPokemons.length" @rules="darkPanel={...darkPanel,mode:'rules'}" @close="darkPanel=null" @command="darkCommand"/>
-    <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :rename-allowed="(canReorderMoves || renameBusy) && !superTournament.active" :rename-busy="renameBusy" :rename-error="renameError" :rename-notice="renameNotice" @rename="renamePokemon" :moves-order-allowed="canReorderMoves" :moves-order-busy="moveOrderBusy" :moves-order-error="moveOrderError" :moves-order-notice="moveOrderNotice" @reorder-moves="reorderPokemonMoves" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
+    <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :corruption-allowed="!isDrift && !battle && !superTournament.active" @corruption="openCorruptionSheet" :rename-allowed="(canReorderMoves || renameBusy) && !superTournament.active" :rename-busy="renameBusy" :rename-error="renameError" :rename-notice="renameNotice" @rename="renamePokemon" :moves-order-allowed="canReorderMoves" :moves-order-busy="moveOrderBusy" :moves-order-error="moveOrderError" :moves-order-notice="moveOrderNotice" @reorder-moves="reorderPokemonMoves" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
 
@@ -451,6 +454,8 @@ import TeleporterChargeNotice from './menu/TeleporterChargeNotice.vue';
 import './social/socialNotifications.css';
 import tradeGame from '@/services/tradeGame';
 import GameTradePanel from './social/GameTradePanel.vue';
+import CorruptionWorkbench from './menu/CorruptionWorkbench.vue';
+import CorruptionInstaller from './menu/CorruptionInstaller.vue';
 import MachineItemUse from './menu/MachineItemUse.vue';
 import moveLearningData from '@/data/moveLearning.json';
 import PokemonComputer from './menu/PokemonComputer.vue';
@@ -529,7 +534,7 @@ export default {
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    TeleporterChargeNotice, NotificationBadge, WorldChatInput, JournalIcon, BagPanel, BagItemIcon, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, PokemonComputer, TeamPokemonTraits,
+    TeleporterChargeNotice, NotificationBadge, WorldChatInput, JournalIcon, BagPanel, BagItemIcon, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, CorruptionWorkbench, CorruptionInstaller, PokemonComputer, TeamPokemonTraits,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -558,6 +563,7 @@ export default {
       repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{}, trainingFeedback:null, heldTargets:{}, heldPickerUuid:null,
       endSentences: null,
       flight: null, voidEnding:null, mirrorRift:null, mirrorScene:null, openingScene:null,
+      corruptionWorkshop:null,corruptionInstall:null,
       darkPanel:null,darkBusy:false,darkError:'',darkNotice:'',
       textImageSequence: [],
       socket: null,
@@ -807,10 +813,10 @@ export default {
     mirrorWakeReady(){return this.mirrorRift?.stage==='won'&&!this.battle&&!this.battleResult&&!this.pendingBattleResult&&!this.mapLoading&&this.mirrorScene?.phase!=='closing';},
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     worldChatAvailable(){return Boolean(!this.isDrift && this.socket?.connected && !this.worldInteractionBlocked && !this.mapLoading && !this.mapLoadError && !this.worldContextLost && this.renderedMap===this.map && this.players[this.socket.id]?.currentmap===this.map);},
-    movementSuspended(){return !!this.darkPanel || this.worldChatOpen || this.worldInteractionBlocked;},
+    movementSuspended(){return !!this.corruptionWorkshop || !!this.corruptionInstall || !!this.darkPanel || this.worldChatOpen || this.worldInteractionBlocked;},
     worldInteractionBlocked() {
       return !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
-        || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
+        || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
@@ -1162,6 +1168,10 @@ export default {
       } catch (error) { this.showInteractionNotice(error.message); return false; }
     },
     openPokemonDetails(pokemon) { this.releaseAllMovementKeys(); this.selectedPokemonUuid = pokemon.uuid; },
+    showCorruptionBag(){this.corruptionWorkshop=null;this.handleMenuAction('bag');this.$nextTick(()=>this.$refs.bagPanel?.choosePocket('corruption'));},
+    async openCorruptionItem(item){if(this.isDrift||this.battle||this.superTournament.active)return;await this.loadTeamPokemons();this.corruptionInstall={id:crypto.randomUUID(),item,source:'team'};this.releaseAllMovementKeys();},
+    async openCorruptionSheet({pokemon,family,source='team'}){if(this.isDrift||this.battle||this.superTournament.active)return;await this.loadBagItems();this.corruptionInstall={id:crypto.randomUUID(),pokemon,family,source};this.releaseAllMovementKeys();},
+    corruptionCommand(event,payload){return new Promise(resolve=>{if(!this.socket?.connected)return resolve({success:false,uncertain:true,message:'Connexion interrompue. Reconnecte-toi puis vérifie le résultat.'});this.socket.timeout(15000).emit(event,payload,(error,response)=>{if(error)return resolve({success:false,uncertain:true,message:'Réponse interrompue. Réessaie pour retrouver le résultat, sans nouvelle consommation.'});if(response?.items)this.applyBagItems(response.items);if(response?.equipe)this.applyTeamPokemons(response.equipe.pokemons||[]);if(response?.pcState&&this.pc.visible)this.pc.state=response.pcState;resolve(response||{success:false,message:'Réponse indisponible.'});});});},
     async darkCommand(event){
       if(this.darkBusy || !this.socket?.connected)return;
       this.darkBusy=true;this.darkError='';this.darkNotice='';
@@ -3531,6 +3541,7 @@ export default {
       else{if(result.changes?.length)this._feedbackAudio?.play('heal');this.showInteractionNotice(`${result.name} · soin appliqué à l’équipe inscrite.`);}
     });
     this.socket.on('superTournamentPayout',result=>{if(Number.isSafeInteger(result.balance)&&result.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',result.balance);}});
+    this.socket.on('corruptionPanel',panel=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;if(panel.items)this.applyBagItems(panel.items);this.corruptionWorkshop=panel;});
     this.socket.on('darkContinentPanel',panel=>{this.releaseAllMovementKeys();this.darkError='';this.darkNotice='';this.darkPanel=panel;});
     this.socket.on('superTournamentFinished',result=>{if(result.reason==='abandoned')this.completeTournamentAbandon();this.showInteractionNotice(`${result.reason==='abandoned'?'Tentative abandonnée':'Super Tournoi terminé'} · ${result.score} points${result.moneyEarned>0?` · ${Number(result.moneyEarned).toLocaleString('fr-FR')} ₽ gagnés`:''}`);});
     this.socket.on('uniqueItemReceived',item=>{this._feedbackAudio?.play('unique');this.showInteractionNotice(`${item.name} obtenu !`);});
@@ -4806,6 +4817,8 @@ button:hover {
 </style>
 
 <style scoped>
+.team-list .team-row.is-corrupted{background:linear-gradient(125deg,#eee3f7,#dfcdec);border-color:#a98abb}.team-row.is-corrupted .team-row-name{color:#593773}[data-game-theme-mode=dark] .team-list .team-row.is-corrupted{background:linear-gradient(125deg,#372840,#463051);border-color:#a98abb}[data-game-theme-mode=dark] .team-row.is-corrupted .team-row-name{color:#ead6f7}
+
 .team-item-description{font:11px/1.6 Arial,sans-serif;color:#5c716b;margin:7px 0;}
 
 .world-toolbar { display: contents; }

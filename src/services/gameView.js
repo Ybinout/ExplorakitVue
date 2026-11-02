@@ -47,6 +47,7 @@ export function normalizeTeamPokemon(pokemon, index) {
   const pokemonId = Number(pokemon?.data?.id ?? pokemon?.pokemon_id ?? 0) || null;
   return {
     ...pokemon,
+    corruption:typeof pokemon?.corruption==='string'?JSON.parse(pokemon.corruption):pokemon?.corruption||null,
     uuid: pokemon?.uuid || null,
     position: Number(pokemon?.position ?? index + 1),
     name: pokemon?.name || pokemon?.truename || 'Pokemon',

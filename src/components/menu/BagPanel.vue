@@ -39,6 +39,7 @@
             <label v-if="activePocket==='machines'" class="bag-sort">{{ english?'Sort CS':'Trier les CS' }}<select v-model="machineSort" data-bag-cs-sort><option value="name">{{ english?'Name':'Nom' }}</option><option value="type">{{ english?'Type, then name':'Type, puis nom' }}</option></select></label>
             <p v-if="repelSteps>0" class="pack-notice" role="status" data-repel-state>{{ english ? `Repel active · ${repelSteps} steps left` : `Repousse actif · ${repelSteps} pas restants` }}</p>
             <p v-if="error" class="pack-notice pack-error" role="alert">{{ error }}</p><p v-if="notice" class="pack-notice" role="status">{{ notice }}</p>
+            <nav v-if="activePocket==='corruption'" class="bag-corruption-filters" aria-label="Familles de modules"><button v-for="f in corruptionFamilies" :key="f.key" :data-corruption-bag-family="f.key" :aria-pressed="corruptionFilter===f.key" @click="corruptionFilter=f.key">{{ f.label }}</button></nav>
             <p v-if="loading" class="pack-empty" role="status">{{ english?'Opening your bag…':'Ouverture du sac…' }}</p>
             <div v-else-if="!visibleItems.length" class="pack-empty"><bag-item-icon :pocket="activePocket"/><strong>{{ english?'This pocket is empty':'Cette poche est vide' }}</strong><span>{{ total ? (english?'Your other items are in the other pockets.':'Tes autres objets sont dans les autres poches.') : emptyLabel }}</span></div>
             <div v-else class="bag-items">
@@ -47,7 +48,7 @@
                   <span class="item-stamp"><bag-item-icon :pocket="activePocket" :item-key="item.key"/></span><span class="bag-item-name"><span :class="{'bag-machine-name':machine(item)}" :data-bag-machine-name="machine(item)?'':null">{{ itemName(item) }}</span><span v-if="machine(item)" class="bag-machine-meta"><span data-bag-machine-type>{{ english?machine(item).type:typeName(machine(item).type) }}</span><span aria-hidden="true">·</span><span data-bag-machine-class>{{ machineClass(item) }}</span></span><small v-if="item.experienceModule" class="item-module-status" :class="{enabled:item.active}">{{ item.active ? `${english?'Active':'Actif'} · +${item.levelBonus} ${english?'levels':'niveaux'}` : (english?'Inactive':'Désactivé') }}</small><small v-if="item.unique" class="item-unique">Unique</small></span><span class="bag-item-qty">x{{ item.quantity }}</span><span class="item-chevron" aria-hidden="true">{{ selectedKey===item.key?'⌄':'›' }}</span>
                 </button>
                 <div v-if="selectedKey===item.key" :id="`bag-item-${item.key}`" class="bag-item-detail">
-                  <p class="bag-item-description">{{ description(item) }}</p>
+                  <p class="bag-item-description">{{ description(item) }}</p><template v-if="item.corruptionModule?.family==='move'"><dl class="bag-corrupted-move"><div v-for="stat in corruptedMoveStats(item)" :key="stat.label"><dt>{{ stat.label }}</dt><dd>{{ stat.value }}</dd></div></dl><p class="bag-item-description">{{ referenceMove(item).description }}</p></template><p v-if="item.corruptionModule?.family==='ability'" class="bag-item-description">{{ abilityDescription(item.corruptionModule.ability) }}</p>
                   <p v-if="item.unique" class="bag-use-hint">{{ english?'Only one discovery per Adventure or expedition.':`Un seul exemplaire à trouver dans ${expedition?'cette expédition':'ton aventure'}.` }}</p>
                   <slot name="actions" :item="item"/>
                   <p v-if="activePocket==='balls'" class="bag-use-hint">{{ english?'Choose a Ball from your bag during a wild battle.':'Choisis une Ball dans le sac pendant un combat sauvage.' }}</p>
@@ -74,7 +75,7 @@ import {localizeTypeName,typeBadgeStyle} from '@/services/pokemonTypes';
 export default {
   name:'BagPanel',components:{BagItemIcon},
   props:{money:{type:Number,default:0},items:{type:Array,default:()=>[]},loading:Boolean,error:String,notice:String,repelSteps:{type:Number,default:0},emptyLabel:String,expedition:Boolean,language:String},
-  data(){return {activePocket:'medicine',selectedKey:null,previousFocus:null,trainingFilter:'all',machineSort:'name'};},
+  data(){return {activePocket:'medicine',selectedKey:null,previousFocus:null,trainingFilter:'all',corruptionFilter:'all',machineSort:'name'};},
   computed:{
     english(){return this.language==='en';},
     owned(){return this.items.filter(i=>Number(i.quantity)>0);},
@@ -83,15 +84,19 @@ export default {
     current(){return this.pockets.find(p=>p.key===this.activePocket)||this.pockets[0];},
     pocketNumber(){return this.pockets.indexOf(this.current)+1;},
     trainingGroups(){return TRAINING_GROUPS.map(g=>({...g,count:this.owned.filter(i=>bagPocket(i)==='training'&&trainingGroup(i)===g.key).length})).filter(g=>g.count);},
-    visibleItems(){const items=this.owned.filter(i=>bagPocket(i)===this.activePocket&&(this.activePocket!=='training'||this.trainingFilter==='all'||trainingGroup(i)===this.trainingFilter));
+    corruptionFamilies(){return [{key:'all',label:'Tous'},{key:'move',label:'CS'},{key:'ability',label:'Talents'},{key:'type',label:'Types'},{key:'combat',label:'Combat'}];},
+    visibleItems(){const items=this.owned.filter(i=>bagPocket(i)===this.activePocket&&(this.activePocket!=='corruption'||this.corruptionFilter==='all'||i.corruptionModule?.family===this.corruptionFilter)&&(this.activePocket!=='training'||this.trainingFilter==='all'||trainingGroup(i)===this.trainingFilter));
       if(this.activePocket==='machines')items.sort((a,b)=>(this.machineSort==='type'?(this.english?this.machine(a)?.type:this.typeName(this.machine(a)?.type)).localeCompare(this.english?this.machine(b)?.type:this.typeName(this.machine(b)?.type),'fr'):0)||a.name.localeCompare(b.name,'fr',{sensitivity:'base'})||a.key.localeCompare(b.key));return items;}
   },
   watch:{visibleItems(){this.reconcile();}},
   mounted(){this.previousFocus=document.activeElement;if(!this.visibleItems.length&&this.owned.length)this.activePocket=bagPocket(this.owned[0]);this.reconcile();this.$refs.close.focus({preventScroll:true});},
   beforeDestroy(){const previous=this.previousFocus;this.$nextTick(()=>{const target=previous?.isConnected&&previous!==document.body&&previous!==document.documentElement?previous:document.querySelector('.menu-toggle-btn');target?.focus({preventScroll:true});});},
   methods:{
+    referenceMove(item){return reference.moves[item.corruptionModule?.move]||{};},
+    abilityDescription(name){return reference.abilities[name]||'';},
+    corruptedMoveStats(item){const m=this.referenceMove(item);return [{label:'Type',value:this.typeName(m.type)},{label:'Catégorie',value:{physical:'Physique',special:'Spéciale',status:'Statut'}[m.category]||'—'},{label:'Puissance',value:m.power||'—'},{label:'Précision',value:m.accuracy?m.accuracy+' %':'—'},{label:'PP',value:m.pp||'—'}];},
     itemName(item){return bagItemName(item,this.language);},
-    machine(item){return item.category==='machine'?machines[item.key]:null;},
+    machine(item){return item.corruptionModule?.family==='move'?item.corruptionModule:item.category==='machine'?machines[item.key]:null;},
     typeName:localizeTypeName,
     typeStyle:typeBadgeStyle,
     machineClass(item){const category=reference.moves[this.machine(item)?.move]?.category;return (this.english?{physical:'Physical',special:'Special',status:'Status'}:{physical:'Physique',special:'Spéciale',status:'Statut'})[category]||'—';},
@@ -104,6 +109,10 @@ export default {
 };
 </script>
 <style scoped>
+.bag-corrupted-move{display:flex;flex-wrap:wrap;gap:10px 16px;margin:12px 0}.bag-corrupted-move dt{font-size:10px;font-weight:700;color:var(--journal-heading)}.bag-corrupted-move dd{margin:3px 0;font-size:12px;font-weight:700}
+
+.bag-corruption-filters{display:flex;gap:6px;flex-wrap:wrap;grid-column:1 / -1;padding:10px 0}.bag-corruption-filters button{min-height:44px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);color:var(--journal-ink);padding:8px 12px;font:inherit;cursor:pointer}.bag-corruption-filters [aria-pressed=true]{background:var(--journal-selected);border-color:#a078b8}
+
 .item-module-status{display:block;margin-top:4px;font-size:10px;color:var(--journal-muted);font-weight:600}.item-module-status.enabled{color:var(--journal-accent)}
 .bag-filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}.bag-filters button,.bag-sort select{min-height:44px;padding:8px 10px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);color:var(--journal-ink);font:600 11px var(--journal-font)}.bag-filters button{cursor:pointer}.bag-filters [aria-pressed=true]{background:var(--journal-selected);border-color:var(--journal-accent)}.bag-filters small{margin-left:4px;opacity:.75}.bag-sort{display:flex;align-items:center;gap:12px;margin:0 0 14px;font-weight:700}.bag-sort select{flex:1;min-width:0}
 

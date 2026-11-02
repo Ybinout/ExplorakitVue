@@ -96,7 +96,7 @@
 
       <div
         v-if="opponent" ref="opponentStatusCard"
-        :class="['battle-status', 'battle-status-wild', { 'battle-status-hit': attackFx.wild.hit }]"
+        :class="['battle-status', 'battle-status-wild', { 'battle-status-corrupted':!!opponent.corruption?.permanent,'battle-status-hit': attackFx.wild.hit }]"
       >
         <div class="battle-status-top">
           <span v-if="wildAlreadyCaught" class="battle-caught-marker" :data-caught-species="opponent.data.id" role="img" :aria-label="preferences.language==='en'?'Species already caught':'Espèce déjà capturée'" :title="preferences.language==='en'?'Species already caught':'Espèce déjà capturée'"><battle-ball /></span>
@@ -124,7 +124,7 @@
 
       <div
         v-if="currentPokemon" ref="playerStatusCard"
-        :class="['battle-status', 'battle-status-player', { 'battle-status-hit': attackFx.player.hit }]"
+        :class="['battle-status', 'battle-status-player', { 'battle-status-corrupted':!!currentPokemon.corruption?.permanent,'battle-status-hit': attackFx.player.hit }]"
       >
         <div class="battle-status-top">
           <span class="battle-status-name">{{ currentPokemon.name || currentPokemon.truename }}</span>
@@ -1633,6 +1633,8 @@ export default {
 </script>
 
 <style scoped>
+.battle .battle-status.battle-status-corrupted{background:linear-gradient(130deg,#f0e2fa,#d7bee9)!important;border-color:#9b70b2!important;color:#382746}.battle-status-corrupted .battle-status-name{color:#4d2e65}[data-game-theme-mode=dark] .battle .battle-status.battle-status-corrupted{background:linear-gradient(130deg,#34243f,#50335f)!important;border-color:#b38acc!important;color:#f4e7fc}[data-game-theme-mode=dark] .battle-status-corrupted .battle-status-name{color:#f3dfff}
+
 .battle-caught-marker{display:inline-flex;align-items:center;flex:none;width:14px;height:14px}
 .battle-human .battle-sprite{image-rendering:auto}
 .battle-void-arena .battle-background{filter:brightness(.82)}
