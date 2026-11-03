@@ -1,5 +1,5 @@
 export function battleEnvironment(mapName, colosseum = false, weather = null, encounter = null) {
-  if (/^jungle[1-9]$/.test(mapName)) return 'dark-jungle';
+  if (/^jungle[1-9]$/.test(mapName)) return encounter === 'lake' ? 'lake' : 'dark-jungle';
   if (mapName === 'ville5_maison1') return 'whitepeak-club';
   if (mapName === 'super_tournament_room') return 'super-tournament';
   if (colosseum) return 'colosseum';

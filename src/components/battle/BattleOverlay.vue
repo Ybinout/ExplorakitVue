@@ -52,7 +52,7 @@
           'battle-sprite-anchor',
           'battle-sprite-wild', { 'battle-human':opponent.storyActor==='professor' },
           'battle-position-wild',
-          {
+          { 'battle-wild-corrupted':opponent.darkContinentEncounter?.kind==='corrupted',
             'battle-fainted': Number(opponent.currentHp)<=0 && !transitionFx.wild,
             [`battle-transition-${transitionFx.wild}`]: Boolean(transitionFx.wild),
             'move-actor': moveActor('wild'), [`move-actor-${battleMoveFx.stage}`]: moveActor('wild'),
@@ -288,7 +288,7 @@
         <button class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
         <button v-if="!opponent?.storyActor" class="battle-main-btn action-bag" :disabled="tournament || environment==='whitepeak-club' || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
         <button class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
-        <button class="battle-main-btn action-flee" :disabled="environment==='dark-jungle' || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
+        <button class="battle-main-btn action-flee" :disabled="capturePolicy?.darkContinent || environment==='dark-jungle' || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
       </div>
     </div>
   </div>
@@ -1339,9 +1339,10 @@ export default {
         // more room. Normalizing every opaque extent erased that size difference.
         // Keep small opponents unchanged; let larger artwork exceed the base size.
         // The same denominator drives bounds/feedback and keeps the feet anchored.
-        const visibleExtent = side === 'wild'
+        const corruptedScale=side==='wild'&&this.opponent?.darkContinentEncounter?.kind==='corrupted'?1.25:1;
+        const visibleExtent = (side === 'wild'
           ? Math.min(Math.max(visibleWidth, visibleHeight), Math.max(width, height) * 0.55)
-          : Math.max(visibleWidth, visibleHeight);
+          : Math.max(visibleWidth, visibleHeight))/corruptedScale;
         const centerX = (minX + maxX + 1) / 2;
         this.$set(this.battleSpriteMetrics, side, {
           widthRatio: visibleWidth / visibleExtent,
