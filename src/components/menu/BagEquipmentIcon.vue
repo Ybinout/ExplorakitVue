@@ -1,6 +1,7 @@
 <template>
   <g>
-    <g v-if="kind==='clara_registry'">
+    <bag-strategy-icon v-if="strategyShape" :shape="strategyShape" :kind="kind"/>
+    <g v-else-if="kind==='clara_registry'">
       <path d="M12 5h25v38H12a5 5 0 0 1-5-5V10a5 5 0 0 1 5-5Z" fill="var(--item-main)"/>
       <path d="M13 5v38m21-8 6-2v10l-3-2-3 2Z" fill="var(--item-accent)"/>
       <path d="m18 23 7-7 7 7m-12-2v9h10v-9m-7 9v-5h4v5"/>
@@ -140,5 +141,7 @@
   </g>
 </template>
 <script>
-export default {name:'BagEquipmentIcon',props:{kind:{type:String,required:true}}};
+import BagStrategyIcon from './BagStrategyIcon.vue';
+import {BAG_STRATEGY_SHAPES} from '../../services/bagItemPresentation';
+export default {name:'BagEquipmentIcon',components:{BagStrategyIcon},props:{kind:{type:String,required:true}},computed:{strategyShape(){return BAG_STRATEGY_SHAPES[this.kind]||null;}}};
 </script>
