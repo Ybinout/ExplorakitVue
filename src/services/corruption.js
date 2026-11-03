@@ -1,3 +1,5 @@
+import recipes from '@/data/corruptionRecipes.json';
+export const CORRUPTION_RECIPE_VERSION=recipes.version;
 import registry from '@/data/corruptionModules.json';
 import {localizeMoveName,localizeAbilityName} from './i18n';
 import {localizeTypeName} from './pokemonTypes';
@@ -5,5 +7,5 @@ export const CORRUPTION_FAMILIES=[{key:'move',label:'CS',title:'Synthèse de CS'
 export const moduleItem=key=>registry[key]||null;
 export const moduleAt=(p,family)=>moduleItem(p?.corruption?.modules?.[family]?.itemKey);
 export function moduleEffect(item){const m=item?.corruptionModule;if(!m)return '';if(m.family==='move')return localizeMoveName(m.move,'fr');if(m.family==='ability')return localizeAbilityName(m.ability,'fr');if(m.family==='type')return 'Mutation '+localizeTypeName(m.type);return(m.direction==='offense'?'+20 % de dégâts ':'−20 % de dégâts reçus ')+localizeTypeName(m.type);}
-export function recipeFor(family,type){const n=family==='type'?10:1;return [{key:'crystal_shard',quantity:40*n,name:'Éclats fissurés'},{key:'clear_crystal',quantity:20*n,name:'Cristaux limpides'},{key:'aurora_prism',quantity:10*n,name:'Prismes d’aurore'},{key:'dark_plate_'+type.toLowerCase(),quantity:n,name:'Plaque '+localizeTypeName(type)}];}
+export function recipeFor(family,type){const {crystalMultiplier:n,plates}=recipes.families[family];return [{key:'crystal_shard',quantity:40*n,name:'Éclats fissurés'},{key:'clear_crystal',quantity:20*n,name:'Cristaux limpides'},{key:'aurora_prism',quantity:10*n,name:'Prismes d’aurore'},{key:'dark_plate_'+type.toLowerCase(),quantity:plates,name:'Plaque '+localizeTypeName(type)}];}
 export function installReason(p,item,team,source='team'){if(!p)return 'Choisis un Pokémon.';if(p.isEgg)return 'Impossible sur un Œuf.';if(!(p.currentHp>0))return 'Soigne ce Pokémon avant de le corrompre.';if(!item)return 'Choisis un module.';if(source!=='box'&&!p.corruption?.permanent&&team.some(q=>q.corruption?.permanent))return 'Un seul Pokémon corrompu dans l’équipe : dépose d’abord l’autre au PC.';const m=item.corruptionModule;if(m.family==='move'&&p.abilities.includes(m.move))return 'Cette capacité est déjà connue.';if(m.family==='type'&&p.data.type.length===1&&p.data.type.includes(m.type))return 'Impossible de supprimer son unique type.';if(m.family!=='type'&&p.corruption?.modules?.[m.family]?.itemKey===item.key)return 'Ce module est déjà installé.';return '';}
