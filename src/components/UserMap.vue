@@ -86,13 +86,13 @@
           <button v-if="isShopMap" class="location-shop-btn" data-open-sell type="button" @click="openShop('sell')">{{ preferences.language==='en'?'Sell':'Vendre' }}</button>
         </div>
         </div>
-        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid || corruptionInstall?'':null" :aria-hidden="trainingFeedback || heldPickerUuid || corruptionInstall?'true':null" ref="bagPanel" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
+        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid || corruptionInstall?'':null" :aria-hidden="trainingFeedback || heldPickerUuid || corruptionInstall?'true':null" ref="bagPanel" :view-state="bagViewState" @remember="bagViewState=$event" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
               <template v-if="item.experienceModule && !isDrift">
                 <p class="bag-use-hint" data-experience-module-state><strong>{{ item.active ? (preferences.language==='en'?'Active':'Actif') : (preferences.language==='en'?'Inactive':'Inactif') }}</strong> · {{ item.active ? `+${item.levelBonus} ${preferences.language==='en'?'levels for wild encounters':'niveaux pour les rencontres sauvages'}` : (preferences.language==='en'?'Usual encounter levels':'Niveaux habituels des rencontres') }}</p>
                 <button class="bag-use-button" data-experience-module-toggle :aria-pressed="item.active ? 'true' : 'false'" :disabled="medicineBusy || !!battle || mapLoading || !socket?.connected" @click="toggleExperienceModule(item)">{{ medicineBusy ? (preferences.language==='en'?'Saving…':'Sauvegarde…') : item.active ? (preferences.language==='en'?'Deactivate module':'Désactiver le module') : (preferences.language==='en'?'Activate module':'Activer le module') }}</button>
               </template>
-              <button v-else-if="item.darkContinentTravel && !isDrift" class="bag-use-button" data-use-dark-card :disabled="onDarkContinent || superTournament.active || battle || mapLoading || !!flight" @click="flyToTown('jungle1',{kind:'void',event:'dark:travel'})">{{ onDarkContinent?'Retour auprès du guide':'Rejoindre le continent' }}</button>
+              <dark-card-use v-else-if="item.darkContinentTravel && !isDrift" :item="item" :on-island="onDarkContinent" :english="preferences.language==='en'" :disabled="onDarkContinent || superTournament.active || !!battle || mapLoading || !!flight" @use="flyToTown('jungle1',{kind:'void',event:'dark:travel'})"/>
               <button v-else-if="item.superTournamentTravel && !isDrift" class="bag-use-button" data-use-tournament-pass :disabled="onDarkContinent || superTournament.active || battle || mapLoading || !!flight" @click="flyToTown('super_tournament_lobby',{kind:'void',event:'superTournament:travel'})">Utiliser</button>
               <button v-else-if="item.voidTravel && !isDrift" class="bag-use-button" data-use-teleporter :disabled="onDarkContinent || !item.usable || medicineBusy || battle || mapLoading || !!flight" @click="flyToTown('void_arena',{kind:'void',event:'void:travel'})">Utiliser</button>
               <template v-else-if="item.category==='corruption'"><button class="bag-use-button" data-use-corruption-module :disabled="isDrift || !!battle || superTournament.active || mapLoading" @click="openCorruptionItem(item)">Installer sur un Pokémon</button><small class="bag-use-hint">Usage unique · le module est consommé à l’installation. Un seul porteur corrompu dans l’équipe.</small></template>
@@ -445,6 +445,7 @@ import { createMapSceneLoader } from '@/services/mapScene';
 import { moveTouchGesture } from '@/services/touchMovement';
 import JournalIcon from './menu/JournalIcon.vue';
 import BagPanel from './menu/BagPanel.vue';
+import DarkCardUse from './menu/DarkCardUse.vue';
 import TrainingFeedback from './menu/TrainingFeedback.vue';
 import HeldItemPicker from './menu/HeldItemPicker.vue';
 import GameFriendsPanel from './social/GameFriendsPanel.vue';
@@ -534,7 +535,7 @@ export default {
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    TeleporterChargeNotice, NotificationBadge, WorldChatInput, JournalIcon, BagPanel, BagItemIcon, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, CorruptionWorkbench, CorruptionInstaller, PokemonComputer, TeamPokemonTraits,
+    TeleporterChargeNotice, NotificationBadge, WorldChatInput, JournalIcon, BagPanel, DarkCardUse, BagItemIcon, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, CorruptionWorkbench, CorruptionInstaller, PokemonComputer, TeamPokemonTraits,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -628,6 +629,7 @@ export default {
         message: 'La position et l’équipe sont sauvegardées automatiquement.'
       },
       preferences: loadGamePreferences(),
+      bagViewState: null,
       bagItems: [],
       bagLoading: false,
       bagError: '',
@@ -1900,10 +1902,11 @@ export default {
       this.teleporterChargeNotice = 0;
       this._lastTeleporterCharge = null;
     },
+    prepareBagItems(items){const now=Date.now();return items.map(item=>item.darkContinentTravel?{...item,travelClockOffset:(Number(item.travelServerNow)||now)-now}:item);},
     applyBagItems(items) {
       if (!Array.isArray(items)) return;
       this._bagUpdateEpoch = (this._bagUpdateEpoch || 0) + 1;
-      this.bagItems = items;
+      this.bagItems = this.prepareBagItems(items);
       this.bagLoading = false;
       this.bagError = '';
       // Socket inventory updates also refresh the carnet, so reopening the bag
@@ -1930,7 +1933,7 @@ export default {
       try {
         const response = await api.get(`/users/${userId}/items`);
         const receivedItems = response?.data?.items;
-        if (bagEpoch === (this._bagUpdateEpoch || 0)) this.bagItems = Array.isArray(receivedItems) ? receivedItems : [];
+        if (bagEpoch === (this._bagUpdateEpoch || 0)) this.bagItems = Array.isArray(receivedItems) ? this.prepareBagItems(receivedItems) : [];
       } catch (error) {
         if (bagEpoch !== (this._bagUpdateEpoch || 0)) return;
         console.error('Erreur pendant le chargement du sac:', error);
@@ -3545,6 +3548,7 @@ export default {
     });
     this.socket.on('superTournamentPayout',result=>{if(Number.isSafeInteger(result.balance)&&result.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',result.balance);}});
     this.socket.on('corruptionPanel',panel=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;if(panel.items)this.applyBagItems(panel.items);this.corruptionWorkshop=panel;});
+    this.socket.on('darkCardCooldown',state=>{this.bagItems=this.bagItems.map(item=>item.darkContinentTravel?{...item,travelReadyAt:state.readyAt,travelServerNow:state.serverNow,travelClockOffset:state.serverNow-Date.now()}:item);});
     this.socket.on('darkContinentPanel',panel=>{this.releaseAllMovementKeys();this.darkError='';this.darkNotice='';this.darkPanel=panel;});
     this.socket.on('superTournamentFinished',result=>{if(result.reason==='abandoned')this.completeTournamentAbandon();this.showInteractionNotice(`${result.reason==='abandoned'?'Tentative abandonnée':'Super Tournoi terminé'} · ${result.score} points${result.moneyEarned>0?` · ${Number(result.moneyEarned).toLocaleString('fr-FR')} ₽ gagnés`:''}`);});
     this.socket.on('uniqueItemReceived',item=>{this._feedbackAudio?.play('unique');this.showInteractionNotice(`${item.name} obtenu !`);});

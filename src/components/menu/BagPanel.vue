@@ -29,7 +29,7 @@
               <bag-item-icon :pocket="p.key"/><span>{{ english?p.en:p.name }}</span><small :aria-label="`${p.count} ${english?'items':'objets'}`">{{ p.count }}</small>
             </button>
           </nav>
-          <div ref="scroll" id="bag-pocket-content" class="pack-scroll" role="tabpanel" :aria-labelledby="`bag-pocket-${activePocket}`" tabindex="0">
+          <div ref="scroll" @scroll.passive="recordScroll" id="bag-pocket-content" class="pack-scroll" role="tabpanel" :aria-labelledby="`bag-pocket-${activePocket}`" tabindex="0">
             <div class="pocket-heading"><div><small>{{ english?'POCKET':'POCHE' }} {{ pocketNumber }} / {{ pockets.length }}</small><h3>{{ english?current.en:current.name }}</h3></div><bag-item-icon :pocket="activePocket"/></div>
             <p class="pocket-hint">{{ english?current.enHint:current.hint }}</p>
             <nav v-if="activePocket==='training'" class="bag-filters" :aria-label="english?'Training categories':'Catégories d’entraînement'">
@@ -74,8 +74,8 @@ import reference from '@/data/pokemonReference.fr.json';
 import {localizeTypeName,typeBadgeStyle} from '@/services/pokemonTypes';
 export default {
   name:'BagPanel',components:{BagItemIcon},
-  props:{money:{type:Number,default:0},items:{type:Array,default:()=>[]},loading:Boolean,error:String,notice:String,repelSteps:{type:Number,default:0},emptyLabel:String,expedition:Boolean,language:String},
-  data(){return {activePocket:'medicine',selectedKey:null,previousFocus:null,trainingFilter:'all',corruptionFilter:'all',machineSort:'name'};},
+  props:{viewState:{type:Object,default:null},money:{type:Number,default:0},items:{type:Array,default:()=>[]},loading:Boolean,error:String,notice:String,repelSteps:{type:Number,default:0},emptyLabel:String,expedition:Boolean,language:String},
+  data(){const saved=this.viewState||{};return {activePocket:saved.activePocket||'medicine',selectedKey:saved.selectedKey||null,previousFocus:null,trainingFilter:saved.trainingFilter||'all',corruptionFilter:saved.corruptionFilter||'all',machineSort:saved.machineSort||'name',pocketPositions:{...saved.pocketPositions}};},
   computed:{
     english(){return this.language==='en';},
     owned(){return this.items.filter(i=>Number(i.quantity)>0);},
@@ -88,9 +88,9 @@ export default {
     visibleItems(){const items=this.owned.filter(i=>bagPocket(i)===this.activePocket&&(this.activePocket!=='corruption'||this.corruptionFilter==='all'||i.corruptionModule?.family===this.corruptionFilter)&&(this.activePocket!=='training'||this.trainingFilter==='all'||trainingGroup(i)===this.trainingFilter));
       if(this.activePocket==='machines')items.sort((a,b)=>(this.machineSort==='type'?(this.english?this.machine(a)?.type:this.typeName(this.machine(a)?.type)).localeCompare(this.english?this.machine(b)?.type:this.typeName(this.machine(b)?.type),'fr'):0)||a.name.localeCompare(b.name,'fr',{sensitivity:'base'})||a.key.localeCompare(b.key));return items;}
   },
-  watch:{visibleItems(){this.reconcile();}},
-  mounted(){this.previousFocus=document.activeElement;if(!this.visibleItems.length&&this.owned.length)this.activePocket=bagPocket(this.owned[0]);this.reconcile();this.$refs.close.focus({preventScroll:true});},
-  beforeDestroy(){const previous=this.previousFocus;this.$nextTick(()=>{const target=previous?.isConnected&&previous!==document.body&&previous!==document.documentElement?previous:document.querySelector('.menu-toggle-btn');target?.focus({preventScroll:true});});},
+  watch:{visibleItems(){if(!this.loading)this.reconcile();},loading(loading){if(!loading){this.reconcile();this.$nextTick(this.restoreScroll);}}},
+  mounted(){this.previousFocus=document.activeElement;if(!this.viewState&&!this.loading&&!this.visibleItems.length&&this.owned.length)this.activePocket=bagPocket(this.owned[0]);if(!this.loading)this.reconcile();this.$refs.close.focus({preventScroll:true});this.$nextTick(this.restoreScroll);},
+  beforeDestroy(){this.rememberPocket();this.$emit('remember',{activePocket:this.activePocket,selectedKey:this.selectedKey,trainingFilter:this.trainingFilter,corruptionFilter:this.corruptionFilter,machineSort:this.machineSort,pocketPositions:{...this.pocketPositions}});const previous=this.previousFocus;this.$nextTick(()=>{const target=previous?.isConnected&&previous!==document.body&&previous!==document.documentElement?previous:document.querySelector('.menu-toggle-btn');target?.focus({preventScroll:true});});},
   methods:{
     referenceMove(item){return reference.moves[item.corruptionModule?.move]||{};},
     abilityDescription(name){return reference.abilities[name]||'';},
@@ -101,8 +101,11 @@ export default {
     typeStyle:typeBadgeStyle,
     machineClass(item){const category=reference.moves[this.machine(item)?.move]?.category;return (this.english?{physical:'Physical',special:'Special',status:'Status'}:{physical:'Physique',special:'Spéciale',status:'Statut'})[category]||'—';},
     description(item){const balls={pokeball:'Une Ball pour capturer un Pokémon sauvage.',superball:'Une Ball offrant de meilleures chances de capture.',hyperball:'Une Ball très performante pour les captures difficiles.'};return !this.english&&balls[item.key]?balls[item.key]:item.description;},
-    reconcile(){if(!this.pockets.some(p=>p.key===this.activePocket))this.activePocket='medicine';if(!this.visibleItems.some(i=>i.key===this.selectedKey))this.selectedKey=this.visibleItems[0]?.key||null;},
-    choosePocket(key){this.activePocket=key;this.selectedKey=null;this.$nextTick(()=>{this.reconcile();this.$refs.scroll.scrollTop=0;});},
+    reconcile(){if(!this.pockets.some(p=>p.key===this.activePocket))this.activePocket='medicine';if(!this.visibleItems.some(i=>i.key===this.selectedKey))this.selectedKey=null;},
+    rememberPocket(){this.$set(this.pocketPositions,this.activePocket,{top:this._lastScrollTop??this.$refs.scroll?.scrollTop??0,selectedKey:this.selectedKey});},
+    recordScroll(event){this._lastScrollTop=event.target.scrollTop;},
+    restoreScroll(){this._lastScrollTop=this.pocketPositions[this.activePocket]?.top||0;if(!this.loading&&this.$refs.scroll)this.$refs.scroll.scrollTop=this._lastScrollTop;},
+    choosePocket(key){this.rememberPocket();this.activePocket=key;this._lastScrollTop=this.pocketPositions[key]?.top||0;this.selectedKey=this.pocketPositions[key]?.selectedKey||null;this.$nextTick(()=>{if(!this.loading)this.reconcile();this.restoreScroll();});},
     movePocket(e,key){if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const i=this.pockets.findIndex(p=>p.key===key),n=this.pockets.length;const next=e.key==='Home'?0:e.key==='End'?n-1:(i+(e.key==='ArrowRight'?1:-1)+n)%n;this.choosePocket(this.pockets[next].key);this.$nextTick(()=>this.$refs[`pocket-${this.activePocket}`][0].focus());},
     handleKeydown(e){if(e.key==='Escape'){e.preventDefault();e.stopPropagation();this.$emit('close');}if(e.key!=='Tab')return;const nodes=[...this.$refs.dialog.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]')].filter(n=>n.getClientRects().length),first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}
   }
