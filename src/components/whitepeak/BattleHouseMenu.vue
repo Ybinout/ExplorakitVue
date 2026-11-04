@@ -35,8 +35,8 @@ const portraits=require.context('@/assets/image',false,/\.(png|webp)$/);
 const modes=[
  {key:'1v1',label:'Combat 1v1',hint:'Le duel classique',icon:'⚔',title:'Un duel à vos conditions',description:'Deux dresseurs, deux socles. Fixez vos règles et vos mises avant de vous affronter.'},
  {key:'pve',label:'Combat PvE',hint:'Contre un dresseur IA',icon:'◇',title:'L’adversaire de ton choix',description:'Retrouve les dresseurs de l’aventure et entraîne ta stratégie contre leur IA.'},
- {key:'2v1',label:'Combat 2v1',hint:'Un duo contre un solo',icon:'♧',title:'Deux esprits, une équipe',description:'Le duo prépare six Pokémon en commun. Le propriétaire du Pokémon actif joue, ou passe la main à son allié.'},
- {key:'2v2',label:'Combat 2v2',hint:'Deux duos, un duel',icon:'✧',title:'Votre alliance entre en scène',description:'Chaque duo compose une équipe de six ou douze Pokémon. Un seul Pokémon reste actif de chaque côté.'}
+ {key:'2v1',label:'Combat 2v1',hint:'Un duo contre un solo',icon:'♧',title:'Deux esprits, une équipe',description:'Le duo prépare six Pokémon en commun, avec un seul corrompu par camp. Le propriétaire du Pokémon actif joue, ou passe la main à son allié.'},
+ {key:'2v2',label:'Combat 2v2',hint:'Deux duos, un duel',icon:'✧',title:'Votre alliance entre en scène',description:'Chaque duo compose six ou douze Pokémon, dont deux corrompus au maximum. Un seul Pokémon reste actif de chaque côté.'}
 ];
 export default{components:{HousePreparation,PokemonDetails},props:{duel:Object,rosters:Object,trainers:{type:Array,default:()=>[]},userId:Number,busy:Boolean,connected:Boolean,clock:Number},
  data(){return{mode:this.duel?.config?.mode||'1v1',config:{level:null,uniqueItems:false,money:0,pokemonStake:false,format:6,trainerKey:this.trainers[0]?.key||''},search:'',detail:null};},
