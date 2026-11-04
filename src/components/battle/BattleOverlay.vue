@@ -182,10 +182,11 @@
       </div>
     </div>
 
-    <div class="bar battle-action-shell" :inert="entranceActive ? '' : null" :aria-hidden="entranceActive ? 'true' : null" :class="{ 'has-battle-notices': hasAnnouncements }">
+    <div class="bar battle-action-shell" :inert="entranceActive ? '' : null" :aria-hidden="entranceActive ? 'true' : null" :class="{ 'has-battle-notices': hasAnnouncements, 'has-house-control': houseControl?.cooperative }">
       <div :class="['battle-turn-indicator', { 'is-ready': canChooseAction }]">
         <span class="battle-turn-dot" aria-hidden="true"></span>
-        {{ turnLabel }}
+        <span v-if="houseControl?.cooperative" class="house-battle-control" :class="{'is-delegated':houseControl.delegated}" data-house-control :title="`Pokémon de ${houseControl.ownerName} · Main à ${houseControl.controllerName}`" role="status"><b><template v-if="houseControl.paused">Reconnexion · {{ houseControl.reconnectSeconds }} s</template><template v-else>Main : {{ houseControl.controllerName }}</template> <i v-if="houseControl.canControl">· toi</i></b><small>Pokémon de {{ houseControl.ownerName }}{{ houseControl.delegated?' · relais':'' }}</small></span>
+        <template v-else>{{ turnLabel }}</template>
         <span v-if="challenge" class="battle-challenge" data-battle-challenge>{{ challenge.guardian ? 'Gardien' : 'Défi' }} {{ challenge.wave }} · {{ challenge.guardian?.name || challenge.difficulty?.label }}</span>
       </div>
 
@@ -286,7 +287,8 @@
 
       <div v-if="!readOnly" class="battle-main-actions">
         <button class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
-        <button v-if="!opponent?.storyActor" class="battle-main-btn action-bag" :disabled="tournament || environment==='whitepeak-club' || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
+        <button v-if="houseControl?.cooperative" class="battle-main-btn action-bag house-pass-button" data-house-pass :disabled="houseControl.busy || !houseControl.canPass || !canChooseAction" @click="$emit('house-pass')">Passer la main</button>
+        <button v-else-if="!opponent?.storyActor" class="battle-main-btn action-bag" :disabled="tournament || environment==='whitepeak-club' || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
         <button class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
         <button class="battle-main-btn action-flee" :disabled="capturePolicy?.darkContinent || environment==='dark-jungle' || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
       </div>
@@ -413,6 +415,7 @@ export default {
   name: 'BattleOverlay',
   components: { BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
+    houseControl:{type:Object,default:null},
     readOnly:{type:Boolean,default:false},
     tournament:{type:Boolean,default:false},
     mobile: Boolean,
@@ -542,7 +545,7 @@ export default {
         });
     },
     canChooseAction() {
-      return !this.readOnly && this.canAct && !this.entranceActive && !this.presentationBusy && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
+      return (!this.houseControl||(this.houseControl.canControl&&this.houseControl.turnId===this.actionTurnId)) && !this.readOnly && this.canAct && !this.entranceActive && !this.presentationBusy && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
     },
     turnLabel() {
       if(this.readOnly)return this.preferences.language==='en'?'Watching the duel':'Le duel en direct';
@@ -986,7 +989,7 @@ export default {
       if (this.replacementChoice && (payload.action !== 'change' || this.isSwitchUnavailable(this.battleTeam[payload.number],payload.number))) return;
       this.unlockAudio();
       this.canAct = false;
-      this.$emit('action', { ...payload, ...(this.replacementId ? { replacementId:this.replacementId } : {}), ...(this.actionTurnId ? { turnId:this.actionTurnId } : {}) });
+      this.$emit('action', { ...payload, ...(this.houseControl ? {controlRevision:this.houseControl.revision} : {}), ...(this.replacementId ? { replacementId:this.replacementId } : {}), ...(this.actionTurnId ? { turnId:this.actionTurnId } : {}) });
       this.replacementChoice = false;
       this.showMessage(message, true);
     },
@@ -1589,7 +1592,7 @@ export default {
       this.clearCaptureTimers();
       this.clearHealthTimers();
     },
-    setEncounterEnvironment(environment) { this.encounterEnvironment=environment==='lake'?'lake':null; },
+    setEncounterEnvironment(environment) { this.encounterEnvironment=['lake','whitepeak-club'].includes(environment)?environment:null; },
     resetBattleUi() {
       this._pendingBattleField=null;
       this.encounterEnvironment=null;
@@ -2894,4 +2897,12 @@ export default {
 
 <style scoped>
 .battle-level-growth{position:absolute;z-index:42;left:50%;top:38%;transform:translate(-50%,-50%);width:min(330px,90%);max-height:45%;overflow:auto;box-shadow:0 5px 20px #071d3440;pointer-events:none}
+</style>
+
+<style scoped>
+.house-battle-control{display:flex;flex-direction:column;min-width:0;max-width:330px;line-height:1.3;text-align:left}.house-battle-control b{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.house-battle-control small{font-size:9px;color:var(--journal-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.house-battle-control i{font-style:normal;font-weight:normal}.house-battle-control.is-delegated b{color:var(--journal-accent)}.house-pass-button{background:#6e598f}
+@media(max-width:760px){.house-battle-control{max-width:min(65vw,280px)}.house-battle-control b{font-size:10px}.house-battle-control small{font-size:9px}}
+</style>
+<style>
+.game-root.is-mobile .game-stage .has-house-control .battle-turn-indicator{visibility:visible!important;max-width:100%;border-radius:9px;padding-block:4px}.game-root.is-mobile .game-stage .has-house-control .battle-mobile-announcements{display:none}
 </style>

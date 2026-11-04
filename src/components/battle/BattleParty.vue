@@ -1,5 +1,5 @@
 <template>
-  <div v-if="party && party.length" class="battle-opponent-party" data-opponent-party role="img" :aria-label="label" :title="label">
+  <div v-if="party && party.length" class="battle-opponent-party" :class="{'large-party':party.length>6}" data-opponent-party role="img" :aria-label="label" :title="label">
     <battle-ball v-for="(state,index) in states" :key="index" class="party-ball" :state="state" :data-party-state="state" />
   </div>
 </template>
@@ -22,4 +22,8 @@ export default {
 
 <style scoped>
 .battle-opponent-party{position:absolute;top:calc(100% + 5px);left:6px;display:flex;align-items:center;gap:4px;padding:3px 6px;border:1px solid var(--journal-border,#8fa6b2);border-radius:12px;background:var(--journal-card,#edf5fa);box-shadow:0 2px 3px #10232d24;line-height:0;pointer-events:auto}
+</style>
+
+<style scoped>
+.battle-opponent-party.large-party{display:grid;grid-template-columns:repeat(6,auto);gap:3px 4px;border-radius:8px}
 </style>
