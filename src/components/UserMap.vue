@@ -28,7 +28,7 @@
       <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :rerolls="superTournament.rerolls" :cash="superTournament.cash" :team="superTournament.team" :passives="superTournament.passives" :victory-recovery="superTournament.victoryRecovery" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @reroll="rerollTournamentRewards" @leave="openTournamentAbandon" />
       <battle-overlay
         ref="battleOverlay"
-        :active="battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
+        :social-chat-open="battleChatOpen" @social-close="battleChatOpen=false" :active="battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
         :bag-items="bagItems" :tournament="!!superTournament.active" @tournament-abandon="openTournamentAbandon"
         :bag-loading="bagLoading"
         :caught-species-ids="isDrift ? [] : caughtSpeciesIds"
@@ -39,7 +39,10 @@
         @action="handleBattleAction"
         @request-bag="loadBagItems"
         @music-prelude="onMusicPrelude"
-      />
+      >
+        <template #social-toggle><button class="battle-social-button" data-battle-social-toggle :class="{'has-social-notification':socialAlertCount>0}" :aria-expanded="battleChatOpen" :aria-label="`Amis et messages${socialAlertCount?' · '+socialAlertCount+' notification'+(socialAlertCount>1?'s':''):''}`" data-social-surface @pointerdown.stop @click.stop="battleChatOpen=!battleChatOpen"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
+        <template #social-chat><combat-social-panel v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
+      </battle-overlay>
       <div class="game-shell" :inert="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? '' : null" :aria-hidden="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? 'true' : null">
         <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
@@ -124,7 +127,7 @@
           </template>
         </bag-panel>
         <game-trade-panel v-if="tradeModalVisible" :key="tradeState.id" :state="tradeState" :user-id="Number(currentUserId)" :busy="tradeBusy" :error="tradeError" :connected="tradeConnected" :command="tradeCommand" @action="runTradeAction" @cancel="cancelFriendTrade"/>
-        <game-friends-panel v-if="friendsOpen" :state="socialState" :group-unread="socialGroupUnread" @reading="setSocialReading" :presence-revision="socialPresenceRevision" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError || tradeError" :trade-invite="incomingTrade" :trading="tradeBusy" :can-trade="!isDrift" :request-trade="requestFriendTrade" @trade-answer="answerFriendTrade" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
+        <game-friends-panel v-if="friendsOpen && !battle" :state="socialState" :drafts="socialDrafts" @draft="rememberSocialDraft" @reading="setSocialReading" :presence-revision="socialPresenceRevision" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError || tradeError" :trade-invite="incomingTrade" :trading="tradeBusy" :can-trade="!isDrift && !battle && !superTournament.active" :request-trade="requestFriendTrade" @trade-answer="answerFriendTrade" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
         <held-item-picker v-if="heldPickerPokemon" :pokemon="heldPickerPokemon" :items="heldBagItems" :busy="teamSaving" :error="teamError" @close="heldPickerUuid=null" @equip="equipPickedHeldItem"/>
         <training-feedback v-if="trainingFeedback" :entry="trainingFeedback" :busy="medicineBusy" @close="trainingFeedback=null" @confirm="confirmIvReroll"/>
         <pokemon-computer v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :corruption-allowed="!isDrift && !superTournament.active && !battle" @corruption="openCorruptionSheet" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
@@ -219,7 +222,7 @@
           :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @toggle-fullscreen="toggleGameFullscreen" @appearance="handleMenuAction('appearance')"
           :flight-allowed="!isDrift && !superTournament.active && !onDarkContinent" @fly="flyToTown"
           :active="activeInfoPanel"
-          :group-members="(socialState.group?.members || []).filter(p=>p.id!==Number(currentUserId))"
+          :friend-members="socialState.accepted"
           :current-map="map" :current-region="players[socket?.id]?.regionLocation"
           :recovery-busy="positionRecoveryBusy" :recovery-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && driftState?.phase === 'exploration' && !driftState?.storagePaused && !driftState?.recoveryWaiting))" :recovery-notice="positionRecoveryNotice"
           @recover-position="recoverPosition"
@@ -455,6 +458,8 @@ import TrainingFeedback from './menu/TrainingFeedback.vue';
 import HeldItemPicker from './menu/HeldItemPicker.vue';
 import GameFriendsPanel from './social/GameFriendsPanel.vue';
 import socialGame from '@/services/socialGame';
+import CombatSocialPanel from './social/CombatSocialPanel.vue';
+import {FriendTagRenderer} from '@/services/friendPresence';
 import NotificationBadge from './social/NotificationBadge.vue';
 import TeleporterChargeNotice from './menu/TeleporterChargeNotice.vue';
 import './social/socialNotifications.css';
@@ -552,7 +557,7 @@ export default {
     PokemonDetails,DarkContinentPanel,
     ExperienceBar,
     TextWithImage,
-    BattleOverlay,WhitepeakClubPanel,ClubSpectator,
+    BattleOverlay,WhitepeakClubPanel,ClubSpectator,CombatSocialPanel,
     GameInfoPanels,
     ShopPanel
   },
@@ -2726,6 +2731,7 @@ export default {
       else if (action === 'back') consume();
     },
     handleKeydown(e) {
+      if(e.target?.closest?.('[data-social-surface]'))return;
       if (this.patchNoticeOpen) { this.releaseAllMovementKeys(); return; }
       if(this.worldChatOpen){if(e.key==='Escape'){e.preventDefault();this.closeWorldChat();}return;}
       if(this.battle&&['Space','KeyA','Enter'].includes(e.code)&&!e.repeat&&this.$refs.battleOverlay?.advanceExperience(e))return;
@@ -3055,6 +3061,10 @@ export default {
         if (!this._worldNight) this._worldNight = new WorldNightRenderer();
         this._worldNight.draw(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.mapImage);
       } else this._worldNight?.suspend();
+      if(!this.battle&&!document.hidden){
+        this._friendTags ||= new FriendTagRenderer();
+        for(const [id,p]of Object.entries(this.players)){const friend=id===this.socket?.id?(this.socialState.self?.afk?{...this.socialState.self,username:this.currentUsername}:null):this.socialFriendById[p.userId];if(friend&&p.currentmap===this.map)this._friendTags.draw(c,this.visualPlayer(id,p,now),friend);}
+      }
       if(!this.battle&&!document.hidden)this._worldSpeech?.draw(c,{players:this.players,map:this.map,camera,scale,position:(id,p)=>this.visualPlayer(id,p,now)},now);
       if(this.fishing && this.fishing.map===this.map && !document.hidden && !this.mapLoading && !this.battle)
         drawFishing(c,this.fishing,performance.now()-this.fishingReceivedAt,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
@@ -3629,6 +3639,7 @@ export default {
     this.socket.on('pcUpdated',state=>{if(this.pc.visible)this.pc.state=state;});
 
     this.socket.on('battletrigger', (data) => {
+      this.battleChatOpen=false;
       this.friendsOpen=false;this.heldPickerUuid=null;this.trainingFeedback=null;
       this.cancelFishing();
       this.pc.visible=false;

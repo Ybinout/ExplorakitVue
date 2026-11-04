@@ -6,42 +6,25 @@ const remember = (set, id) => {
   return true;
 };
 
-// Snapshot diffs for requests/group messages; private messages have their own
+// Snapshot diffs for friend requests; private messages have their own
 // event. History, presence refreshes and our own messages are always silent.
 export class SocialNotifications {
-  constructor({ userId, reading = () => null, notify, groupUnread = () => {}, now = () => Date.now() }) {
-    Object.assign(this, { userId, reading, notify, changed: groupUnread, now });
+  constructor({ userId, reading = () => null, notify, now = () => Date.now() }) {
+    Object.assign(this, { userId, reading, notify, now });
     this.messages = new Set(); this.trades = new Set(); this.lastSound = -Infinity;
-    this.unread = 0; this.disposed = false; this.reset();
+    this.disposed = false; this.reset();
   }
-  reset() { this.initialized = false; this.requests = new Set(); this.invites = new Set(); this.groupId = null; this.groupMessages = new Set(); }
+  reset() { this.initialized=false;this.requests=new Set(); }
   sound(kind) {
     if (this.disposed || this.now() - this.lastSound < 1200) return;
     this.lastSound = this.now();
     this.notify(kind);
   }
-  setUnread(value) {
-    if (this.disposed) return;
-    value = Math.max(0, Math.min(9999, value));
-    if (value !== this.unread) { this.unread = value; this.changed(value); }
-  }
-  readGroup() { this.setUnread(0); }
   snapshot(state) {
-    if (this.disposed || !state) return;
-    const requests = ids(state.incoming), invites = ids(state.groupInvites), groupId = state.group?.id || null;
-    let alert = null;
-    if (this.initialized) {
-      if ([...requests].some(id => !this.requests.has(id))) alert = 'friend';
-      if ([...invites].some(id => !this.invites.has(id))) alert = 'group-invite';
-    }
-    if (groupId !== this.groupId || !this.initialized) this.setUnread(0);
-    else {
-      const messages = (state.group?.messages || []).filter(m => m.id != null && !this.groupMessages.has(String(m.id)) && Number(m.senderId) !== Number(this.userId()));
-      if (this.reading()?.kind === 'group') this.setUnread(0);
-      else if (messages.length) { this.setUnread(this.unread + messages.length); alert = 'group-message'; }
-    }
-    this.requests = requests; this.invites = invites; this.groupId = groupId; this.groupMessages = ids(state.group?.messages); this.initialized = true;
-    if (alert) this.sound(alert);
+    if(this.disposed||!state)return;
+    const requests=ids(state.incoming);
+    if(this.initialized&&[...requests].some(id=>!this.requests.has(id)))this.sound('friend');
+    this.requests=requests;this.initialized=true;
   }
   message(message) {
     if (this.disposed || !message || Number(message.recipientId) !== Number(this.userId()) || Number(message.senderId) === Number(this.userId())) return;

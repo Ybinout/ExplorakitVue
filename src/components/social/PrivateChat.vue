@@ -1,0 +1,36 @@
+<template>
+  <div class="private-chat" :class="{'is-compact':compact}" data-social-surface @keydown.stop @keyup.stop @pointerdown.stop @click.stop>
+    <div ref="messages" class="private-messages" role="log" aria-label="Messages privés" aria-live="polite" :aria-busy="loading">
+      <button v-if="before" class="private-older" :disabled="loading||!connected" @click="load(true)">Messages précédents</button>
+      <p v-if="loading&&!messages.length" class="private-empty">Chargement…</p><p v-else-if="!messages.length" class="private-empty">Écris à {{ friend.username }}. Ta conversation reste disponible hors connexion.</p>
+      <article v-for="m in messages" :key="m.id" :data-social-message="m.id" :class="{mine:m.senderId===userId}"><small>{{ m.senderId===userId?'Toi':friend.username }} · {{ time(m.createdAt) }}</small><p>{{ m.text }}</p></article>
+    </div>
+    <p v-if="error" class="private-error" role="alert">{{ error }}</p>
+    <form class="private-compose" @submit.prevent="send"><label class="sr-only" :for="inputId">Message pour {{ friend.username }}</label><textarea :id="inputId" ref="draft" v-model="draft" data-social-draft :rows="compact?1:2" maxlength="500" placeholder="Ton message…" :disabled="!connected||sending" @input="remember" @keydown.enter.exact.prevent="send"></textarea><button data-social-send :disabled="!connected||sending||!draft.trim()" :aria-label="sending?'Envoi en cours':'Envoyer le message'"><journal-icon name="send"/><span v-if="!compact">{{ sending?'Envoi…':'Envoyer' }}</span></button></form>
+  </div>
+</template>
+<script>
+import JournalIcon from '../menu/JournalIcon.vue';
+const sorted=rows=>[...new Map(rows.map(m=>[m.id,m])).values()].sort((a,b)=>a.id-b.id);
+export default{
+ components:{JournalIcon},props:{friend:{type:Object,required:true},userId:Number,connected:Boolean,incomingMessage:Object,command:Function,compact:Boolean,active:{type:Boolean,default:true},savedDraft:{type:String,default:''}},
+ data(){return{messages:[],before:null,loading:false,draft:this.savedDraft,sending:false,error:''};},
+ computed:{inputId(){return 'private-message-'+this._uid;}},
+ watch:{active(){this.report();if(this.active)this.markRead();},connected(value){if(value)this.load();this.report();},incomingMessage(m){if(!m||![m.senderId,m.recipientId].includes(this.friend.id))return;this.messages=sorted([...this.messages,m]);this.scroll();this.markRead();}},
+ mounted(){this.load();this.report();this.visible=()=>{this.report();if(!document.hidden)this.markRead();};document.addEventListener('visibilitychange',this.visible);},
+ beforeDestroy(){this.epoch=(this.epoch||0)+1;this.remember();this.$emit('reading',null);document.removeEventListener('visibilitychange',this.visible);},
+ methods:{
+  time(value){return new Date(value).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});},
+  report(){this.$emit('reading',this.active&&!document.hidden?{kind:'private',id:this.friend.id}:null);},
+  remember(){this.$emit('draft',{id:this.friend.id,text:this.draft});},
+  scroll(){this.$nextTick(()=>{const n=this.$refs.messages;if(n)n.scrollTop=n.scrollHeight;});},
+  async load(older=false){if(!this.connected)return;const peer=this.friend.id,epoch=this.epoch=(this.epoch||0)+1;this.loading=true;this.error='';try{const r=await this.command('social:history',{targetId:peer,...(older&&this.before?{before:this.before}:{})});if(epoch!==this.epoch||peer!==this.friend.id)return;this.messages=sorted([...this.messages,...r.messages]);this.before=r.nextBefore;if(!older){this.scroll();this.markRead();}}catch(e){if(epoch===this.epoch)this.error=e.message;}finally{if(epoch===this.epoch)this.loading=false;}},
+  async markRead(){if(!this.active||!this.connected||document.hidden)return;const peer=this.friend.id,last=[...this.messages].reverse().find(m=>m.senderId===peer),key=last?`${peer}:${last.id}`:null;if(!key||this.lastRead===key)return;try{await this.command('social:read',{targetId:peer,through:last.id});this.lastRead=key;}catch{/* Retry on the next visible snapshot/reopen. */}},
+  async send(){if(this.sending||!this.connected||!this.draft.trim())return;const targetId=this.friend.id,text=this.draft;this.sending=true;this.error='';try{this.pending=this.pending?.targetId===targetId&&this.pending.text===text?this.pending:{targetId,text,clientId:crypto.randomUUID()};const r=await this.command('social:send',this.pending);this.pending=null;if(this.friend.id===targetId){this.messages=sorted([...this.messages,r.message]);this.draft='';this.remember();this.scroll();}}catch(e){this.error=e.message;}finally{this.sending=false;}}
+ }
+};
+</script>
+<style scoped>
+.private-chat{display:flex;flex-direction:column;flex:1;min-height:0;color:var(--journal-ink);font:13px/1.4 var(--journal-font)}.private-messages{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:16px}.private-messages article{width:fit-content;max-width:90%;margin:0 auto 10px 0;padding:9px 12px;background:var(--journal-card);border:1px solid var(--journal-border);border-radius:12px 12px 12px 3px;overflow-wrap:anywhere}.private-messages article.mine{margin-left:auto;margin-right:0;background:var(--journal-selected);border-radius:12px 12px 3px 12px}.private-messages small{font-size:10px;color:var(--journal-muted)}.private-messages p{margin:3px 0;white-space:pre-wrap}.private-empty{padding:8px 0;color:var(--journal-muted);font-size:12px}.private-compose{display:flex;gap:8px;padding:12px;border-top:1px solid var(--journal-border)}.private-compose textarea{flex:1;min-width:0;resize:none;max-height:100px;padding:10px;border:1px solid var(--journal-border);border-radius:9px;background:var(--journal-card);color:var(--journal-ink);font:14px var(--journal-font)}.private-compose button{display:flex;align-items:center;justify-content:center;gap:6px;min-width:44px;min-height:44px;padding:10px;border:1px solid var(--journal-accent);border-radius:9px;background:var(--journal-accent);color:var(--journal-on-accent);font:600 12px var(--journal-font);cursor:pointer}.private-compose button:disabled{opacity:.5}.private-older{display:block;margin:0 auto 12px;padding:9px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);color:var(--journal-ink);cursor:pointer}.private-error{margin:0;padding:5px 12px;font-size:11px;color:var(--journal-danger)}.private-chat :focus-visible{outline:2px solid var(--journal-accent);outline-offset:2px}.is-compact .private-messages{padding:4px 8px}.is-compact .private-messages article{padding:3px 7px;margin-bottom:4px;font-size:11px}.is-compact .private-messages small{font-size:9px}.is-compact .private-compose{padding:4px 6px;gap:5px}.is-compact .private-compose textarea{padding:6px 8px;min-height:36px;max-height:58px;font-size:14px}.is-compact .private-compose button{min-height:36px;padding:6px}.is-compact .private-empty{font-size:11px;padding:2px 0}.sr-only{position:absolute;width:1px;height:1px;clip:rect(0,0,0,0);overflow:hidden}
+@media(max-width:700px){.private-compose textarea,.is-compact .private-compose textarea{font-size:16px}}
+</style>

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="active" @pointerdown.capture="advanceExperience" @click.capture="consumeExperienceClick" :class="['battle', { 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-void-arena':environment==='void-arena', 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle, ...daylightStyle}" :data-place-light="placeLight ? environment : null" :data-day-phase="outdoorLighting ? daylight.phase : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
+  <div v-if="active" @pointerdown.capture="advanceExperience" @click.capture="consumeExperienceClick" :class="['battle', { 'battle-social-available':!!$slots['social-toggle'], 'battle-social-open':socialChatOpen, 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-void-arena':environment==='void-arena', 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle, ...daylightStyle}" :data-place-light="placeLight ? environment : null" :data-day-phase="outdoorLighting ? daylight.phase : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
     <battle-entrance v-if="entranceActive" :key="visualEpoch" :champion="entranceChampion" @portrait-ready="onEntrancePortraitReady" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
@@ -182,7 +182,8 @@
       </div>
     </div>
 
-    <div class="bar battle-action-shell" :inert="entranceActive ? '' : null" :aria-hidden="entranceActive ? 'true' : null" :class="{ 'has-battle-notices': hasAnnouncements, 'has-house-control': houseControl?.cooperative }">
+    <div class="bar battle-action-shell" :inert="entranceActive ? '' : null" :aria-hidden="entranceActive ? 'true' : null" :class="{ 'has-battle-notices': hasAnnouncements, 'has-house-control': houseControl?.cooperative, 'has-social-controls':!!$slots['social-toggle'] }">
+      <div v-if="$slots['social-toggle']" class="battle-social-control"><slot name="social-toggle"/></div>
       <div :class="['battle-turn-indicator', { 'is-ready': canChooseAction }]">
         <span class="battle-turn-dot" aria-hidden="true"></span>
         <span v-if="houseControl?.cooperative" class="house-battle-control" :class="{'is-delegated':houseControl.delegated}" data-house-control :title="`Pokémon de ${houseControl.ownerName} · Main à ${houseControl.controllerName}`" role="status"><b><template v-if="houseControl.paused">Reconnexion · {{ houseControl.reconnectSeconds }} s</template><template v-else>Main : {{ houseControl.controllerName }}</template> <i v-if="houseControl.canControl">· toi</i></b><small>Pokémon de {{ houseControl.ownerName }}{{ houseControl.delegated?' · relais':'' }}</small></span>
@@ -209,6 +210,7 @@
       </button>
 
       <div class="battle-action-display" :class="{ 'has-battle-notices': hasAnnouncements && !mobile }">
+        <div v-if="socialChatOpen" class="battle-social-area"><p class="battle-social-narration" :title="actionState.text">{{ actionState.text || tr('chooseAction') }}</p><slot name="social-chat"/></div><template v-else>
         <div v-if="hasAnnouncements && !mobile" class="battle-announcements" role="status">
           <p v-if="notice" class="battle-action-notice">{{ notice }}</p>
           <p v-if="captureFx.visible && captureFx.message" class="battle-capture-notice">{{ captureFx.message }}</p>
@@ -283,6 +285,7 @@
         </div>
 
         <div v-else class="battle-text-box battle-text-box-muted">{{ tr('chooseAction') }}</div>
+        </template>
       </div>
 
       <div v-if="!readOnly" class="battle-main-actions">
@@ -415,6 +418,7 @@ export default {
   name: 'BattleOverlay',
   components: { BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
+    socialChatOpen:Boolean,
     houseControl:{type:Object,default:null},
     readOnly:{type:Boolean,default:false},
     tournament:{type:Boolean,default:false},
@@ -848,8 +852,8 @@ export default {
       this.musicKind = null;
       if (!keepPrelude) this.setMusicPrelude(false);
     },
-    consumeExperienceClick(event){if(this._experiencePointer){this._experiencePointer=false;event.preventDefault();event.stopPropagation();}},
-    advanceExperience(event){if(event?.target?.closest?.('[data-battle-weather-info]'))return false;const skip=this.experienceBusy&&this._experienceControl?.skip||this._rewardRelease;if(!skip)return false;event?.preventDefault?.();event?.stopPropagation?.();if(event?.type==='pointerdown')this._experiencePointer=true;skip();return true;},
+    consumeExperienceClick(event){if(event?.target?.closest?.('[data-social-surface]'))return;if(this._experiencePointer){this._experiencePointer=false;event.preventDefault();event.stopPropagation();}},
+    advanceExperience(event){if(event?.target?.closest?.('[data-battle-weather-info],[data-social-surface]'))return false;const skip=this.experienceBusy&&this._experienceControl?.skip||this._rewardRelease;if(!skip)return false;event?.preventDefault?.();event?.stopPropagation?.();if(event?.type==='pointerdown')this._experiencePointer=true;skip();return true;},
     showRewardMessage(payload){
       this.showMessage(payload.message,true);this.rewardNotice=true;
       return new Promise(resolve=>{
@@ -964,6 +968,7 @@ export default {
         || (this.replacementChoice && !this.replacementIndexes?.includes(index));
     },
     setPanel(panel) {
+      this.$emit('social-close');
       if (!this.canChooseAction || (this.replacementChoice && panel !== 'pokemon')) return;
       this.actionState.patient = false;
       this.actionState.attackPanel = panel === 'attack';

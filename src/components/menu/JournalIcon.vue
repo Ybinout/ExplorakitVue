@@ -6,6 +6,10 @@
 
 <script>
 const paths = {
+  messages:'M4 4h16v12H9l-5 4Zm4 4h8m-8 4h5',
+  send:'m3 3 18 9-18 9 3-9Zm3 9h15',
+  ranking:'M8 3h8v6a4 4 0 0 1-8 0Zm0 2H4v3a4 4 0 0 0 4 4m8-7h4v3a4 4 0 0 1-4 4m-4 1v5m-5 3h10m-8-3h6',
+  afk:'M20 13a8 8 0 1 1-9-9 7 7 0 0 0 9 9ZM15 3h5l-5 5h5',
   user:'M17 7a5 5 0 1 1-10 0 5 5 0 0 1 10 0ZM2 22v-3c0-4 4-6 10-6s10 2 10 6v3Z',
   friends:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.9M16 3a4 4 0 0 1 0 8M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',
   fullscreen: 'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5',
