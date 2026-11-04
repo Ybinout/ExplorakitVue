@@ -16,8 +16,9 @@
       <div class="champion-footer"><span class="champion-loading" aria-hidden="true"></span><span>{{ language === 'en' ? 'The duel is about to begin' : 'Le duel va commencer' }}</span></div>
     </section>
     <div v-else class="entrance-caption">
-      <svg class="entrance-ball" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="M4 24h13m14 0h13"/><circle cx="24" cy="24" r="7"/></svg>
-      <span>{{ language === 'en' ? 'Battle starting' : 'Un combat commence' }}</span>
+      <svg class="entrance-ball" :class="{'is-loading':assetsLoading}" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="M4 24h13m14 0h13"/><circle cx="24" cy="24" r="7"/></svg>
+      <span>{{ assetsLoading ? (language === 'en' ? 'Preparing the battle' : 'Préparation du combat') : (language === 'en' ? 'Battle starting' : 'Un combat commence') }}</span>
+      <small v-if="assetsLoading">{{ language === 'en' ? 'Loading images…' : 'Chargement des images…' }}</small>
     </div>
   </div>
 </template>
@@ -25,7 +26,7 @@
 <script>
 export default {
   name: 'BattleEntrance',
-  props: { phase: { type: String, required: true }, language: { type: String, default: 'fr' }, reducedMotion: Boolean, champion: { type: Object, default: null } },
+  props: { phase: { type: String, required: true }, language: { type: String, default: 'fr' }, reducedMotion: Boolean, assetsLoading: Boolean, champion: { type: Object, default: null } },
   data: () => ({ portraitReady: false, portraitFailed: false }),
   methods: {
     async onPortraitLoad(event) {
@@ -47,6 +48,9 @@ export default {
 .entrance-caption { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; transition:opacity .15s ease; }
 .entrance-caption span { background:#17394c; padding:8px 14px; }
 .entrance-ball { width:48px; height:48px; background:#17394c; border-radius:50%; outline:8px solid #17394c; animation:entrance-ball-in .4s ease-out both; }
+.entrance-ball.is-loading { animation:entrance-loading 1.5s linear infinite; }
+.entrance-caption small { color:#b6cfde; font:500 12px/1.5 Arial,sans-serif; }
+@keyframes entrance-loading { to { transform:rotate(360deg); } }
 .is-revealing .entrance-shutter-top { transform:translateY(-101%); }
 .is-revealing .entrance-shutter-bottom { transform:translateY(101%); }
 .is-revealing .entrance-caption { opacity:0; }

@@ -3664,7 +3664,8 @@ export default {
       this.closeChatSession(true);
       this.$refs.battleOverlay?.resetBattleUi();
       this.$refs.battleOverlay?.setEncounterEnvironment(data?.environment);
-      this.$refs.battleOverlay?.prepareEntrance(data?.musicKind || data?.battleType || 'wild', data?.trainerKey, data?.tournamentEntrance);
+      const houseSpecies=data?.environment==='whitepeak-club'?this.clubTrainers.find(t=>t.key===data?.trainerKey)?.species||[]:[];
+      this.$refs.battleOverlay?.prepareEntrance(data?.musicKind || data?.battleType || 'wild', data?.trainerKey, data?.tournamentEntrance, houseSpecies);
       this.$refs.battleOverlay?.updateFieldState(data?.field || {});
       this.battle = true;
       this.syncWorldMusic();

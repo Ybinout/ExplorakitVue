@@ -1,6 +1,6 @@
 <template>
   <div v-if="active" @pointerdown.capture="advanceExperience" @click.capture="consumeExperienceClick" :class="['battle', { 'battle-social-available':!!$slots['social-toggle'], 'battle-social-open':socialChatOpen, 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-void-arena':environment==='void-arena', 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle, ...daylightStyle}" :data-place-light="placeLight ? environment : null" :data-day-phase="outdoorLighting ? daylight.phase : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
-    <battle-entrance v-if="entranceActive" :key="visualEpoch" :champion="entranceChampion" @portrait-ready="onEntrancePortraitReady" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
+    <battle-entrance v-if="entranceActive" :key="visualEpoch" :champion="entranceChampion" @portrait-ready="onEntrancePortraitReady" :assets-loading="entranceAssetsLoading" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
       :inert="entranceActive ? '' : null" :aria-hidden="entranceActive ? 'true' : null"
@@ -453,6 +453,7 @@ export default {
       presentationBusy: false,
       rewardNotice: false,
       entrancePhase: 'ready',
+      entranceAssetsLoading: false,
       entranceChampion: null,
       feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
       visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionNonce:0, conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
@@ -733,12 +734,14 @@ export default {
     onEntrancePortraitReady() {
       if (this.entrancePhase === 'holding') this._entrancePortraitAt = performance.now();
     },
-    prepareEntrance(encounterKind = 'wild', trainerKey = null, tournamentEntrance = null) {
+    prepareEntrance(encounterKind = 'wild', trainerKey = null, tournamentEntrance = null, houseSpecies = []) {
       this.cancelEntrance();
       this.battleMapName = this.mapName;
       this._entranceController = new AbortController();
       this._entranceStartedAt = performance.now();
       this._entrancePortraitAt = null;
+      this._entranceSpecies = houseSpecies;
+      this.entranceAssetsLoading = this.environment === 'whitepeak-club';
       this.entranceChampion = tournamentEntrance?.portrait ? {...tournamentEntrance,city:'Super Tournoi',cityEn:'Super Tournament',story:true,eyebrow:'SUPER TOURNOI',eyebrowEn:'SUPER TOURNAMENT',accent:'#a0c8e2',minimumMs:2800,portraitMs:1600,src:require('@/assets/image/'+tournamentEntrance.portrait)} : this.arenaPortrait(encounterKind, trainerKey);
       this.entrancePhase = 'holding';
     },
@@ -746,6 +749,8 @@ export default {
       this._entranceController?.abort();
       this._entranceController = null;
       this.entranceChampion = null;
+      this.entranceAssetsLoading = false;
+      this._entranceSpecies = [];
       this.entrancePhase = 'ready';
     },
     async revealEntrance(epoch) {
@@ -755,8 +760,18 @@ export default {
       const obsolete = () => signal.aborted || epoch !== this.visualEpoch;
       await this.$nextTick();
       if (obsolete()) return;
-      await waitForBattleAssets(() => [...(this.$el.querySelectorAll?.('.battle-background, .battle-sprite, .battle-platform img, .entrance-portrait') || [])], { signal });
+      const house = this.environment === 'whitepeak-club';
+      // These trainer species are already public in the House selection menu.
+      // Do not request or expose the hidden party of a PvP opponent.
+      const sources = new Set();
+      if (house) {
+        for (const pokemon of this.player?.equipe?.pokemons || []) for (const side of ['front','back']) sources.add(this.getPokemonSprite(pokemon,side));
+        for (const id of this._entranceSpecies || []) if (Number.isInteger(id) && id > 0) sources.add(this.getPokemonSprite({data:{id}},'front'));
+      }
+      const reserves = [...sources].filter(Boolean).map(src=>{const image=new Image();image.decoding='async';image.src=src;return image;});
+      await waitForBattleAssets(() => [...(this.$el.querySelectorAll?.('.battle-background, .battle-sprite, .battle-platform img, .entrance-portrait') || []), ...reserves], { signal, timeoutMs:house?12000:2400 });
       if (obsolete()) return;
+      this.entranceAssetsLoading = false;
       // Cached images may have loaded before their Vue load handler was attached.
       for (const [side, anchor] of [['wild', this.$refs.opponentAnchor], ['player', this.$refs.playerAnchor]]) {
         const image = anchor?.querySelector('.battle-sprite');
