@@ -248,3 +248,9 @@ html[data-game-theme-mode="dark"] .game-root .game-stage .team-toggle-btn .journ
 .game-root .social-menu-alert{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:12px;background:var(--journal-accent);color:var(--journal-on-accent);font:700 10px var(--journal-font)}
 
 .house-resume-preparation{position:absolute;z-index:75;top:82px;left:50%;transform:translateX(-50%);min-height:44px;max-width:calc(100% - 24px);padding:10px 15px;border:1px solid var(--journal-accent);border-radius:9px;background:var(--journal-card);color:var(--journal-ink);font:600 12px var(--journal-font);box-shadow:var(--journal-shadow)}
+
+.world-interaction-hint{position:absolute;left:0;top:0;z-index:12;pointer-events:none;width:6px;height:6px;margin:-3px;border-radius:50%;background:#f3efd3;box-shadow:0 0 0 1px #4b606d99,0 0 5px 2px #fcf4bf55;opacity:0;transition:opacity .18s ease}.world-interaction-hint.is-visible{opacity:.95}.world-interaction-hint::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1px solid #fff3c344;animation:interaction-point 2.4s ease-in-out infinite}@keyframes interaction-point{50%{opacity:.35;transform:scale(.8)}}@media(prefers-reduced-motion:reduce){.world-interaction-hint{transition:none}.world-interaction-hint::after{animation:none}}.reduced-game-motion .world-interaction-hint::after{animation:none}
+
+.reduced-game-motion .world-interaction-hint{transition-property:none!important}
+
+.reduced-game-motion .club-panel,.reduced-game-motion .club-panel *{transition-property:none!important}

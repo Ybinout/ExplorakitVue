@@ -20,7 +20,7 @@
       <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
       <drift-run-panel v-show="!learningVisible && !evolutionVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
-      <whitepeak-club-panel v-if="clubPanel && !battle && !battleResult && !clubWatch" :tab="clubPanel.tab" :roulette="clubRoulette" :duel="clubDuel" :rosters="clubRosters" :trainers="clubTrainers" :balance="Number(progressionState.money)||0" :user-id="Number(currentUserId)" :busy="clubBusy" :error="clubError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled && !worldWeatherReducedMotion" :rows="clubRows" @close="clubPanel=null" @tab="clubPanel={tab:$event}" @command="clubCommand" />
+      <whitepeak-club-panel v-if="clubPanel && !battle && !battleResult && !clubWatch" :tab="clubPanel.tab" :roulette="clubRoulette" :duel="clubDuel" :rosters="clubRosters" :trainers="clubTrainers" :balance="Number(progressionState.money)||0" :user-id="Number(currentUserId)" :busy="clubBusy" :error="clubError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled && !worldWeatherReducedMotion" :rows="clubRows" :ranking="clubRanking" @close="clubPanel=null" @tab="clubPanel={tab:$event}" @command="clubCommand" />
       <button v-if="!clubPanel&&!battle&&clubDuel?.you>=0&&['review','preparation'].includes(clubDuel.phase)" class="house-resume-preparation" @click="clubPanel={tab:'duel'}">Reprendre la préparation →</button>
       <club-spectator v-if="clubWatch" :key="clubWatch.id" :start="clubWatch" :events="clubWatchEvents" :result="clubWatchResult" :mobile="showMobileControls" :preferences="preferences" @close="closeClubWatch" />
       <button v-if="map==='ville5_maison1' && !battle && !battleResult && !clubWatch && !clubPanel" class="club-room-access" data-club-room-access @pointerdown.stop @click="openClubPanel">{{ clubDuel&&clubDuel.phase!=='finished' ? clubDuel.phase==='review'?'Vérifier les mises':clubDuel.phase==='battle'?'Duel en cours · Tribunes':'Combat préparé':'Organiser' }}</button>
@@ -255,6 +255,7 @@
           <button v-if="showMobileControls && worldChatAvailable && !worldChatOpen" class="world-chat-toggle" data-world-chat-toggle aria-label="Parler sur cette carte" @pointerdown.stop @click.stop="openWorldChat"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8l-6 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7"/><path d="M7 9h10M7 13h7" stroke="currentColor" stroke-width="1.7"/></svg></button>
           <world-chat-input v-if="worldChatOpen" :busy="worldChatBusy" :error="worldChatError" :language="preferences.language" @close="closeWorldChat" @send="sendWorldMessage" />
           <span class="world-speech-announcement" role="status" aria-live="polite">{{ worldSpeechAnnouncement }}</span>
+          <span ref="interactionHintDot" class="world-interaction-hint" aria-hidden="true" data-interaction-hint></span>
           <canvas class="test" ref="monCanvas" tabindex="0" :aria-label="locationLabel"
             @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
             @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture"></canvas>
@@ -494,6 +495,7 @@ import { attachGamePopupLayout } from './gamePopupLayout';
 import BattleOverlay from './battle/BattleOverlay.vue';
 import WhitepeakClubPanel from './whitepeak/WhitepeakClubPanel.vue';
 import ClubSpectator from './whitepeak/ClubSpectator.vue';
+import {drawHonorRoll} from '@/services/whitepeakHonor';
 import {drawWhitepeakRoom} from '@/services/whitepeakRoulette';
 import {drawWhitepeakSnow, clipWhitepeakHost} from '@/services/whitepeakScenery';
 import {drawWhitepeakPodiums} from '@/services/whitepeakPodiums';
@@ -561,7 +563,7 @@ export default {
       trainerMusicPrelude: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
-      clubPanel:null,clubDuel:null,clubRoulette:null,clubRows:[],clubBusy:false,clubError:'',clubWatch:null,clubWatchEvents:[],clubWatchResult:null,
+      clubPanel:null,clubDuel:null,clubRoulette:null,clubRows:[],clubRanking:null,clubHonor:null,interactionHint:null,clubBusy:false,clubError:'',clubWatch:null,clubWatchEvents:[],clubWatchResult:null,
       clubControl:null,clubRosters:null,clubTrainers:[],
       superTournament:{active:false},tournamentPanel:null,tournamentBusy:false,tournamentError:'',tournamentRewardError:'',
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
@@ -2300,7 +2302,7 @@ export default {
       if(this.clubBusy||!this.socket?.connected)return;this.clubBusy=true;this.clubError='';
       try{const response=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('whitepeak:'+name,data,(e,r)=>e?reject(new Error('Connexion interrompue. Vérifie la table avant de renouveler une mise.')):resolve(r)));
         if(!response?.success)throw new Error(response?.message||'Action indisponible.');
-        if(name==='board'){this.clubRows=response.state?.rows||[];this.clubPanel={tab:'board'};}
+        if(name==='board'){this._clubRankingQuery=data;this.clubRows=response.state?.rows||[];this.clubRanking=response.state?.ranking||null;this.clubPanel={tab:'board'};}
         if(name==='leave')this.clubPanel=null;done?.(true,response.state);return response;
       }catch(e){this.clubError=e.message;done?.(false);}finally{this.clubBusy=false;}
     },
@@ -2861,6 +2863,9 @@ export default {
       const c = canvas.getContext('2d');
       if (!c) return;
       const me = this.players[this.socket?.id];
+      const hint=this.$refs.interactionHintDot;
+      const hintVisible=!!this.socket?.connected&&!!this.interactionHint?.available&&this.interactionHint.map===this.map&&!this.movementBlocked&&!this.mapLoading&&!this.mapLoadError&&this.renderedMap===this.map;
+      hint?.classList.toggle('is-visible',hintVisible);
       // Never combine a new position with the previous map, nor centre on a
       // placeholder while the authoritative player snapshot is still arriving.
       if (this.mapLoading || this.mapLoadError || this.renderedMap !== this.map
@@ -2879,6 +2884,7 @@ export default {
       const cameraTarget=mirrorCameraTarget(this.mirrorScene,now,this.visualPlayer(this.socket.id,me,now),this.mirrorRift,mirrorMotion);
       const camera = getWorldCamera(this.worldFrame.width, this.worldFrame.height, cameraTarget, this.showMobileControls);
       const scale = camera.scale * this.worldFrame.pixelRatio;
+      if(hintVisible&&hint){const p=this.visualPlayer(this.socket.id,me,now);const transform=`translate3d(${Math.round((p.x-camera.x)*camera.scale)}px,${Math.round((p.y-44-camera.y)*camera.scale)}px,0)`;if(hint.style.transform!==transform)hint.style.transform=transform;}
       c.save();
       try {
       c.imageSmoothingEnabled = false;
@@ -2936,6 +2942,7 @@ export default {
       if(this.map!=='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
       if(!document.hidden)drawWhitepeakSnow(c,this.map,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       if(!document.hidden)drawWhitepeakPodiums(c,this.map,this.players,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+      drawHonorRoll(c,this.map,this.clubHonor);
       drawWhitepeakRoom(c,this.map,this.clubRoulette,Date.now()+(this.clubRoulette?.serverOffset||0),this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       drawPokemonComputers(c,this.worldDevices,this.map,now,this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
       this.drawPnjs(c, now);
@@ -3547,7 +3554,9 @@ export default {
       this.fishing=state;this.fishingReceivedAt=performance.now();
     });
     this.socket.on('mapWeatherState', state => { this.mapWeather = state; });
-    this.socket.on('whitepeak:open',payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubError='';this.clubPanel=payload;if(payload.rows)this.clubRows=payload.rows;});
+    this.socket.on('whitepeak:open',payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubError='';this.clubPanel=payload;if(payload.rows)this.clubRows=payload.rows;if(payload.ranking){this.clubRanking=payload.ranking;this._clubRankingQuery={mode:payload.ranking.mode,page:payload.ranking.page,search:''};}});
+    this.socket.on('whitepeak:honor',payload=>{this.clubHonor=payload;if(this.clubPanel?.tab==='board'&&this.clubRanking?.revision!==payload.revision&&!this.clubBusy)this.clubCommand('board',this._clubRankingQuery||{});this.drawPlayers();});
+    this.socket.on('interactionHint',payload=>{this.interactionHint=payload;});
     this.socket.on('whitepeak:roulette',state=>{this.clubRoulette={...state,serverOffset:state.serverNow-Date.now()};});
     this.socket.on('whitepeak:duel',state=>{
       const before=this.clubDuel?.phase;
