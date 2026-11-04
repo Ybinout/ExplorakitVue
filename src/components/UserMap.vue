@@ -757,8 +757,8 @@ export default {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
       return this.teamPokemons.find(p => p.currentHp > 0 && p.pendingMoves?.length);
     },
-    evolutionVisible() { return Boolean(!this.trainingFeedback && this.evolutionQueue.length && !this.pc.visible && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.trainerOffer && !this.textImageSequence.length && !this.medicineBusy && !this.learningBusy && !['selection','results'].includes(this.driftState?.phase)); },
-    learningVisible() { return Boolean(!this.medicineBusy && !this.trainingFeedback && !this.textImageSequence.length && !this.evolutionQueue.length && !this.pc.visible && this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
+    evolutionVisible() { return Boolean(!this.superTournament.active && !this.trainingFeedback && this.evolutionQueue.length && !this.pc.visible && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.trainerOffer && !this.textImageSequence.length && !this.medicineBusy && !this.learningBusy && !['selection','results'].includes(this.driftState?.phase)); },
+    learningVisible() { return Boolean(!this.superTournament.active && !this.medicineBusy && !this.trainingFeedback && !this.textImageSequence.length && !this.evolutionQueue.length && !this.pc.visible && this.learningPokemon && !this.learningDeferred && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.selectedPokemonUuid); },
     isColosseum() { return this.$route.name === 'ColosseumGame' || this.driftState?.mode === 'colosseum'; },
     driftLobbyPath() { return this.isColosseum ? '/colosseum' : '/drift'; },
     isDrift() { return ['DriftGame','ColosseumGame'].includes(this.$route.name); },
