@@ -19,7 +19,7 @@
     <template v-else-if="pocket==='field'"><path d="M16 17h17v25H13V24Z" fill="var(--item-main)"/><path d="M19 17V9h11v8M19 9V5h16v6h-5m-13 15h12m-12 6h12"/><path d="m38 12 4-2m-4 6 5 1m-6 4 4 3"/></template>
     <template v-else-if="pocket==='berries'"><path d="M24 18C8 8 4 29 14 38c6 6 18 4 22-3 9-15-2-26-12-17Z" fill="var(--item-main)"/><path d="M24 18C21 9 24 4 35 5c-1 8-4 12-11 13Zm0 0-8-9"/><path d="M13 24v5m8 4 1 3m9-13 1 4"/></template>
     <template v-else-if="pocket==='evolution'"><path d="m24 4 14 12-3 22-18 6L7 25l6-15Z" fill="var(--item-main)"/><path d="m13 10 9 8 16-2m-16 2-5 26m5-26 13 20M7 25l15-7"/><path d="m26 23-4 8h6l-3 7"/></template>
-    <template v-else-if="pocket==='key'"><path v-if="itemKey.includes('letter')" d="M6 12h36v25H6Zm0 0 18 15 18-15M6 37l12-13m24 13L30 24" fill="var(--item-main)"/><template v-else><path d="M12 5h25v37H12a5 5 0 0 1-5-5V10a5 5 0 0 1 5-5Z" fill="var(--item-main)"/><path d="M12 5v37m7-27h11m-11 6h11m-11 6h7"/></template></template>
+    <template v-else-if="pocket==='key'||pocket==='modules'"><path v-if="itemKey.includes('letter')" d="M6 12h36v25H6Zm0 0 18 15 18-15M6 37l12-13m24 13L30 24" fill="var(--item-main)"/><template v-else><path d="M12 5h25v37H12a5 5 0 0 1-5-5V10a5 5 0 0 1 5-5Z" fill="var(--item-main)"/><path d="M12 5v37m7-27h11m-11 6h11m-11 6h7"/></template></template>
     <template v-else><path d="m24 5 14 9v20l-14 9-14-9V14Z" fill="var(--item-main)"/><circle cx="24" cy="24" r="9" fill="var(--item-light)"/><path d="m24 17 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z"/></template>
   </svg>
 </template>
@@ -30,7 +30,7 @@ import BagTrainingIcon from './BagTrainingIcon.vue';
 import BagStoneIcon from './BagStoneIcon.vue';
 import {typeBadgeStyle} from '@/services/pokemonTypes';
 import {bagItemDesign} from '@/services/bagItemPresentation';
-const colors={corruption:'#b899d4',medicine:'#c197d8',balls:'#e37a77',field:'#82c3ad',berries:'#d984a0',training:'#e8bd70',machines:'#91b8de',evolution:'#b5a1d9',held:'#d8bd7c',key:'#cfa18c'};
+const colors={modules:'#91c7dc',corruption:'#b899d4',medicine:'#c197d8',balls:'#e37a77',field:'#82c3ad',berries:'#d984a0',training:'#e8bd70',machines:'#91b8de',evolution:'#b5a1d9',held:'#d8bd7c',key:'#cfa18c'};
 export default {
   name:'BagItemIcon',components:{CorruptionModuleIcon,BagEquipmentIcon,BagTrainingIcon,BagStoneIcon},
   props:{pocket:String,itemKey:{type:String,default:''}},

@@ -88,9 +88,10 @@
           <button v-if="isShopMap" class="location-shop-btn" data-open-sell type="button" @click="openShop('sell')">{{ preferences.language==='en'?'Sell':'Vendre' }}</button>
         </div>
         </div>
-        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid || corruptionInstall?'':null" :aria-hidden="trainingFeedback || heldPickerUuid || corruptionInstall?'true':null" ref="bagPanel" :view-state="bagViewState" @remember="bagViewState=$event" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
+        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid || corruptionInstall?'':null" :aria-hidden="trainingFeedback || heldPickerUuid || corruptionInstall?'true':null" ref="bagPanel" :module-shortcut="isDrift?null:moduleShortcut" :shortcut-busy="moduleShortcutBusy || medicineBusy" @shortcut="assignModuleShortcut" :view-state="bagViewState" @remember="bagViewState=$event" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
-              <template v-if="item.experienceModule && !isDrift">
+              <button v-if="item.key==='fly_module' && !isDrift" class="bag-use-button" data-use-fly-module :disabled="!!battle || mapLoading || !!flight" @click="useModule(item)">{{ preferences.language==='en'?'Use':'Utiliser' }}</button>
+              <template v-else-if="item.experienceModule && !isDrift">
                 <p class="bag-use-hint" data-experience-module-state><strong>{{ item.active ? (preferences.language==='en'?'Active':'Actif') : (preferences.language==='en'?'Inactive':'Inactif') }}</strong> · {{ item.active ? `+${item.levelBonus} ${preferences.language==='en'?'levels for wild encounters':'niveaux pour les rencontres sauvages'}` : (preferences.language==='en'?'Usual encounter levels':'Niveaux habituels des rencontres') }}</p>
                 <button class="bag-use-button" data-experience-module-toggle :aria-pressed="item.active ? 'true' : 'false'" :disabled="medicineBusy || !!battle || mapLoading || !socket?.connected" @click="toggleExperienceModule(item)">{{ medicineBusy ? (preferences.language==='en'?'Saving…':'Sauvegarde…') : item.active ? (preferences.language==='en'?'Deactivate module':'Désactiver le module') : (preferences.language==='en'?'Activate module':'Activer le module') }}</button>
               </template>
@@ -215,7 +216,7 @@
           <p class="team-order-status" role="status">{{ teamSaving ? tr('saving') : teamOrderNotice || tr('orderAutoSave') }}<small v-if="canReorderTeam">{{ preferences.language==='en'?(superTournament.active?'Drag a companion or use the arrows to reorder.':'Drag a companion to reorder; drag its item onto a teammate to transfer or swap it.'):(superTournament.active?'Glisse un Pokémon ou utilise les flèches pour changer sa place.':'Glisse un Pokémon pour le déplacer, ou son objet sur un coéquipier pour le transférer ou l’échanger.') }}</small></p>
         </div>
         <game-info-panels
-          :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @toggle-fullscreen="toggleGameFullscreen"
+          :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @toggle-fullscreen="toggleGameFullscreen" @appearance="handleMenuAction('appearance')"
           :flight-allowed="!isDrift && !superTournament.active && !onDarkContinent" @fly="flyToTown"
           :active="activeInfoPanel"
           :group-members="(socialState.group?.members || []).filter(p=>p.id!==Number(currentUserId))"
@@ -309,6 +310,7 @@
             </button>
           </div>
           <div class="mobile-action-group">
+          <button v-if="moduleShortcut && !isDrift" class="mobile-action-y" data-module-y :disabled="!canUseModuleShortcut" :aria-label="moduleShortcutLabel" :title="moduleShortcutLabel" @pointerdown.stop @pointerup.stop @click.stop.prevent="useAssignedModule">Y</button>
           <button
             class="mobile-action-a"
             :disabled="(!!roomObstacleAction && (!roomObstacleAction.manual || roomObstacleAction.success)) || !!lucieDeparture || !!mirrorScene || mirrorRift?.stage==='won'"
@@ -689,7 +691,6 @@ export default {
         { key: 'pokedex' },
         { key: 'progress' },
         { key: 'badges' },
-        { key: 'appearance' },
         { key: 'bag' },
         { key: 'options' }
       ],
@@ -700,6 +701,7 @@ export default {
       trainerPaletteRevision: 0,
       availableSprites: [],
       selectedSprite: 'sprite.png',
+      moduleShortcut: null, moduleShortcutBusy: false,
       appearanceBusy: false,
       appearanceError: '',
       quitting: false,
@@ -836,6 +838,8 @@ export default {
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
     },
+    canUseModuleShortcut(){return !!this.socket?.connected && !this.isDrift && !this.superTournament.active && !this.movementBlocked && !this.moduleShortcutBusy && !this.medicineBusy && !this.fishing;},
+    moduleShortcutLabel(){const names={experience_module:'Module d’expérience',fly_module:'Module Vol',professional_trainer_card:'Carte du Dresseur Professionnel',super_tournament_pass:'PASS Super Tournoi',void_teleporter:'Téléporteur chargé'};return `Y · ${names[this.moduleShortcut]||'Module'}`;},
     canUseBagConsumables() {
       return !this.battle && (!this.isDrift || (this.driftState?.alive && this.driftState?.phase === 'exploration' && !this.driftState?.storagePaused && !this.driftState?.recoveryWaiting));
     }
@@ -1053,6 +1057,32 @@ export default {
       if(this.isDrift || typeof state?.active!=='boolean')return;
       this.$set(this.progressionState,'experienceModule',state);
       this.bagItems=this.bagItems.map(item=>item.experienceModule?{...item,active:state.active,levelBonus:state.levelBonus}:item);
+    },
+    async assignModuleShortcut(itemKey){
+      if(this.isDrift||this.moduleShortcutBusy||this.battle||this.medicineBusy||!this.socket?.connected)return;
+      this.moduleShortcutBusy=true;this.bagError='';
+      try{const result=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit('setModuleShortcut',{itemKey},(error,data)=>error?reject(Error('Le raccourci n’a pas pu être sauvegardé.')):resolve(data)));
+        if(!result?.success)throw Error(result?.message||'Raccourci indisponible.');this.moduleShortcut=result.itemKey||null;
+      }catch(error){this.bagError=error.message;}finally{this.moduleShortcutBusy=false;}
+    },
+    async useAssignedModule(){
+      if(!this.moduleShortcut||!this.canUseModuleShortcut)return;
+      this.moduleShortcutBusy=true;this.releaseAllMovementKeys();
+      try{await this.loadBagItems();
+        const item=this.bagItems.find(i=>i.key===this.moduleShortcut&&i.quantity>0);
+        if(!item){this.showInteractionNotice(this.bagError||'Ce module n’est plus dans ton sac.');return;}
+        if(this.worldInteractionBlocked||this.mapLoading||this.battle)return;
+        await this.useModule(item);
+      }finally{this.moduleShortcutBusy=false;}
+    },
+    async useModule(item){
+      if(!item||this.isDrift||this.battle||this.battleResult||this.superTournament.active||this.mapLoading||this.flight||this.medicineBusy)return;
+      this.isBagOpen=false;this.releaseAllMovementKeys();
+      if(item.key==='fly_module'){await this.handleMenuAction('minimap');return;}
+      if(item.experienceModule){await this.toggleExperienceModule(item);this.showInteractionNotice(this.bagError||this.medicineNotice);return;}
+      if(item.darkContinentTravel){await this.flyToTown('jungle1',{kind:'void',event:'dark:travel'});return;}
+      if(item.superTournamentTravel){await this.flyToTown('super_tournament_lobby',{kind:'void',event:'superTournament:travel'});return;}
+      if(item.voidTravel){if(!item.usable){this.showInteractionNotice('Le téléporteur n’est pas encore chargé.');return;}await this.flyToTown('void_arena',{kind:'void',event:'void:travel'});}
     },
     async toggleExperienceModule(item){
       if(this.isDrift || this.medicineBusy || this.battle || !this.socket?.connected)return;
@@ -1945,10 +1975,12 @@ export default {
       this.bagLoading = true;
       this.bagError = '';
       const bagEpoch = this._bagUpdateEpoch || 0;
+      const walletEpoch=this._tournamentWalletEpoch||0;
 
       try {
         const response = await api.get(`/users/${userId}/items`);
         const receivedItems = response?.data?.items;
+        if(Number.isSafeInteger(response?.data?.money)&&walletEpoch===(this._tournamentWalletEpoch||0))this.$set(this.progressionState,'money',response.data.money);
         if (bagEpoch === (this._bagUpdateEpoch || 0)) this.bagItems = Array.isArray(receivedItems) ? this.prepareBagItems(receivedItems) : [];
       } catch (error) {
         if (bagEpoch !== (this._bagUpdateEpoch || 0)) return;
@@ -2729,6 +2761,7 @@ export default {
       if((e.code==='Enter'||e.code==='NumpadEnter') && !e.defaultPrevented && !e.repeat && !e.target?.closest?.('button,a')) {
         if(this.worldChatAvailable){e.preventDefault();this.openWorldChat();}return;
       }
+      if((e.code==='KeyY'||String(e.key).toLowerCase()==='y')&&!e.repeat){e.preventDefault();this.useAssignedModule();return;}
       const directionKey = this.getMovementKey(e);
       if (directionKey) {
         e.preventDefault();
@@ -3181,6 +3214,7 @@ export default {
     });
 
     this.socket.on('arenaCollapseState',state=>{this.arenaCollapse=state?.map==='ville_safe1_arene'&&Array.isArray(state.holes)?{...state,receivedAt:performance.now()}:null;this.drawPlayers();});
+    this.socket.on('moduleShortcutState',state=>{this.moduleShortcut=state?.itemKey||null;});
     this.socket.on('experienceModuleState',state=>this.applyExperienceModuleState(state));
     this.socket.on('fieldEffectState', (payload={})=>{this.repelSteps=Number(payload.repelSteps)||0;});
     this.socket.on('roomObstacleAction', (action = {}) => {

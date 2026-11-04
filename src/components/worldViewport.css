@@ -157,3 +157,7 @@
 @media(prefers-reduced-motion:reduce){.mirror-scene-veil,.mirror-ending-title{animation:none!important}.mirror-opening-caption{animation:none}}
 
 .mirror-ending-subtitle{display:block;margin-top:16px;font:400 clamp(16px,2.5vw,25px)/1.4 Georgia,serif;letter-spacing:.06em;color:#c6bacf}
+
+.game-root.is-mobile .mobile-action-group{position:relative}
+.game-root.is-mobile .game-stage .mobile-action-y{position:absolute;right:calc(100% + 3px);bottom:0;width:44px;height:44px;border:1px solid var(--journal-border);border-radius:50%;color:var(--journal-heading);background:var(--journal-selected);box-shadow:0 2px 0 var(--journal-border);font:700 18px var(--journal-font);pointer-events:auto;touch-action:manipulation;user-select:none;cursor:pointer}
+.game-root.is-mobile .mobile-action-y:disabled{opacity:.4}.game-root.is-mobile .mobile-action-y:active{transform:translateY(1px)}

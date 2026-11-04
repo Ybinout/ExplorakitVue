@@ -49,6 +49,7 @@
 
       <template v-else-if="active === 'options'">
         <div class="option-list">
+          <button type="button" class="option-row appearance-option" data-option-appearance @click="$emit('appearance')"><span><strong>{{ preferences.language==='en'?'Appearance':'Apparence' }}</strong><small>{{ preferences.language==='en'?'Choose your trainer.':'Choisis l’apparence de ton dresseur.' }}</small></span><span aria-hidden="true">›</span></button>
           <fullscreen-options v-if="desktop" :state="fullscreen" :language="preferences.language" @toggle="$emit('toggle-fullscreen')" />
           <controller-options :preferences="preferences" @update="$emit('update-preferences', $event)" />
           <fieldset class="theme-options">
@@ -207,6 +208,7 @@ export default {
 .theme-choice input{position:absolute;opacity:0;width:100%;height:100%;inset:0;margin:0;cursor:pointer}
 .theme-swatch{width:16px;height:16px;flex:none;border-radius:50%;border:1px solid #0002}
 @media(max-width:480px){.theme-colors{grid-template-columns:1fr 1fr}}
+.appearance-option{font:inherit;text-align:left;cursor:pointer;color:var(--journal-heading)}.appearance-option:focus-visible{outline:2px solid var(--journal-accent);outline-offset:3px}
 </style>
 
 <style scoped>
@@ -222,4 +224,5 @@ export default {
 .debug-options p{font-size:13px;line-height:1.5;color:var(--journal-muted);margin:8px 0 12px}
 .debug-options button{min-height:48px;padding:12px 16px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-selected);color:var(--journal-heading);font:inherit;font-weight:700;cursor:pointer;width:100%}
 .debug-options button:disabled{opacity:.6;cursor:default}.debug-options :focus-visible{outline:2px solid var(--journal-accent);outline-offset:3px}
+.appearance-option{font:inherit;text-align:left;cursor:pointer;color:var(--journal-heading)}.appearance-option:focus-visible{outline:2px solid var(--journal-accent);outline-offset:3px}
 </style>

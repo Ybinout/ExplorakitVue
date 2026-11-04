@@ -254,3 +254,6 @@ html[data-game-theme-mode="dark"] .game-root .game-stage .team-toggle-btn .journ
 .reduced-game-motion .world-interaction-hint{transition-property:none!important}
 
 .reduced-game-motion .club-panel,.reduced-game-motion .club-panel *{transition-property:none!important}
+
+.game-root .game-stage .menu-dropdown-item:is([data-menu-action="bag"],[data-menu-action="minimap"],[data-menu-action="pokedex"]){background:var(--menu-tint);color:var(--menu-ink)}
+.game-root .game-stage .menu-dropdown-item:is([data-menu-action="bag"],[data-menu-action="minimap"],[data-menu-action="pokedex"]):focus-visible{outline:2px solid var(--menu-ink);outline-offset:2px}
