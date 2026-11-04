@@ -412,6 +412,7 @@
     <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" :busy="evolutionBusy" :error="evolutionError" @resolve="resolveEvolutionPresentation" @continue="evolutionError='';evolutionQueue.shift()" />
     <div v-if="teamDrag" class="team-drag-ghost" :style="{left:teamDrag.x+'px',top:teamDrag.y+'px'}" aria-hidden="true"><pokemon-portrait :src="getPokemonFrontSprite(teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.spriteId)"/><span>{{ teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.name }}</span></div>
     <div v-if="heldItemDrag && heldDragPokemon" class="team-held-ghost" :style="{left:heldItemDrag.x+'px',top:heldItemDrag.y+'px'}" aria-hidden="true"><bag-item-icon :item-key="heldDragPokemon.heldItem" :pocket="heldDragPokemon.heldItem?.endsWith('_berry')?'berries':'held'"/><strong>{{ heldItemName(heldDragPokemon.heldItem) }}</strong><span v-if="heldDragTarget">{{ heldDragTarget.heldItem?'Échanger avec':'Donner à' }} {{ heldDragTarget.name }}</span></div>
+    <experience-exchange-lab v-if="experienceLab && !mapLoading && !battle" :panel="experienceLab" :command="experienceExchangeCommand" :animations-enabled="preferences.animationsEnabled" @close="experienceLab=null"/>
     <corruption-workbench v-if="corruptionWorkshop && !mapLoading && !battle" :panel="corruptionWorkshop" :items="bagItems" :command="corruptionCommand" @close="corruptionWorkshop=null" @crafted="showInteractionNotice($event.created?'Module ajouté au sac.':'Synthèse échouée : composants consommés.')" @bag="showCorruptionBag"/>
     <corruption-installer v-if="corruptionInstall && !battle" :key="corruptionInstall.id" :items="bagItems" :team="teamPokemons" :preset-item="corruptionInstall.item" :target-pokemon="corruptionInstall.pokemon" :source="corruptionInstall.source" :initial-family="corruptionInstall.family" :command="corruptionCommand" @close="corruptionInstall=null"/>
     <dark-continent-panel v-if="darkPanel && !mapLoading && !flight && !battle && !battleResult && !pendingBattleResult" :panel="darkPanel" :busy="darkBusy" :error="darkError" :notice="darkNotice" :team-size="teamPokemons.length" :money="progressionState.money" @return="returnFromDark" @rules="darkPanel={...darkPanel,mode:'rules'}" @close="darkPanel=null" @command="darkCommand"/>
@@ -466,6 +467,7 @@ import './social/socialNotifications.css';
 import tradeGame from '@/services/tradeGame';
 import GameTradePanel from './social/GameTradePanel.vue';
 import CorruptionWorkbench from './menu/CorruptionWorkbench.vue';
+import ExperienceExchangeLab from './menu/ExperienceExchangeLab.vue';
 import CorruptionInstaller from './menu/CorruptionInstaller.vue';
 import MachineItemUse from './menu/MachineItemUse.vue';
 import moveLearningData from '@/data/moveLearning.json';
@@ -547,7 +549,7 @@ export default {
     RoomObstacleAction,
     FlightTransition, VoidTransition,
     FishingPrompt, StarterChoice, LeaveExpedition,
-    TeleporterChargeNotice, NotificationBadge, WorldChatInput, JournalIcon, BagPanel, DarkCardUse, BagItemIcon, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, CorruptionWorkbench, CorruptionInstaller, PokemonComputer, TeamPokemonTraits,
+    TeleporterChargeNotice, NotificationBadge, WorldChatInput, JournalIcon, BagPanel, DarkCardUse, BagItemIcon, TrainingFeedback, HeldItemPicker, GameFriendsPanel, GameTradePanel, MachineItemUse, ExperienceExchangeLab, CorruptionWorkbench, CorruptionInstaller, PokemonComputer, TeamPokemonTraits,
     BattleResultPanel,
     MoveLearningPanel, EvolutionPresentation,
     DriftRunPanel, ExpeditionTrainerOffer,
@@ -577,7 +579,7 @@ export default {
       repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{}, trainingFeedback:null, heldTargets:{}, heldPickerUuid:null,
       endSentences: null,
       flight: null, voidEnding:null, mirrorRift:null, mirrorScene:null, openingScene:null,
-      corruptionWorkshop:null,corruptionInstall:null,
+      experienceLab:null,corruptionWorkshop:null,corruptionInstall:null,
       darkPanel:null,darkBusy:false,darkError:'',darkNotice:'',
       textImageSequence: [],
       socket: null,
@@ -838,7 +840,7 @@ export default {
     worldInteractionBlocked() { return this.patchNoticeOpen || this.otherInteractionBlocked; },
     otherInteractionBlocked() {
       return !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
-        || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
+        || this.experienceLab || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
@@ -876,7 +878,7 @@ export default {
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldNightActive(active) { if (!active) this._worldNight?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); } },
-    map() { this.closeWorldChat(); this.clearWorldSpeech(); this._worldRenderBudget?.reset(performance.now());this._worldMovement?.clear(); this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  },
+    map() { this.experienceLab=null; this.closeWorldChat(); this.clearWorldSpeech(); this._worldRenderBudget?.reset(performance.now());this._worldMovement?.clear(); this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  },
     dirtFootprintsActive(active) { if (!active) this._dirtFootprints?.suspend(); },
     snowFootprintsActive(active) { if (!active) this._snowFootprints?.suspend(); },
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
@@ -1224,6 +1226,7 @@ export default {
     showCorruptionBag(){this.corruptionWorkshop=null;this.handleMenuAction('bag');this.$nextTick(()=>this.$refs.bagPanel?.choosePocket('corruption'));},
     async openCorruptionItem(item){if(this.isDrift||this.battle||this.superTournament.active)return;await this.loadTeamPokemons();this.corruptionInstall={id:crypto.randomUUID(),item,source:'team'};this.releaseAllMovementKeys();},
     async openCorruptionSheet({pokemon,family,source='team'}){if(this.isDrift||this.battle||this.superTournament.active)return;await this.loadBagItems();this.corruptionInstall={id:crypto.randomUUID(),pokemon,family,source};this.releaseAllMovementKeys();},
+    experienceExchangeCommand(event,payload){return new Promise(resolve=>{if(!this.socket?.connected)return resolve({success:false,uncertain:true,message:'Connexion interrompue. Reconnecte-toi puis vérifie le résultat au laboratoire.'});this.socket.timeout(15000).emit(event,payload,(error,response)=>{if(error)return resolve({success:false,uncertain:true,message:'Réponse interrompue. Vérifie le résultat avec la même confirmation.'});if(response?.equipe)this.applyTeamPokemons(response.equipe.pokemons||[]);if(Number.isSafeInteger(response?.money)){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',response.money);}resolve(response||{success:false,uncertain:true,message:'Réponse indisponible. Vérifie le résultat.'});});});},
     corruptionCommand(event,payload){return new Promise(resolve=>{if(!this.socket?.connected)return resolve({success:false,uncertain:true,message:'Connexion interrompue. Reconnecte-toi puis vérifie le résultat.'});this.socket.timeout(15000).emit(event,payload,(error,response)=>{if(error)return resolve({success:false,uncertain:true,message:'Réponse interrompue. Réessaie pour retrouver le résultat, sans nouvelle consommation.'});if(response?.items)this.applyBagItems(response.items);if(response?.equipe)this.applyTeamPokemons(response.equipe.pokemons||[]);if(response?.pcState&&this.pc.visible)this.pc.state=response.pcState;resolve(response||{success:false,message:'Réponse indisponible.'});});});},
     async darkCommand(event){
       if(this.darkBusy || !this.socket?.connected)return;
@@ -3566,6 +3569,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this.experienceLab=null;
       this._clubRequestEpoch=(this._clubRequestEpoch||0)+1;
       this.clubPanel=null;this.clubControl=null;this.clubRosters=null;this.clubWatch=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.clubBusy=false;this.clubError='';
       this.clearTeleporterCharge();
@@ -3642,6 +3646,8 @@ export default {
       else{if(result.changes?.length)this._feedbackAudio?.play('heal');this.showInteractionNotice(`${result.name} · soin appliqué à l’équipe inscrite.`);}
     });
     this.socket.on('superTournamentPayout',result=>{if(Number.isSafeInteger(result.balance)&&result.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',result.balance);}});
+    this.socket.on('experienceExchangePanel',panel=>{if(!panel.success)return;this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;this.experienceLab=panel;});
+    this.socket.on('experienceExchange:wallet',data=>{if(Number.isSafeInteger(data.balance)&&data.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',data.balance);}});
     this.socket.on('corruptionPanel',panel=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;if(panel.items)this.applyBagItems(panel.items);this.corruptionWorkshop=panel;});
     this.socket.on('darkCardCooldown',state=>{this.bagItems=this.bagItems.map(item=>item.darkContinentTravel?{...item,travelReadyAt:state.readyAt,travelServerNow:state.serverNow,travelClockOffset:state.serverNow-Date.now()}:item);});
     this.socket.on('darkContinentPanel',panel=>{this.releaseAllMovementKeys();this.darkError='';this.darkNotice='';this.darkPanel=panel;});

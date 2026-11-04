@@ -22,6 +22,7 @@ const mapAssetContext = require.context(
 );
 
 export function resolveMapAsset(mapName, foreground = false) {
+    if(mapName==='ville4_maison2')return foreground?require('@/assets/whitepeak_club_f.png'):require('@/assets/rochebrume-xp-lab-v1.webp');
     const suffix = foreground ? '_f' : '';
     const assetMapName = MAP_ASSET_ALIASES[mapName] || mapName;
     return mapAssetContext(`./${assetMapName}${suffix}.png`);
