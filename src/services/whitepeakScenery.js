@@ -12,13 +12,14 @@ const flakes = WHITEPEAK_PANES.flatMap((pane,index)=>{
   return Array.from({length:12},(_,n)=>({x:left+(n*.61803398875%1)*(right-left),y:32+(n*17+index*11)%68,
     phase:n*1.7+index,speed:8+(n%4)*3,size:n%3===0?1.4:.9}));
 });
-export function drawWhitepeakSnow(c,map,now,motion=true){
+let panePath=null;
+export function drawWhitepeakSnow(c,map,now,motion=true,visible=null){
   if(map!=='ville5_maison1')return;
   const t=motion?now/1000:0;
-  c.save();c.beginPath();
-  for(const pane of WHITEPEAK_PANES){pane.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();}
-  c.clip();c.fillStyle='#effaff';c.globalAlpha=.85;
+  if(!panePath){panePath=new Path2D();for(const pane of WHITEPEAK_PANES){pane.forEach(([x,y],i)=>i?panePath.lineTo(x,y):panePath.moveTo(x,y));panePath.closePath();}}
+  c.save();c.clip(panePath);c.fillStyle='#effaff';c.globalAlpha=.85;
   for(const f of flakes){const y=30+((f.y+t*f.speed)%70),x=f.x+Math.sin(t*.55+f.phase)*2;
+    if(visible&&(x+f.size<visible.x-2||x>visible.x+visible.visibleWidth+2||y+f.size<visible.y-2||y>visible.y+visible.visibleHeight+2))continue;
     c.fillRect(Math.round(x),Math.round(y),f.size,f.size);}
   c.restore();
 }

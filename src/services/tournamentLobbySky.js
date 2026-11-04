@@ -57,26 +57,37 @@ export class TournamentLobbySkyRenderer {
   constructor(createCanvas=()=>document.createElement('canvas')){this.createCanvas=createCanvas;this.frames=0;this.suspend();}
   surface(p){const canvas=this.createCanvas();canvas.width=p.width*2;canvas.height=p.height*2;return canvas;}
   makeMask(layer,regions,predicate,inset=false){
-    const canvas=this.surface(layer.patch),c=canvas.getContext('2d');
+    const reader=this.surface(layer.patch),c=reader.getContext('2d');
     c.save();transform(c,layer.patch);c.fillStyle='#fff';polygons(c,regions);c.restore();
-    const mask=c.getImageData(0,0,canvas.width,canvas.height),pixels=layer.pixels.data;
+    const mask=c.getImageData(0,0,reader.width,reader.height),pixels=layer.pixels.data;
     for(let i=0;i<mask.data.length;i+=4)mask.data[i+3]=mask.data[i+3]===255&&predicate(pixels[i],pixels[i+1],pixels[i+2])?255:0;
-    if(inset){const alpha=mask.data.slice(),w=canvas.width;
-      for(let y=1;y<canvas.height-1;y++)for(let x=1;x<w-1;x++){
+    if(inset){const alpha=mask.data.slice(),w=reader.width;
+      for(let y=1;y<reader.height-1;y++)for(let x=1;x<w-1;x++){
         const i=(y*w+x)*4+3;if(alpha[i]&&[-w,-1,1,w].some(d=>!alpha[i+d*4]))mask.data[i]=0;
       }
     }
-    c.putImageData(mask,0,0);return canvas;
+    const canvas=this.surface(layer.patch);canvas.getContext('2d').putImageData(mask,0,0);
+    reader.width=reader.height=0;
+    return {canvas,pixels:mask};
   }
   makeLayer(source,definition){
     const patch=definition.patch,canvas=this.surface(patch),context=canvas.getContext('2d');context.imageSmoothingEnabled=false;
-    const texture=this.surface(patch),reader=texture.getContext('2d',{willReadFrequently:true});reader.imageSmoothingEnabled=false;
+    // Read the artwork once, then keep the pixel masks for preparation only.
+    // Refraction redraws only bands that actually contain visible water.
+    const sample=this.surface(patch),reader=sample.getContext('2d',{willReadFrequently:true});reader.imageSmoothingEnabled=false;
     reader.drawImage(source,patch.x*source.naturalWidth/448,patch.y*source.naturalHeight/320,
-      patch.width*source.naturalWidth/448,patch.height*source.naturalHeight/320,0,0,texture.width,texture.height);
-    const layer={patch,canvas,context,texture,pixels:reader.getImageData(0,0,texture.width,texture.height)};
-    layer.skyMask=this.makeMask(layer,definition.sky||[],isSky);
-    layer.waterMask=this.makeMask(layer,definition.water||[],isWater,true);
-    layer.water=this.surface(patch);
+      patch.width*source.naturalWidth/448,patch.height*source.naturalHeight/320,0,0,sample.width,sample.height);
+    const pixels=reader.getImageData(0,0,sample.width,sample.height);
+    const texture=sample,layer={patch,canvas,context,texture,pixels};
+    const sky=this.makeMask(layer,definition.sky||[],isSky),water=this.makeMask(layer,definition.water||[],isWater,true);
+    layer.skyMask=sky.canvas;layer.skyPixels=sky.pixels;layer.waterMask=water.canvas;
+    layer.water=this.surface(patch);layer.waterContext=layer.water.getContext('2d');
+    layer.waterLeft=new Int16Array(texture.height).fill(texture.width);
+    layer.waterRight=new Int16Array(texture.height);
+    const alpha=water.pixels.data,w=texture.width;
+    for(let y=0;y<texture.height;y++)for(let x=0;x<w;x++)if(alpha[(y*w+x)*4+3]){
+      layer.waterLeft[y]=Math.min(layer.waterLeft[y],x);layer.waterRight[y]=x+1;
+    }
     return layer;
   }
   prepare(source,map){
@@ -87,7 +98,7 @@ export class TournamentLobbySkyRenderer {
       const main=this.layers[0];this.canvas=main.canvas;this.context=main.context;this.mask=main.skyMask;
       this.cloudTextures=this.profile.clouds.map(([left,top,width,height])=>{
         const texture=this.surface({width,height}),c=texture.getContext('2d'),data=c.createImageData(texture.width,texture.height);
-        const mask=main.skyMask.getContext('2d').getImageData(0,0,main.skyMask.width,main.skyMask.height).data;
+        const mask=main.skyPixels.data;
         for(let y=0;y<texture.height;y++)for(let x=0;x<texture.width;x++){
           const i=(((top-main.patch.y)*2+y)*main.texture.width+(left-main.patch.x)*2+x)*4;
           const r=main.pixels.data[i],g=main.pixels.data[i+1],b=main.pixels.data[i+2];
@@ -95,21 +106,27 @@ export class TournamentLobbySkyRenderer {
         }
         c.putImageData(data,0,0);return texture;
       });
-      this.skyPixels=0;const mask=main.skyMask.getContext('2d').getImageData(0,0,main.skyMask.width,main.skyMask.height).data;
+      this.skyPixels=0;const mask=main.skyPixels.data;
       for(let i=3;i<mask.length;i+=4)if(mask[i])this.skyPixels++;
       this.skyGradient=this.context.createLinearGradient(0,(this.profile.skyY-main.patch.y)*2,0,(this.profile.skyY+24-main.patch.y)*2);
       this.skyGradient.addColorStop(0,'#62bcf3');this.skyGradient.addColorStop(1,'#9bdcf8');
-      for(const layer of this.layers)delete layer.pixels;
+      for(const layer of this.layers){delete layer.pixels;delete layer.skyPixels;}
     }catch(_){this.suspend();}
   }
   paintWater(layer,time){
-    const c=layer.water.getContext('2d'),{width,height}=layer.texture;c.imageSmoothingEnabled=false;c.clearRect(0,0,width,height);
-    // Refraction stays in eroded water pixels, leaving shores and masonry fixed.
+    const c=layer.waterContext,{width,height}=layer.texture;c.imageSmoothingEnabled=false;c.clearRect(0,0,width,height);
+    // Same integer displacement and mask as before. Skip empty sky/masonry
+    // bands and crop source rectangles to the water's precomputed row bounds.
     let start=0,offset=Math.round(Math.sin(time*.8)*1.1);
     for(let row=1;row<=height;row++){
       const next=Math.round(Math.sin(time*.8+row*.19)*1.1);
       if(row<height&&next===offset)continue;
-      c.drawImage(layer.texture,0,start,width,row-start,offset,start,width,row-start);start=row;offset=next;
+      let left=width,right=0,top=row,bottom=start;
+      for(let y=start;y<row;y++)if(layer.waterRight[y]>0){
+        left=Math.min(left,layer.waterLeft[y]);right=Math.max(right,layer.waterRight[y]);top=Math.min(top,y);bottom=y+1;
+      }
+      if(right>left)c.drawImage(layer.texture,left-offset,top,right-left,bottom-top,left,top,right-left,bottom-top);
+      start=row;offset=next;
     }
     for(let i=0;i<30;i++){
       const x=mod(i*47+time*(2+i%3),width+30)-15,y=mod(i*19+Math.sin(time*.6+i)*2,height);

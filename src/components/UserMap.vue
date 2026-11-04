@@ -470,7 +470,7 @@ import CorruptionInstaller from './menu/CorruptionInstaller.vue';
 import MachineItemUse from './menu/MachineItemUse.vue';
 import moveLearningData from '@/data/moveLearning.json';
 import PokemonComputer from './menu/PokemonComputer.vue';
-import {drawPokemonComputers} from '@/services/pokemonComputer';
+import {PokemonComputerRenderer} from '@/services/pokemonComputer';
 import api from "@/services/api";
 import { getSession, clearSession } from "@/services/session";
 import { saveDriftReport } from "@/services/driftReportHistory";
@@ -876,7 +876,7 @@ export default {
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldNightActive(active) { if (!active) this._worldNight?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); } },
-    map() { this.closeWorldChat(); this.clearWorldSpeech(); this._worldRenderBudget?.reset(performance.now());this._worldMovement?.clear(); this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); },
+    map() { this.closeWorldChat(); this.clearWorldSpeech(); this._worldRenderBudget?.reset(performance.now());this._worldMovement?.clear(); this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  },
     dirtFootprintsActive(active) { if (!active) this._dirtFootprints?.suspend(); },
     snowFootprintsActive(active) { if (!active) this._snowFootprints?.suspend(); },
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
@@ -1682,7 +1682,7 @@ export default {
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { releaseMirrorEffects(); this._mirrorAudio?.stop(); this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
+    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { releaseMirrorEffects(); this._mirrorAudio?.stop(); this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       if (this.patchNoticeOpen) return;
@@ -2848,7 +2848,7 @@ export default {
       // leave a non-null frame ID that prevents the world from ever restarting.
       this.animationFrameId = window.requestAnimationFrame(this.animate);
       if (this.worldContextLost || document.hidden || this.clubWatch || this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible) {
-        this.lastAnimationTimestamp=null;this._worldRenderBudget?.reset();return;
+        this.lastAnimationTimestamp=null;this._worldRenderBudget?.reset();this._pokemonComputers?.suspend();return;
       }
       const now = Number.isFinite(timestamp) ? timestamp : performance.now();
       const delta=this.lastAnimationTimestamp===null?0:Math.max(0,now-this.lastAnimationTimestamp);
@@ -2920,7 +2920,7 @@ export default {
       if (this.mapLoading || this.mapLoadError || this.renderedMap !== this.map
         || !me || me.currentmap !== this.map || !this.mapImage?.complete || !this.mapImage.naturalWidth) {
         this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend();
-        this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend();
+        this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();
         this.drawHeldWorldFrame(c, canvas);
         return;
       }
@@ -2989,11 +2989,12 @@ export default {
       drawVoidTeleporter(c, this.map, this.voidEnding, now, mirrorMotion);
       drawVoidJournals(c, this.map, this.voidEnding);
       if(this.map!=='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
-      if(!document.hidden)drawWhitepeakSnow(c,this.map,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+      if(!document.hidden)drawWhitepeakSnow(c,this.map,now,mirrorMotion,camera);
       if(!document.hidden)drawWhitepeakPodiums(c,this.map,this.players,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       drawHonorRoll(c,this.map,this.clubHonor);
       drawWhitepeakRoom(c,this.map,this.clubRoulette,Date.now()+(this.clubRoulette?.serverOffset||0),this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
-      drawPokemonComputers(c,this.worldDevices,this.map,now,this.preferences.animationsEnabled && !this.worldWeatherReducedMotion);
+      if(!this._pokemonComputers)this._pokemonComputers=new PokemonComputerRenderer();
+      this._pokemonComputers.draw(c,this.worldDevices,this.map,now,mirrorMotion,scale);
       this.drawPnjs(c, now);
       drawMirrorClone(c,this.map,this.mirrorRift,this.mirrorScene,now,this.mirrorRift?.appearance?.sprite?this.ensureSpriteSheet(this.mirrorRift.appearance.sprite):null,mirrorMotion);
 
@@ -3771,7 +3772,7 @@ export default {
     this.clearTeleporterCharge();
     this.closeWorldChat();this.clearWorldSpeech();
     this.cancelTeamDrag();
-    releaseMirrorEffects();
+    releaseMirrorEffects();this._pokemonComputers?.suspend();
     clearTimeout(this._mirrorSceneTimer);clearInterval(this._mirrorWakeTimer);
     clearTimeout(this._openingRetry);
     this._mirrorAudio?.dispose();
