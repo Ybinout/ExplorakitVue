@@ -2336,12 +2336,22 @@ export default {
     },
     openClubPanel(){this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubError='';this.clubPanel={tab:this.clubDuel?.canWatch?'watch':'duel'};},
     async clubCommand(name,data={},done){
-      if(this.clubBusy||!this.socket?.connected)return;this.clubBusy=true;this.clubError='';
-      try{const response=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('whitepeak:'+name,data,(e,r)=>e?reject(new Error('Connexion interrompue. Vérifie la table avant de renouveler une mise.')):resolve(r)));
+      if(this.clubBusy||!this.socket?.connected)return;
+      const socket=this.socket,epoch=this._clubRequestEpoch=(this._clubRequestEpoch||0)+1;
+      const current=()=>this.socket===socket&&socket.connected&&this._clubRequestEpoch===epoch;
+      const battleCommand=['action','pass'].includes(name);let recover=false;
+      this.clubBusy=true;this.clubError='';
+      try{const response=await new Promise((resolve,reject)=>socket.timeout(10000).emit('whitepeak:'+name,data,(e,r)=>e?reject(new Error(battleCommand?'Le combat n’a pas répondu à temps.':'Connexion interrompue. Vérifie la table avant de renouveler une mise.')):resolve(r)));
+        if(!current())return;
         if(!response?.success)throw new Error(response?.message||'Action indisponible.');
         if(name==='board'){this._clubRankingQuery=data;this.clubRows=response.state?.rows||[];this.clubRanking=response.state?.ranking||null;this.clubPanel={tab:'board'};}
         if(name==='leave')this.clubPanel=null;done?.(true,response.state);return response;
-      }catch(e){this.clubError=e.message;done?.(false);}finally{this.clubBusy=false;}
+      }catch(e){if(!current())return;this.clubError=e.message;done?.(false);recover=battleCommand&&this.battle&&this.clubControl?.id===data.id;
+        if(recover)this.showInteractionNotice(`${e.message} Synchronisation du combat…`);
+      }finally{if(current())this.clubBusy=false;}
+      // A timeout may hide an already accepted move: request the authoritative
+      // state instead of resending it or enabling an obsolete choice locally.
+      if(recover&&current())await this.clubCommand('refresh',{battleSync:true});
     },
     passHouseControl(){if(this.clubControl)this.clubCommand('pass',{id:this.clubControl.id,turnId:this.clubControl.turnId,controlRevision:this.clubControl.revision});},
     closeClubWatch(){this.clubWatch=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.socket?.emit('whitepeak:unwatch',{});this.syncWorldMusic();},
@@ -3555,6 +3565,7 @@ export default {
     });
 
     this.socket.on('disconnect', () => {
+      this._clubRequestEpoch=(this._clubRequestEpoch||0)+1;
       this.clubPanel=null;this.clubControl=null;this.clubRosters=null;this.clubWatch=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.clubBusy=false;this.clubError='';
       this.clearTeleporterCharge();
       this.closeWorldChat();this.clearWorldSpeech();

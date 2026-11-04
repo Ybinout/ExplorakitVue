@@ -549,7 +549,7 @@ export default {
         });
     },
     canChooseAction() {
-      return (!this.houseControl||(this.houseControl.canControl&&this.houseControl.turnId===this.actionTurnId)) && !this.readOnly && this.canAct && !this.entranceActive && !this.presentationBusy && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
+      return (!this.houseControl||(!this.houseControl.busy&&this.houseControl.canControl&&this.houseControl.turnId===this.actionTurnId)) && !this.readOnly && this.canAct && !this.entranceActive && !this.presentationBusy && !this.captureFx.visible && !this.experienceBusy && !this.finishing;
     },
     turnLabel() {
       if(this.readOnly)return this.preferences.language==='en'?'Watching the duel':'Le duel en direct';
