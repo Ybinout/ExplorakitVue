@@ -1,15 +1,25 @@
 <template>
   <div id="app">
-    <router-view></router-view>
+    <router-view :patch-notice-open="patchNoticeOpen" @patch-notice-ready="patchNoticeReady = $event" @patch-notice-check="patchNoticeCheck++"></router-view>
+    <patch-notes :allowed="patchNoticeAllowed" :check="patchNoticeCheck" @visibility="patchNoticeOpen = $event" />
   </div>
 </template>
 
 <script>
 import { startGamepadControls } from './services/gamepad';
 import { loadGamePreferences } from './services/gamePreferences';
+import PatchNotes from './components/menu/PatchNotes.vue';
 
 export default {
   name: 'App',
+  components: { PatchNotes },
+  data: () => ({ patchNoticeOpen: false, patchNoticeReady: false, patchNoticeCheck: 0 }),
+  computed: {
+    patchNoticeAllowed() {
+      if (['Connexion', 'Inscription', 'test'].includes(this.$route.name)) return false;
+      return !['Game', 'DriftGame', 'ColosseumGame'].includes(this.$route.name) || this.patchNoticeReady;
+    }
+  },
   mounted() {
     this._gamepad = startGamepadControls(this.$el, loadGamePreferences());
     // Safari can ignore viewport zoom limits. Cancel only its native gestures;
@@ -23,7 +33,7 @@ export default {
     this._gamepad?.destroy();
     for (const type of ['gesturestart', 'gesturechange']) document.removeEventListener(type, this._mobileZoomGuard);
   },
-  watch: { '$route'() { this._gamepad?.reset(); } }
+  watch: { '$route'(to, from) { if (to.name !== from.name) this.patchNoticeReady = false; this._gamepad?.reset(); } }
 }
 </script>
 

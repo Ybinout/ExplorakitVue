@@ -1,4 +1,5 @@
 const SESSION_KEY = 'explorakit.user';
+export const SESSION_CHANGE_EVENT = 'riftmon:session';
 
 export function getSession() {
   try {
@@ -13,11 +14,13 @@ export function getSession() {
 export function storeSession(user, token) {
   const session = { ...user, token };
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  window.dispatchEvent(new Event(SESSION_CHANGE_EVENT));
   return session;
 }
 
 export function clearSession() {
   localStorage.removeItem(SESSION_KEY);
+  window.dispatchEvent(new Event(SESSION_CHANGE_EVENT));
 }
 
 export function hasAuthenticatedSession() {

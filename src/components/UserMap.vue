@@ -529,6 +529,7 @@ import { WorldMusic } from '@/services/worldMusic';
 /* eslint-disable */
 
 export default {
+  props: { patchNoticeOpen: Boolean },
   mixins:[socialGame,tradeGame],
   components: {
     SuperTournamentPanel, TournamentRewardPanel, AdventureOpening,
@@ -817,7 +818,13 @@ export default {
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     worldChatAvailable(){return Boolean(!this.isDrift && this.socket?.connected && !this.worldInteractionBlocked && !this.mapLoading && !this.mapLoadError && !this.worldContextLost && this.renderedMap===this.map && this.players[this.socket.id]?.currentmap===this.map);},
     movementSuspended(){return !!this.corruptionWorkshop || !!this.corruptionInstall || !!this.darkPanel || this.worldChatOpen || this.worldInteractionBlocked;},
-    worldInteractionBlocked() {
+    patchNoticeReady() {
+      return Boolean(this.socket?.connected && this.players[this.socket.id] && !this.mapLoading && !this.mapLoadError
+        && this.renderedMap === this.map && !this.worldContextLost && !this.otherInteractionBlocked
+        && !this.pendingBattleResult && !this.worldChatOpen && !this.fishing);
+    },
+    worldInteractionBlocked() { return this.patchNoticeOpen || this.otherInteractionBlocked; },
+    otherInteractionBlocked() {
       return !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
@@ -829,6 +836,8 @@ export default {
     }
   },
   watch: {
+    patchNoticeReady: { immediate: true, handler(ready) { this.$emit('patch-notice-ready', ready); } },
+    '$route.name'() { this.$nextTick(() => this.$emit('patch-notice-ready', this.patchNoticeReady)); },
     worldChatAvailable(allowed){if(!allowed && this.worldChatOpen)this.closeWorldChat();},
     isTeamPanelOpen(open){if(!open)this.cancelTeamDrag();},
     canReorderTeam(allowed){if(!allowed)this.cancelTeamDrag();},
@@ -1635,6 +1644,7 @@ export default {
     onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { releaseMirrorEffects(); this._mirrorAudio?.stop(); this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
+      if (this.patchNoticeOpen) return;
       if(this.evolutionVisible){this.$children.find(c=>c.$options.name==='EvolutionPresentation')?.advance();return;}
       if(this.battle&&this.$refs.battleOverlay?.advanceExperience())return;
       if(this.flight)return;
@@ -2630,6 +2640,7 @@ export default {
       context.restore();
     },
     handleGamepad(event) {
+      if (this.patchNoticeOpen) { this.releaseAllMovementKeys(); return; }
       if(this.worldChatOpen){event.preventDefault();this.releaseAllMovementKeys();if(event.detail?.action==='back')this.closeWorldChat();return;}
       const { action, direction } = event.detail;
       const consume = () => event.preventDefault();
@@ -2675,6 +2686,7 @@ export default {
       else if (action === 'back') consume();
     },
     handleKeydown(e) {
+      if (this.patchNoticeOpen) { this.releaseAllMovementKeys(); return; }
       if(this.worldChatOpen){if(e.key==='Escape'){e.preventDefault();this.closeWorldChat();}return;}
       if(this.battle&&['Space','KeyA','Enter'].includes(e.code)&&!e.repeat&&this.$refs.battleOverlay?.advanceExperience(e))return;
       if(this.flight){e.preventDefault();return;}
@@ -3096,6 +3108,7 @@ export default {
     this._worldClock = new WorldClock();
     this._detachWorldClock = bindWorldClock(this.socket, this._worldClock, value => { this.worldDaylight = value; });
     this.socket.on("connect", () => {
+      this.$emit('patch-notice-check');
       this.worldAudioConnected = true;
       this._trainerPaletteSyncOnEnter=true;
       if(this.players[this.socket.id]){this._trainerPaletteSyncOnEnter=false;this.syncTrainerPalette();}
