@@ -1,4 +1,5 @@
 import {DecorationPatch} from './worldDecorationCache.js';
+import {ExperienceLaboratoryRenderer} from './experienceLaboratoryScenery.js';
 // Native canvas pixel art: no interpolation, transparent sheet or external loading.
 // Bounded to the liquid inside the existing glassware, in 448 × 320 artwork coordinates.
 export const LAB_VIALS = Object.freeze([[66,94,12,22],[369,94,11,21],[69,177,10,18],[369,179,11,21],[120,231,5,8],[130,232,5,8],[317,232,5,8],[327,232,5,8]]);
@@ -41,7 +42,7 @@ function drawDevice(context,device,now,motion){
 // Vials change at 10 Hz and screens at 8⅓ Hz, independently of walking/rAF.
 // Keep the existing drawing functions as the single source of their appearance.
 export class PokemonComputerRenderer {
-  constructor(createCanvas=()=>document.createElement('canvas')){this.createCanvas=createCanvas;}
+  constructor(createCanvas=()=>document.createElement('canvas')){this.createCanvas=createCanvas;this.experienceLab=new ExperienceLaboratoryRenderer(createCanvas);}
   prepare(state,map,ratio){
     this.suspend();this.state=state;this.map=map;this.ratio=ratio;
     const bounds=[];
@@ -56,14 +57,15 @@ export class PokemonComputerRenderer {
     const width=Math.max(...bounds.map(b=>b[0]+b[2]))-x,height=Math.max(...bounds.map(b=>b[1]+b[3]))-y;
     this.patch=new DecorationPatch(this.createCanvas,{x,y,width,height},ratio,c=>drawPokemonComputers(c,this.state,this.map,this.time,this.motion));
   }
-  draw(target,state,map,now=0,motion=true,scale=1){
+  draw(target,state,map,now=0,motion=true,scale=1,camera=null){
     const ratio=Math.max(.1,Number(scale)||1);
     if(this.state!==state||this.map!==map||this.ratio!==ratio)this.prepare(state,map,ratio);
     this.time=now;this.motion=motion;
     const key=motion&&this.animated?`${Math.floor(Math.max(0,now)/100)}:${Math.floor(now/120)}`:'still';
     this.patch?.draw(target,key);
+    this.experienceLab.draw(target,map,now,motion,ratio,camera);
   }
-  suspend(){this.patch?.release();this.patch=null;this.state=this.map=this.ratio=null;}
+  suspend(){this.experienceLab?.suspend();this.patch?.release();this.patch=null;this.state=this.map=this.ratio=null;}
 }
 
 // Adapt the private PC snapshot to the shared companion sheet without changing owned data.

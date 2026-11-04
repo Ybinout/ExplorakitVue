@@ -2997,7 +2997,7 @@ export default {
       drawHonorRoll(c,this.map,this.clubHonor);
       drawWhitepeakRoom(c,this.map,this.clubRoulette,Date.now()+(this.clubRoulette?.serverOffset||0),this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       if(!this._pokemonComputers)this._pokemonComputers=new PokemonComputerRenderer();
-      this._pokemonComputers.draw(c,this.worldDevices,this.map,now,mirrorMotion,scale);
+      this._pokemonComputers.draw(c,this.worldDevices,this.map,now,mirrorMotion,scale,camera);
       this.drawPnjs(c, now);
       drawMirrorClone(c,this.map,this.mirrorRift,this.mirrorScene,now,this.mirrorRift?.appearance?.sprite?this.ensureSpriteSheet(this.mirrorRift.appearance.sprite):null,mirrorMotion);
 
