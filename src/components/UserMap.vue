@@ -461,6 +461,7 @@ import GameFriendsPanel from './social/GameFriendsPanel.vue';
 import socialGame from '@/services/socialGame';
 import CombatSocialPanel from './social/CombatSocialPanel.vue';
 import {FriendTagRenderer} from '@/services/friendPresence';
+import {drawPlayerBattleIndicator,applyPlayerBattleStatus} from '@/services/playerBattlePresence';
 import NotificationBadge from './social/NotificationBadge.vue';
 import TeleporterChargeNotice from './menu/TeleporterChargeNotice.vue';
 import './social/socialNotifications.css';
@@ -3077,7 +3078,15 @@ export default {
       } else this._worldNight?.suspend();
       if(!this.battle&&!document.hidden){
         this._friendTags ||= new FriendTagRenderer();
-        for(const [id,p]of Object.entries(this.players)){const friend=id===this.socket?.id?(this.socialState.self?.afk?{...this.socialState.self,username:this.currentUsername}:null):this.socialFriendById[p.userId];if(friend&&p.currentmap===this.map)this._friendTags.draw(c,this.visualPlayer(id,p,now),friend);}
+        for(const [id,p]of Object.entries(this.players)){
+          if(p.currentmap!==this.map)continue;
+          const friend=id===this.socket?.id?(this.socialState.self?.afk?{...this.socialState.self,username:this.currentUsername}:null):this.socialFriendById[p.userId];
+          const inCombat=id!==this.socket?.id&&p.inbattle===true;
+          if(!friend&&!inCombat)continue;
+          const position=this.visualPlayer(id,p,now);
+          if(friend)this._friendTags.draw(c,position,friend);
+          if(inCombat)drawPlayerBattleIndicator(c,position,!!friend);
+        }
       }
       if(!this.battle&&!document.hidden)this._worldSpeech?.draw(c,{players:this.players,map:this.map,camera,scale,position:(id,p)=>this.visualPlayer(id,p,now)},now);
       if(this.fishing && this.fishing.map===this.map && !document.hidden && !this.mapLoading && !this.battle)
@@ -3477,6 +3486,8 @@ export default {
 
     this.socket.on('endbattle', payload => this.presentBattleEnd(payload));
 
+    this.socket.on('playerBattleStatus', payload=>applyPlayerBattleStatus(this.players,this.map,payload));
+
     this.socket.on('playerMoved', ({ id, player }) => {
       if (player.currentmap && player.currentmap !== this.map) return;
       const current=this.players[id];if(!current)return;
@@ -3486,6 +3497,7 @@ export default {
       if(player.sprite&&current.sprite!==player.sprite){this.$set(current,'sprite',this.normalizeSpriteName(player.sprite));this.ensureSpriteSheet(current.sprite);}
       this.$set(current,'direction',player.direction||current.direction||'down');
       current.isMoving=Boolean(player.isMoving);
+      if(typeof player.inbattle==='boolean')current.inbattle=player.inbattle;
     });
 
     this.socket.on('voidExit', (_payload, ready) => {
