@@ -1,7 +1,7 @@
 import manifest from '@/data/pokemonSpriteManifest.json';
 
 const shinyValue=value=>value===true||value===1||value==='1';
-const revision='bw5-safari-v1';
+const revision='bw5-safari-v1',shinyRevision='bw5-shiny-gif-v2';
 let motionEnabled=true;
 export function setPokemonSpriteMotion(preferences){motionEnabled=preferences?.animationsEnabled!==false;}
 export function pokemonSpriteKey(pokemon, side='front') {
@@ -20,7 +20,7 @@ export function pokemonSprite(pokemon,{side='front',animated=false}={}) {
   const key=pokemonSpriteKey(pokemon,side);
   if(!key)return '';
   const available=!!manifest[key],motion=animated&&available&&motionEnabled&&!(typeof window!=='undefined'&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  return `${process.env.BASE_URL}img/pokemon/${motion?'animated/':''}${key}.${motion?'webp':'png'}?v=${revision}`;
+  return `${process.env.BASE_URL}img/pokemon/${motion?'animated/':''}${key}.${motion?'webp':'png'}?v=${key.startsWith('shiny/')?shinyRevision:revision}`;
 }
 export function pokemonSpriteMetrics(src) {
   const key=String(src||'').split('/img/pokemon/')[1]?.replace(/^animated\//,'').replace(/\.(?:webp|png)(?:[?#].*)?$/,'');
