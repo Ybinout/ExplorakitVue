@@ -18,36 +18,11 @@
           @wheel.prevent="wheelZoom" @pointerdown.prevent="beginPointer" @pointermove="movePointer" @pointerup="endPointer" @pointercancel="endPointer" @lostpointercapture="endPointer" @click.capture="mapClick">
           <div class="map-surface" :style="surfaceStyle">
           <svg class="region-art" :style="artStyle" :viewBox="`0 0 ${atlas.width} ${atlas.height}`" role="group" :aria-label="en ? 'Towns, routes and your position' : 'Villes, routes et ta position'">
-            <defs>
-              <pattern id="region-sea" width="32" height="28" patternUnits="userSpaceOnUse"><rect width="32" height="28" fill="#369fb1"/><path d="M2 20h10v2H2M20 7h8v2h-8" fill="#66bdc1" opacity=".4"/></pattern>
-              <pattern id="region-forest" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M6 2h4v3h3v6H3V5h3" fill="#73ae64"/><path d="M3 10h10v2H3M7 12h2v2H7" fill="#5b995a"/></pattern>
-              <pattern id="region-snow" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="#d9ead9"/><path d="M2 4h4v2H2m10 8h6v2h-6" fill="#bdd6cd"/></pattern>
-            </defs>
-            <g shape-rendering="crispEdges">
-              <path fill="url(#region-sea)" :d="`M0 0H${atlas.width}V${atlas.height}H0Z`"/><g :transform="`translate(${atlas.darkContinent?.offsetX || 0},0)`" data-dark-continent-scenery>
-              <path d="M552 132H720V144H748V168H764V324H748V350H716V366H566V352H538V328H526V176H538V150H552Z" fill="#7cbdab" stroke="#68bba8" stroke-width="18"/>
-              <path d="M552 132H720V144H748V168H764V324H748V350H716V366H566V352H538V328H526V176H538V150H552Z" fill="#4d8e61" stroke="#e1d29a" stroke-width="7"/>
-              <path d="M548 160H740V340H548Z" fill="url(#region-forest)"/>
-              <path d="M603 206h30v24h-30m66 55h36v32h-36" stroke="#8ed6cd" stroke-width="4" fill="#54aabc"/>
-              <text x="646" y="398" text-anchor="middle" font-size="12" font-weight="700" fill="#153f4a" letter-spacing="2">DARK CONTINENT</text></g>
-              <g v-if="atlas.safari" data-safari-scenery :transform="`translate(${atlas.safari.x},${atlas.safari.y})`">
-                <path v-for="layer in safariMini.layers" :key="layer.color" :d="layer.path" :fill="layer.color"/>
-                <text x="147" y="158" text-anchor="middle" font-size="12" font-weight="700" fill="#e4f3da" letter-spacing="2">{{ en?'SAFARI ISLAND':'ÎLE SAFARI' }}</text>
-              </g>
-              <path d="M24 96H40V80H88V92H112V124H124V180H144V196H240V168H272V176H308V188H348V176H400V188H480V204H496V304H476V326H404V352H392V432H40V424H24V396H32V288H20V248H28V168H16V124H24Z" fill="#76c6b1" stroke="#76c6b1" stroke-width="16"/>
-              <path d="M24 96H40V80H88V92H112V124H124V180H144V196H240V168H272V176H308V188H348V176H400V188H480V204H496V304H476V326H404V352H392V432H40V424H24V396H32V288H20V248H28V168H16V124H24Z" fill="#b3ce70" stroke="#e4d68a" stroke-width="6"/>
-              <path d="M32 104H48V88H84V100H104V136H116V176H104V200H36V164H24V128H32Z" fill="url(#region-snow)"/>
-              <path d="M36 210H100V248H88V280H100V360H84V386H40V368H48V284H36Z" fill="#aeae78"/>
-              <path d="M46 222v-10h8v-8h8v8h8v10h8v10H38v-10m4 72v-10h8v-10h12v10h8v10h8v10H34v-10m10 43v-10h10v-12h10v12h10v10h8v8H36v-8" fill="#8d9c78"/>
-              <path d="M38 126v-8h8v-12h10V96h8v10h10v12h8v8h8v8H30v-8" fill="#9ab9b6"/><path d="M46 118v-12h10V96h8v10h10v12H64v-6h-8v6Z" fill="#f2f6dd"/>
-              <path d="M100 210h40v30h-24v42h-20v-8H84v-30h16m70 74h72v58h-16v26h-60v-24h-16v-32h20m122-52h40v38h-12v72h-40v-30h12m112-70h42v42h-12v18h-30Z" fill="url(#region-forest)"/>
-              <path d="M174 206h56v12h16v30h-14v14h-56v-12h-16v-28h14Z" fill="#e2d38a"/><path d="M178 210h48v12h16v22h-14v14h-48v-12h-16v-20h14Z" fill="#54b7c3"/><path d="M184 216h34v4h-34m-8 22h50v4h-50" fill="none" stroke="#8dd4d1" stroke-width="2"/>
-              <path d="M282 174h12v8h12v12h12v20h-12v-8h-12v-10h-12v10h-14v-12h6v-12h8m44 16h8v8h8v10h-24v-10h8" fill="#8ea573"/>
-              <path d="M294 380h18v10h18v28h-42v-18h6" fill="#5cbcc4"/>
-              <path d="M4 52h16v-8h12v8h8v24H12v-8H4m426 34h20V76h24v14h8v20h-24v12h-32Z" fill="#88bd78" stroke="#e5d68c" stroke-width="4"/>
+            <region-map-terrain :width="atlas.width" :height="atlas.height" :dark-offset="atlas.darkContinent?.offsetX || 0" :safari="atlas.safari" :en="en"/>
+            <g shape-rendering="geometricPrecision" stroke-linejoin="round" stroke-linecap="round">
               <g v-for="edge in edges" :key="edge.id">
-                <path :d="edge.path" fill="none" :stroke="edge.cave ? '#7e8765' : '#d1aa65'" stroke-width="10"/>
-                <path :d="edge.path" fill="none" :stroke="edge.cave ? '#d0c2a1' : '#f4db8b'" stroke-width="6" :stroke-dasharray="edge.cave ? '5 3' : null"/>
+                <path :d="edge.path" fill="none" :stroke="edge.cave ? '#7e8765' : '#d1aa65'" stroke-width="8"/>
+                <path :d="edge.path" fill="none" :stroke="edge.cave ? '#d0c2a1' : '#f4db8b'" stroke-width="4" :stroke-dasharray="edge.cave ? '5 3' : null"/>
               </g>
               <g v-for="node in displayNodes" :key="node.id" :data-map-node="node.id" class="map-node" role="button" tabindex="0" :aria-label="label(node.id)" :aria-pressed="selected === node.id" @click="selected = node.id" @keydown.enter.prevent="selected = node.id" @keydown.space.prevent="selected = node.id">
                 <title>{{ label(node.id) }}</title>
@@ -107,14 +82,14 @@
   </div>
 </template>
 <script>
-import safariMini from '@/data/safariMinimap.json';
+import RegionMapTerrain from './RegionMapTerrain.vue';
 import api from '@/services/api';
 import { getMapLocationLabel } from '@/services/mapLocations';
 import { mapLayout, anchoredMapScroll, clampMapZoom } from '@/services/regionMapViewport';
 export default {
-  name:'RegionMapPanel',
+  name:'RegionMapPanel',components:{RegionMapTerrain},
   props:{friendMembers:{type:Array,default:()=>[]},currentMap:String,currentRegion:String,pokemon:Object,entries:{type:Array,default:()=>[]},language:{type:String,default:'fr'},animationsEnabled:{type:Boolean,default:true},flight:{type:Object,default:null},flightAllowed:Boolean},
-  data:()=>({safariMini,atlas:null,loading:true,error:'',selected:'',zoom:1,dragging:false,viewport:{width:512,height:448}}),
+  data:()=>({atlas:null,loading:true,error:'',selected:'',zoom:1,dragging:false,viewport:{width:512,height:448}}),
   computed:{
     friendMarkers(){if(!this.atlas)return [];const colors=['#9b5e9d','#35798e','#a27432','#407e54','#a95463','#5d64a0'],offsets=[[12,0],[-12,0],[0,12],[0,-12],[12,12],[-12,12]],counts={};return this.friendMembers.filter(p=>p.online&&p.location).map(p=>{const node=this.atlas.nodes.find(n=>n.id===p.location.nodeId);if(!node)return null;const k=counts[node.id]||0;counts[node.id]=k+1;const offset=offsets[k%offsets.length];return {...p,nodeId:node.id,mode:p.location.mode,x:node.x+offset[0],y:node.y+offset[1],color:p.afk?'#db942e':colors[p.id%colors.length]};}).filter(Boolean);},
 
@@ -221,7 +196,7 @@ export default {
 .region-panel,.region-panel *{box-sizing:border-box}.region-panel{width:650px;max-width:100%;max-height:94dvh;display:flex;flex-direction:column;overflow:hidden;background:var(--journal-paper);color:var(--journal-ink);border:1px solid var(--journal-border);border-radius:18px;box-shadow:0 24px 80px #0005;text-align:left;font:14px var(--journal-font)}
 .region-header{display:flex;align-items:center;justify-content:space-between;padding:17px 22px;background:var(--journal-card);border-bottom:1px solid var(--journal-border);gap:12px}.region-header p{margin:0 0 5px;font-size:9px;letter-spacing:.13em;color:var(--journal-muted)}.region-header p span{letter-spacing:.06em}.region-header h2{margin:0;font-size:24px;color:var(--journal-heading)}
 .region-panel button,.region-panel select{font:inherit;cursor:pointer;color:var(--journal-ink);background:var(--journal-card);border:1px solid var(--journal-border);border-radius:8px;min-height:44px;padding:8px 12px}.region-panel button:disabled{opacity:.5;cursor:default}.region-panel button:focus-visible,.region-panel select:focus-visible,.map-scroll:focus-visible{outline:3px solid var(--journal-accent);outline-offset:2px}.region-close{font-size:24px!important;width:44px;flex:none}.region-content{overflow:auto;min-height:0;overscroll-behavior:contain}.region-location{display:flex;align-items:center;gap:9px;padding:10px 18px;font-size:11px}.region-location strong{display:block;font-size:13px;margin-top:2px}.region-location button{margin-left:auto;font-size:11px}.you-dot{width:10px;height:10px;border-radius:50%;background:#34658c;outline:2px solid #fff;flex:none}
-.map-scroll{overflow:scroll;min-width:0;height:clamp(180px,45dvh,420px);background:#369fb1;border-block:3px solid #86b5ae;touch-action:none;position:relative;overscroll-behavior:contain;cursor:grab;user-select:none}.map-scroll.dragging{cursor:grabbing}.map-surface{display:grid;place-items:center}.region-art{display:block;flex:none;max-width:none;max-height:none}.route-label{font-size:8px;fill:#6b653f;paint-order:stroke;stroke:#f4e7a9;stroke-width:2px;font-weight:700}.town-label{font-size:9px;fill:#284634;paint-order:stroke;stroke:#edf1c7;stroke-width:3;stroke-linejoin:round;font-weight:700}.map-node,.habitat-ping{cursor:pointer}.map-selection{filter:drop-shadow(0 1px 1px #234)}.ping-ring{animation:habitat-pulse 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center}@keyframes habitat-pulse{50%{opacity:.35;transform:scale(1.25)}}.reduce-motion .ping-ring{animation:none}@media(prefers-reduced-motion:reduce){.ping-ring{animation:none}}
+.map-scroll{overflow:scroll;min-width:0;height:clamp(180px,45dvh,420px);background:#2b637f;border-block:3px solid #86b5ae;touch-action:none;position:relative;overscroll-behavior:contain;cursor:grab;user-select:none}.map-scroll.dragging{cursor:grabbing}.map-surface{display:grid;place-items:center}.region-art{display:block;flex:none;max-width:none;max-height:none}.route-label{font-size:8px;fill:#6b653f;paint-order:stroke;stroke:#f4e7a9;stroke-width:2px;font-weight:700}.town-label{font-size:9px;fill:#284634;paint-order:stroke;stroke:#edf1c7;stroke-width:3;stroke-linejoin:round;font-weight:700}.map-node,.habitat-ping{cursor:pointer}.map-selection{filter:drop-shadow(0 1px 1px #234)}.ping-ring{animation:habitat-pulse 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center}@keyframes habitat-pulse{50%{opacity:.35;transform:scale(1.25)}}.reduce-motion .ping-ring{animation:none}@media(prefers-reduced-motion:reduce){.ping-ring{animation:none}}
 /* Keep both scrollbar tracks while zoomed: toggling one changes the fitted map
    height and can make ResizeObserver alternate between two sizes forever. */
 .map-scroll.is-overview{overflow:hidden}
