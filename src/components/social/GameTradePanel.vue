@@ -13,7 +13,7 @@
             <div class="trade-offers"><trade-offer :offer="ownOffer" :label="completed?'Tu as donné':'Ton offre'" side="own" :editable="state.phase==='open'" :busy="busy || !connected" @details="showDetails" @pokemon="changePokemon" @quantity="changeQuantity" @remove="removeItem"/><trade-offer :offer="peerOffer" :label="completed?'Tu as reçu':`Offre de ${peerName}`" side="peer" @details="showDetails"/></div>
             <div v-if="state.phase==='open'" class="trade-editor">
               <div class="trade-editor-heading"><h3>Composer ton offre</h3><button data-trade-refresh-inventory :disabled="busy || loadingInventory" @click="loadInventory">Actualiser</button></div>
-              <p class="trade-help">Choisis un Pokémon de ton équipe ou de tes 20 boîtes PC, et jusqu’à six objets différents. Tu peux aussi faire un don. Une modification retire les deux validations.</p>
+              <p class="trade-help">Choisis un Pokémon de ton équipe ou de tes boîtes PC, et jusqu’à six objets différents. Tu peux aussi faire un don. Une modification retire les deux validations.</p>
               <nav class="trade-tabs" aria-label="Contenu de mon offre"><button :aria-pressed="tab==='pokemon'" data-trade-tab="pokemon" @click="tab='pokemon'">Pokémon</button><button :aria-pressed="tab==='items'" data-trade-tab="items" @click="tab='items'">Objets</button></nav>
               <p v-if="loadingInventory" class="trade-help" role="status">Chargement de ton équipe, du PC et du sac…</p>
               <template v-else-if="inventory">
