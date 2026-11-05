@@ -175,3 +175,9 @@
 
 /* A little more room for our enlarged companion, without changing the field anchor. */
 .game-root .battle-sprite-player { margin-left:-1px; }
+
+/* Grow the desktop companion around its feet; shared geometry follows the anchor. */
+.game-root:not(.is-mobile) .game-stage .battle-sprite-anchor.battle-position-player {
+  width:calc(var(--sprite-visible-size) * 1.2);
+  height:calc(var(--sprite-visible-size) * 1.2);
+}
