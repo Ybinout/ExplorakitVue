@@ -138,6 +138,13 @@
   .game-root.is-mobile .mobile-action-group > span { display:none; }
 }
 
+/* Hide only the optional controller dock, keeping the mobile camera and menus. */
+.game-root.is-mobile.touch-controls-hidden .dialogue-layer .dialogue-shell { padding:14px 12px calc(14px + env(safe-area-inset-bottom)); }
+.game-root.is-mobile.touch-controls-hidden .club-room-access { bottom:calc(12px + env(safe-area-inset-bottom)); }
+@media (orientation:landscape) {
+  .game-root.is-mobile.touch-controls-hidden .game-shell { grid-template-columns:minmax(0,1fr); }
+}
+
 /* Scientific journals use the full dialogue frame, without a speaker portrait. */
 .game-root .dialogue-layer .is-journal .text-with-image { align-items:stretch; }
 .game-root .dialogue-layer .is-journal .text { white-space:pre-wrap; }

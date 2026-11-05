@@ -1,5 +1,5 @@
 <template>
-  <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift, 'is-mobile': showMobileControls, 'is-fullscreen': fullscreenState.active, 'has-super-tournament': superTournament.active }]">
+  <div :class="['game-root', { 'reduced-game-motion': !preferences.animationsEnabled, 'is-drift': isDrift, 'is-mobile': showMobileControls, 'touch-controls-hidden': !preferences.touchControlsEnabled, 'is-fullscreen': fullscreenState.active, 'has-super-tournament': superTournament.active }]">
     <teleporter-charge-notice v-if="teleporterChargeNotice" :charge="teleporterChargeNotice" :in-battle="battle" :language="preferences.language"/>
     <adventure-opening v-if="openingScene && !mapLoadError" :ready="openingReady" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" @finished="finishAdventureOpening" />
     <div v-if="mirrorScene && ['closing','waiting','awakening'].includes(mirrorScene.phase)" :key="mirrorScene.id" class="mirror-scene-veil" :class="mirrorScene.phase" :style="{'--mirror-duration':mirrorScene.duration+'ms'}" :data-mirror-phase="mirrorScene.phase" role="status" aria-live="polite" aria-busy="true">
@@ -272,11 +272,11 @@
             <button v-if="mapLoadError" @click="loadMapImage">{{ preferences.language === 'en' ? 'Retry' : 'Réessayer' }}</button>
           </div>
         </div>
-        <div v-if="showMobileControls && !worldChatOpen" class="mobile-control-dock"
+        <div v-if="mobileControlsVisible && !worldChatOpen" class="mobile-control-dock"
           @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
           @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture">
         <div
-          v-if="showMobileControls && !tournamentPanel && !tradeModalVisible && !friendsOpen && !heldPickerUuid && !pc.visible && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
+          v-if="mobileControlsVisible && !tournamentPanel && !tradeModalVisible && !friendsOpen && !heldPickerUuid && !pc.visible && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
           <div class="mobile-dpad" :inert="textImageSequence.length ? '' : null" :aria-hidden="textImageSequence.length ? 'true' : null" aria-label="Pad directionnel"
@@ -750,6 +750,7 @@ export default {
     };
   },
   computed: {
+    mobileControlsVisible() { return this.showMobileControls && this.preferences.touchControlsEnabled !== false; },
     worldMusicState() {
       return {
         map: this.map,
@@ -885,6 +886,10 @@ export default {
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
     mapLoadError(error) { if (error) {this.releaseAllMovementKeys();this.mirrorScene=null;} },
     evolutionLookupKey() { this.loadEvolutionOptions(); },
+    mobileControlsVisible() {
+      this.releaseAllMovementKeys();
+      this.$nextTick(this.resizeWorldViewport);
+    },
     selectedPokemonUuid() { this.renameError='';this.renameNotice='';this.evolutionNotice = '';this.moveOrderError='';this.moveOrderNotice=''; },
     movementSuspended(blocked) { if (blocked) { this.cancelFishing(); this.releaseAllMovementKeys(); } },
     movementBlocked(blocked) {

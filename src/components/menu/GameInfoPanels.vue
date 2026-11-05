@@ -51,6 +51,10 @@
         <div class="option-list">
           <button type="button" class="option-row appearance-option" data-option-appearance @click="$emit('appearance')"><span><strong>{{ preferences.language==='en'?'Appearance':'Apparence' }}</strong><small>{{ preferences.language==='en'?'Choose your trainer.':'Choisis l’apparence de ton dresseur.' }}</small></span><span aria-hidden="true">›</span></button>
           <fullscreen-options v-if="desktop" :state="fullscreen" :language="preferences.language" @toggle="$emit('toggle-fullscreen')" />
+          <label class="option-row touch-controls-option">
+            <span><strong>{{ preferences.language==='en'?'Show touch controls':'Afficher les commandes tactiles' }}</strong><small>{{ preferences.language==='en'?'Show the direction pad and A / Y buttons on small screens. Keyboard and controller stay active.':'Affiche la croix de déplacement et les boutons A / Y sur petit écran. Le clavier et la manette restent actifs.' }}</small></span>
+            <input class="switch" data-touch-controls-toggle :checked="preferences.touchControlsEnabled !== false" type="checkbox" @change="updatePreference('touchControlsEnabled', $event.target.checked)">
+          </label>
           <controller-options :preferences="preferences" @update="$emit('update-preferences', $event)" />
           <fieldset class="theme-options">
             <legend>{{ tr('interfaceColor') }}</legend>
@@ -193,6 +197,7 @@ export default {
 </script>
 
 <style scoped>
+.touch-controls-option{flex-direction:row!important;align-items:center!important}.touch-controls-option .switch{flex:none;min-width:24px;min-height:24px}
 .info-backdrop{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(3,8,18,.72);backdrop-filter:blur(6px)}
 .info-panel{width:min(920px,100%);max-height:min(760px,92vh);overflow:auto;padding:24px;color:#eef6ff;background:linear-gradient(145deg,#16243a,#0c1424 62%);border:1px solid #55749d;border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.55);font-family:Arial,sans-serif}
 .info-header{position:sticky;top:-24px;z-index:2;display:flex;align-items:center;justify-content:space-between;margin:-24px -24px 20px;padding:20px 24px 16px;background:rgba(13,22,39,.96);border-bottom:1px solid #334a6b}.info-header h2{margin:2px 0 0;font-size:26px}.info-kicker{margin:0;color:#6ed5c3;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}.close-button{width:38px;height:38px;color:white;background:#253a58;border:1px solid #6581a7;border-radius:10px;font-size:25px;cursor:pointer}

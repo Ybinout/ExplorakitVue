@@ -9,6 +9,7 @@ export const DEFAULT_GAME_PREFERENCES = Object.freeze({
   language: 'fr',
   themeColor: 'blue',
   themeMode: 'light',
+  touchControlsEnabled: true,
   controllerEnabled: true,
   controllerLayout: 'standard'
 });
@@ -26,6 +27,7 @@ export function normalizeGamePreferences(value = {}) {
     language: ['fr', 'en'].includes(value.language) ? value.language : DEFAULT_GAME_PREFERENCES.language,
     themeColor: GAME_THEME_COLORS.includes(value.themeColor) ? value.themeColor : 'blue',
     themeMode: GAME_THEME_MODES.includes(value.themeMode) ? value.themeMode : 'light',
+    touchControlsEnabled: value.touchControlsEnabled !== false,
     controllerEnabled: value.controllerEnabled !== false,
     controllerLayout: value.controllerLayout === 'nintendo' ? 'nintendo' : 'standard'
   };
