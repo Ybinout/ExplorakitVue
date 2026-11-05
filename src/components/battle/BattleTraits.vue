@@ -13,14 +13,22 @@ import { localizeTypeName, typeBadgeStyle } from '@/services/pokemonTypes';
 import { localizeAbilityName } from '@/services/i18n';
 
 export default {
-  props: { pokemon:Object, language:{type:String,default:'fr'} },
+  props: { pokemon:Object, opponent:Boolean, language:{type:String,default:'fr'} },
   computed: {
     types() {
       const p=this.pokemon, state=p?.__battle;
+      if(this.opponent&&state?.illusion?.types?.length)return [...new Set(state.illusion.types)];
       const active=state?.tempTypes?.length ? state.tempTypes : state?.formTypes?.length ? state.formTypes : [p?.type1,p?.type2].filter(Boolean);
       return [...new Set((active.length ? active : p?.data?.type || []).filter(type=>typeof type==='string'&&type))];
     },
-    ability() { return localizeAbilityName(this.pokemon?.passiveAbility,this.language) || ''; },
+    ability() {
+      if(this.opponent){
+        const p=this.pokemon, state=p?.__battle;
+        if(state?.illusion)return state.illusion.passiveAbility==='Illusion'?'':localizeAbilityName(state.illusion.passiveAbility,this.language)||'';
+        if(p?.passiveAbility==='Illusion'&&!Object.hasOwn(state||{},'illusion'))return '';
+      }
+      return localizeAbilityName(this.pokemon?.passiveAbility,this.language) || '';
+    },
     abilityLabel() {
       const suppressed=this.pokemon?.__battle?.abilitySuppressed;
       return `${this.language==='en'?'Ability':'Talent'} : ${this.ability}${suppressed ? (this.language==='en'?' (suppressed)':' (neutralisé)') : ''}`;

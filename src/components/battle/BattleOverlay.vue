@@ -114,7 +114,7 @@
             {{ opponentStatus.code }}
           </span>
         </div>
-        <battle-traits :pokemon="opponent" :language="preferences.language" />
+        <battle-traits :pokemon="opponent" opponent :language="preferences.language" />
         <health-bar :current-hp="opponent.currentHp" :hp-max="opponent.maxHp" />
         <div class="battle-status-details">
           <span class="battle-hp-value">{{ formatBattleHp(opponent) }}</span>

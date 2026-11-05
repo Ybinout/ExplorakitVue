@@ -173,8 +173,9 @@
 .reduced-game-motion .battle,.reduced-game-motion .battle *{transition-property:none!important}
 .game-root:not(.is-mobile) .battle-social-available .battle-position-wild{top:min(68%,calc(100% - 180px))}
 
-/* A little more room for our enlarged companion, without changing the field anchor. */
-.game-root .battle-sprite-player { margin-left:-1px; }
+/* Shift the fighter anchor too, so impacts and projectiles follow the companion. */
+.game-root .battle-sprite-player { margin-left:-9px; }
+.game-root:not(.is-mobile) .battle-sprite-player { margin-left:-25px; }
 
 /* Grow the desktop companion around its feet; shared geometry follows the anchor. */
 .game-root:not(.is-mobile) .game-stage .battle-sprite-anchor.battle-position-player {
