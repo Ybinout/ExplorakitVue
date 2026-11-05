@@ -1,8 +1,13 @@
 import {SocialNotifications} from './socialNotifications.js';
 const emptyState=()=>({accepted:[],incoming:[],outgoing:[],self:null});
 export default {
-  data:()=>({friendsOpen:false,friendsTarget:null,socialConnected:false,onlinePlayerCount:null,socialPresenceRevision:0,socialState:emptyState(),socialMessage:null,socialError:'',socialActionBusy:false,socialReading:null,socialDrafts:{},battleChatOpen:false,battleChatTarget:null}),
+  data:()=>({friendsOpen:false,friendsTarget:null,socialConnected:false,onlinePlayerCount:null,socialPresenceRevision:0,socialState:emptyState(),socialMessage:null,socialError:'',socialActionBusy:false,socialReading:null,socialDrafts:{},socialConversations:{},pendingBattleConversation:null,battleChatOpen:false,battleChatTarget:null}),
+  watch:{
+    battle(value,previous){if(!value&&previous){const friend=this.socialState.accepted.find(p=>String(p.id)===String(this.battleChatTarget));if(this.battleChatOpen&&this.socialConnected&&friend)this.pendingBattleConversation={id:friend.id};this.battleChatOpen=false;}},
+    canResumeBattleConversation(ready){if(ready)this.resumeBattleConversation();}
+  },
   computed:{
+    canResumeBattleConversation(){return Boolean(this.pendingBattleConversation&&!this.battle&&!this.battleResult&&!this.pendingBattleResult&&!this.textImageSequence?.length&&!this.flight&&!this.evolutionVisible&&!this.learningVisible&&!this.tradeModalVisible&&!this.mirrorScene&&!this.lucieDeparture&&!this.openingScene&&!this.pendingRoomEntry);},
     socialFriendById(){return Object.fromEntries(this.socialState.accepted.map(p=>[p.id,p]));},
     socialAlertCount(){return (this.incomingTrade?1:0)+this.socialState.incoming.length+this.socialState.accepted.reduce((n,p)=>n+(Number(p.unread)||0),0);},
     onlineCountLabel(){const count=this.onlinePlayerCount;if(count===null)return this.preferences.language==='en'?'Online player count unavailable while connecting':'Nombre de joueurs indisponible pendant la connexion';return this.preferences.language==='en'?`${count} player${count===1?'':'s'} online, all modes, including you`:`${count} dresseur${count===1?'':'s'} en ligne, tous modes, toi compris`;},
@@ -15,6 +20,9 @@ export default {
   },
   beforeDestroy(){this._unbindSocial?.();},
   methods:{
+    rememberSocialConversation(value){this.$set(this.socialConversations,value.id,value);},
+    resumeBattleConversation(){const pending=this.pendingBattleConversation;this.pendingBattleConversation=null;const friend=this.socialState.accepted.find(p=>p.id===pending?.id);if(friend)this.$nextTick(()=>this.openFriends(friend));},
+    async flyToFriend(person){this.friendsOpen=false;await this.flyToTown(person.location?.nodeId||this.map,{event:'flyToFriend',data:{targetId:person.id},onError:e=>{this.friendsTarget=person;this.friendsOpen=true;this.socialError=e.message;}});},
     socialReadingContext(){return (this.friendsOpen||this.battle&&this.battleChatOpen)&&!document.hidden?this.socialReading:null;},
     setSocialReading(value){this.socialReading=value;},
     rememberSocialDraft({id,text}){this.$set(this.socialDrafts,id,text);},
@@ -48,6 +56,7 @@ export default {
       }));
     },
     async openFriends(target=null){
+      this.pendingBattleConversation=null;
       if(this.battle){this.friendsOpen=false;this.battleChatTarget=target?.id||null;this.battleChatOpen=true;return;}
       this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeInteractionChoice();this.pc.visible=false;this.heldPickerUuid=null;this.isMenuOpen=false;this.friendsTarget=target;this.friendsOpen=true;
       try{await this.socialCommand('social:refresh');}catch(e){this.socialError=e.message;}

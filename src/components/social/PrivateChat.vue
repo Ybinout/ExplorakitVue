@@ -13,18 +13,19 @@
 import JournalIcon from '../menu/JournalIcon.vue';
 const sorted=rows=>[...new Map(rows.map(m=>[m.id,m])).values()].sort((a,b)=>a.id-b.id);
 export default{
- components:{JournalIcon},props:{friend:{type:Object,required:true},userId:Number,connected:Boolean,incomingMessage:Object,command:Function,compact:Boolean,active:{type:Boolean,default:true},savedDraft:{type:String,default:''}},
- data(){return{messages:[],before:null,loading:false,draft:this.savedDraft,sending:false,error:''};},
+ components:{JournalIcon},props:{friend:{type:Object,required:true},userId:Number,connected:Boolean,incomingMessage:Object,command:Function,compact:Boolean,active:{type:Boolean,default:true},savedDraft:{type:String,default:''},savedConversation:Object},
+ data(){return{messages:[...(this.savedConversation?.messages||[])],before:this.savedConversation?.before||null,pending:this.savedConversation?.pending||null,loading:false,draft:this.savedDraft,sending:false,error:''};},
  computed:{inputId(){return 'private-message-'+this._uid;}},
  watch:{active(){this.report();if(this.active)this.markRead();},connected(value){if(value)this.load();this.report();},incomingMessage(m){if(!m||![m.senderId,m.recipientId].includes(this.friend.id))return;this.messages=sorted([...this.messages,m]);this.scroll();this.markRead();}},
  mounted(){this.load();this.report();this.visible=()=>{this.report();if(!document.hidden)this.markRead();};document.addEventListener('visibilitychange',this.visible);},
- beforeDestroy(){this.epoch=(this.epoch||0)+1;this.remember();this.$emit('reading',null);document.removeEventListener('visibilitychange',this.visible);},
+ beforeDestroy(){this.epoch=(this.epoch||0)+1;this.remember();this.rememberConversation();this.$emit('reading',null);document.removeEventListener('visibilitychange',this.visible);},
  methods:{
   time(value){return new Date(value).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});},
   report(){this.$emit('reading',this.active&&!document.hidden?{kind:'private',id:this.friend.id}:null);},
   remember(){this.$emit('draft',{id:this.friend.id,text:this.draft});},
+  rememberConversation(){const n=this.$refs.messages;this.$emit('conversation',{id:this.friend.id,messages:[...this.messages],before:this.before,pending:this.pending||null,scrollTop:n?.scrollTop||0,atBottom:!n||n.scrollTop+n.clientHeight>=n.scrollHeight-24});},
   scroll(){this.$nextTick(()=>{const n=this.$refs.messages;if(n)n.scrollTop=n.scrollHeight;});},
-  async load(older=false){if(!this.connected)return;const peer=this.friend.id,epoch=this.epoch=(this.epoch||0)+1;this.loading=true;this.error='';try{const r=await this.command('social:history',{targetId:peer,...(older&&this.before?{before:this.before}:{})});if(epoch!==this.epoch||peer!==this.friend.id)return;this.messages=sorted([...this.messages,...r.messages]);this.before=r.nextBefore;if(!older){this.scroll();this.markRead();}}catch(e){if(epoch===this.epoch)this.error=e.message;}finally{if(epoch===this.epoch)this.loading=false;}},
+  async load(older=false){if(!this.connected)return;const peer=this.friend.id,epoch=this.epoch=(this.epoch||0)+1;this.loading=true;this.error='';try{const r=await this.command('social:history',{targetId:peer,...(older&&this.before?{before:this.before}:{})});if(epoch!==this.epoch||peer!==this.friend.id)return;this.messages=sorted([...this.messages,...r.messages]);this.before=r.nextBefore;if(!older){if(this.savedConversation?.atBottom===false){this.$nextTick(()=>{if(this.$refs.messages)this.$refs.messages.scrollTop=this.savedConversation.scrollTop;});}else this.scroll();this.markRead();}}catch(e){if(epoch===this.epoch)this.error=e.message;}finally{if(epoch===this.epoch)this.loading=false;}},
   async markRead(){if(!this.active||!this.connected||document.hidden)return;const peer=this.friend.id,last=[...this.messages].reverse().find(m=>m.senderId===peer),key=last?`${peer}:${last.id}`:null;if(!key||this.lastRead===key)return;try{await this.command('social:read',{targetId:peer,through:last.id});this.lastRead=key;}catch{/* Retry on the next visible snapshot/reopen. */}},
   async send(){if(this.sending||!this.connected||!this.draft.trim())return;const targetId=this.friend.id,text=this.draft;this.sending=true;this.error='';try{this.pending=this.pending?.targetId===targetId&&this.pending.text===text?this.pending:{targetId,text,clientId:crypto.randomUUID()};const r=await this.command('social:send',this.pending);this.pending=null;if(this.friend.id===targetId){this.messages=sorted([...this.messages,r.message]);this.draft='';this.remember();this.scroll();}}catch(e){this.error=e.message;}finally{this.sending=false;}}
  }

@@ -41,7 +41,7 @@
         @music-prelude="onMusicPrelude"
       >
         <template #social-toggle><button class="battle-social-button" data-battle-social-toggle :class="{'has-social-notification':socialAlertCount>0}" :aria-expanded="battleChatOpen" :aria-label="`Amis et messages${socialAlertCount?' · '+socialAlertCount+' notification'+(socialAlertCount>1?'s':''):''}`" data-social-surface @pointerdown.stop @click.stop="battleChatOpen=!battleChatOpen"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
-        <template #social-chat><combat-social-panel v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
+        <template #social-chat><combat-social-panel v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
       </battle-overlay>
       <div class="game-shell" :inert="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? '' : null" :aria-hidden="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? 'true' : null">
         <div class="world-toolbar">
@@ -121,13 +121,13 @@
               </template>
               <small v-else-if="isDrift && item.revive" class="bag-use-hint">Les K.O. sont définitifs dans ce mode.</small>
               <div v-if="item.category==='held'" class="bag-held-actions">
-                <label class="bag-use-hint">Faire tenir à<select data-bag-held-target :value="heldTargets[item.key] || ''" :disabled="teamSaving || teamLoading || !!battle" @change="$set(heldTargets,item.key,$event.target.value)"><option value="">Choisir un Pokémon…</option><option v-for="p in teamPokemons.filter(p=>!p.isEgg)" :key="p.uuid" :value="p.uuid" :disabled="p.heldItem===item.key">{{ p.name }}{{ p.heldItem?' · '+heldItemName(p.heldItem):'' }}</option></select></label>
-                <button class="bag-use-button" data-bag-give-held :disabled="teamSaving || teamLoading || !!battle || !teamPokemons.some(p=>p.uuid===heldTargets[item.key] && !p.isEgg && p.heldItem!==item.key)" @click="giveBagHeldItem(item)">{{ teamSaving?'Attribution…':'Faire tenir' }}</button>
+                <label class="bag-use-hint">Faire tenir à<select data-bag-held-target :value="heldTargets[item.key] || ''" :disabled="teamSaving || teamLoading || !!battle" @change="$set(heldTargets,item.key,$event.target.value)"><option value="">Choisir un Pokémon…</option><option v-for="p in teamPokemons.filter(p=>!p.isEgg)" :key="p.uuid" :value="p.uuid" :disabled="p.heldItem===item.key || !!p.corruption?.permanent&&!item.corruptedHeldItem">{{ p.name }}{{ p.heldItem?' · '+heldItemName(p.heldItem):'' }}</option></select></label>
+                <button class="bag-use-button" data-bag-give-held :disabled="teamSaving || teamLoading || !!battle || !teamPokemons.some(p=>p.uuid===heldTargets[item.key] && !p.isEgg && (!p.corruption?.permanent||item.corruptedHeldItem) && p.heldItem!==item.key)" @click="giveBagHeldItem(item)">{{ teamSaving?'Attribution…':'Faire tenir' }}</button>
               </div>
           </template>
         </bag-panel>
         <game-trade-panel v-if="tradeModalVisible" :key="tradeState.id" :state="tradeState" :user-id="Number(currentUserId)" :busy="tradeBusy" :error="tradeError" :connected="tradeConnected" :command="tradeCommand" @action="runTradeAction" @cancel="cancelFriendTrade"/>
-        <game-friends-panel v-if="friendsOpen && !battle" :state="socialState" :drafts="socialDrafts" @draft="rememberSocialDraft" @reading="setSocialReading" :presence-revision="socialPresenceRevision" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError || tradeError" :trade-invite="incomingTrade" :trading="tradeBusy" :can-trade="!isDrift && !battle && !superTournament.active" :request-trade="requestFriendTrade" @trade-answer="answerFriendTrade" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
+        <game-friends-panel v-if="friendsOpen && !battle" :state="socialState" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" @draft="rememberSocialDraft" @reading="setSocialReading" :presence-revision="socialPresenceRevision" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError || tradeError" :trade-invite="incomingTrade" :trading="tradeBusy" :can-trade="!isDrift && !battle && !superTournament.active" :request-trade="requestFriendTrade" :request-flight="flyToFriend" @trade-answer="answerFriendTrade" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
         <held-item-picker v-if="heldPickerPokemon" :pokemon="heldPickerPokemon" :items="heldBagItems" :busy="teamSaving" :error="teamError" @close="heldPickerUuid=null" @equip="equipPickedHeldItem"/>
         <training-feedback v-if="trainingFeedback" :entry="trainingFeedback" :busy="medicineBusy" @close="trainingFeedback=null" @confirm="confirmIvReroll"/>
         <pokemon-computer v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :corruption-allowed="!isDrift && !superTournament.active && !battle" @corruption="openCorruptionSheet" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
@@ -2399,8 +2399,9 @@ export default {
         this.flight={...this.flight,phase:'loading',startedAt:performance.now()};
         const response=departureReady?(departureReady(),{success:true}):await new Promise((resolve,reject)=>socket.timeout(10000).emit(event,{...data,map},(error,result)=>error?reject(new Error('Connexion interrompue. Vérifie ta position après reconnexion.')):resolve(result)));
         if(!response?.success)throw new Error(response?.message||'Vol indisponible.');
+        const targetMap=response.destination?.map||map;
         const deadline=performance.now()+16000;
-        while(alive()&&(this.mapLoading||this.renderedMap!==map||this.map!==map)){
+        while(alive()&&(this.mapLoading||this.renderedMap!==targetMap||this.map!==targetMap)){
           if(this.mapLoadError||performance.now()>deadline)throw new Error('Le lieu attend encore son chargement. Utilise Réessayer si nécessaire.');
           await wait(50);
         }

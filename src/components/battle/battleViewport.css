@@ -172,3 +172,6 @@
 .game-root:not(.is-mobile) .battle-social-available .battle-main-actions{grid-row:2;grid-column:2;width:100%;min-width:0}
 .reduced-game-motion .battle,.reduced-game-motion .battle *{transition-property:none!important}
 .game-root:not(.is-mobile) .battle-social-available .battle-position-wild{top:min(68%,calc(100% - 180px))}
+
+/* A little more room for our enlarged companion, without changing the field anchor. */
+.game-root .battle-sprite-player { margin-left:-1px; }

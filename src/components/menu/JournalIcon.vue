@@ -6,6 +6,9 @@
 
 <script>
 const paths = {
+  exchange:'M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4',
+  flight:'m3 13 7-2 6-8 2 1-3 7 6 2v2l-7-1-3 7-2-1 1-7-7 2Z',
+  palette:'M12 3a9 9 0 1 0 0 18h2a2 2 0 0 0 0-4h-1a2 2 0 0 1 0-4h4a4 4 0 0 0 4-4c0-4-4-6-9-6ZM7 9h.1M10 6h.1M15 6h.1M5 13h.1',
   messages:'M4 4h16v12H9l-5 4Zm4 4h8m-8 4h5',
   send:'m3 3 18 9-18 9 3-9Zm3 9h15',
   ranking:'M8 3h8v6a4 4 0 0 1-8 0Zm0 2H4v3a4 4 0 0 0 4 4m8-7h4v3a4 4 0 0 1-4 4m-4 1v5m-5 3h10m-8-3h6',
