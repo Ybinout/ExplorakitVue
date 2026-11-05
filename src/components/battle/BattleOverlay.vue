@@ -1357,9 +1357,11 @@ export default {
         // Keep small opponents unchanged; let larger artwork exceed the base size.
         // The same denominator drives bounds/feedback and keeps the feet anchored.
         const corruptedScale=side==='wild'&&this.opponent?.darkContinentEncounter?.kind==='corrupted'?1.25:1;
+        // Enlarge our companion around its existing feet/center, including FX geometry.
+        const presentationScale=side==='player'?1.25:corruptedScale;
         const visibleExtent = (side === 'wild'
           ? Math.min(Math.max(visibleWidth, visibleHeight), (known?96:Math.max(width, height)) * 0.55)
-          : Math.max(visibleWidth, visibleHeight))/corruptedScale;
+          : Math.max(visibleWidth, visibleHeight))/presentationScale;
         const centerX = (minX + maxX + 1) / 2;
         this.$set(this.battleSpriteMetrics, side, {
           widthRatio: visibleWidth / visibleExtent,
