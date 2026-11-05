@@ -5,7 +5,7 @@
       <p v-if="choices.length">Trois rencontres au hasard. Une seule équipe à construire.</p>
       <p v-else role="status">Ton compagnon est prêt. Les autres dresseurs choisissent encore…</p>
       <div class="choices"><button v-for="pokemon in choices" :key="pokemon.uuid" :data-starter-choice="pokemon.uuid" :disabled="busy" @click="$emit('choose',pokemon.uuid)">
-        <pokemon-portrait :src="`${$assetBase}img/pokemon/front/${pokemon.data.id}.png`" :alt="pokemon.truename" />
+        <pokemon-portrait :src="$pokemonSprite(pokemon)" :alt="pokemon.truename" />
         <strong>{{ pokemon.truename }}</strong><span>{{ pokemon.data.type.map(typeName).join(' · ') }}</span><small>Niveau {{ pokemon.level }} · {{ pokemon.maxHp }} PV</small>
         <small class="starter-potential" :title="ivDetails(pokemon)"><potential-star :value="pokemon.k"/><span>{{ ['Commun','Prometteur','Rare','Exceptionnel'][pokemon.k-1] }} · IV moy. {{ averageIv(pokemon) }}/31</span></small><b>Partir ensemble →</b>
       </button></div>

@@ -70,6 +70,7 @@
           :alt="opponent.truename || opponent.name || 'Pokemon adverse'"
           @load="calibrateBattleSprite($event, 'wild')"
         >
+        <span v-if="isVisuallyShiny(opponent)" class="battle-shiny-glints" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span>
         <span v-if="phasedState('wild')" class="battle-phase-marker" data-battle-phase="opponent">{{ phaseLabel(opponent) }}</span>
       </div>
 
@@ -91,6 +92,7 @@
           :alt="currentPokemon.name || 'Ton Pokemon'"
           @load="calibrateBattleSprite($event, 'player')"
         >
+        <span v-if="isVisuallyShiny(currentPokemon)" class="battle-shiny-glints" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span>
         <span v-if="phasedState('player')" class="battle-phase-marker" data-battle-phase="player">{{ phaseLabel(currentPokemon) }}</span>
       </div>
 
@@ -100,7 +102,7 @@
       >
         <div class="battle-status-top">
           <span v-if="wildAlreadyCaught" class="battle-caught-marker" :data-caught-species="opponent.data.id" role="img" :aria-label="preferences.language==='en'?'Species already caught':'Espèce déjà capturée'" :title="preferences.language==='en'?'Species already caught':'Espèce déjà capturée'"><battle-ball /></span>
-          <span class="battle-status-name">{{ opponent.__battle?.illusion?.name || opponent.truename || opponent.name }}</span>
+          <span class="battle-status-name">{{ opponent.__battle?.illusion?.name || opponent.truename || opponent.name }}<span v-if="isVisuallyShiny(opponent)" class="battle-shiny-mark" aria-label="Pokémon chromatique"> ✦</span></span>
           <pokemon-gender v-if="!opponent.storyActor" class="battle-status-gender" :pokemon="{gender:fighterGenders.opponent,isEgg:opponent.isEgg}" :language="preferences.language" />
           <span v-if="!opponent.storyActor" class="battle-status-lvl">lv.{{ opponent.level }}</span>
           <potential-star v-if="!opponent.storyActor" :value="opponent.k" :language="preferences.language" />
@@ -127,7 +129,7 @@
         :class="['battle-status', 'battle-status-player', { 'battle-status-corrupted':!!currentPokemon.corruption?.permanent,'battle-status-hit': attackFx.player.hit }]"
       >
         <div class="battle-status-top">
-          <span class="battle-status-name">{{ currentPokemon.name || currentPokemon.truename }}</span>
+          <span class="battle-status-name">{{ currentPokemon.name || currentPokemon.truename }}<span v-if="isVisuallyShiny(currentPokemon)" class="battle-shiny-mark" aria-label="Pokémon chromatique"> ✦</span></span>
           <pokemon-gender class="battle-status-gender" :pokemon="{gender:fighterGenders.player,isEgg:currentPokemon.isEgg}" :language="preferences.language" />
           <span class="battle-status-lvl">lv.{{ experienceVisual?.uuid === currentPokemon.uuid ? experienceVisual.level : currentPokemon.level }}</span>
           <potential-star :value="currentPokemon.k" :language="preferences.language" />
@@ -303,6 +305,7 @@
 import BattleEntrance from './BattleEntrance.vue';
 import BattleSendOut from './BattleSendOut.vue';
 import { waitForBattleAssets, entranceDelay } from '@/services/battleEntrance';
+import { pokemonSpriteMetrics } from '@/services/pokemonSprites';
 import { arenaChampion } from '@/services/arenaEntrance';
 import { createBattlePresentation } from '@/services/battlePresentation';
 import { playExperienceGain } from '@/services/experiencePlayback';
@@ -480,6 +483,7 @@ export default {
       },
       movePath: { startX: 180, startY: 390, targetX: 700, targetY: 220 },
       resultFx: { visible: false, actor: 'opponent', labels: [], nonce: 0 },
+      spriteMotionPaused:false,
       battleSpriteStyles: { wild: {}, player: {} },
       battleSpriteMetrics: {
         wild: { widthRatio: 1, heightRatio: 1 },
@@ -688,6 +692,7 @@ export default {
     this._battleAudio?.dispose();
   },
   methods: {
+    isVisuallyShiny(pokemon) { return this.$pokemonSprite(pokemon).includes('/shiny/'); },
     preloadTrainerSequence() {
       if (this.mapName !== 'route4_maison') return null;
       this._trainerSequence ||= new SequencedMusic({intro:require('@/assets/msc/gwenn-intro.mp3'),loop:require('@/assets/msc/gwenn-loop.mp3')});
@@ -769,7 +774,9 @@ export default {
         for (const id of this._entranceSpecies || []) if (Number.isInteger(id) && id > 0) sources.add(this.getPokemonSprite({data:{id}},'front'));
       }
       const reserves = [...sources].filter(Boolean).map(src=>{const image=new Image();image.decoding='async';image.src=src;return image;});
-      await waitForBattleAssets(() => [...(this.$el.querySelectorAll?.('.battle-background, .battle-sprite, .battle-platform img, .entrance-portrait') || []), ...reserves], { signal, timeoutMs:house?12000:2400 });
+      const entranceImages=()=>[...(this.$el.querySelectorAll?.('.battle-background, .battle-sprite, .battle-platform img, .entrance-portrait') || []),...reserves];
+      const animated=entranceImages().some(image=>image.src?.includes('/animated/'));
+      await waitForBattleAssets(entranceImages, { signal, timeoutMs:house?12000:animated?8000:2400 });
       if (obsolete()) return;
       this.entranceAssetsLoading = false;
       // Cached images may have loaded before their Vue load handler was attached.
@@ -848,6 +855,7 @@ export default {
       else if (this.music.paused) this.music.play().catch(() => {});
     },
     syncAudio() {
+      this.spriteMotionPaused=document.hidden;
       if (document.hidden) { this.clearMoveFx(); this.cancelEntrance(); this._presentation?.skipWait(); this._rewardRelease?.(); this._transitionRelease?.(); this.clearCaptureTimers({settle:true}); }
       this._battleAudio?.setVolume(this.soundEnabled && !document.hidden ? this.audioVolume : 0);
       this.syncMusic();
@@ -940,10 +948,7 @@ export default {
     },
     getPokemonSprite(pokemon, side) {
       if(pokemon?.storyActor==='professor')return require('@/assets/battle/professor-final-v1.png');
-      const id = Number.parseInt(pokemon?.__battle?.illusion?.id || pokemon?.__battle?.transformSpriteId || pokemon?.__battle?.formSpriteId || pokemon?.data?.id, 10);
-      if (!Number.isInteger(id) || id <= 0) return '';
-      const folder = side === 'back' ? 'back' : 'front';
-      return `${process.env.BASE_URL}img/pokemon/${folder}/${id}.png`;
+      return this.$pokemonSprite(pokemon,{side,animated:this.active&&!this.spriteMotionPaused&&!this.reducedMotion()});
     },
     getPokemonBattleKey(pokemon) {
       return pokemon?.uuid || `${pokemon?.data?.id || 'pokemon'}-${pokemon?.name || pokemon?.truename || ''}`;
@@ -1334,26 +1339,15 @@ export default {
       const width = Number(image?.naturalWidth);
       const height = Number(image?.naturalHeight);
       if (!image || !width || !height) return;
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext('2d', { willReadFrequently: true });
-      if (!context) return;
       try {
-        context.drawImage(image, 0, 0);
-        const pixels = context.getImageData(0, 0, width, height).data;
-        let minX = width;
-        let maxX = -1;
-        let minY = height;
-        let maxY = -1;
-        for (let y = 0; y < height; y += 1) {
-          for (let x = 0; x < width; x += 1) {
-            if (pixels[(y * width + x) * 4 + 3] <= 8) continue;
-            minX = Math.min(minX, x);
-            maxX = Math.max(maxX, x);
-            minY = Math.min(minY, y);
-            maxY = Math.max(maxY, y);
-          }
+        const known=pokemonSpriteMetrics(image.currentSrc||image.src);
+        let minX=known?.bounds[0]??width,maxX=known?known.bounds[2]-1:-1,minY=known?.bounds[1]??height,maxY=known?known.bounds[3]-1:-1;
+        if(!known){
+          const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+          const context=canvas.getContext('2d',{willReadFrequently:true});if(!context)return;
+          context.drawImage(image,0,0);const pixels=context.getImageData(0,0,width,height).data;
+          for(let y=0;y<height;y++)for(let x=0;x<width;x++)if(pixels[(y*width+x)*4+3]>8){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);}
+          canvas.width=canvas.height=0;
         }
         if (maxX < minX || maxY < minY) return;
         const visibleHeight = Math.max(1, maxY - minY + 1);
@@ -1364,7 +1358,7 @@ export default {
         // The same denominator drives bounds/feedback and keeps the feet anchored.
         const corruptedScale=side==='wild'&&this.opponent?.darkContinentEncounter?.kind==='corrupted'?1.25:1;
         const visibleExtent = (side === 'wild'
-          ? Math.min(Math.max(visibleWidth, visibleHeight), Math.max(width, height) * 0.55)
+          ? Math.min(Math.max(visibleWidth, visibleHeight), (known?96:Math.max(width, height)) * 0.55)
           : Math.max(visibleWidth, visibleHeight))/corruptedScale;
         const centerX = (minX + maxX + 1) / 2;
         this.$set(this.battleSpriteMetrics, side, {
@@ -2925,4 +2919,8 @@ export default {
 </style>
 <style>
 .game-root.is-mobile .game-stage .has-house-control .battle-turn-indicator{visibility:visible!important;max-width:100%;border-radius:9px;padding-block:4px}.game-root.is-mobile .game-stage .has-house-control .battle-mobile-announcements{display:none}
+</style>
+
+<style scoped>
+.battle-shiny-mark{color:#c3941a;text-shadow:0 1px #fff7cc;font-size:.85em}.battle-shiny-glints{position:absolute;inset:-100% -35% 0;pointer-events:none;color:#ffe496;z-index:12}.battle-shiny-glints i{position:absolute;opacity:0;font:normal 26px sans-serif;text-shadow:0 0 3px #fff8bd;animation:shiny-arrival 1.35s ease-out both}.battle-shiny-glints i:nth-child(1){top:20%;left:10%}.battle-shiny-glints i:nth-child(2){top:4%;left:65%;animation-delay:.12s}.battle-shiny-glints i:nth-child(3){top:60%;left:90%;animation-delay:.24s}.battle-shiny-glints i:nth-child(4){top:83%;left:30%;animation-delay:.36s}@keyframes shiny-arrival{0%,100%{opacity:0;transform:scale(.3) rotate(-20deg)}30%,60%{opacity:1;transform:scale(1) rotate(0)}}.battle-reduced-motion .battle-shiny-glints{display:none}@media(prefers-reduced-motion:reduce){.battle-shiny-glints{display:none}}
 </style>

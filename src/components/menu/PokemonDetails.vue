@@ -10,7 +10,7 @@
       <div ref="content" class="companion-content">
       <div class="companion-body">
         <div class="companion-identity">
-          <div class="companion-art"><span class="companion-number">N° {{ String(pokemon.spriteId).padStart(3, '0') }}</span><pokemon-portrait :src="`${$assetBase}img/pokemon/front/${pokemon.spriteId}.png`" :alt="pokemon.truename || pokemon.name" /><span class="companion-level">Niv. {{ pokemon.level }}</span></div>
+          <div class="companion-art"><span class="companion-number">N° {{ String(pokemon.spriteId).padStart(3, '0') }}</span><pokemon-portrait :src="$pokemonSprite(pokemon, {animated: true})" :alt="pokemon.truename || pokemon.name" /><span class="companion-level">Niv. {{ pokemon.level }}</span></div>
           <div class="companion-types"><span v-for="type in pokemon.data.type" :key="type">{{ typeNames[type] || type }}</span></div>
           <p class="companion-species">{{ pokemon.truename }}</p>
           <owned-name-editor v-if="renameAllowed" :key="pokemon.uuid" kind="pokemon" label="Surnom du Pokémon" :value="pokemon.name" :default-name="pokemon.truename" :busy="renameBusy" :error="renameError" :notice="renameNotice" @save="$emit('rename',{pokemonUuid:pokemon.uuid,expectedName:pokemon.nickname || pokemon.name,name:$event})"/>
@@ -65,7 +65,7 @@
         <p v-if="evolutionNotice" class="evolution-success" role="status">{{ evolutionNotice }}</p>
         <p v-if="evolutionError" class="evolution-error" role="alert">{{ evolutionError }} <button @click="$emit('reload-evolutions')">Réessayer</button></p>
         <article v-for="option in evolutionOptions" :key="option.targetId" :data-evolution-target="option.targetId">
-          <pokemon-portrait :src="`${$assetBase}img/pokemon/front/${option.targetId}.png`" :alt="option.name" />
+          <pokemon-portrait :src="$pokemonSprite({pokemonId:option.targetId,shiny:pokemon.shiny,gender:pokemon.gender})" :alt="option.name" />
           <div><strong>{{ option.name }}</strong><p>{{ option.condition }}</p><small v-if="option.adaptation">Règle solo : {{ option.adaptation }}</small></div>
           <span v-if="option.stone" class="evolution-stone">Avec une pierre</span>
           <button v-else :disabled="!option.ready || !evolutionAllowed || evolutionBusy || evolutionLoading" @click="$emit('evolve',option.targetId)">{{ evolutionBusy ? 'Évolution…' : option.ready ? `Évoluer en ${option.name}` : 'Conditions requises' }}</button>

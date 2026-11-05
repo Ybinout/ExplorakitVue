@@ -9,7 +9,7 @@
       <div v-else-if="atlas" class="region-content">
         <div class="region-location"><span class="you-dot"></span><span>{{ en ? 'You are here' : 'Tu es ici' }} <strong>{{ currentLabel }}</strong></span><button @click="showCurrent" :disabled="!currentNode">{{ en ? 'Locate me' : 'Me situer' }}</button></div>
         <div v-if="pokemon" class="habitat-heading" role="status">
-          <img :src="`${$assetBase}img/pokemon/front/${pokemon.id}.png`" alt="" width="40" height="40">
+          <img :src="$pokemonSprite(pokemon)" alt="" width="40" height="40">
           <span v-if="habitat.kind === 'wild'">{{ en ? 'Wild encounters' : 'Rencontres sauvages' }}<small>{{ legendaryNote || (en ? 'Choose a marker or a location below.' : 'Choisis un repère ou un lieu ci-dessous.') }}</small></span>
           <span v-else-if="habitat.kind === 'evolution'">{{ en ? 'Obtained through evolution' : 'À obtenir par évolution' }}<small>{{ en ? 'The markers show where to catch its earlier forms.' : 'Les repères indiquent où capturer ses pré-évolutions.' }}</small></span>
           <span v-else>{{ en ? 'No known wild habitat' : 'Aucun habitat sauvage connu' }}<small>{{ en ? 'This species has no wild encounter in the current region.' : 'Cette espèce ne se rencontre pas dans la région actuelle.' }}</small></span>
@@ -30,6 +30,10 @@
               <path d="M548 160H740V340H548Z" fill="url(#region-forest)"/>
               <path d="M603 206h30v24h-30m66 55h36v32h-36" stroke="#8ed6cd" stroke-width="4" fill="#54aabc"/>
               <text x="646" y="398" text-anchor="middle" font-size="12" font-weight="700" fill="#153f4a" letter-spacing="2">DARK CONTINENT</text></g>
+              <g v-if="atlas.safari" data-safari-scenery :transform="`translate(${atlas.safari.x},${atlas.safari.y})`">
+                <path v-for="layer in safariMini.layers" :key="layer.color" :d="layer.path" :fill="layer.color"/>
+                <text x="147" y="158" text-anchor="middle" font-size="12" font-weight="700" fill="#e4f3da" letter-spacing="2">{{ en?'SAFARI ISLAND':'ÎLE SAFARI' }}</text>
+              </g>
               <path d="M24 96H40V80H88V92H112V124H124V180H144V196H240V168H272V176H308V188H348V176H400V188H480V204H496V304H476V326H404V352H392V432H40V424H24V396H32V288H20V248H28V168H16V124H24Z" fill="#76c6b1" stroke="#76c6b1" stroke-width="16"/>
               <path d="M24 96H40V80H88V92H112V124H124V180H144V196H240V168H272V176H308V188H348V176H400V188H480V204H496V304H476V326H404V352H392V432H40V424H24V396H32V288H20V248H28V168H16V124H24Z" fill="#b3ce70" stroke="#e4d68a" stroke-width="6"/>
               <path d="M32 104H48V88H84V100H104V136H116V176H104V200H36V164H24V128H32Z" fill="url(#region-snow)"/>
@@ -51,7 +55,7 @@
                 <rect v-if="node.kind === 'town'" :x="node.x-7" :y="node.y-6" width="14" height="12" fill="#f7f0c5" stroke="#94745b" stroke-width="1"/>
                 <path v-if="node.kind === 'town'" :d="`M${node.x-5} ${node.y-4}h10v8h-10Z`" fill="#d87765"/>
                 <rect v-else :x="node.x-3" :y="node.y-3" width="6" height="6" :fill="node.kind==='cave' ? '#6b7967' : '#f7edb4'"/>
-                <text v-if="node.kind==='route'" :x="node.x+10" :y="node.y+3" class="route-label">{{ routeLabel(node.id) }}</text>
+                <text v-if="node.kind==='route' && !isSafari(node.id)" :x="node.x+10" :y="node.y+3" class="route-label">{{ routeLabel(node.id) }}</text>
                 <text v-if="node.kind === 'town' || node.kind === 'event'" :x="node.x" :y="node.y - (currentNode?.id === node.id ? 28 : 14)" text-anchor="middle" class="town-label">{{ shortLabel(node.id) }}</text>
               </g>
             </g>
@@ -90,7 +94,7 @@
             <label for="region-place">{{ en ? 'Habitats' : 'Localisations' }}</label>
             <select id="region-place" v-model="selected" @change="centerOn(selectedNode)"><option value="">{{ en ? 'Choose a location' : 'Choisir un lieu' }}</option><option v-for="node in selectableNodes" :key="node.id" :value="node.id">{{ label(node.id) }}</option></select>
           </template>
-          <div v-if="selectedNode" class="place-detail" aria-live="polite"><strong>{{ label(selectedNode.id) }}</strong><span v-if="selectedNode.id === currentNode?.id" class="here-label">{{ en ? 'You are here' : 'Tu es ici' }}</span><p v-for="(entry,i) in selectedHabitats" :key="i">{{ methodLabel(entry.method) }}<template v-if="entry.level"> · {{ en ? 'Lv.' : 'Niv.' }} {{ entry.level.min }}–{{ entry.level.max }}</template><template v-if="entry.speciesId"> · {{ speciesName(entry.speciesId) }}</template></p></div>
+          <div v-if="selectedNode" class="place-detail" aria-live="polite"><strong>{{ label(selectedNode.id) }}</strong><span v-if="selectedNode.id === currentNode?.id" class="here-label">{{ en ? 'You are here' : 'Tu es ici' }}</span><p v-for="(entry,i) in selectedHabitats" :key="i">{{ methodLabel(entry.method) }}<template v-if="entry.level"> · {{ en ? 'Lv.' : 'Niv.' }} {{ entry.level.min }}–{{ entry.level.max }}</template><template v-if="entry.speciesId"> · {{ speciesName(entry.speciesId) }}</template><template v-if="entry.day && entry.day!=='all'"> · {{ entry.day==='even'?(en?'Even dates':'Jours pairs'):(en?'Odd dates':'Jours impairs') }}</template><template v-if="entry.oneIn"> · 1 / {{ entry.oneIn }}</template></p></div>
 
         </div>
         <footer class="region-footer">{{ pokemon ? (en ? 'Presence areas, not guaranteed encounters.' : 'Zones de présence, rencontres non garanties.') : (en ? 'Select a town or route to find your way.' : 'Sélectionne une ville ou une route pour te repérer.') }}</footer>
@@ -103,13 +107,14 @@
   </div>
 </template>
 <script>
+import safariMini from '@/data/safariMinimap.json';
 import api from '@/services/api';
 import { getMapLocationLabel } from '@/services/mapLocations';
 import { mapLayout, anchoredMapScroll, clampMapZoom } from '@/services/regionMapViewport';
 export default {
   name:'RegionMapPanel',
   props:{friendMembers:{type:Array,default:()=>[]},currentMap:String,currentRegion:String,pokemon:Object,entries:{type:Array,default:()=>[]},language:{type:String,default:'fr'},animationsEnabled:{type:Boolean,default:true},flight:{type:Object,default:null},flightAllowed:Boolean},
-  data:()=>({atlas:null,loading:true,error:'',selected:'',zoom:1,dragging:false,viewport:{width:512,height:448}}),
+  data:()=>({safariMini,atlas:null,loading:true,error:'',selected:'',zoom:1,dragging:false,viewport:{width:512,height:448}}),
   computed:{
     friendMarkers(){if(!this.atlas)return [];const colors=['#9b5e9d','#35798e','#a27432','#407e54','#a95463','#5d64a0'],offsets=[[12,0],[-12,0],[0,12],[0,-12],[12,12],[-12,12]],counts={};return this.friendMembers.filter(p=>p.online&&p.location).map(p=>{const node=this.atlas.nodes.find(n=>n.id===p.location.nodeId);if(!node)return null;const k=counts[node.id]||0;counts[node.id]=k+1;const offset=offsets[k%offsets.length];return {...p,nodeId:node.id,mode:p.location.mode,x:node.x+offset[0],y:node.y+offset[1],color:p.afk?'#db942e':colors[p.id%colors.length]};}).filter(Boolean);},
 
@@ -128,7 +133,7 @@ export default {
     selectedHabitats(){return this.locations.filter(l=>l.map===this.selected);},
     habitatNodes(){const ids=new Set(this.locations.map(l=>l.map));return (this.atlas?.nodes || []).filter(n=>ids.has(n.id));},
     selectableNodes(){return this.pokemon ? this.habitatNodes : this.displayNodes;},
-    edges(){return (this.atlas?.edges || []).filter(([a,b])=>!this.isDark(a)&&!this.isDark(b)).map(([a,b])=>{const from=this.atlas.nodes.find(n=>n.id===a),to=this.atlas.nodes.find(n=>n.id===b);return {id:a+':'+b,path:`M${from.x} ${from.y}H${to.x}V${to.y}`,cave:from.kind==='cave'||to.kind==='cave'};});}
+    edges(){return (this.atlas?.edges || []).filter(([a,b])=>!this.isDark(a)&&!this.isDark(b)&&!this.isSafari(a)&&!this.isSafari(b)).map(([a,b])=>{const from=this.atlas.nodes.find(n=>n.id===a),to=this.atlas.nodes.find(n=>n.id===b);return {id:a+':'+b,path:`M${from.x} ${from.y}H${to.x}V${to.y}`,cave:from.kind==='cave'||to.kind==='cave'};});}
   },
   mounted(){this.previousFocus=document.activeElement;this.$refs.close.focus({preventScroll:true});this.load();},
   beforeDestroy(){this.disposed=true;this._resizeObserver?.disconnect();window.removeEventListener('resize',this.measureViewport);this._pointers?.clear();if(this.previousFocus?.isConnected)this.previousFocus.focus({preventScroll:true});},
@@ -136,6 +141,7 @@ export default {
     modeLabel(mode){return {adventure:'Aventure',rift:'Rift',colosseum:'Colosseum'}[mode]||'';},
     selectFriendMember(member){this.selected=member.nodeId;this.centerOn(this.atlas.nodes.find(n=>n.id===member.nodeId));},
 
+    isSafari(id){return /^safari(?:[1-9]|1[0-5])$/.test(id||'');},
     isDark(id){return /^jungle[1-9]$/.test(id||'');},
     label(id){return this.isDark(id)?'Dark Continent':getMapLocationLabel(id,this.language);},
     routeLabel(id){return /^jungle[1-9]$/.test(id)?'Jungle '+id.slice(6):this.label(id).replace('Route ','');},

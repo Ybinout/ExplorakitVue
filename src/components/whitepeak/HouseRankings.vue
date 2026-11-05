@@ -10,7 +10,7 @@
    <div class="ranking-head" aria-hidden="true"><span>Rang · Dresseur</span><span>Score</span><span>W / L</span><span>Victoires</span><span>Dernière équipe</span></div>
    <ol class="ranking-list" aria-label="Classement"><li v-for="r in ranking?.rows||[]" :key="r.id" :class="{own:r.id===userId}" :data-ranking-user="r.id">
     <div class="rank-player"><span :class="['rank-number',{'rank-leader':r.rank<=3}]">{{ r.rank }}</span><b>{{ r.username }}<small v-if="r.id===userId">C’est toi</small></b></div><strong class="rank-score">{{ format(r.points) }}<small>points</small></strong><span class="rank-record"><b>{{ r.wins }} <small>W</small></b><span> / </span><b>{{ r.losses }} <small>L</small></b></span><span class="rank-winrate" :title="`Sur les duels décisifs · ${r.draws} nul(s)`">{{ r.winrate }} %</span>
-    <div class="rank-team" :class="{'team-twelve':r.team.length>6}"><template v-if="r.team.length"><img v-for="(id,index) in r.team" :key="index" :src="`${$assetBase}img/pokemon/front/${id}.png`" :alt="name(id)" :title="`${index+1}. ${name(id)}`" loading="lazy"><small v-if="r.team.length>6">12v12</small></template><span v-else>Équipe non enregistrée</span></div>
+    <div class="rank-team" :class="{'team-twelve':r.team.length>6}"><template v-if="r.team.length"><img v-for="(id,index) in r.team" :key="index" :src="$pokemonSprite(id)" :alt="name(id)" :title="`${index+1}. ${name(id)}`" loading="lazy"><small v-if="r.team.length>6">12v12</small></template><span v-else>Équipe non enregistrée</span></div>
    </li></ol>
    <p v-if="!busy&&!ranking?.rows?.length" class="ranking-empty">{{ search?'Aucun dresseur avec ce nom.':'Le prochain combat peut écrire la première ligne.' }}</p>
   </div>

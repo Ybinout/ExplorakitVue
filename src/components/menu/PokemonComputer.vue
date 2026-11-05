@@ -82,7 +82,7 @@ export default {
     closeDetail(){this.detailOpen=false;this.$nextTick(()=>this.$refs.detailButton?.focus({preventScroll:true}));},
     navigateDetail(delta){const next=this.detailList[this.detailIndex+delta];if(next)this.uuid=next.uuid;},
     typeName:localizeTypeName,moveName(m){return localizeMoveName(m,'fr');},abilityName(a){return localizeAbilityName(a,'fr');},
-    sprite(p){return `${process.env.BASE_URL}img/pokemon/front/${p.pokemonId}.png`;},
+    sprite(p){return this.$pokemonSprite(p);},
     itemName(key){return key?this.itemNames[key] || key.replace(/_/g,' '):'Aucun';},
     boxName(box){return this.state.boxNames?.[box] || `Boîte ${box+1}`;},
     boxCount(box){return this.state.entries.filter(e=>e.box===box).length;},

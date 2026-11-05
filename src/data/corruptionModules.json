@@ -8241,6 +8241,32 @@
       "type": "Ice"
     }
   },
+  "cmod_move_644": {
+    "key": "cmod_move_644",
+    "name": "CS corrompue · Engrenage",
+    "description": "Une attaque universelle. Son apprentissage corrompt définitivement le Pokémon et occupe une de ses quatre capacités.",
+    "category": "corruption",
+    "sell_price": 0,
+    "buy_price": 0,
+    "corruptionModule": {
+      "family": "move",
+      "move": "Gear Up",
+      "type": "Steel"
+    }
+  },
+  "cmod_move_645": {
+    "key": "cmod_move_645",
+    "name": "CS corrompue · Fouet de Feu",
+    "description": "Une attaque universelle. Son apprentissage corrompt définitivement le Pokémon et occupe une de ses quatre capacités.",
+    "category": "corruption",
+    "sell_price": 0,
+    "buy_price": 0,
+    "corruptionModule": {
+      "family": "move",
+      "move": "Fire Lash",
+      "type": "Fire"
+    }
+  },
   "cmod_ability_adaptability": {
     "key": "cmod_ability_adaptability",
     "name": "Pilule corrompue · Adaptabilité",
@@ -8491,6 +8517,18 @@
     "corruptionModule": {
       "family": "ability",
       "ability": "Damp"
+    }
+  },
+  "cmod_ability_defeatist": {
+    "key": "cmod_ability_defeatist",
+    "name": "Pilule corrompue · Défaitiste",
+    "description": "Remplace le talent, quelle que soit l’espèce. La corruption est définitive.",
+    "category": "corruption",
+    "sell_price": 0,
+    "buy_price": 0,
+    "corruptionModule": {
+      "family": "ability",
+      "ability": "Defeatist"
     }
   },
   "cmod_ability_defiant": {
@@ -8769,6 +8807,18 @@
       "ability": "Ice Body"
     }
   },
+  "cmod_ability_illusion": {
+    "key": "cmod_ability_illusion",
+    "name": "Pilule corrompue · Illusion",
+    "description": "Remplace le talent, quelle que soit l’espèce. La corruption est définitive.",
+    "category": "corruption",
+    "sell_price": 0,
+    "buy_price": 0,
+    "corruptionModule": {
+      "family": "ability",
+      "ability": "Illusion"
+    }
+  },
   "cmod_ability_immunity": {
     "key": "cmod_ability_immunity",
     "name": "Pilule corrompue · Vaccin",
@@ -8839,6 +8889,18 @@
     "corruptionModule": {
       "family": "ability",
       "ability": "Intimidate"
+    }
+  },
+  "cmod_ability_ironbarbs": {
+    "key": "cmod_ability_ironbarbs",
+    "name": "Pilule corrompue · Épine de Fer",
+    "description": "Remplace le talent, quelle que soit l’espèce. La corruption est définitive.",
+    "category": "corruption",
+    "sell_price": 0,
+    "buy_price": 0,
+    "corruptionModule": {
+      "family": "ability",
+      "ability": "Iron Barbs"
     }
   },
   "cmod_ability_ironfist": {
@@ -9079,6 +9141,18 @@
     "corruptionModule": {
       "family": "ability",
       "ability": "Multiscale"
+    }
+  },
+  "cmod_ability_mummy": {
+    "key": "cmod_ability_mummy",
+    "name": "Pilule corrompue · Momie",
+    "description": "Remplace le talent, quelle que soit l’espèce. La corruption est définitive.",
+    "category": "corruption",
+    "sell_price": 0,
+    "buy_price": 0,
+    "corruptionModule": {
+      "family": "ability",
+      "ability": "Mummy"
     }
   },
   "cmod_ability_naturalcure": {
@@ -9561,6 +9635,18 @@
       "ability": "Slow Start"
     }
   },
+  "cmod_ability_slushrush": {
+    "key": "cmod_ability_slushrush",
+    "name": "Pilule corrompue · Chasse-Neige",
+    "description": "Remplace le talent, quelle que soit l’espèce. La corruption est définitive.",
+    "category": "corruption",
+    "sell_price": 0,
+    "buy_price": 0,
+    "corruptionModule": {
+      "family": "ability",
+      "ability": "Slush Rush"
+    }
+  },
   "cmod_ability_sniper": {
     "key": "cmod_ability_sniper",
     "name": "Pilule corrompue · Sniper",
@@ -9813,6 +9899,18 @@
       "ability": "Technician"
     }
   },
+  "cmod_ability_teravolt": {
+    "key": "cmod_ability_teravolt",
+    "name": "Pilule corrompue · Téra-Voltage",
+    "description": "Remplace le talent, quelle que soit l’espèce. La corruption est définitive.",
+    "category": "corruption",
+    "sell_price": 0,
+    "buy_price": 0,
+    "corruptionModule": {
+      "family": "ability",
+      "ability": "Teravolt"
+    }
+  },
   "cmod_ability_thickfat": {
     "key": "cmod_ability_thickfat",
     "name": "Pilule corrompue · Isograisse",
@@ -9885,6 +9983,18 @@
       "ability": "Truant"
     }
   },
+  "cmod_ability_turboblaze": {
+    "key": "cmod_ability_turboblaze",
+    "name": "Pilule corrompue · Turbo Brasier",
+    "description": "Remplace le talent, quelle que soit l’espèce. La corruption est définitive.",
+    "category": "corruption",
+    "sell_price": 0,
+    "buy_price": 0,
+    "corruptionModule": {
+      "family": "ability",
+      "ability": "Turboblaze"
+    }
+  },
   "cmod_ability_unaware": {
     "key": "cmod_ability_unaware",
     "name": "Pilule corrompue · Inconscient",
@@ -9919,6 +10029,18 @@
     "corruptionModule": {
       "family": "ability",
       "ability": "Unnerve"
+    }
+  },
+  "cmod_ability_victorystar": {
+    "key": "cmod_ability_victorystar",
+    "name": "Pilule corrompue · Victorieux",
+    "description": "Remplace le talent, quelle que soit l’espèce. La corruption est définitive.",
+    "category": "corruption",
+    "sell_price": 0,
+    "buy_price": 0,
+    "corruptionModule": {
+      "family": "ability",
+      "ability": "Victory Star"
     }
   },
   "cmod_ability_vitalspirit": {

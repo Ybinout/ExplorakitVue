@@ -1,6 +1,7 @@
 // Authored against the final map + foreground, at 448 × 320. Only existing
 // lantern heads / panes emit light; no colour-based selection across the map.
 export const townLights = {
+  safari8:{windows:[[76,112,8,6],[122,112,8,6],[312,194,8,6],[352,194,8,6]]},
   // Lucie's abandoned house stays dark, including before the secret ending.
   route3: { windows: [[90,162,9,7],[101,162,8,7],[218,162,9,7],[229,162,8,7],
     [388,211,12,7],[405,211,12,7]] },
@@ -29,5 +30,5 @@ export const townLights = {
       [371,261,8,6],[385,261,6,6],[51,104,6,5],[94,103,6,5]] },
 };
 export function outdoorMap(map) {
-  return typeof map === 'string' && /^(?:start|pk[12]|route\d+|gen_route\d+|gen_ville\d+|ville[1345]|ville_safe1|ville_commerciale)$/.test(map);
+  return typeof map === 'string' && /^(?:safari(?:[1-9]|1[0-5])|start|pk[12]|route\d+|gen_route\d+|gen_ville\d+|ville[1345]|ville_safe1|ville_commerciale)$/.test(map);
 }

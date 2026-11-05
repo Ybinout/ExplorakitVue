@@ -1,12 +1,21 @@
-<template><span class="pokemon-portrait"><img :src="src" :alt="alt" :style="imageStyle" @load="fitSprite"></span></template>
+<template><span class="pokemon-portrait" :class="{'is-shiny':shiny}" :title="shiny?'Pokémon chromatique':null"><img :src="src" :alt="alt" :style="imageStyle" @load="fitSprite"><span v-if="shiny" class="portrait-shiny" aria-label="Pokémon chromatique">✦</span></span></template>
 <script>
+import { pokemonSpriteMetrics } from '@/services/pokemonSprites';
 export default {
   props: { src: String, alt: { type: String, default: '' } },
   data: () => ({ imageStyle: {} }),
+  computed: { shiny() { return String(this.src || '').includes('/shiny/'); } },
   watch: { src() { this.imageStyle = {}; } },
   methods: {
     fitSprite(event) {
       const image = event.target;
+      const metrics = pokemonSpriteMetrics(image.src);
+      if(metrics){
+        const [left,top,right,bottom]=metrics.bounds,[width,height]=metrics.size;
+        const extent=Math.max(right-left,bottom-top)/0.78;
+        this.imageStyle={width:`${width/extent*100}%`,height:`${height/extent*100}%`,left:`${(0.5-(left+right)/2/extent)*100}%`,top:`${(0.5-(top+bottom)/2/extent)*100}%`};
+        return;
+      }
       const canvas = document.createElement('canvas');
       canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
       const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -30,4 +39,5 @@ export default {
 </script>
 <style scoped>
 .pokemon-portrait{position:relative;display:block;aspect-ratio:1;overflow:hidden;flex-shrink:0}.pokemon-portrait img{position:absolute;left:0;top:0;width:100%;height:100%;max-width:none;object-fit:contain;image-rendering:pixelated}
+.portrait-shiny{position:absolute;right:1px;top:0;z-index:1;font:700 14px/1.1 sans-serif;color:#a87815;text-shadow:0 1px #fff5c6;pointer-events:none}
 </style>

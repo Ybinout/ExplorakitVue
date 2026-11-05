@@ -29,7 +29,7 @@ export function createEvolutionTracker({ edges, names }) {
           const key = `${uuid}:${from}:${to}`;
           if (shown.has(key)) continue;
           shown.add(key);
-          events.push({ key, uuid, from, to, fromName: names[from] || previous.name || 'Ton Pokémon', toName: names[to] || pokemon.name || 'Ton Pokémon' });
+          events.push({ key, uuid, shiny:pokemon.shiny===true, from, to, fromName: names[from] || previous.name || 'Ton Pokémon', toName: names[to] || pokemon.name || 'Ton Pokémon' });
         }
         known.set(uuid, { id, name: pokemon.name });
       }

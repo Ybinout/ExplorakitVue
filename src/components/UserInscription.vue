@@ -99,9 +99,6 @@ import api from '@/services/api';
 import { storeSession, loginDestination } from '@/services/session';
 import avatarOne from '@/assets/sprite.png';
 import avatarTwo from '@/assets/sprite2.png';
-import bulbasaur from '@/assets/dp2/1.png';
-import charmander from '@/assets/dp2/4.png';
-import squirtle from '@/assets/dp2/7.png';
 
 export default {
   name: 'UserInscription',
@@ -117,9 +114,9 @@ export default {
         { file: 'sprite2.png', image: avatarTwo, name: 'Veilleur', description: 'Style nocturne et déterminé.' }
       ],
       starters: [
-        { id: 1, name: 'Bulbizarre', type: 'Plante', image: bulbasaur, description: 'Patient et résistant. Idéal pour contrôler le combat.' },
-        { id: 4, name: 'Salamèche', type: 'Feu', image: charmander, description: 'Offensif et audacieux. Sa puissance grandit vite.' },
-        { id: 7, name: 'Carapuce', type: 'Eau', image: squirtle, description: 'Solide et équilibré. Un compagnon très fiable.' }
+        { id: 1, name: 'Bulbizarre', type: 'Plante', image: this.$pokemonSprite(1), description: 'Patient et résistant. Idéal pour contrôler le combat.' },
+        { id: 4, name: 'Salamèche', type: 'Feu', image: this.$pokemonSprite(4), description: 'Offensif et audacieux. Sa puissance grandit vite.' },
+        { id: 7, name: 'Carapuce', type: 'Eau', image: this.$pokemonSprite(7), description: 'Solide et équilibré. Un compagnon très fiable.' }
       ]
     };
   },

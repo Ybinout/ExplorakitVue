@@ -67,7 +67,7 @@ export default {
     moveName(name) { return localizeMoveName(name,'fr'); },
     itemName(key) { return heldItems[key]?.name || key; },
     number(n) { return Number(n).toLocaleString('fr-FR'); },
-    sprite(id) { return `${this.$assetBase}img/pokemon/front/${id}.png`; },
+    sprite(id) { return this.$pokemonSprite(id); },
     clearBusy() { clearTimeout(this.busyTimer); this.busy = false; },
     dispatch(name, payload) { if (this.busy) return; this.busy = true; this.$emit(name, payload); this.busyTimer = setTimeout(this.clearBusy, 5000); },
     ready() { this.dispatch('ready'); },

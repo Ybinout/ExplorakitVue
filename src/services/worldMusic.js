@@ -1,6 +1,8 @@
 // Adjacent maps sharing a theme keep playing. Returning from a different theme
 // starts at the beginning; battle, mute and visibility pauses preserve position.
 export function worldMusicTrack(map) {
+  if(map==='safari8'||map==='safari_shop')return 'village';
+  if(/^safari(?:[1-9]|1[0-5])$/.test(map))return 'route';
   if (/^jungle[1-9]$/.test(map)) return 'dark';
   if (map==='ville5_maison2')return 'casino';
   if (map==='ville5_maison1')return 'battle-house';

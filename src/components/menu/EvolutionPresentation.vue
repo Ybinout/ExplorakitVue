@@ -43,7 +43,7 @@ export default {
     if (this.previousFocus?.isConnected) this.previousFocus.focus?.();
   },
   methods: {
-    sprite(id) { return `${process.env.BASE_URL}img/pokemon/front/${id}.png`; },
+    sprite(id) { return this.$pokemonSprite({pokemonId:id,shiny:this.evolution.shiny},{animated:this.animationsEnabled}); },
     reveal() { clearTimeout(this.revealTimer);if(this.busy||this.requestSent)return;if(this.cancellable&&!this.evolution.resolved){this.requestSent=true;this.$emit('resolve',false);}else this.revealed=true; },
     cancel(){if(this.busy||this.revealed)return;clearTimeout(this.revealTimer);this.$emit('resolve',true);},
     advance() { if (!this.revealed) this.reveal(); else this.$emit('continue'); },

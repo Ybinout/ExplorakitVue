@@ -12,7 +12,7 @@
           <h1 id="drift-title">Rift multijoueur</h1>
           <p class="hero-copy">Explore, compose ton équipe, puis affronte tes amis.</p><div class="hero-tags"><span>2 à 16 dresseurs</span><span>5 Drifts équipés</span><span>K.O. définitifs</span></div>
         </div>
-        <img class="camp-companion" :src="$assetBase + 'img/pokemon/front/133.png'" alt="" />
+        <img class="camp-companion" :src="$pokemonSprite(133)" alt="" />
       </section>
 
 

@@ -3,7 +3,7 @@
     <summary>Dernier adversaire <span v-if="defeat.wave">· Défi {{ defeat.wave }}</span> · {{ defeat.name }}</summary>
     <p>{{ defeat.outcome === 'draw' ? 'Double K.O.' : 'Défaite' }}<template v-if="defeat.turns"> après {{ defeat.turns }} tour{{ defeat.turns > 1 ? 's' : '' }}</template>. Voici son équipe au début du combat.</p>
     <div class="defeat-roster"><article v-for="(p,index) in defeat.team" :key="index">
-      <pokemon-portrait :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name"/>
+      <pokemon-portrait :src="$pokemonSprite(p)" :alt="p.name"/>
       <div><strong>{{ p.name }} · N. {{ p.level }}</strong><small>{{ p.knockedOut ? 'Vaincu' : 'Encore debout' }}</small><p v-if="p.heldItem">{{ itemName(p.heldItem) }}</p><p v-if="p.passiveAbility">{{ abilityName(p.passiveAbility) }}</p><p class="moves">{{ (p.moveNames || p.moves || []).join(' · ') }}</p></div>
     </article></div>
   </details>

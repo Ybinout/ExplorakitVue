@@ -1,7 +1,9 @@
+import safariWater from '../data/safariWater.js';
 import { WaterfallRenderer } from './waterfalls.js';
 // Pixel currents stay inside each mapped lake, never across its shoreline.
 const WIDTH = 448, HEIGHT = 320, FRAME_MS = 1000 / 15, CREST_COLOR = [190,235,255];
 const LAKES = {
+  ...Object.fromEntries(Array.from({length:15},(_,i)=>['safari'+(i+1),{cells:new Set(safariWater['safari'+(i+1)]||[]),bounds:{left:0,right:448,top:0,bottom:320},palette:'jungle-water',ripples:true}])),
   ...Object.fromEntries(Array.from({length:9},(_,i)=>['jungle'+(i+1),{bounds:{left:0,right:448,top:0,bottom:320},palette:'jungle-water',ripples:true}])),
   ville1_arene: {
     bounds: { left: 29, right: 420, top: 68, bottom: 269 },
@@ -23,6 +25,7 @@ export function villageWaterMask(data, map = 'start') {
   const water = new Uint8Array(WIDTH * HEIGHT), interior = new Uint8Array(WIDTH * HEIGHT), pixels = [];
   for (let y = POND.top; y < POND.bottom; y++) for (let x = POND.left; x < POND.right; x++) {
     const index = y * WIDTH + x, i = index * 4;
+    if(profile.cells&&!profile.cells.has(Math.floor(y/16)*28+Math.floor(x/16)))continue;
     if (profile.regions && !profile.regions.some(r => x >= r.left && x < r.right && y >= r.top && y < r.bottom)) continue;
     // The painted arena has a broad cyan palette. Restrict it to its two
     // basins and reject blue stone, banners, lilies and bright crystal edges.
@@ -57,19 +60,30 @@ export class VillageWaterRenderer {
       this.colors = original.data;
       this.frame = this.context.createImageData(WIDTH, HEIGHT); this.output = new Uint32Array(this.frame.data.buffer); this.output.set(this.original);
       this.mask = villageWaterMask(original.data, map); this.source = image; this.map = map;
+      this.rowStarts = new Uint32Array(HEIGHT + 1);
+      let cursor = 0;
+      for (let y = 0; y <= HEIGHT; y++) { while (cursor < this.mask.pixels.length && this.mask.pixels[cursor] < y * WIDTH) cursor++; this.rowStarts[y] = cursor; }
       this.rowCurrent = new Float64Array(HEIGHT); this.columnCurrent = new Float64Array(WIDTH);
       this.columnDrift = new Float64Array(WIDTH); this.columnWave = new Float64Array(WIDTH);
     } catch (_) { this.suspend(); }
   }
-  draw(target, image, timestamp, motion = true, map = 'start') {
+  draw(target, image, timestamp, motion = true, map = 'start', camera = null) {
     if (this.destroyed) return;
     if (!motion || !hasVillageWater(map)) { this.suspend(); target.drawImage(image, 0, 0, WIDTH * 2, HEIGHT * 2); return; }
     if (this.source !== image || this.map !== map || !this.canvas) this.prepare(image, map);
     if (!this.canvas) { target.drawImage(image, 0, 0, WIDTH * 2, HEIGHT * 2); return; }
     const time = Number.isFinite(timestamp) ? Math.max(0, timestamp) : 0;
-    if (time < this.lastTime || time - this.lastTime >= FRAME_MS) {
-      this.lastTime = time;
-      const seconds = time / 1000, visibleRipples = map === 'ville1' || map === 'ville3' || LAKES[map].ripples;
+    // Safari's broad sea is mostly outside the phone's camera. Keep a padded
+    // native-pixel region current; never change a visible pixel or wave phase.
+    const clipped = map.startsWith('safari') && camera;
+    const view = clipped ? {left:Math.max(0,Math.floor(camera.x/2)),right:Math.min(WIDTH,Math.ceil((camera.x+camera.visibleWidth)/2)),top:Math.max(0,Math.floor(camera.y/2)),bottom:Math.min(HEIGHT,Math.ceil((camera.y+camera.visibleHeight)/2))} : {left:0,right:WIDTH,top:0,bottom:HEIGHT};
+    const fresh = time < this.lastTime || time - this.lastTime >= FRAME_MS;
+    const covered = this.coverage && view.left>=this.coverage.left && view.right<=this.coverage.right && view.top>=this.coverage.top && view.bottom<=this.coverage.bottom;
+    if (fresh || !covered) {
+      if (fresh) this.lastTime = time;
+      const region = clipped ? {left:Math.max(0,view.left-32),right:Math.min(WIDTH,view.right+32),top:Math.max(0,view.top-32),bottom:Math.min(HEIGHT,view.bottom+32)} : view;
+      this.coverage = region;
+      const seconds = this.lastTime / 1000, visibleRipples = map === 'ville1' || map === 'ville3' || LAKES[map].ripples;
       // These trigonometric terms depend on a row or column, not each water
       // pixel. Reuse them without approximating the wave or changing its phase.
       if (visibleRipples) {
@@ -80,8 +94,10 @@ export class VillageWaterRenderer {
           this.columnWave[x]=Math.sin(x*.09+seconds*.5)*.4;
         }
       }
-      for (const index of this.mask.pixels) {
-        const x = index % WIDTH, y = Math.floor(index / WIDTH);
+      for (let at=this.rowStarts[region.top]; at<this.rowStarts[region.bottom]; at++) {
+        const index=this.mask.pixels[at], x=index%WIDTH;
+        if (x<region.left || x>=region.right) continue;
+        const y=Math.floor(index/WIDTH);
         const offset = visibleRipples
           ? Math.round(this.rowCurrent[y] + this.columnCurrent[x]) + this.columnDrift[x]
           : Math.round(Math.sin(y * .24 + seconds * .8) * .75 + Math.sin(x * .13 + seconds * .5) * .2);
@@ -106,7 +122,8 @@ export class VillageWaterRenderer {
           this.frame.data[index * 4 + channel] = Math.round(value + (220 - value) * glint);
         }
       }
-      const POND = LAKES[map].bounds;
+      const pond = LAKES[map].bounds;
+      const POND = {left:Math.max(pond.left,region.left),right:Math.min(pond.right,region.right),top:Math.max(pond.top,region.top),bottom:Math.min(pond.bottom,region.bottom)};
       this.context.putImageData(this.frame, 0, 0, POND.left, POND.top, POND.right - POND.left, POND.bottom - POND.top);
       this.frames++;
     }
@@ -121,7 +138,7 @@ export class VillageWaterRenderer {
     if (this.canvas) { this.canvas.width = 0; this.canvas.height = 0; }
     this.canvas = null; this.context = null; this.source = null; this.map = null; this.colors = null;
     this.rowCurrent = this.columnCurrent = this.columnDrift = this.columnWave = null;
-    this.original = null; this.frame = null; this.output = null; this.mask = null; this.lastTime = -Infinity;
+    this.original = null; this.frame = null; this.output = null; this.mask = null; this.rowStarts = null; this.coverage = null; this.lastTime = -Infinity;
   }
   destroy() { this.suspend(); this.destroyed = true; }
 }

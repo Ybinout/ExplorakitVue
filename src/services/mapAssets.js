@@ -1,4 +1,5 @@
 const MAP_ASSET_ALIASES = Object.freeze({
+    safari_shop:'gen_shop1',
     ville5_shop: 'gen_shop1',
     ville5_maison1: 'whitepeak_club', ville5_maison2: 'whitepeak_casino',
     ville4_shop: 'gen_shop1',
@@ -18,7 +19,7 @@ const MAP_ASSET_ALIASES = Object.freeze({
 const mapAssetContext = require.context(
     '@/assets',
     false,
-    /^\.\/(?:jungle[1-9]|whitepeak_(?:casino|club)|super_tournament_(?:lobby|sas|room)|void_arena|professor_lab|route3_maison_nrv|gwenn_house|route2_maison|ville(?:[1345]|_safe1)_arene|ville_commerciale|tour_(?:rdc|etage[123])|start|etage2?|maison2?|pk[12]|route(?:[1-6]|1[1-4])|ville[1345]|ville_safe1|centre|cave(?:[12]|_rochebrume[123])|gen_(?:route[1-8]|ville[1-5]|arene[1-5]|maison(?:[1-3]|_ville[1-5]_[12])|shop(?:1|_ville[25]_1)))(?:_f)?\.png$/
+    /^\.\/(?:safari(?:[1-9]|1[0-5])|jungle[1-9]|whitepeak_(?:casino|club)|super_tournament_(?:lobby|sas|room)|void_arena|professor_lab|route3_maison_nrv|gwenn_house|route2_maison|ville(?:[1345]|_safe1)_arene|ville_commerciale|tour_(?:rdc|etage[123])|start|etage2?|maison2?|pk[12]|route(?:[1-6]|1[1-4])|ville[1345]|ville_safe1|centre|cave(?:[12]|_rochebrume[123])|gen_(?:route[1-8]|ville[1-5]|arene[1-5]|maison(?:[1-3]|_ville[1-5]_[12])|shop(?:1|_ville[25]_1)))(?:_f)?\.png$/
 );
 
 export function resolveMapAsset(mapName, foreground = false) {

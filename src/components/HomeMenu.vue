@@ -3,7 +3,7 @@
     <nav class="home-nav" aria-label="Compte"><router-link class="brand" to="/">✧ <span>RIFTMON</span></router-link><div v-if="session"><router-link class="profile-nav-link" :to="`/profil/${session.id}`">Mon profil</router-link><button @click="logout">Déconnexion</button></div><router-link v-else to="/connexion">Se connecter</router-link></nav>
     <section class="mode-grid" aria-label="Choisir un mode de jeu">
       <component :is="mode.available ? 'router-link' : 'article'" v-for="mode in modes" :key="mode.key" :to="mode.available ? mode.path : null" :aria-disabled="mode.available ? null : 'true'" :data-mode="mode.key" class="mode-card" :class="[mode.key, { 'is-unavailable': !mode.available }]">
-        <div class="mode-art" aria-hidden="true"><span class="art-ring"></span><drift-glyph :name="mode.icon" /><img :src="`${$assetBase}img/pokemon/front/${mode.pokemon}.png`" alt="" /></div>
+        <div class="mode-art" aria-hidden="true"><span class="art-ring"></span><drift-glyph :name="mode.icon" /><img :src="$pokemonSprite(mode.pokemon)" alt="" /></div>
         <div class="mode-copy"><span class="mode-label">{{ mode.label }}</span><h2>{{ mode.title }}</h2><p>{{ mode.description }}</p><div class="mode-tags"><span v-for="tag in mode.tags" :key="tag">{{ tag }}</span></div><span class="mode-cta"><template v-if="mode.available">{{ mode.cta }} <span aria-hidden="true">↗</span></template><span v-else class="mode-soon" aria-label="Bientôt disponible">Soon</span></span></div>
       </component>
     </section>

@@ -24,3 +24,6 @@ pnpm-debug.log*
 
 # Configuration privée
 .env
+
+# Generated lossless assets; sources are versioned in assets/pokemon.
+/public/img/pokemon/

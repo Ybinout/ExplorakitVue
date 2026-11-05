@@ -55,6 +55,8 @@ const generatedCities = {
 
 export function getMapLocationLabel(mapName, language = 'fr') {
   const locale = language === 'en' ? 'en' : 'fr';
+  if (/^safari(?:[1-9]|1[0-5])$/.test(mapName || '')) return (locale==='fr'?'Île Safari':'Safari Island') + (mapName==='safari8'?(locale==='fr'?' · Bourg':' · Town'):' · '+mapName.slice(6));
+  if(mapName==='safari_shop')return locale==='fr'?'Boutique du Safari':'Safari Shop';
   if (labels[locale][mapName]) return labels[locale][mapName];
   if (generatedCities[mapName]) return generatedCities[mapName][locale === 'fr' ? 0 : 1];
 

@@ -26,7 +26,7 @@
           </section>
           <section v-for="record in profile.colosseum" :key="record.durationMinutes" class="community-card"><p class="eyebrow">COLOSSEUM · {{ record.durationMinutes===30 ? '30 MIN' : '1 HEURE' }}</p><rank-progress :rank="record.rank" :value="record.score"/><p class="muted">{{ number(record.score) }} points</p>
             <p class="muted">{{ record.wins ? `${record.wins} dresseurs vaincus sur ce record` : 'Aucun record classé dans ce format.' }}</p>
-            <div v-if="record.team.length" class="record-team" aria-label="Équipe du record"><span v-for="(p,index) in record.team" :key="index"><img :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name"/><small>N. {{ p.level }}{{ p.knockedOut ? ' · K.O.' : '' }}</small></span></div><colosseum-defeat :defeat="record.defeat"/>
+            <div v-if="record.team.length" class="record-team" aria-label="Équipe du record"><span v-for="(p,index) in record.team" :key="index"><img :src="$pokemonSprite(p)" :alt="p.name"/><small>N. {{ p.level }}{{ p.knockedOut ? ' · K.O.' : '' }}</small></span></div><colosseum-defeat :defeat="record.defeat"/>
           </section>
         </div>
         <p class="privacy-note">Les profils montrent les rangs, résultats et équipes des records Colosseum. Les objets, pièces et Pokémon de l’Aventure restent privés.</p>
@@ -60,7 +60,7 @@
           <p v-if="!ranking.length" class="empty">Le classement attend ses premiers dresseurs. À toi de prendre la première place !</p>
           <ol class="trainer-list ranking-list"><li v-for="trainer in ranking" :key="trainer.id || trainer.userId" :data-trainer-id="trainer.id || trainer.userId" :class="{me:(trainer.id || trainer.userId)===userId,podium:(trainer.position || trainer.rank)<=3}">
             <span class="position">#{{ trainer.position || trainer.rank }}</span><div class="ranked-player"><router-link class="trainer-link" :to="`/profil/${trainer.id || trainer.userId}`"><strong>{{ trainer.username }}<small v-if="(trainer.id || trainer.userId)===userId"> · toi</small></strong><rank-badge :rank="rankingMode==='rift' ? trainer.rift.rank : trainer.league" :detail="`${(rankingMode==='rift' ? trainer.rift.rank : trainer.league).lp} PL`"/></router-link>
-              <div v-if="rankingMode!=='rift' && trainer.team.length" class="ranking-team" aria-label="Équipe du record"><img v-for="(p,index) in trainer.team" :key="index" :src="`${$assetBase}img/pokemon/front/${p.pokemonId}.png`" :alt="p.name" :title="`${p.name} · N. ${p.level}${p.knockedOut ? ' · K.O.' : ''}`"/></div><colosseum-defeat v-if="rankingMode!=='rift'" :defeat="trainer.defeat"/>
+              <div v-if="rankingMode!=='rift' && trainer.team.length" class="ranking-team" aria-label="Équipe du record"><img v-for="(p,index) in trainer.team" :key="index" :src="$pokemonSprite(p)" :alt="p.name" :title="`${p.name} · N. ${p.level}${p.knockedOut ? ' · K.O.' : ''}`"/></div><colosseum-defeat v-if="rankingMode!=='rift'" :defeat="trainer.defeat"/>
             </div><div class="ranked-value"><strong>{{ number(rankingMode==='rift' ? trainer.rift.rating : trainer.score) }}</strong><small>{{ rankingMode==='rift' ? 'Elo' : 'points' }}</small><span>{{ rankingMode==='rift' ? `${trainer.rift.ratedGames} partie${trainer.rift.ratedGames>1 ? 's' : ''}` : `${trainer.wins} victoire${trainer.wins>1 ? 's' : ''}` }}</span></div>
           </li></ol>
         </section>

@@ -5,11 +5,16 @@ import './styles/field-journal.css';
 import { loadGamePreferences } from './services/gamePreferences';
 import { applyGameTheme } from './services/gameTheme';
 import router from './router/index';  // Importez le routeur que vous venez de créer
+import { pokemonSprite, pokemonSpriteFallback, setPokemonSpriteMotion } from './services/pokemonSprites';
 
 Vue.prototype.$assetBase = process.env.BASE_URL;
+Vue.prototype.$pokemonSprite = pokemonSprite;
+document.addEventListener('error', pokemonSpriteFallback, true);
 Vue.config.productionTip = false;
 
 applyGameTheme(loadGamePreferences());
+setPokemonSpriteMotion(loadGamePreferences());
+window.addEventListener('riftmon:preferences', event=>setPokemonSpriteMotion(event.detail));
 initializePwa();
 
 new Vue({

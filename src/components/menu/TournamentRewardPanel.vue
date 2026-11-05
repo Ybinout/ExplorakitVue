@@ -76,7 +76,7 @@ export default {
   beforeDestroy(){if(this.previousFocus?.isConnected)this.previousFocus.focus({preventScroll:true});},
   methods:{
     money(n){return Number(n||0).toLocaleString('fr-FR');},
-    sprite(p){return `${process.env.BASE_URL}img/pokemon/front/${p.pokemonId || p.data?.id || p.id}.png`;},
+    sprite(p){return this.$pokemonSprite(p);},
     select(card){this.selectedKey=card.key;this.pokemonUuid=null;this.moveIndex=null;},
     target(uuid){return this.selected?.targets.find(t=>t.uuid===uuid);},
     moveName(name){return localizeMoveName(name,'fr');},

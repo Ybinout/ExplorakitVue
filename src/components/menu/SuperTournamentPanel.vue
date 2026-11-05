@@ -39,7 +39,7 @@ export default {
   computed:{view(){return ['ranking','abandon','powers'].includes(this.payload.tab)?this.payload.tab:'entry';}},
   mounted(){this.previousFocus=document.activeElement;this.$refs.panel.focus();},
   beforeDestroy(){this.previousFocus?.focus?.();},
-  methods:{money(n){return Number(n||0).toLocaleString('fr-FR');},sprite(p){return `${process.env.BASE_URL}img/pokemon/front/${p.pokemonId || p.data?.id || p.id}.png`;},onKey(e){if(e.key==='Escape'&&!this.busy)this.$emit('close');if(e.key!=='Tab')return;const list=[...this.$refs.panel.querySelectorAll('button:not(:disabled)')],first=list[0],last=list[list.length-1];if(e.shiftKey&&[first,this.$refs.panel].includes(document.activeElement)){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}}
+  methods:{money(n){return Number(n||0).toLocaleString('fr-FR');},sprite(p){return this.$pokemonSprite(p);},onKey(e){if(e.key==='Escape'&&!this.busy)this.$emit('close');if(e.key!=='Tab')return;const list=[...this.$refs.panel.querySelectorAll('button:not(:disabled)')],first=list[0],last=list[list.length-1];if(e.shiftKey&&[first,this.$refs.panel].includes(document.activeElement)){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}}
 };
 </script>
 <style scoped>

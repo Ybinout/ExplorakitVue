@@ -370,5 +370,21 @@
   "icy_rock": {
     "name": "Roche Glace",
     "description": "Prolonge la grêle à huit tours au lieu de cinq lorsque le porteur la déclenche par une capacité ou son talent. Ne modifie pas la météo permanente des cartes."
+  },
+  "douse_drive": {
+    "name": "Module Aqua",
+    "description": "Objet tenu : Techno-Buster devient de type Eau. Protégé contre le retrait quand Genesect le tient."
+  },
+  "shock_drive": {
+    "name": "Module Choc",
+    "description": "Objet tenu : Techno-Buster devient de type Électrik. Protégé contre le retrait quand Genesect le tient."
+  },
+  "burn_drive": {
+    "name": "Module Pyro",
+    "description": "Objet tenu : Techno-Buster devient de type Feu. Protégé contre le retrait quand Genesect le tient."
+  },
+  "chill_drive": {
+    "name": "Module Cryo",
+    "description": "Objet tenu : Techno-Buster devient de type Glace. Protégé contre le retrait quand Genesect le tient."
   }
 }

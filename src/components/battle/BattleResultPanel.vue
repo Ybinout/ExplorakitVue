@@ -138,7 +138,7 @@ export default {
     if (this.previousFocus?.isConnected) this.previousFocus.focus({ preventScroll: true });
   },
   methods: {
-    portrait(pokemon) { return `${process.env.BASE_URL}img/pokemon/front/${pokemon.pokemonId}.png`; },
+    portrait(pokemon) { return this.$pokemonSprite(pokemon); },
     formatNumber(value) { return Number(value).toLocaleString('fr-FR'); },
     continueAdventure() {
       if (this.continuing) return;

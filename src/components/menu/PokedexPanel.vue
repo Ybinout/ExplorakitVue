@@ -13,7 +13,7 @@
 
       <div class="dex-summary">
         <div class="dex-summary-copy"><span class="dex-ball" aria-hidden="true"></span><span>{{ tr('dexCollection') }}</span></div>
-        <div class="dex-totals"><strong>{{ pokedex.caught || 0 }}<span> / {{ pokedex.total || 493 }}</span></strong><span>{{ tr('caughtPlural') }}</span></div>
+        <div class="dex-totals"><strong>{{ pokedex.caught || 0 }}<span> / {{ pokedex.total || 649 }}</span></strong><span>{{ tr('caughtPlural') }}</span></div>
         <div class="dex-progress" role="progressbar" :aria-label="tr('dexCollection')" :aria-valuenow="caughtPercent" aria-valuemin="0" aria-valuemax="100"><span :style="{ width: caughtPercent + '%' }"></span></div>
       </div>
 
@@ -42,9 +42,9 @@
         <div v-if="loading" class="dex-empty" role="status"><span class="dex-ball" aria-hidden="true"></span><p>{{ tr('syncingServer') }}</p></div>
         <div v-else-if="filteredEntries.length" class="dex-grid">
           <article v-for="pokemon in filteredEntries" :key="pokemon.id" :class="['dex-entry', { 'is-unknown': !pokemon.seen, 'is-caught': pokemon.caught }]">
-            <div class="dex-entry-top"><span class="dex-number">#{{ String(pokemon.id).padStart(3, '0') }}</span><span v-if="pokemon.caught" class="dex-caught" :aria-label="tr('caught')" :title="tr('caught')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 8 3 3 5-6"/></svg></span><span v-else-if="pokemon.seen" class="dex-seen" :aria-label="tr('spotted')" :title="tr('spotted')"></span></div>
+            <div class="dex-entry-top"><span class="dex-number">#{{ String(pokemon.id).padStart(3, '0') }}</span><span v-if="pokemon.shinySeen" class="dex-shiny" :title="pokemon.shinyCaught ? 'Chromatique capturé' : 'Chromatique aperçu'">✦</span><span v-if="pokemon.caught" class="dex-caught" :aria-label="tr('caught')" :title="tr('caught')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 8 3 3 5-6"/></svg></span><span v-else-if="pokemon.seen" class="dex-seen" :aria-label="tr('spotted')" :title="tr('spotted')"></span></div>
             <div class="dex-sprite">
-              <img v-if="pokemon.seen" :src="`${$assetBase}img/pokemon/front/${pokemon.id}.png`" alt="" width="80" height="80" loading="lazy" decoding="async">
+              <img v-if="pokemon.seen" :src="$pokemonSprite({...pokemon,shiny:pokemon.shinyCaught})" alt="" width="80" height="80" loading="lazy" decoding="async">
               <span v-else class="dex-unregistered" aria-hidden="true"><span class="dex-ball"></span></span>
             </div>
             <h3 :title="pokemon.seen ? pokemon.name : tr('dexUndiscovered')">{{ pokemon.seen ? pokemon.name : '— — —' }}</h3>
@@ -58,7 +58,7 @@
           <button @click="resetFilters">{{ tr('dexReset') }}</button>
         </div>
       </div>
-      <footer class="dex-footer"><span role="status">{{ tr('dexResults', { count: loading ? '…' : filteredEntries.length }) }}</span><span>{{ tr('dexGenerations') }} <b>I — IV</b></span></footer>
+      <footer class="dex-footer"><span role="status">{{ tr('dexResults', { count: loading ? '…' : filteredEntries.length }) }}</span><span>{{ tr('dexGenerations') }} <b>I — V</b></span></footer>
     </section>
     <region-map-panel v-if="locatedPokemon" :pokemon="locatedPokemon" :entries="pokedex.entries" :current-map="currentMap" :current-region="currentRegion" :language="language" :animations-enabled="animationsEnabled" @close="locatedPokemon = null" />
   </div>
@@ -72,7 +72,8 @@ const regions = [
   { name: 'Kanto', first: 1, last: 151 },
   { name: 'Johto', first: 152, last: 251 },
   { name: 'Hoenn', first: 252, last: 386 },
-  { name: 'Sinnoh', first: 387, last: 493 }
+  { name: 'Sinnoh', first: 387, last: 493 },
+  { name: 'Unys', first: 494, last: 649 }
 ];
 const frenchTypes = { Normal: 'Normal', Fire: 'Feu', Water: 'Eau', Electric: 'Électrik', Grass: 'Plante', Ice: 'Glace', Fighting: 'Combat', Poison: 'Poison', Ground: 'Sol', Flying: 'Vol', Psychic: 'Psy', Bug: 'Insecte', Rock: 'Roche', Ghost: 'Spectre', Dragon: 'Dragon', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' };
 const normalizeSearch = (value) => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -88,10 +89,10 @@ export default {
   },
   data() { return { locatedPokemon: null, search: '', status: 'all', region: 'all', regions }; },
   computed: {
-    caughtPercent() { return Math.max(0, Math.min(100, Math.round((this.pokedex.caught || 0) / (this.pokedex.total || 493) * 100))); },
+    caughtPercent() { return Math.max(0, Math.min(100, Math.round((this.pokedex.caught || 0) / (this.pokedex.total || 649) * 100))); },
     filters() {
       return [
-        { key: 'all', label: 'all', count: this.pokedex.total || 493 },
+        { key: 'all', label: 'all', count: this.pokedex.total || 649 },
         { key: 'seen', label: 'seen', count: this.pokedex.seen || 0 },
         { key: 'caught', label: 'caughtPlural', count: this.pokedex.caught || 0 }
       ];
@@ -103,7 +104,7 @@ export default {
         if (area && (pokemon.id < area.first || pokemon.id > area.last)) return false;
         if (this.status === 'seen' && !pokemon.seen) return false;
         if (this.status === 'caught' && !pokemon.caught) return false;
-        return !query || String(pokemon.id).padStart(3, '0').includes(query) || (pokemon.seen && normalizeSearch(pokemon.name).includes(query));
+        return !query || String(pokemon.id).padStart(3, '0').includes(query) || (pokemon.seen && [pokemon.name,pokemon.englishName].some(name=>normalizeSearch(name || '').includes(query)));
       }).slice().sort((a, b) => a.id - b.id);
     }
   },
@@ -136,6 +137,7 @@ export default {
 </script>
 
 <style scoped>
+.dex-shiny{color:#b78214;font-size:15px;margin-left:auto;margin-right:6px}
 .dex-location{width:100%;min-height:44px;margin-top:7px;border:1px solid var(--journal-border);border-radius:6px;color:var(--journal-accent);background:var(--journal-card);font-size:11px!important;font-weight:600;padding:4px!important}
 
 .dex-backdrop {
