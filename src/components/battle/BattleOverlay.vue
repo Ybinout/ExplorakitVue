@@ -270,11 +270,11 @@
         </div>
 
         <div v-else-if="actionState.bagPanel" class="battle-grid battle-grid-bag">
-          <p v-if="capturePolicy" class="battle-capture-policy" :class="{'is-difficult':capturePolicy.excessLevels>0}" data-capture-policy role="status">{{ capturePolicyText }}</p>
+          <p v-if="capturePolicy && !tutorialEnabled" class="battle-capture-policy" :class="{'is-difficult':capturePolicy.excessLevels>0}" data-capture-policy role="status">{{ capturePolicyText }}</p>
           <div v-if="bagLoading" class="battle-empty-state">{{ tr('loadingBag') }}</div>
           <div v-else-if="battleBallItems.length === 0" class="battle-empty-state">{{ tr('noBall') }}</div>
           <button
-            v-for="item in battleBallItems"
+            v-for="item in bagLoading ? [] : battleBallItems"
             :key="item.key"
             type="button"
             :data-tutorial-ball="item.key==='pokeball'?'':null" class="battle-choice-btn battle-choice-btn-bag"
@@ -298,7 +298,7 @@
         <button class="battle-main-btn action-flee" :disabled="capturePolicy?.darkContinent || environment==='dark-jungle' || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
       </div>
     </div>
-    <tutorial-coach v-if="tutorialVisible" :step="tutorial.phase" :selector="tutorialSelector" :busy="tutorialBusy" :error="tutorialError" @next="$emit('tutorial-next')"/>
+    <tutorial-coach v-if="tutorialEnabled" :paused="!tutorialVisible" :blocked="presentationBusy || (['attack','capture'].includes(tutorialPhase) && !canChooseAction)" :target-loading="bagLoading" :step="tutorial.phase" :selector="tutorialSelector" :busy="tutorialBusy" :error="tutorialError" @next="$emit('tutorial-next')" @retry="openBag"/>
   </div>
 </template>
 
@@ -460,6 +460,8 @@ export default {
       replacementId: null,
       actionTurnId: null,
       presentationBusy: false,
+      tutorialReadyPhase:null,
+      tutorialSubmittedPhase:null,
       rewardNotice: false,
       entrancePhase: 'ready',
       entranceAssetsLoading: false,
@@ -527,7 +529,9 @@ export default {
     };
   },
   computed: {
-    tutorialVisible(){return this.tutorial?.enabled&&['hp','potential','types','actions','attack','capture_info','capture'].includes(this.tutorial.phase)&&!this.entranceActive&&!this.presentationBusy&&!this.finishing&&!!this.currentPokemon;},
+    tutorialPhase(){return this.tutorial?.phase||null;},
+    tutorialEnabled(){return this.tutorial?.enabled&&['hp','potential','types','actions','attack','capture_info','capture'].includes(this.tutorialPhase)&&!!this.currentPokemon;},
+    tutorialVisible(){return this.tutorialEnabled&&this.tutorialReadyPhase===this.tutorialPhase&&this.tutorialSubmittedPhase!==this.tutorialPhase&&!this.entranceActive&&!this.finishing&&!this.captureFx.visible;},
     tutorialSelector(){return ({hp:'[data-tutorial-player] .health-bar-container',potential:'[data-tutorial-player] .potential-star',types:'[data-tutorial-player] .battle-traits',actions:'[data-tutorial-actions]',attack:this.actionState.attackPanel?'[data-tutorial-moves]':'[data-tutorial-attack]',capture_info:'.battle-status-wild',capture:this.actionState.bagPanel?'[data-tutorial-ball]':'[data-tutorial-bag]'})[this.tutorial?.phase];},
     caughtSpeciesSet(){return new Set(this.caughtSpeciesIds.map(Number));},
     wildAlreadyCaught(){return this.isWildEncounter && !this.opponent?.isEgg && !this.opponent?.storyActor && this.caughtSpeciesSet.has(Number(this.opponent?.data?.id));},
@@ -647,6 +651,11 @@ export default {
     }
   },
   watch: {
+    tutorialPhase(){this.syncTutorialCoach();},
+    tutorialEnabled(){this.syncTutorialCoach();},
+    entranceActive(){this.syncTutorialCoach();},
+    presentationBusy(){this.syncTutorialCoach();},
+    canChooseAction(){this.syncTutorialCoach();},
     mapName(map) {
       if (this.musicPrelude && map !== this.battleMapName) this.stopMusic();
       if (map !== 'route4_maison') this.disposeTrainerSequence();
@@ -687,6 +696,7 @@ export default {
   },
   updated() { this.measureFeedback(); },
   beforeDestroy() {
+    clearTimeout(this._tutorialReadyTimer);
     this._feedbackObserver?.disconnect();
     this._presentation?.cancel();
     this.cancelExperience();
@@ -701,6 +711,17 @@ export default {
     this._battleAudio?.dispose();
   },
   methods: {
+    syncTutorialCoach(){
+      clearTimeout(this._tutorialReadyTimer);
+      const phase=this.tutorialPhase;
+      if(!this.tutorialEnabled){this.tutorialReadyPhase=null;this.tutorialSubmittedPhase=null;return;}
+      if(this.tutorialSubmittedPhase!==phase)this.tutorialSubmittedPhase=null;
+      // Once shown, an instruction survives incidental visual packets. A real
+      // submitted action hides it until the next instruction, without remounts.
+      if(this.tutorialReadyPhase===phase)return;
+      if(this.entranceActive||this.presentationBusy||this.finishing||this.captureFx.visible||(['attack','capture'].includes(phase)&&!this.canChooseAction))return;
+      this._tutorialReadyTimer=setTimeout(()=>{if(this.tutorialPhase===phase)this.tutorialReadyPhase=phase;},180);
+    },
     isVisuallyShiny(pokemon) { return this.$pokemonSprite(pokemon).includes('/shiny/'); },
     preloadTrainerSequence() {
       if (this.mapName !== 'route4_maison') return null;
@@ -1022,6 +1043,7 @@ export default {
       if (!this.canChooseAction) return;
       if (this.replacementChoice && (payload.action !== 'change' || this.isSwitchUnavailable(this.battleTeam[payload.number],payload.number))) return;
       this.unlockAudio();
+      if(this.tutorialEnabled&&['attack','capture'].includes(this.tutorialPhase))this.tutorialSubmittedPhase=this.tutorialPhase;
       this.canAct = false;
       this.$emit('action', { ...payload, ...(this.houseControl ? {controlRevision:this.houseControl.revision} : {}), ...(this.replacementId ? { replacementId:this.replacementId } : {}), ...(this.actionTurnId ? { turnId:this.actionTurnId } : {}) });
       this.replacementChoice = false;
@@ -1029,6 +1051,7 @@ export default {
     },
     requestAction(request) {
       const data = typeof request === 'string' ? { message:request } : request || {};
+      if(this.tutorialSubmittedPhase===this.tutorialPhase)this.tutorialSubmittedPhase=null;
       this.replacementChoice = Boolean(data.replacement);
       this.replacementIndexes = Array.isArray(data.allowedPokemonIndexes) ? data.allowedPokemonIndexes : null;
       this.replacementId = data.replacementId || null;
@@ -1619,6 +1642,7 @@ export default {
     },
     setEncounterEnvironment(environment) { this.encounterEnvironment=['lake','whitepeak-club'].includes(environment)?environment:null; },
     resetBattleUi() {
+      clearTimeout(this._tutorialReadyTimer);this.tutorialReadyPhase=null;this.tutorialSubmittedPhase=null;
       this._pendingBattleField=null;
       this.encounterEnvironment=null;
       this._presentation?.cancel();
