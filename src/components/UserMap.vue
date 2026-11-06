@@ -32,6 +32,7 @@
       </doubles-battle>
       <battle-overlay v-show="!doublesFrame"
         ref="battleOverlay"
+        :tutorial="isDrift?null:earlyTutorial" :tutorial-busy="earlyTutorialBusy" :tutorial-error="earlyTutorialError" @tutorial-next="advanceEarlyTutorial"
         :social-chat-open="battleChatOpen" @social-close="battleChatOpen=false" :active="battle && !doublesFrame" :external-music-active="!!doublesFrame && battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
         :bag-items="bagItems" :tournament="!!superTournament.active" @tournament-abandon="openTournamentAbandon"
         :bag-loading="bagLoading"
@@ -413,6 +414,8 @@
       </div>
     </div>
 
+    <p v-if="earlyTutorial.grassHint&&map==='start'&&!battle&&!battleResult&&!textImageSequence.length" class="early-grass-message" data-early-grass-guide role="status">Promène-toi dans les hautes herbes jusqu’à rencontrer un Pokémon sauvage !</p>
+    <tutorial-coach v-if="!isDrift&&earlyTutorial.phase==='care'&&!battle&&!battleResult&&!pendingBattleResult&&!mapLoading&&socket?.connected" step="care" :busy="earlyTutorialBusy" :error="earlyTutorialError" @next="advanceEarlyTutorial"/>
     <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" :busy="evolutionBusy" :error="evolutionError" @resolve="resolveEvolutionPresentation" @continue="evolutionError='';evolutionQueue.shift()" />
     <div v-if="teamDrag" class="team-drag-ghost" :style="{left:teamDrag.x+'px',top:teamDrag.y+'px'}" aria-hidden="true"><pokemon-portrait :src="getPokemonFrontSprite(teamPokemons.find(p=>p.uuid===teamDrag.uuid))"/><span>{{ teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.name }}</span></div>
     <div v-if="heldItemDrag && heldDragPokemon" class="team-held-ghost" :style="{left:heldItemDrag.x+'px',top:heldItemDrag.y+'px'}" aria-hidden="true"><bag-item-icon :item-key="heldDragPokemon.heldItem" :pocket="heldDragPokemon.heldItem?.endsWith('_berry')?'berries':'held'"/><strong>{{ heldItemName(heldDragPokemon.heldItem) }}</strong><span v-if="heldDragTarget">{{ heldDragTarget.heldItem?'Échanger avec':'Donner à' }} {{ heldDragTarget.name }}</span></div>
@@ -541,7 +544,9 @@ import ShopPanel from './shop/ShopPanel.vue';
 import TextWithImage from './TextWithImage.vue';
 import SafariTravelPanel from './menu/SafariTravelPanel.vue';
 import { loadGamePreferences, saveGamePreferences } from '@/services/gamePreferences';
-import { trainerPaletteKey, normalizeTrainerPalette, themedTrainerSheet, trainerPalettePreview } from '@/services/trainerPalette';
+import TutorialCoach from './tutorial/TutorialCoach.vue';
+import {drawEarlyGrassGuide} from '@/services/earlyGrassGuide';
+import { trainerPaletteKey, normalizeTrainerPalette, themedTrainerSheet, trainerPalettePreview, supportsTrainerPalette } from '@/services/trainerPalette';
 import { GAMEPAD_EVENT } from '@/services/gamepad';
 import { attachGameFullscreen } from '@/services/gameFullscreen';
 import { localizeAbilityName, translate } from '@/services/i18n';
@@ -554,7 +559,7 @@ import { WorldMusic } from '@/services/worldMusic';
 export default {
   props: { patchNoticeOpen: Boolean },
   mixins:[socialGame,tradeGame],
-  components: { SafariTravelPanel,
+  components: { TutorialCoach, SafariTravelPanel,
     SuperTournamentPanel, TournamentRewardPanel, AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
@@ -715,6 +720,7 @@ export default {
 
       spriteSheet: null,
       spriteSheets: {},
+      earlyTutorial:{enabled:false,phase:'complete'},earlyTutorialLoaded:false,earlyTutorialBusy:false,earlyTutorialError:'',
       trainerPaletteRevision: 0,
       availableSprites: [],
       selectedSprite: 'sprite.png',
@@ -842,11 +848,12 @@ export default {
     mirrorWakeReady(){return this.mirrorRift?.stage==='won'&&!this.battle&&!this.battleResult&&!this.pendingBattleResult&&!this.mapLoading&&this.mirrorScene?.phase!=='closing';},
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     worldChatAvailable(){return Boolean(!this.isDrift && this.socket?.connected && !this.worldInteractionBlocked && !this.mapLoading && !this.mapLoadError && !this.worldContextLost && this.renderedMap===this.map && this.players[this.socket.id]?.currentmap===this.map);},
-    movementSuspended(){return !!this.safariOffer || !!this.corruptedHeldWorkshop || !!this.corruptionWorkshop || !!this.corruptionInstall || !!this.darkPanel || this.worldChatOpen || this.worldInteractionBlocked;},
+    movementSuspended(){return (!this.isDrift&&this.earlyTutorial.phase==='care'&&!this.battle&&!this.battleResult) || !!this.safariOffer || !!this.corruptedHeldWorkshop || !!this.corruptionWorkshop || !!this.corruptionInstall || !!this.darkPanel || this.worldChatOpen || this.worldInteractionBlocked;},
     patchNoticeReady() {
       return Boolean(this.socket?.connected && this.players[this.socket.id] && !this.mapLoading && !this.mapLoadError
         && this.renderedMap === this.map && !this.worldContextLost && !this.otherInteractionBlocked
-        && !this.pendingBattleResult && !this.worldChatOpen && !this.fishing);
+        && !this.pendingBattleResult && !this.worldChatOpen && !this.fishing
+        && (this.isDrift || (this.earlyTutorialLoaded && (!this.earlyTutorial.enabled || this.earlyTutorial.phase==='complete'))));
     },
     worldInteractionBlocked() { return this.patchNoticeOpen || this.otherInteractionBlocked; },
     otherInteractionBlocked() {
@@ -1773,12 +1780,12 @@ export default {
       }
 
       const image=this.spriteSheets[resolvedSprite] || this.spriteSheet;
-      return normalizedSprite==='sprite.png'?themedTrainerSheet(image,player?.spritePalette):image;
+      return supportsTrainerPalette(normalizedSprite)?themedTrainerSheet(image,player?.spritePalette,normalizedSprite):image;
     },
     appearancePreview(option) {
       void this.trainerPaletteRevision;
-      if(option.key!=='sprite.png')return option.src;
-      return trainerPalettePreview(this.ensureSpriteSheet('sprite.png'),this.players[this.socket?.id]?.spritePalette);
+      if(!supportsTrainerPalette(option.key))return option.src;
+      return trainerPalettePreview(this.ensureSpriteSheet(option.key),this.players[this.socket?.id]?.spritePalette,option.key);
     },
     syncTrainerPalette() {
       this._trainerPaletteWanted=trainerPaletteKey(this.preferences);this.flushTrainerPalette();
@@ -2345,6 +2352,7 @@ export default {
       this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.isMenuOpen=false;this.selectedPokemonUuid=null;
       this.tournamentError='';this.tournamentPanel={tab:'abandon',canPause:!this.battle};
     },
+    async advanceEarlyTutorial(){if(this.earlyTutorialBusy||!this.socket?.connected)return;this.earlyTutorialBusy=true;this.earlyTutorialError='';try{const r=await new Promise((resolve,reject)=>this.socket.timeout(10000).emit('earlyTutorial:advance',{phase:this.earlyTutorial.phase,encounter:this.earlyTutorial.encounter},(error,result)=>error?reject(Error('Connexion interrompue. Ton étape reste sauvegardée.')):resolve(result)));if(!r?.success)throw Error(r?.message||'Réessaie dans un instant.');if(r.state)this.earlyTutorial=r.state;}catch(e){this.earlyTutorialError=e.message;}finally{this.earlyTutorialBusy=false;}},
     closeTournamentPanel(){
       if(this.tournamentBusy)return;const wasAbandon=this.tournamentPanel?.tab==='abandon';this.tournamentPanel=null;
       if(wasAbandon)this.$nextTick(()=>this.$refs.tournamentExit?.focus({preventScroll:true}));
@@ -3011,6 +3019,7 @@ export default {
         if (!this._worldNight) this._worldNight = new WorldNightRenderer();
         this._worldNight.drawGround(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.mapImage);
       } else this._worldNight?.suspend();
+      if(!this.battle&&!this.battleResult)drawEarlyGrassGuide(c,this.earlyTutorial,this.map,now,mirrorMotion);
       drawVoidTeleporter(c, this.map, this.voidEnding, now, mirrorMotion);
       drawVoidJournals(c, this.map, this.voidEnding);
       if(this.map!=='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
@@ -3662,6 +3671,7 @@ export default {
     });
     this.socket.on('whitepeak:roster',payload=>{this.clubRosters=payload;});
     this.socket.on('whitepeak:trainers',payload=>{this.clubTrainers=payload.trainers||[];});
+    this.socket.on('earlyTutorialState',state=>{this.earlyTutorial=state;this.earlyTutorialLoaded=true;this.earlyTutorialError='';});
     this.socket.on('whitepeak:doubleFrame',frame=>{if(this.doublesFrame?.id===frame.id&&this.doublesFrame.revision>=frame.revision)return;const first=this.doublesFrame?.id!==frame.id;this.doublesFrame=frame;this.clubPanel=null;this.battle=true;this.releaseAllMovementKeys();if(first){this.closeLegacyPanels();this.syncWorldMusic();this.$nextTick(()=>this.$refs.battleOverlay?.startMusic('pvp'));}});
     this.socket.on('whitepeak:control',payload=>{this.clubControl=payload;});
     this.socket.on('whitepeak:wallet',data=>{if(Number.isSafeInteger(data.balance)&&data.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',data.balance);}});
@@ -5013,4 +5023,8 @@ button:hover {
 .reduced-game-motion .contract-reward-dot{animation:none}
 @media(prefers-reduced-motion:reduce){.contract-reward-dot{animation:none}}
 .club-room-access{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:1100;min-height:44px;padding:9px 16px;border:1px solid var(--journal-border);border-radius:10px;background:var(--journal-card);color:var(--journal-heading);box-shadow:0 3px 12px #06172822;font:600 12px var(--journal-font);cursor:pointer}.is-mobile .club-room-access{bottom:calc(var(--mobile-controls-height,150px) + 8px);max-width:calc(100% - 24px)}
+</style>
+
+<style scoped>
+.early-grass-message{position:fixed;left:50%;top:max(100px,17dvh);translate:-50% 0;z-index:80;box-sizing:border-box;width:min(470px,calc(100% - 24px));padding:11px 15px;border:1px solid var(--journal-border);border-left:3px solid #86a65c;border-radius:8px;background:var(--journal-paper);color:var(--journal-ink);box-shadow:0 4px 15px #112b3a22;text-align:center;font:12px/1.5 var(--journal-font);pointer-events:none}
 </style>

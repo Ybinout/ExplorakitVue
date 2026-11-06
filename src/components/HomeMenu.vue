@@ -2,13 +2,13 @@
   <main class="mode-home" data-mode-menu>
     <nav class="home-nav" aria-label="Compte"><router-link class="brand" to="/">✧ <span>RIFTMON</span></router-link><div v-if="session"><router-link class="profile-nav-link" :to="`/profil/${session.id}`">Mon profil</router-link><button @click="logout">Déconnexion</button></div><router-link v-else to="/connexion">Se connecter</router-link></nav>
     <section class="mode-grid" aria-label="Choisir un mode de jeu">
-      <component :is="mode.available ? 'router-link' : 'article'" v-for="mode in modes" :key="mode.key" :to="mode.available ? mode.path : null" :aria-disabled="mode.available ? null : 'true'" :data-mode="mode.key" class="mode-card" :class="[mode.key, { 'is-unavailable': !mode.available }]">
+      <component :is="mode.available ? 'router-link' : 'article'" v-for="mode in visibleModes" :key="mode.key" :to="mode.available ? mode.path : null" :aria-disabled="mode.available ? null : 'true'" :data-mode="mode.key" class="mode-card" :class="[mode.key, { 'is-unavailable': !mode.available }]">
         <div class="mode-art" aria-hidden="true"><span class="art-ring"></span><drift-glyph :name="mode.icon" /><img :src="$pokemonSprite(mode.pokemon)" alt="" /></div>
         <div class="mode-copy"><span class="mode-label">{{ mode.label }}</span><h2>{{ mode.title }}</h2><p>{{ mode.description }}</p><div class="mode-tags"><span v-for="tag in mode.tags" :key="tag">{{ tag }}</span></div><span class="mode-cta"><template v-if="mode.available">{{ mode.cta }} <span aria-hidden="true">↗</span></template><span v-else class="mode-soon" aria-label="Bientôt disponible">Soon</span></span></div>
       </component>
     </section>
-    <p class="save-note"><drift-glyph name="team" /> Ton aventure et tes expéditions ont chacune leur équipe.</p>
-    <router-link class="community-entry ranked-home-entry" to="/classements" data-home-rankings><drift-glyph name="trophy"/><span><strong>Classements Rift &amp; Colosseum</strong><small>Ton rang, tes points de ligue et les meilleurs dresseurs</small></span><b>→</b></router-link>
+
+    <router-link v-if="showExpeditions" class="community-entry ranked-home-entry" to="/classements" data-home-rankings><drift-glyph name="trophy"/><span><strong>Classements Rift &amp; Colosseum</strong><small>Ton rang, tes points de ligue et les meilleurs dresseurs</small></span><b>→</b></router-link>
     <router-link class="community-entry" to="/dresseurs?onglet=amis"><drift-glyph name="players"/><span><strong>Le carnet des dresseurs</strong><small>Amis, profils et rangs Bronze → Diamant</small></span><b>→</b></router-link>
     <pwa-install />
     <footer><span>RIFTMON</span><span v-if="!session">Nouveau ici ? <router-link to="/inscription">Créer mon dresseur</router-link></span><span v-else>À toi d’écrire la suite.</span></footer>
@@ -22,10 +22,11 @@ import { isModeAvailable } from '@/services/gameModes';
 export default {
   name: 'HomeMenu', components: { DriftGlyph, PwaInstall },
   data() { return { session: getSession(), modes: [
-    { key:'adventure', path:'/game', label:'À TON RYTHME', title:'L’Aventure', description:'Explore le monde, collectionne les badges et fais grandir ton équipe. Le multijoueur reste facultatif.', tags:['Sauvegarde permanente','Sans chrono'], cta:'Jouer une aventure solo', pokemon:133, icon:'compass' },
+    { key:'adventure', path:'/game', label:'À TON RYTHME', title:'L’Aventure', description:'Explore le monde, collectionne les badges et fais grandir ton équipe. Le multijoueur reste facultatif.', tags:['Sauvegarde permanente','Sans chrono'], cta:'Continuer l’aventure', pokemon:133, icon:'compass' },
     { key:'rift', path:'/drift', label:'ENTRE AMIS', title:'Rift multijoueur', description:'Compose ton équipe avant le tournoi final. Survis à tes rivaux et invente ta combinaison de Drifts.', tags:['2 à 16 joueurs','K.O. définitifs'], cta:'Rejoindre un Rift', pokemon:25, icon:'players' },
     { key:'colosseum', path:'/colosseum', label:'LE DÉFI SOLO', title:'Rift Colosseum', description:'30 minutes ou 1 heure pour bâtir ton équipe, puis des dresseurs toujours plus forts. Jusqu’où iras-tu ?', tags:['30 min ou 1 h','Classement'], cta:'Entrer au Colosseum', pokemon:448, icon:'trophy' }
   ].map(mode => ({ ...mode, available: isModeAvailable(mode.key) })) }; },
+  computed:{showExpeditions(){return false;},visibleModes(){return this.modes.filter(mode=>mode.key==='adventure'||this.showExpeditions);}},
   created() { window.addEventListener('storage', this.sync); },
   beforeDestroy() { window.removeEventListener('storage', this.sync); },
   methods: { sync() { this.session=getSession(); }, logout() { clearSession();this.sync(); } }
@@ -49,4 +50,9 @@ export default {
 .is-unavailable .mode-tags span{background:#e4e8e3}
 .is-unavailable .mode-cta{border-color:#d6dcd6}
 .mode-cta>.mode-soon{font-size:11px;letter-spacing:.09em;line-height:1.2;text-transform:uppercase;padding:7px 12px;border:1px solid #c7cfc7;border-radius:6px;background:#e0e5df;color:#526056}
+</style>
+
+<style scoped>
+.mode-grid{grid-template-columns:minmax(0,1fr);margin-bottom:26px}.mode-card.adventure{display:grid;grid-template-columns:minmax(180px,35%) 1fr}.adventure .mode-art{height:auto;min-height:260px;border-bottom:0;border-right:1px solid #d3ddd2}.adventure .mode-art img{width:200px;height:200px;right:15%;bottom:25px}.adventure .mode-art>svg{top:30px}.adventure .mode-copy{padding:34px}.adventure .mode-copy h2{font-size:40px}.adventure .mode-copy>p{max-width:480px}
+@media(max-width:640px){.mode-card.adventure{grid-template-columns:94px minmax(0,1fr)}.adventure .mode-art{min-height:240px}.adventure .mode-art img{width:108px;height:108px;right:-9px;bottom:auto}.adventure .mode-copy{padding:22px 15px}.adventure .mode-copy h2{font-size:29px}}
 </style>

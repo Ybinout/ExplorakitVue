@@ -68,10 +68,10 @@
             <img :src="starter.image" :alt="starter.name" />
             <strong>{{ starter.name }}</strong>
             <span class="type-pill">{{ starter.type }}</span>
-            <small>{{ starter.description }}</small>
+            <span class="starter-difficulty" :class="'difficulty-'+starter.difficultyKey"><i aria-hidden="true"/>{{ starter.difficulty }}</span><small>{{ starter.description }}</small>
           </button>
         </div>
-        <p class="fair-start">Ton premier compagnon possède un potentiel <b>k=2</b>. Les potentiels supérieurs existent, mais sont rares dans la nature.</p>
+        <p class="fair-start">Chaque compagnon possède son propre potentiel et ses propres statistiques. Apprends à connaître le tien au fil de l’aventure.</p>
         <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
         <div class="navigation-actions">
           <button class="secondary-button" type="button" @click="step -= 1">Retour</button>
@@ -108,15 +108,15 @@ export default {
       submitting: false,
       errorMessage: '',
       passwordConfirmation: '',
-      form: { username: '', password: '', sprite: 'sprite.png', starterId: 1 },
+      form: { username: '', password: '', sprite: 'sprite.png', starterId: 7 },
       avatars: [
         { file: 'sprite.png', image: avatarOne, name: 'Éclaireur', description: 'Tenue vive pour les longues routes.' },
-        { file: 'sprite2.png', image: avatarTwo, name: 'Veilleur', description: 'Style nocturne et déterminé.' }
+        { file: 'sprite2.png', image: avatarTwo, name: 'Éclaireuse', description: 'Prête à explorer de nouveaux horizons.' }
       ],
       starters: [
-        { id: 1, name: 'Bulbizarre', type: 'Plante', image: this.$pokemonSprite(1), description: 'Patient et résistant. Idéal pour contrôler le combat.' },
-        { id: 4, name: 'Salamèche', type: 'Feu', image: this.$pokemonSprite(4), description: 'Offensif et audacieux. Sa puissance grandit vite.' },
-        { id: 7, name: 'Carapuce', type: 'Eau', image: this.$pokemonSprite(7), description: 'Solide et équilibré. Un compagnon très fiable.' }
+        { id: 7, name: 'Carapuce', type: 'Eau', image: this.$pokemonSprite(7), difficulty:'Début facile',difficultyKey:'easy', description: 'Solide et équilibré. Un compagnon très fiable.' },
+        { id: 1, name: 'Bulbizarre', type: 'Plante', image: this.$pokemonSprite(1), difficulty:'Début mitigé',difficultyKey:'medium', description: 'Patient et résistant. Idéal pour contrôler le combat.' },
+        { id: 4, name: 'Salamèche', type: 'Feu', image: this.$pokemonSprite(4), difficulty:'Début compliqué',difficultyKey:'hard', description: 'Offensif et audacieux. Sa puissance grandit vite.' }
       ]
     };
   },
@@ -221,4 +221,8 @@ button:focus-visible { outline: 3px solid #8b65aa; outline-offset: 3px; }
 .launch-button { margin-top: 16px; padding-inline: 34px; }
 @media (max-width: 760px) { .onboarding-card { padding: 26px 16px; min-height: 0; } .starter-grid { grid-template-columns: 1fr; } .starter-card { min-height: 0; display: grid; grid-template-columns: 100px 1fr; text-align: left; } .starter-card img { grid-row: span 3; width: 100px; } .starter-number { display: none; } .avatar-grid { grid-template-columns: 1fr 1fr; } .navigation-actions { flex-direction: column-reverse; } }
 @media (max-width: 480px) { .avatar-grid { grid-template-columns: 1fr; } .back-home { position: absolute; } }
+</style>
+
+<style scoped>
+.starter-difficulty{display:inline-flex;align-items:center;justify-content:center;gap:6px;margin:9px 0 4px;padding:5px 9px;border-radius:6px;background:#e8f3ee;color:#32654e;font-size:11px;font-weight:700;line-height:1.3}.starter-difficulty i{width:5px;height:5px;border-radius:50%;background:currentColor}.difficulty-medium{color:#816528;background:#f6efdc}.difficulty-hard{color:#935747;background:#f7e7e1}
 </style>

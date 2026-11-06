@@ -77,7 +77,7 @@ import { getSession } from '@/services/session';
 import RankProgress from './RankProgress.vue';
 import RankBadge from './RankBadge.vue';
 import FriendActions from './FriendActions.vue';
-import { loadBaseTrainerSheet, trainerPalettePreview } from '@/services/trainerPalette';
+import { loadBaseTrainerSheet, trainerPalettePreview, supportsTrainerPalette } from '@/services/trainerPalette';
 const sprites = require.context('@/assets', false, /^\.\/sprite\d*\.png$/);
 export default {
   name:'TrainerCommunity',components:{ColosseumDefeat,RankBadge,RankProgress,FriendActions},
@@ -90,9 +90,9 @@ export default {
     spriteImage(name,palette){
       void this.paletteReadyRevision;
       const key='./'+name,src=sprites.keys().includes(key)?sprites(key):sprites('./sprite.png');
-      if(name!=='sprite.png'||!palette)return src;
-      if(this._paletteBaseImage)return trainerPalettePreview(this._paletteBaseImage,palette);
-      if(!this._paletteLoading){this._paletteLoading=true;loadBaseTrainerSheet(src).then(image=>{if(this._isDestroyed)return;this._paletteBaseImage=image;this.paletteReadyRevision++;}).catch(()=>{this._paletteLoading=false;});}
+      if(!supportsTrainerPalette(name)||!palette&&name!=='sprite2.png')return src;
+      this._paletteImages ||= new Map();this._paletteLoads ||= new Set();if(this._paletteImages.has(src))return trainerPalettePreview(this._paletteImages.get(src),palette,name);
+      if(!this._paletteLoads.has(src)){this._paletteLoads.add(src);loadBaseTrainerSheet(src).then(image=>{if(this._isDestroyed)return;this._paletteImages.set(src,image);this.paletteReadyRevision++;}).catch(()=>{this._paletteLoads.delete(src);});}
       return src;
     },
     selectRanking(mode){if(this.rankingMode===mode)return;this.$router.push({path:'/classements',query:{mode}});},

@@ -14,31 +14,45 @@ export function normalizeTrainerPalette(value) { return Object.hasOwn(PALETTES,v
 export function trainerPaletteKey(preferences) { return normalizeTrainerPalette(`${preferences?.themeColor}-${preferences?.themeMode}`)||'blue-light'; }
 const packed=rgb=>(rgb[0]<<16)|(rgb[1]<<8)|rgb[2];
 const positions=new Map(SOURCE.map((rgb,i)=>[packed(rgb),i]));
-export function recolorTrainerPixels(input,palette) {
+const femalePositions=new Map([[[176,176,200],0],[[96,96,128],1],[[152,96,144],3],[[104,64,88],4],[[224,128,184],0]].map(([rgb,index])=>[packed(rgb),index]));
+export function supportsTrainerPalette(sprite){return ['sprite.png','sprite2.png'].includes(sprite);}
+// Align the authored female poses once. The tiny disconnected black island is
+// atlas debris; retain the complete main silhouette, skin, eyes and outlines.
+export function normalizeFemalePixels(input,width=256,height=256){
+ if(width!==256||height!==256)return new Uint8ClampedArray(input);
+ const output=new Uint8ClampedArray(input.length);
+ for(let row=0;row<4;row++)for(let col=0;col<4;col++){
+  const visited=new Set(),groups=[];
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++){const k=y*64+x;if(visited.has(k)||!input[((row*64+y)*width+col*64+x)*4+3])continue;const queue=[k];visited.add(k);
+   for(const q of queue){const a=q%64,b=Math.floor(q/64);for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=a+dx,ny=b+dy,n=ny*64+nx;if(nx<0||nx>=64||ny<0||ny>=64||visited.has(n)||!input[((row*64+ny)*width+col*64+nx)*4+3])continue;visited.add(n);queue.push(n);}}groups.push(queue);}
+  const body=groups.sort((a,b)=>b.length-a.length)[0]||[],xs=body.map(k=>k%64),ys=body.map(k=>Math.floor(k/64));const dx=Math.round(31-(Math.min(...xs)+Math.max(...xs))/2),dy=60-Math.max(...ys);
+  for(const q of body){const x=q%64,y=Math.floor(q/64),a=((row*64+y)*width+col*64+x)*4,b=((row*64+y+dy)*width+col*64+x+dx)*4;if(x+dx>=0&&x+dx<64&&y+dy>=0&&y+dy<64)output.set(input.subarray(a,a+4),b);}
+ }
+ for(let row=0;row<4;row++)for(let y=0;y<64;y++)for(let x=0;x<64;x++){const src=((row*64+y)*width+x)*4,to=((row*64+y)*width+128+x)*4;output.set(output.subarray(src,src+4),to);}
+ // The fourth north pose duplicates idle in the supplied sheet. Alternate the
+ // legs of its existing walking pose; keep the head, hair and bag unchanged.
+ for(let y=0;y<64;y++)for(let x=0;x<64;x++){const sx=y>=49?62-x:x,src=((192+y)*width+64+sx)*4,to=((192+y)*width+192+x)*4;if(sx>=0&&sx<64)output.set(output.subarray(src,src+4),to);}
+ return output;
+}
+export function recolorTrainerPixels(input,palette,sprite='sprite.png') {
   const output=new Uint8ClampedArray(input),colors=PALETTES[normalizeTrainerPalette(palette)];if(!colors)return output;
-  for(let i=0;i<output.length;i+=4){if(!output[i+3])continue;const index=positions.get((output[i]<<16)|(output[i+1]<<8)|output[i+2]);if(index===undefined)continue;output.set(colors[index],i);}
+  for(let i=0;i<output.length;i+=4){if(!output[i+3])continue;const index=(sprite==='sprite2.png'?femalePositions:positions).get((output[i]<<16)|(output[i+1]<<8)|output[i+2]);if(index===undefined)continue;output.set(colors[index],i);}
   return output;
 }
-let sourceUrl=null,sourceImage=null,loading=null,loadingUrl=null;
-const variants=new Map();
-export function themedTrainerSheet(image,palette) {
-  const key=normalizeTrainerPalette(palette);if(!key||!image?.complete||!image.naturalWidth)return image;
-  if(sourceUrl!==image.src){variants.clear();sourceUrl=image.src;}
-  if(variants.has(key))return variants.get(key);
-  const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
-  const context=canvas.getContext('2d');context.imageSmoothingEnabled=false;context.drawImage(image,0,0);
-  const data=context.getImageData(0,0,canvas.width,canvas.height);data.data.set(recolorTrainerPixels(data.data,key));context.putImageData(data,0,0);
-  // Same sheet interface as an already decoded Image for the existing renderer.
-  canvas.complete=true;canvas.naturalWidth=canvas.width;canvas.naturalHeight=canvas.height;
-  variants.set(key,canvas);return canvas;
+const variants=new WeakMap(),loads=new Map();
+export function themedTrainerSheet(image,palette,sprite='sprite.png') {
+ if(!supportsTrainerPalette(sprite)||!image?.complete||!image.naturalWidth)return image;
+ const key=normalizeTrainerPalette(palette);if(!key&&sprite!=='sprite2.png')return image;
+ let cache=variants.get(image);if(!cache){cache=new Map();variants.set(image,cache);}const variant=sprite+':'+(key||'original');if(cache.has(variant))return cache.get(variant);
+ const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+ const context=canvas.getContext('2d');context.imageSmoothingEnabled=false;context.drawImage(image,0,0);
+ const data=context.getImageData(0,0,canvas.width,canvas.height);const pixels=sprite==='sprite2.png'?normalizeFemalePixels(data.data,canvas.width,canvas.height):data.data;data.data.set(recolorTrainerPixels(pixels,key,sprite));context.putImageData(data,0,0);
+ canvas.complete=true;canvas.naturalWidth=canvas.width;canvas.naturalHeight=canvas.height;cache.set(variant,canvas);return canvas;
 }
 export function loadBaseTrainerSheet(url) {
-  if(loadingUrl===url&&loading)return loading;
-  loadingUrl=url;
-  sourceImage=new Image();sourceImage.src=url;const image=sourceImage;
-  loading=image.decode().then(()=>image);return loading;
+ if(!loads.has(url)){const image=new Image();image.src=url;loads.set(url,image.decode().then(()=>image).catch(e=>{loads.delete(url);throw e;}));}return loads.get(url);
 }
-export function trainerPalettePreview(image,palette) {
-  const sheet=themedTrainerSheet(image,palette);if(!sheet?.getContext)return image?.src||'';
-  sheet.previewUrl ||= sheet.toDataURL('image/png');return sheet.previewUrl;
+export function trainerPalettePreview(image,palette,sprite='sprite.png') {
+ const sheet=themedTrainerSheet(image,palette,sprite);if(!sheet?.getContext)return image?.src||'';
+ sheet.previewUrl ||= sheet.toDataURL('image/png');return sheet.previewUrl;
 }

@@ -125,7 +125,7 @@
       </div>
 
       <div
-        v-if="currentPokemon" ref="playerStatusCard"
+        v-if="currentPokemon" data-tutorial-player ref="playerStatusCard"
         :class="['battle-status', 'battle-status-player', { 'battle-status-corrupted':!!currentPokemon.corruption?.permanent,'battle-status-hit': attackFx.player.hit }]"
       >
         <div class="battle-status-top">
@@ -184,7 +184,7 @@
       </div>
     </div>
 
-    <div class="bar battle-action-shell" :inert="entranceActive ? '' : null" :aria-hidden="entranceActive ? 'true' : null" :class="{ 'has-battle-notices': hasAnnouncements, 'has-house-control': houseControl?.cooperative, 'has-social-controls':!!$slots['social-toggle'] }">
+    <div data-tutorial-actions class="bar battle-action-shell" :inert="entranceActive ? '' : null" :aria-hidden="entranceActive ? 'true' : null" :class="{ 'has-battle-notices': hasAnnouncements, 'has-house-control': houseControl?.cooperative, 'has-social-controls':!!$slots['social-toggle'] }">
       <div v-if="$slots['social-toggle']" class="battle-social-control"><slot name="social-toggle"/></div>
       <div :class="['battle-turn-indicator', { 'is-ready': canChooseAction }]">
         <span class="battle-turn-dot" aria-hidden="true"></span>
@@ -236,7 +236,7 @@
           {{ actionState.text }}
         </div>
 
-        <div v-else-if="actionState.attackPanel" class="battle-grid battle-grid-attacks">
+        <div v-else-if="actionState.attackPanel" data-tutorial-moves class="battle-grid battle-grid-attacks">
           <button
             v-for="index in 4"
             :key="index"
@@ -277,7 +277,7 @@
             v-for="item in battleBallItems"
             :key="item.key"
             type="button"
-            class="battle-choice-btn battle-choice-btn-bag"
+            :data-tutorial-ball="item.key==='pokeball'?'':null" class="battle-choice-btn battle-choice-btn-bag"
             :disabled="!canChooseAction"
             @click="submitAction({ action: 'bag', itemKey: item.key }, tr('throwBall'))"
           >
@@ -291,18 +291,20 @@
       </div>
 
       <div v-if="!readOnly" class="battle-main-actions">
-        <button class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
+        <button data-tutorial-attack class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
         <button v-if="houseControl?.cooperative" class="battle-main-btn action-bag house-pass-button" data-house-pass :disabled="houseControl.busy || !houseControl.canPass || !canChooseAction" @click="$emit('house-pass')">Passer la main</button>
-        <button v-else-if="!opponent?.storyActor" class="battle-main-btn action-bag" :disabled="tournament || environment==='whitepeak-club' || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
+        <button v-else-if="!opponent?.storyActor" data-tutorial-bag class="battle-main-btn action-bag" :disabled="tournament || environment==='whitepeak-club' || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
         <button class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
         <button class="battle-main-btn action-flee" :disabled="capturePolicy?.darkContinent || environment==='dark-jungle' || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
       </div>
     </div>
+    <tutorial-coach v-if="tutorialVisible" :step="tutorial.phase" :selector="tutorialSelector" :busy="tutorialBusy" :error="tutorialError" @next="$emit('tutorial-next')"/>
   </div>
 </template>
 
 <script>
 import BattleEntrance from './BattleEntrance.vue';
+import TutorialCoach from '../tutorial/TutorialCoach.vue';
 import BattleSendOut from './BattleSendOut.vue';
 import { waitForBattleAssets, entranceDelay } from '@/services/battleEntrance';
 import { pokemonSpriteMetrics } from '@/services/pokemonSprites';
@@ -419,8 +421,11 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: { BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
+  components: { TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
+    tutorial:{type:Object,default:null},
+    tutorialBusy:Boolean,
+    tutorialError:String,
     socialChatOpen:Boolean,
     houseControl:{type:Object,default:null},
     readOnly:{type:Boolean,default:false},
@@ -522,6 +527,8 @@ export default {
     };
   },
   computed: {
+    tutorialVisible(){return this.tutorial?.enabled&&['hp','potential','types','actions','attack','capture_info','capture'].includes(this.tutorial.phase)&&!this.entranceActive&&!this.presentationBusy&&!this.finishing&&!!this.currentPokemon;},
+    tutorialSelector(){return ({hp:'[data-tutorial-player] .health-bar-container',potential:'[data-tutorial-player] .potential-star',types:'[data-tutorial-player] .battle-traits',actions:'[data-tutorial-actions]',attack:this.actionState.attackPanel?'[data-tutorial-moves]':'[data-tutorial-attack]',capture_info:'.battle-status-wild',capture:this.actionState.bagPanel?'[data-tutorial-ball]':'[data-tutorial-bag]'})[this.tutorial?.phase];},
     caughtSpeciesSet(){return new Set(this.caughtSpeciesIds.map(Number));},
     wildAlreadyCaught(){return this.isWildEncounter && !this.opponent?.isEgg && !this.opponent?.storyActor && this.caughtSpeciesSet.has(Number(this.opponent?.data?.id));},
     entranceActive() { return this.entrancePhase !== 'ready'; },
