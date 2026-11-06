@@ -1,5 +1,5 @@
 const MAP_ASSET_ALIASES = Object.freeze({
-    safari_shop:'safari_lab',
+    safari_shop:'gen_shop1',
     ville5_shop: 'gen_shop1',
     ville5_maison1: 'whitepeak_club', ville5_maison2: 'whitepeak_casino',
     ville4_shop: 'gen_shop1',
