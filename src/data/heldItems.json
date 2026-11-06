@@ -389,7 +389,7 @@
   },
   "death_orb": {
     "name": "Orbe Mort",
-    "description": "Dégâts ×1,2. Après une capacité qui inflige des dégâts, perd 30 % des PV max."
+    "description": "Dégâts ×1,2. Après une capacité qui inflige des dégâts, perd 25 % des PV max."
   },
   "corrupted_toxic_orb": {
     "name": "Orbe Poison Corrompu",
