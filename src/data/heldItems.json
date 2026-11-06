@@ -386,5 +386,33 @@
   "chill_drive": {
     "name": "Module Cryo",
     "description": "Objet tenu : Techno-Buster devient de type Glace. Protégé contre le retrait quand Genesect le tient."
+  },
+  "death_orb": {
+    "name": "Orbe Mort",
+    "description": "Dégâts ×1,2. Après une capacité qui inflige des dégâts, perd 30 % des PV max."
+  },
+  "corrupted_toxic_orb": {
+    "name": "Orbe Poison Corrompu",
+    "description": "Empoisonne gravement son porteur en fin de tour."
+  },
+  "corrupted_flame_orb": {
+    "name": "Orbe Cran Corrompu",
+    "description": "Brûle son porteur en fin de tour."
+  },
+  "corrupted_choice_band": {
+    "name": "Bandeau Choix Corrompu",
+    "description": "Attaque ×1,2. Bloque sur une capacité jusqu’au changement ; perd 30 % des PV max à chaque capacité lancée."
+  },
+  "corrupted_choice_scarf": {
+    "name": "Mouchoir Choix Corrompu",
+    "description": "Vitesse ×1,2. Bloque sur une capacité jusqu’au changement ; perd 20 % des PV max à chaque capacité lancée."
+  },
+  "corrupted_choice_specs": {
+    "name": "Lunettes Choix Corrompues",
+    "description": "Attaque Spéciale ×1,2. Bloque sur une capacité jusqu’au changement ; perd 30 % des PV max à chaque capacité lancée."
+  },
+  "corrupted_leftovers": {
+    "name": "Restes Corrompus",
+    "description": "Restaure 10 % des PV max en fin de tour. Met K.O. à la fin du quatrième tour consécutif sur le terrain. Un changement remet le compteur à zéro."
   }
 }

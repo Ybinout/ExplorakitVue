@@ -1,18 +1,20 @@
 <template>
  <div class="club-spectator" @keydown.esc.stop.prevent="$emit('close')" @keydown.stop @keyup.stop role="dialog" aria-modal="true" aria-label="Tribunes de la maison des combats" data-club-spectator>
-  <battle-overlay ref="battle" active read-only :mobile="mobile" map-name="ville5_maison1" :preferences="preferences"/>
-  <div class="spectator-ribbon"><span><i :class="{live:!result}"/>{{ result?'Duel terminé':'Spectateur · En direct' }}<small>{{ start.names.join(' contre ') }}</small></span><button ref="close" data-close-club-watch @click="$emit('close')">{{ result?'Retour dans la salle':'Quitter les tribunes' }} ×</button></div>
-  <div v-if="result" class="spectator-result" role="status">{{ result.refunded?'Le duel est terminé. Les mises ont été rendues.':'Le résultat du duel a été enregistré.' }}</div>
+  <doubles-battle v-if="doubleFrame" :frame="doubleFrame" spectator settled :reduced="!preferences.animationsEnabled" @close="$emit('close')"/>
+  <battle-overlay v-show="!doubleFrame" ref="battle" :active="!doubleFrame" :external-music-active="!!doubleFrame" read-only :mobile="mobile" map-name="ville5_maison1" :preferences="preferences"/>
+  <div v-if="!doubleFrame" class="spectator-ribbon"><span><i :class="{live:!result}"/>{{ result?'Duel terminé':'Spectateur · En direct' }}<small>{{ start.names.join(' contre ') }}</small></span><button ref="close" data-close-club-watch @click="$emit('close')">{{ result?'Retour dans la salle':'Quitter les tribunes' }} ×</button></div>
+  <div v-if="result && !doubleFrame" class="spectator-result" role="status">{{ result.refunded?'Le duel est terminé. Les mises ont été rendues.':'Le résultat du duel a été enregistré.' }}</div>
  </div>
 </template>
 <script>
 import BattleOverlay from '../battle/BattleOverlay.vue';
+import DoublesBattle from './DoublesBattle.vue';
 const methods={introAnimation:'updateBattleState',battleText:'showMessage',battleMoveAnimation:'playMoveAnimation',battleMoveResult:'playMoveResult',battleFieldState:'updateFieldState',battleDriftEffects:'playDriftEffects'};
 export default{
- components:{BattleOverlay},props:{start:Object,events:Array,result:Object,mobile:Boolean,preferences:Object},data:()=>({sequence:0}),
- mounted(){this.previousFocus=document.activeElement;this.sequence=this.start.seq||0;this.$refs.close.focus();const b=this.$refs.battle;b.resetBattleUi();b.prepareEntrance('pvp');b.startMusic('pvp');if(this.start.field)b.updateFieldState(this.start.field);if(this.start.intro)b.presentEvent('updateBattleState',this.start.intro);this.flush();},
+ components:{BattleOverlay,DoublesBattle},props:{start:Object,events:Array,result:Object,mobile:Boolean,preferences:Object},data(){return{sequence:0,doubleFrame:this.start.doubles||null};},
+ mounted(){this.previousFocus=document.activeElement;this.sequence=this.start.seq||0;this.$refs.close?.focus();const b=this.$refs.battle;if(!b){this.flush();return;}b.resetBattleUi();if(this.doubleFrame){b.startMusic('pvp');this.flush();return;}b.prepareEntrance('pvp');b.startMusic('pvp');if(this.start.field)b.updateFieldState(this.start.field);if(this.start.intro)b.presentEvent('updateBattleState',this.start.intro);this.flush();},
  beforeDestroy(){if(this.previousFocus?.isConnected)this.previousFocus.focus({preventScroll:true});},watch:{events(){this.flush();}},
- methods:{flush(){for(const packet of this.events||[]){if(packet.id!==this.start.id||packet.seq<=this.sequence)continue;this.sequence=packet.seq;const method=methods[packet.event];if(method)this.$refs.battle.presentEvent(method,packet.event==='battleText'?packet.payload.message:packet.payload);}}}
+ methods:{flush(){for(const packet of this.events||[]){if(packet.id!==this.start.id||packet.seq<=this.sequence)continue;this.sequence=packet.seq;if(packet.event==='whitepeak:doubleFrame'){this.doubleFrame={...packet.payload,events:packet.payload.events||[]};continue;}const method=methods[packet.event];if(method)this.$refs.battle.presentEvent(method,packet.event==='battleText'?packet.payload.message:packet.payload);}}}
 };
 </script>
 <style scoped>

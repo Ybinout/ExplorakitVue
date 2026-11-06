@@ -430,6 +430,7 @@ export default {
     mapName: { type: String, default: '' },
     notice: { type: String, default: '' },
     active: { type: Boolean, default: false },
+    externalMusicActive: { type: Boolean, default: false },
     colosseumChallenge: { type: Object, default: null },
     bagItems: { type: Array, default: () => [] },
     bagLoading: { type: Boolean, default: false },
@@ -648,6 +649,7 @@ export default {
     mobile() { this.preloadSnowBackground(); this.preloadTournamentBackground(); },
     audioVolume() { this.syncAudio(); },
     soundEnabled() { this.syncAudio(); },
+    externalMusicActive() { this.syncMusic(); },
     active(isActive) {
       if (isActive) { this.battleMapName = this.mapName; this.setMusicPrelude(false); }
       if (!isActive) { this._battleAudio?.stop(); this.stopMusic(); this.resetBattleUi(); }
@@ -851,7 +853,7 @@ export default {
     syncMusic() {
       if (!this.music) return;
       this.music.volume = this.audioVolume * (this.musicKind === 'wild' ? 0.24 : 0.4);
-      if ((!this.active && !this.musicPrelude) || !this.soundEnabled || !this.audioVolume || document.hidden) this.music.pause();
+      if ((!this.active && !this.externalMusicActive && !this.musicPrelude) || !this.soundEnabled || !this.audioVolume || document.hidden) this.music.pause();
       else if (this.music.paused) this.music.play().catch(() => {});
     },
     syncAudio() {
@@ -863,7 +865,7 @@ export default {
     resumeAudio() {
       this.unlockAudio();
       if(this.soundEnabled && this.audioVolume)this._trainerSequence?.unlock().catch(()=>{});
-      if (this.active || this.musicPrelude) this.syncMusic();
+      if (this.active || this.externalMusicActive || this.musicPrelude) this.syncMusic();
     },
     stopMusic(keepPrelude = false) {
       if (this.music) {

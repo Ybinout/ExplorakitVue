@@ -79,7 +79,8 @@ designs.ev_reset_all=Object.freeze({family:'training',kind:'ev-reset',stat:'all'
 designs.ability_capsule=Object.freeze({family:'training',kind:'ability-capsule',main:'#ad9bd2'});
 designs.nature_capsule=Object.freeze({family:'training',kind:'nature-capsule',main:'#8ec2aa'});
 export const BAG_ITEM_DESIGNS=Object.freeze(designs);
-export function bagItemDesign(key) { return BAG_ITEM_DESIGNS[key] || null; }
+const corruptedBases={death_orb:'life_orb',corrupted_toxic_orb:'toxic_orb',corrupted_flame_orb:'flame_orb',corrupted_choice_band:'choice_band',corrupted_choice_scarf:'choice_scarf',corrupted_choice_specs:'choice_specs',corrupted_leftovers:'leftovers'};
+export function bagItemDesign(key) {const base=corruptedBases[key];return base?{...BAG_ITEM_DESIGNS[base],main:'#a382be',accent:'#e7d7f4'}:BAG_ITEM_DESIGNS[key] || null; }
 export function bagItemName(item, language='fr') {
   const stat=vitamins[item?.key];
   const name=item?.name||item?.key||'';

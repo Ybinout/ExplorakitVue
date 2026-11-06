@@ -24,11 +24,15 @@
       <button v-if="!clubPanel&&!battle&&clubDuel?.you>=0&&['review','preparation'].includes(clubDuel.phase)" class="house-resume-preparation" @click="clubPanel={tab:'duel'}">Reprendre la préparation →</button>
       <club-spectator v-if="clubWatch" :key="clubWatch.id" :start="clubWatch" :events="clubWatchEvents" :result="clubWatchResult" :mobile="showMobileControls" :preferences="preferences" @close="closeClubWatch" />
       <button v-if="map==='ville5_maison1' && !battle && !battleResult && !clubWatch && !clubPanel" class="club-room-access" data-club-room-access @pointerdown.stop @click="openClubPanel">{{ clubDuel&&clubDuel.phase!=='finished' ? clubDuel.phase==='review'?'Vérifier les mises':clubDuel.phase==='battle'?'Duel en cours · Tribunes':'Combat préparé':'Organiser' }}</button>
-      <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :passives="superTournament.passives" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @abandon="abandonSuperTournament" />
+      <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :passives="superTournament.passives" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @pause="pauseSuperTournament" @resume="resumeSuperTournament" @abandon="abandonSuperTournament" />
       <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :rerolls="superTournament.rerolls" :cash="superTournament.cash" :team="superTournament.team" :passives="superTournament.passives" :victory-recovery="superTournament.victoryRecovery" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @reroll="rerollTournamentRewards" @leave="openTournamentAbandon" />
-      <battle-overlay
+      <doubles-battle v-if="doublesFrame && battle" :frame="doublesFrame" :control="clubControl" :busy="clubBusy" :error="clubError" :settled="clubDuel?.phase==='finished'" :reduced="!preferences.animationsEnabled" @action="doubleAction" @pass="doublePass" @forfeit="clubCommand('forfeit',{id:clubControl?.id})" @close="closeDoublesBattle">
+       <template #social-toggle><button class="battle-social-button" @click="battleChatOpen=!battleChatOpen" aria-label="Amis et messages"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
+       <template #social-chat><combat-social-panel v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
+      </doubles-battle>
+      <battle-overlay v-show="!doublesFrame"
         ref="battleOverlay"
-        :social-chat-open="battleChatOpen" @social-close="battleChatOpen=false" :active="battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
+        :social-chat-open="battleChatOpen" @social-close="battleChatOpen=false" :active="battle && !doublesFrame" :external-music-active="!!doublesFrame && battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
         :bag-items="bagItems" :tournament="!!superTournament.active" @tournament-abandon="openTournamentAbandon"
         :bag-loading="bagLoading"
         :caught-species-ids="isDrift ? [] : caughtSpeciesIds"
@@ -121,8 +125,8 @@
               </template>
               <small v-else-if="isDrift && item.revive" class="bag-use-hint">Les K.O. sont définitifs dans ce mode.</small>
               <div v-if="item.category==='held'" class="bag-held-actions">
-                <label class="bag-use-hint">Faire tenir à<select data-bag-held-target :value="heldTargets[item.key] || ''" :disabled="teamSaving || teamLoading || !!battle" @change="$set(heldTargets,item.key,$event.target.value)"><option value="">Choisir un Pokémon…</option><option v-for="p in teamPokemons.filter(p=>!p.isEgg)" :key="p.uuid" :value="p.uuid" :disabled="p.heldItem===item.key || !!p.corruption?.permanent&&!item.corruptedHeldItem">{{ p.name }}{{ p.heldItem?' · '+heldItemName(p.heldItem):'' }}</option></select></label>
-                <button class="bag-use-button" data-bag-give-held :disabled="teamSaving || teamLoading || !!battle || !teamPokemons.some(p=>p.uuid===heldTargets[item.key] && !p.isEgg && (!p.corruption?.permanent||item.corruptedHeldItem) && p.heldItem!==item.key)" @click="giveBagHeldItem(item)">{{ teamSaving?'Attribution…':'Faire tenir' }}</button>
+                <label class="bag-use-hint">Faire tenir à<select data-bag-held-target :value="heldTargets[item.key] || ''" :disabled="teamSaving || teamLoading || !!battle" @change="$set(heldTargets,item.key,$event.target.value)"><option value="">Choisir un Pokémon…</option><option v-for="p in teamPokemons.filter(p=>!p.isEgg)" :key="p.uuid" :value="p.uuid" :disabled="p.heldItem===item.key || !!p.corruption?.permanent!==!!item.corruptedHeldItem">{{ p.name }}{{ p.heldItem?' · '+heldItemName(p.heldItem):'' }}</option></select></label>
+                <button class="bag-use-button" data-bag-give-held :disabled="teamSaving || teamLoading || !!battle || !teamPokemons.some(p=>p.uuid===heldTargets[item.key] && !p.isEgg && (!!p.corruption?.permanent===!!item.corruptedHeldItem) && p.heldItem!==item.key)" @click="giveBagHeldItem(item)">{{ teamSaving?'Attribution…':'Faire tenir' }}</button>
               </div>
           </template>
         </bag-panel>
@@ -414,6 +418,7 @@
     <div v-if="heldItemDrag && heldDragPokemon" class="team-held-ghost" :style="{left:heldItemDrag.x+'px',top:heldItemDrag.y+'px'}" aria-hidden="true"><bag-item-icon :item-key="heldDragPokemon.heldItem" :pocket="heldDragPokemon.heldItem?.endsWith('_berry')?'berries':'held'"/><strong>{{ heldItemName(heldDragPokemon.heldItem) }}</strong><span v-if="heldDragTarget">{{ heldDragTarget.heldItem?'Échanger avec':'Donner à' }} {{ heldDragTarget.name }}</span></div>
     <safari-travel-panel v-if="safariOffer && !mapLoading && !battle && !flight" :returning="safariOffer.returning" @close="safariOffer=null" @depart="departSafari"/>
     <experience-exchange-lab v-if="experienceLab && !mapLoading && !battle" :panel="experienceLab" :command="experienceExchangeCommand" :animations-enabled="preferences.animationsEnabled" @close="experienceLab=null"/>
+    <corrupted-held-workshop v-if="corruptedHeldWorkshop && !mapLoading && !battle" :panel="corruptedHeldWorkshop" :inventory="bagItems" :command="corruptionCommand" @close="corruptedHeldWorkshop=null"/>
     <corruption-workbench v-if="corruptionWorkshop && !mapLoading && !battle" :panel="corruptionWorkshop" :items="bagItems" :command="corruptionCommand" @close="corruptionWorkshop=null" @crafted="showInteractionNotice($event.created?'Module ajouté au sac.':'Synthèse échouée : composants consommés.')" @bag="showCorruptionBag"/>
     <corruption-installer v-if="corruptionInstall && !battle" :key="corruptionInstall.id" :items="bagItems" :team="teamPokemons" :preset-item="corruptionInstall.item" :target-pokemon="corruptionInstall.pokemon" :source="corruptionInstall.source" :initial-family="corruptionInstall.family" :command="corruptionCommand" @close="corruptionInstall=null"/>
     <dark-continent-panel v-if="darkPanel && !mapLoading && !flight && !battle && !battleResult && !pendingBattleResult" :panel="darkPanel" :busy="darkBusy" :error="darkError" :notice="darkNotice" :team-size="teamPokemons.length" :money="progressionState.money" @return="returnFromDark" @rules="darkPanel={...darkPanel,mode:'rules'}" @close="darkPanel=null" @command="darkCommand"/>
@@ -504,6 +509,8 @@ import './worldViewport.css';
 import './gamePopupLayout.css';
 import { attachGamePopupLayout } from './gamePopupLayout';
 import BattleOverlay from './battle/BattleOverlay.vue';
+import DoublesBattle from './whitepeak/DoublesBattle.vue';
+import CorruptedHeldWorkshop from './menu/CorruptedHeldWorkshop.vue';
 import WhitepeakClubPanel from './whitepeak/WhitepeakClubPanel.vue';
 import ClubSpectator from './whitepeak/ClubSpectator.vue';
 import {drawHonorRoll} from '@/services/whitepeakHonor';
@@ -562,7 +569,7 @@ export default {
     PokemonDetails,DarkContinentPanel,
     ExperienceBar,
     TextWithImage,
-    BattleOverlay,WhitepeakClubPanel,ClubSpectator,CombatSocialPanel,
+    BattleOverlay,DoublesBattle,CorruptedHeldWorkshop,WhitepeakClubPanel,ClubSpectator,CombatSocialPanel,
     GameInfoPanels,
     ShopPanel
   },
@@ -577,12 +584,12 @@ export default {
       starterBusy:false,starterError:'',
       clubPanel:null,clubDuel:null,clubRoulette:null,clubRows:[],clubRanking:null,clubHonor:null,interactionHint:null,clubBusy:false,clubError:'',clubWatch:null,clubWatchEvents:[],clubWatchResult:null,
       clubControl:null,clubRosters:null,clubTrainers:[],
-      superTournament:{active:false},tournamentPanel:null,tournamentBusy:false,tournamentError:'',tournamentRewardError:'',
+      doublesFrame:null,superTournament:{active:false},tournamentPanel:null,tournamentBusy:false,tournamentError:'',tournamentRewardError:'',
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
       repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{}, trainingFeedback:null, heldTargets:{}, heldPickerUuid:null,
       endSentences: null,
       flight: null, voidEnding:null, mirrorRift:null, mirrorScene:null, openingScene:null,
-      experienceLab:null,corruptionWorkshop:null,corruptionInstall:null,
+      experienceLab:null,corruptedHeldWorkshop:null,corruptionWorkshop:null,corruptionInstall:null,
       safariOffer:null,darkPanel:null,darkBusy:false,darkError:'',darkNotice:'',
       textImageSequence: [],
       socket: null,
@@ -835,7 +842,7 @@ export default {
     mirrorWakeReady(){return this.mirrorRift?.stage==='won'&&!this.battle&&!this.battleResult&&!this.pendingBattleResult&&!this.mapLoading&&this.mirrorScene?.phase!=='closing';},
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     worldChatAvailable(){return Boolean(!this.isDrift && this.socket?.connected && !this.worldInteractionBlocked && !this.mapLoading && !this.mapLoadError && !this.worldContextLost && this.renderedMap===this.map && this.players[this.socket.id]?.currentmap===this.map);},
-    movementSuspended(){return !!this.safariOffer || !!this.corruptionWorkshop || !!this.corruptionInstall || !!this.darkPanel || this.worldChatOpen || this.worldInteractionBlocked;},
+    movementSuspended(){return !!this.safariOffer || !!this.corruptedHeldWorkshop || !!this.corruptionWorkshop || !!this.corruptionInstall || !!this.darkPanel || this.worldChatOpen || this.worldInteractionBlocked;},
     patchNoticeReady() {
       return Boolean(this.socket?.connected && this.players[this.socket.id] && !this.mapLoading && !this.mapLoadError
         && this.renderedMap === this.map && !this.worldContextLost && !this.otherInteractionBlocked
@@ -844,7 +851,7 @@ export default {
     worldInteractionBlocked() { return this.patchNoticeOpen || this.otherInteractionBlocked; },
     otherInteractionBlocked() {
       return !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
-        || this.experienceLab || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
+        || this.experienceLab || this.corruptedHeldWorkshop || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
@@ -2330,10 +2337,13 @@ export default {
         await this.flyToTown('super_tournament_sas',{kind:'void',event:'superTournament:register',data:{offerId},onError:showError});
       }catch(error){showError(error);}finally{this.tournamentBusy=false;}
     },
+    async pauseSuperTournament(){await this.tournamentTravelCommand('superTournament:pause','super_tournament_lobby');},
+    async resumeSuperTournament(){await this.tournamentTravelCommand('superTournament:continue',this.superTournament.phase==='sas'?'super_tournament_sas':'super_tournament_room');},
+    async tournamentTravelCommand(event,map){if(this.tournamentBusy)return;this.tournamentBusy=true;this.tournamentError='';try{await this.flyToTown(map,{kind:'void',event,data:{offerId:this.tournamentPanel?.offerId},onError:error=>{this.tournamentError=error.message||String(error);}});if(!this.tournamentError)this.tournamentPanel=null;}finally{this.tournamentBusy=false;}},
     openTournamentAbandon(){
-      if(!this.superTournament.active||this.tournamentBusy)return;
+      if((!this.superTournament.active&&!this.superTournament.paused)||this.tournamentBusy)return;
       this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.isMenuOpen=false;this.selectedPokemonUuid=null;
-      this.tournamentError='';this.tournamentPanel={tab:'abandon'};
+      this.tournamentError='';this.tournamentPanel={tab:'abandon',canPause:!this.battle};
     },
     closeTournamentPanel(){
       if(this.tournamentBusy)return;const wasAbandon=this.tournamentPanel?.tab==='abandon';this.tournamentPanel=null;
@@ -2363,6 +2373,9 @@ export default {
       // state instead of resending it or enabling an obsolete choice locally.
       if(recover&&current())await this.clubCommand('refresh',{battleSync:true});
     },
+    doubleAction(data){if(this.clubControl?.doubles)this.clubCommand('action',{id:this.clubControl.id,...data});},
+    doublePass(data){if(this.clubControl?.doubles)this.clubCommand('pass',{id:this.clubControl.id,...data});},
+    closeDoublesBattle(){if(this.clubDuel?.phase!=='finished')return;this.doublesFrame=null;this.battle=false;this.clubControl=null;this.clubError='';this.$refs.battleOverlay?.stopMusic();this.syncWorldMusic();this.restoreWorldView();if(this.battleChatOpen){this.battleChatOpen=false;this.friendsOpen=true;this.friendsTarget=this.battleChatTarget;}},
     passHouseControl(){if(this.clubControl)this.clubCommand('pass',{id:this.clubControl.id,turnId:this.clubControl.turnId,controlRevision:this.clubControl.revision});},
     closeClubWatch(){this.clubWatch=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.socket?.emit('whitepeak:unwatch',{});this.syncWorldMusic();},
     async abandonSuperTournament(){if(this.tournamentBusy||!this.socket?.connected)return;this.tournamentBusy=true;this.tournamentError='';
@@ -3591,7 +3604,7 @@ export default {
     this.socket.on('disconnect', () => {
       this.experienceLab=null;
       this._clubRequestEpoch=(this._clubRequestEpoch||0)+1;
-      this.clubPanel=null;this.clubControl=null;this.clubRosters=null;this.clubWatch=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.clubBusy=false;this.clubError='';
+      this.doublesFrame=null;this.clubPanel=null;this.clubControl=null;this.clubRosters=null;this.clubWatch=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.clubBusy=false;this.clubError='';
       this.clearTeleporterCharge();
       this.closeWorldChat();this.clearWorldSpeech();
       this.closeShop();this.shop.loading=false;
@@ -3649,6 +3662,7 @@ export default {
     });
     this.socket.on('whitepeak:roster',payload=>{this.clubRosters=payload;});
     this.socket.on('whitepeak:trainers',payload=>{this.clubTrainers=payload.trainers||[];});
+    this.socket.on('whitepeak:doubleFrame',frame=>{if(this.doublesFrame?.id===frame.id&&this.doublesFrame.revision>=frame.revision)return;const first=this.doublesFrame?.id!==frame.id;this.doublesFrame=frame;this.clubPanel=null;this.battle=true;this.releaseAllMovementKeys();if(first){this.closeLegacyPanels();this.syncWorldMusic();this.$nextTick(()=>this.$refs.battleOverlay?.startMusic('pvp'));}});
     this.socket.on('whitepeak:control',payload=>{this.clubControl=payload;});
     this.socket.on('whitepeak:wallet',data=>{if(Number.isSafeInteger(data.balance)&&data.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',data.balance);}});
     this.socket.on('whitepeak:rouletteResult',data=>{if(data.amount>0)this.interactionNotice=`Roulette : +${Number(data.amount).toLocaleString('fr-FR')} ₽`;});
@@ -3668,6 +3682,7 @@ export default {
     this.socket.on('superTournamentPayout',result=>{if(Number.isSafeInteger(result.balance)&&result.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',result.balance);}});
     this.socket.on('experienceExchangePanel',panel=>{if(!panel.success)return;this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;this.experienceLab=panel;});
     this.socket.on('experienceExchange:wallet',data=>{if(Number.isSafeInteger(data.balance)&&data.balance>=0){this._tournamentWalletEpoch=(this._tournamentWalletEpoch||0)+1;this.$set(this.progressionState,'money',data.balance);}});
+    this.socket.on('corruptedHeldPanel',panel=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();if(panel.items)this.applyBagItems(panel.items);this.corruptedHeldWorkshop=panel;});
     this.socket.on('corruptionPanel',panel=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.closeInfoPanel();this.closeShop();this.isMenuOpen=false;if(panel.items)this.applyBagItems(panel.items);this.corruptionWorkshop=panel;});
     this.socket.on('darkCardCooldown',state=>{this.bagItems=this.bagItems.map(item=>item.darkContinentTravel?{...item,travelReadyAt:state.readyAt,travelServerNow:state.serverNow,travelClockOffset:state.serverNow-Date.now()}:item);});
     this.socket.on('safariTravelOffer',offer=>{if(this.battle||this.mapLoading||this.flight)return;this.releaseAllMovementKeys();this.safariOffer=offer;});

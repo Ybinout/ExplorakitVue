@@ -69,7 +69,7 @@
 
         <section v-if="loot.length" class="result-loot" aria-labelledby="result-loot-title">
           <h3 id="result-loot-title" class="result-label">Objets obtenus</h3>
-          <ul><li v-for="(item, index) in loot" :key="index"><span aria-hidden="true">◇</span>{{ item }}</li></ul>
+          <ul><li v-for="(item, index) in loot" :key="index" :class="{'loot-plate':/Plaque/i.test(item)}"><span aria-hidden="true">◇</span>{{ item }}</li></ul>
         </section>
 
         <section v-if="lostPokemon.length" class="result-losses" aria-labelledby="result-losses-title">
@@ -207,6 +207,7 @@ export default {
 .result-money svg { width:20px; height:20px; flex-shrink:0; }
 .result-money strong { white-space:nowrap; font-size:15px; }
 .result-money small { font-size:12px; }
+.result-loot li.loot-plate{color:var(--journal-accent);font-weight:700;background:var(--journal-selected);border-radius:6px;padding:8px 10px;border-left:3px solid var(--journal-accent)}
 .result-loot { margin:16px 0; }
 .result-loot li { display:flex; align-items:baseline; gap:8px; padding:4px 0; font-size:13px; overflow-wrap:anywhere; }
 .result-loot li > span { color:var(--journal-accent); }
