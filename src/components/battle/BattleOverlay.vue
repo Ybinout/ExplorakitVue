@@ -7,7 +7,7 @@
       :class="[
         'battle-scene',
         fieldClasses,
-        { 'battle-impact-active': attackFx.wild.hit || attackFx.player.hit }
+        { 'battle-impact-active': attackFx.wild.hit || attackFx.player.hit, 'move-camera-impact':battleMoveFx.visible && battleMoveFx.camera && battleMoveFx.stage==='impact' && moveDidConnect && !reducedMotion() }
       ]"
     >
       <picture v-if="challenge" class="battle-arena-background"><source media="(orientation: landscape)" :srcset="raining ? rainBackgrounds.arenaWide : require('@/assets/battle/colosseum-wide-v2.webp')"><img :src="raining ? rainBackgrounds.arenaMobile : require('@/assets/battle/colosseum-mobile-v3.webp')" class="battle-background battle-colosseum-background" alt=""></picture>
@@ -39,7 +39,7 @@
       <battle-weather-info v-if="fieldState.weather" ref="weatherInfo" :weather="fieldState.weather" :metadata="weatherMetadata" :language="preferences.language" />
       <battle-send-out v-for="entry in sendOuts" :key="entry.uuid" :side="entry.side" :style="sendOutPosition(entry.side)" />
 
-      <battle-move-effect v-if="battleMoveFx.visible && !reducedMotion()" :key="`move-${battleMoveFx.nonce}-${battleMoveFx.stage}`"
+      <battle-move-effect v-if="battleMoveFx.visible && !reducedMotion()" :key="`move-${battleMoveFx.nonce}`"
         :fx="battleMoveFx" :path="movePath" :color="battleMoveStyle['--battle-move-color']" />
       <battle-persistent-effect v-for="side in ['wild','player']" :key="`persistent-${side}-${getPokemonBattleKey(side === 'wild' ? opponent : currentPokemon)}`"
         :effects="persistentEffects(side)" :style="conditionPosition(side)" :reduced="reducedMotion()" />
@@ -327,7 +327,7 @@ import BattleFieldSide from './BattleFieldSide.vue';
 import { normalizeBattleField, battleFieldChanges, hasBattleFieldVisual } from '@/services/battleField';
 import BattleMoveEffect from './BattleMoveEffect.vue';
 import BattlePersistentEffect from './BattlePersistentEffect.vue';
-import { moveVisual, persistentMoveVisuals, moveConnected } from '@/services/moveVisuals';
+import { moveVisual, moveTargetsSelf, persistentMoveVisuals, moveConnected } from '@/services/moveVisuals';
 import BattleRain from './BattleRain.vue';
 import BattleWaterfalls from './BattleWaterfalls.vue';
 import BattleTournamentScenery from './BattleTournamentScenery.vue';
@@ -529,6 +529,7 @@ export default {
     };
   },
   computed: {
+    moveDidConnect(){return moveConnected(this.battleMoveFx.result);},
     tutorialPhase(){return this.tutorial?.phase||null;},
     tutorialEnabled(){return this.tutorial?.enabled&&['hp','potential','types','actions','attack','capture_info','capture'].includes(this.tutorialPhase)&&!!this.currentPokemon;},
     tutorialVisible(){return this.tutorialEnabled&&this.tutorialReadyPhase===this.tutorialPhase&&this.tutorialSubmittedPhase!==this.tutorialPhase&&!this.entranceActive&&!this.finishing&&!this.captureFx.visible;},
@@ -842,7 +843,7 @@ export default {
       this._presentation ||= createBattlePresentation({ changed: busy => { this.presentationBusy = busy; } });
       const delay = () => {
         if (!this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
-        if (method === 'playMoveAnimation') return 300;
+        if (method === 'playMoveAnimation') return this.battleMoveFx.windupMs || 180;
         if (method === 'playDriftEffects') return 650;
         if (method === 'updateFieldState' && !this._pendingBattleField && this.fieldFx.changes.length) return 700;
         if (method === 'playMoveResult') return this.battleMoveFx.visible ? 0 : this.resultFx.visible ? 1150 : 250;
@@ -1100,6 +1101,7 @@ export default {
         await this.transitionWait(move.travelMs);
         if (epoch !== this.visualEpoch) return;
         move.stage = connected ? (move.damageClass === 'status' ? 'aura' : 'impact') : 'miss';
+        if (connected && this._pendingMoveHits) {const {side,hits}=this._pendingMoveHits;this.playConditionChanges({player:[],wild:[],[side]:Array.from({length:hits},(_,i)=>({key:`hit-${i}`,kind:'hit',symbol:'✦',text:i===0?`${hits} coups`:''}))});this.conditionNotice='';this._pendingMoveHits=null;}
       }
       if (this._pendingBattleField) {
         const field=this._pendingBattleField;this._pendingBattleField=null;this.applyFieldState(field);
@@ -1345,8 +1347,8 @@ export default {
       const sourceSide = actor === 'opponent' ? 'wild' : 'player';
       const targetSide = actor === 'opponent' ? 'player' : 'wild';
       const source = this.getSpriteGeometry(sourceSide);
-      const target = damageClass === 'status' && moveTarget !== 'opponent' ? source : this.getSpriteGeometry(targetSide);
-      if (damageClass === 'status') return {startX:target.centerX,startY:target.centerY,targetX:target.centerX,targetY:target.centerY};
+      const target = damageClass === 'status' && moveTargetsSelf(moveTarget) ? source : this.getSpriteGeometry(targetSide);
+      if (damageClass === 'status') return {startX:source.centerX,startY:source.centerY,targetX:target.centerX,targetY:target.centerY,groundY:target.bottomY-4};
       return {
         startX: source.centerX,
         startY: source.centerY,
@@ -1424,17 +1426,17 @@ export default {
       const actor = payload.actor === 'opponent' ? 'opponent' : 'player';
       const side = actor === 'opponent' ? 'wild' : 'player';
       if (payload.phase === 'strike') this.$set(this.phaseReturning,side,true);
-      const damageClass = payload.phase === 'prepare' ? 'status' : (['physical', 'special', 'status'].includes(payload.damageClass)
-        ? payload.damageClass : 'status');
+      const profile=moveVisual(payload);
+      const damageClass = payload.phase === 'prepare' ? 'status' : profile.damageClass;
       this.clearMoveFx();
       clearTimeout(this.resultTimer); this.resultFx.visible = false;
       if (this.reducedMotion()) return;
-      this.movePath = this.buildMovePath(actor, damageClass, payload.phase === 'prepare' ? 'self' : payload.moveTarget);
+      this.movePath = this.buildMovePath(actor, damageClass, payload.phase === 'prepare' ? 'self' : profile.target);
       const targetSide = actor === 'opponent' ? 'player' : 'wild';
       this.movePath.groundY = this.getSpriteGeometry(targetSide).bottomY - 4;
-      Object.assign(this.battleMoveFx, moveVisual(payload), {
-        actor, moveName:payload.moveName || '', moveType:payload.moveType || 'Normal', damageClass,
-        visible:true, nonce:this.battleMoveFx.nonce+1, stage:'windup', result:null, prepare:payload.phase==='prepare', moveTarget:payload.moveTarget || 'opponent', fieldMove:hasBattleFieldVisual(payload.moveName)
+      Object.assign(this.battleMoveFx, profile, {
+        actor, moveName:payload.moveName || '', moveType:profile.moveType, damageClass,
+        visible:true, nonce:this.battleMoveFx.nonce+1, stage:'windup', result:null, prepare:payload.phase==='prepare', moveTarget:profile.target, fieldMove:hasBattleFieldVisual(payload.moveName)
       });
     },
     playMoveResult(payload = {}) {
@@ -1448,9 +1450,7 @@ export default {
       if (Number(payload.hits)>1 && !payload.missed && !payload.blocked && !payload.immune) {
         const side=payload.actor==='opponent'?'player':'wild';
         const hits=Math.min(10,Math.floor(Number(payload.hits)));
-        this.playConditionChanges({player:[],wild:[],[side]:Array.from({length:hits},(_,i)=>({key:`hit-${i}`,kind:'hit',symbol:'✦',text:i===0?`${hits} coups`:''})).filter(Boolean)});
-        // The count stays in result labels; don't duplicate it in the header.
-        this.conditionNotice='';
+        this._pendingMoveHits={side,hits};
       }
       if (Number(payload.hits) > 1) labels.push({ key: 'hits', text: `${payload.hits} ${this.preferences.language === 'en' ? 'hits' : 'coups'}` });
       if (payload.missed) labels.push({ key: 'miss', text: this.tr('missed') });
@@ -1607,6 +1607,7 @@ export default {
       }
     },
     clearMoveFx() {
+      this._pendingMoveHits=null;
       if (this.moveTimer) clearTimeout(this.moveTimer);
       this.moveTimer = null;
       this.battleMoveFx.visible = false;
@@ -2958,4 +2959,10 @@ export default {
 
 <style scoped>
 .battle-shiny-mark{color:#c3941a;text-shadow:0 1px #fff7cc;font-size:.85em}.battle-shiny-glints{position:absolute;inset:-100% -35% 0;pointer-events:none;color:#ffe496;z-index:12}.battle-shiny-glints i{position:absolute;opacity:0;font:normal 26px sans-serif;text-shadow:0 0 3px #fff8bd;animation:shiny-arrival 1.35s ease-out both}.battle-shiny-glints i:nth-child(1){top:20%;left:10%}.battle-shiny-glints i:nth-child(2){top:4%;left:65%;animation-delay:.12s}.battle-shiny-glints i:nth-child(3){top:60%;left:90%;animation-delay:.24s}.battle-shiny-glints i:nth-child(4){top:83%;left:30%;animation-delay:.36s}@keyframes shiny-arrival{0%,100%{opacity:0;transform:scale(.3) rotate(-20deg)}30%,60%{opacity:1;transform:scale(1) rotate(0)}}.battle-reduced-motion .battle-shiny-glints{display:none}@media(prefers-reduced-motion:reduce){.battle-shiny-glints{display:none}}
+</style>
+
+<style scoped>
+.move-camera-impact{animation:move-camera-impact .34s ease-out both}
+@keyframes move-camera-impact{0%,100%{translate:0 0;scale:1}18%{translate:-2px 1px;scale:1.006}40%{translate:2px -1px}65%{translate:-1px 0}}
+@media(prefers-reduced-motion:reduce){.move-camera-impact{animation:none}}
 </style>
