@@ -28,26 +28,27 @@
    <div v-if="loading" class="raid-entry" role="status"><span class="raid-entry-rift"/><b>La faille s’ouvre…</b><small>Chargement du terrain et des Pokémon</small></div>
    <p v-if="friendship" class="raid-friendship" role="alert">✧ {{ friendship }}<small>L’amitié l’a sauvé à 1 PV. Retire-le pour le protéger : ce sursis ne se reproduira pas.</small></p>
   </div>
-  <div class="raid-console">
+  <div class="raid-console" :class="{'is-waiting':!needsChoice&&!targeting&&!frame.finished}">
 
    <p class="raid-message" role="status" aria-live="polite">{{ message || (playing?'Résolution du tour…':frame.finished?frame.won?'La corruption recule.':'Le raid est terminé.':canAct?'Choisis une action pour '+current.name:pendingMine?'Tes actions sont enregistrées.':'Tes alliés préparent leurs actions.') }}</p>
    <button v-if="bossTargetable" class="raid-boss-choice" @click="targetBoss" data-raid-boss-choice><span>⌖ Cible principale</span><b>{{ display.boss.name }}</b><small>Viser le boss →</small></button>
-   <div class="raid-ally-cards" aria-label="Les quatre alliés"><button v-for="(p,i) in display.allies" :key="p.uuid" :disabled="!targetable(i)" :aria-pressed="slot===i" :class="{'is-selected':slot===i,'is-corrupted':p.corrupted,'is-helped':p.effects?.helpingHand,'is-acting':playing&&shown===i,'is-withdrawn':p.withdrawn||!p.currentHp,'is-targeted':display.intention&&!display.intention.area?display.intention.target===i:!display.intention&&frame.focus===i,'is-valid-target':targeting&&targetable(i),'is-hit':!!cardHits[i]&&cardHits[i].kind==='-damage','is-relay-target':relayTarget===i}" @click="chooseCard(i)"><pokemon-portrait :src="sprite(p)" alt=""/><span v-if="cardHits[i]" :key="cardHits[i].id" class="raid-card-number" :class="{'is-heal':cardHits[i].kind==='-heal'}">{{ cardHits[i].kind==='-heal'?'+':'−' }}{{ cardHits[i].amount }}</span><span class="raid-ally-info"><span><b>{{ p.name }}</b><i v-if="display.intention?.target===i" title="Cible de l’intention">⌖</i><small>{{ (actionOrder.length?actionOrder:display.order).filter(n=>n!==4).indexOf(i)+1 || '—' }}</small></span><span class="raid-card-hp"><i :style="{width:percent(p)+'%'}"/></span><small>{{ p.currentHp }}/{{ p.maxHp }} PV <battle-status-pill v-if="p.status!=='normal'" :status="p.status" compact/><em v-if="p.withdrawn">Retiré</em><em v-else-if="!p.currentHp">{{ p.survivalKitUsed?'K.O. protégé':p.permanentlyLost?'Perdu':'K.O.' }}</em></small><span class="raid-aggro" :aria-label="'Aggro : '+p.aggro+' %'"><i :style="{width:p.aggro+'%'}"/></span><small class="raid-card-owner" :title="p.ownerName">{{ p.ownerName }} <b>{{ frame.allies[i].ready?'✓':frame.allies[i].canControl?'· toi':'' }}</b><i v-if="frame.soloClock&&!frame.allies[i].ready&&!p.withdrawn&&p.currentHp>0" class="raid-card-clock">{{ i===frame.soloClock.slot?remaining:Math.ceil(frame.soloClock.remainingMs[i]/1000) }} s</i></small></span></button></div>
+   <div class="raid-ally-cards" aria-label="Les quatre alliés"><raid-ally-card v-for="(p,i) in display.allies" :key="p.uuid" :pokemon="p" :src="sprite(p)" :disabled="!targetable(i)" :displayed="shown===i" :targeted="bossTargets(i)" :order="cardOrder(i)" :hit="cardHits[i]" :ready="frame.allies[i].ready" :controlled="frame.allies[i].canControl" :class="{'is-selected':shown===i,'is-corrupted':p.corrupted,'is-helped':p.effects?.helpingHand,'is-acting':playing&&shown===i,'is-withdrawn':p.withdrawn||!p.currentHp,'is-targeted':bossTargets(i),'is-valid-target':targeting&&targetable(i),'is-hit':!!cardHits[i]&&cardHits[i].kind==='-damage','is-relay-target':relayTarget===i}" @choose="chooseCard(i)"/></div>
    <div v-if="!frame.finished" class="raid-controls">
     <div v-if="targeting" class="raid-targeting"><p>{{ passing?'Choisis l’allié qui reçoit la main.':'Cible de '+selectedMove.name }}</p><button @click="cancelTarget">Retour</button></div>
-    <div v-else-if="canAct&&panel==='moves'" class="raid-moves"><button v-for="m in current.moves" :key="m.index" :style="{'--move-color':color(m.type)}" :disabled="m.disabled||m.pp<=0&&m.id!=='struggle'" :title="m.disabledReason||(!m.targets.length&&m.targetKind==='adjacentAlly'?'Un allié doit encore pouvoir agir.':'')" @click="move(m)"><b>{{ m.name }}</b><small>{{ type(m.type) }} · {{ m.category==='Physical'?'Physique':m.category==='Special'?'Spéciale':'Statut' }} · {{ m.power||'—' }}</small><span>{{ m.pp }} / {{ m.maxpp }} PP</span></button></div>
+    <div v-else-if="canAct&&panel==='moves'" class="raid-moves"><button v-for="m in current.moves" :key="m.index" :style="{'--move-color':color(m.type)}" :disabled="m.disabled||m.pp<=0&&m.id!=='struggle'" :title="m.disabledReason||(!m.targets.length&&m.targetKind==='adjacentAlly'?'Aucun allié ne peut recevoir cet effet.':'')" @click="move(m)"><b>{{ m.name }}</b><small>{{ type(m.type) }} · {{ m.category==='Physical'?'Physique':m.category==='Special'?'Spéciale':'Statut' }} · {{ m.power||'—' }}</small><span>{{ m.pp }} / {{ m.maxpp }} PP</span></button></div>
     <div v-else-if="canAct" class="raid-main-actions"><button class="raid-attack" @click="panel='moves'" data-raid-attack>Attaquer <span>→</span></button><button class="raid-pass" :disabled="busy||!hasRelayTarget" @click="passing=true">Passer la main ↗</button><button class="raid-retreat" :disabled="busy" @click="retreat=true">Retirer mon Pokémon</button></div>
     <button v-if="canAct&&!targeting&&panel==='moves'" class="raid-back" @click="panel='home'">← Actions</button>
     <p v-if="error" class="raid-error" role="alert">{{ error }}</p>
    </div>
    <button v-else-if="!playing" class="raid-return" @click="$emit('results')">Voir le bilan du raid →</button>
   </div>
-  <div v-if="retreat||help" class="raid-confirm" @keydown.esc.stop="retreat=false;help=false"><section><template v-if="retreat"><h3>Retirer {{ current.name }} ?</h3><p>Il quitte définitivement ce raid et reste dans ta collection avec ses PV actuels. Il ne pourra pas revenir dans le combat.</p><button @click="retreat=false">Rester</button><button class="raid-retreat" :disabled="busy" @click="submit({action:'retreat',confirm:true});retreat=false">Le mettre à l’abri</button></template><template v-else><h3>Quatre alliés, une seule chance</h3><p>La jauge orange attire les attaques ciblées du boss. Les dégâts, soins réellement reçus et soutiens réussis la font monter. Les soins rapportent {{ Math.round((frame.aggroRules?.healingRatio ?? 0.7)*100) }} % de l’aggro d’un dégât équivalent. Par Ici et Poudre Fureur permettent de protéger les autres. Le boss agit après le nombre d’actions indiqué. La cible suit la rage jusqu’au déclenchement ; les attaques de zone ignorent la rage.</p><p>En solo, chaque Pokémon dispose de 30 secondes pour décider. Chaque action est résolue avant le choix suivant : observe l’intention du boss pour réagir. Les attaques de zone peuvent aussi toucher tes alliés selon leur portée.</p><p>Brise les boucliers à 70 % et 30 %. Passer la main sacrifie l’action de ton Pokémon pour faire agir un allié plus tôt avec 30 secondes pour décider. Relais et les capacités exigeant un remplaçant sont indisponibles ; Demi-Tour et Change Éclair infligent leurs dégâts sans changer de Pokémon. Vœu soigne le prochain allié qui agit au tour suivant.</p><p>Un Pokémon à pleine vie peut survivre une fois à 1 PV grâce à l’amitié. Retire-le avant qu’il ne soit trop tard. Les K.O. sont définitifs sans Kit de survie.</p><button @click="help=false">Continuer</button></template></section></div>
+  <div v-if="retreat||help" class="raid-confirm" @keydown.esc.stop="retreat=false;help=false"><section><template v-if="retreat"><h3>Retirer {{ current.name }} ?</h3><p>Il quitte définitivement ce raid et reste dans ta collection avec ses PV actuels. Il ne pourra pas revenir dans le combat.</p><button @click="retreat=false">Rester</button><button class="raid-retreat" :disabled="busy" @click="submit({action:'retreat',confirm:true});retreat=false">Le mettre à l’abri</button></template><template v-else><h3>Quatre alliés, une seule chance</h3><p>La jauge orange attire les attaques ciblées du boss. Les dégâts, soins réellement reçus et soutiens réussis la font monter. Les soins sont proportionnels aux PV réellement rendus. Les protections rapportent aussi de la rage à leur poseur quand elles évitent des dégâts à un allié. Par Ici et Poudre Fureur permettent de protéger les autres. Le boss agit après le nombre d’actions indiqué. La cible suit la rage jusqu’au déclenchement ; les attaques de zone ignorent la rage.</p><p>En solo, chaque Pokémon dispose de 30 secondes pour décider. Chaque action est résolue avant le choix suivant : observe l’intention du boss pour réagir. Les attaques de zone peuvent aussi toucher tes alliés selon leur portée. Coup d’Main renforce la prochaine attaque de l’allié choisi, même s’il a déjà agi.</p><p>Brise les boucliers à 70 % et 30 %. Passer la main sacrifie l’action de ton Pokémon pour faire agir un allié plus tôt avec 30 secondes pour décider. Relais et les capacités exigeant un remplaçant sont indisponibles ; Demi-Tour et Change Éclair infligent leurs dégâts sans changer de Pokémon. Vœu soigne le prochain allié qui agit au tour suivant.</p><p>Un Pokémon à pleine vie peut survivre une fois à 1 PV grâce à l’amitié. Retire-le avant qu’il ne soit trop tard. Les K.O. sont définitifs sans Kit de survie.</p><button @click="help=false">Continuer</button></template></section></div>
   <slot name="social-chat"/>
  </section>
 </template>
 <script>
 import RaidMist from './RaidMist.vue';
+import RaidAllyCard from './RaidAllyCard.vue';
 import RaidFieldEffects from './RaidFieldEffects.vue';
 import RaidShield from './RaidShield.vue';
 import BattleStatusPill from '../battle/BattleStatusPill.vue';
@@ -69,7 +70,7 @@ import background from '@/assets/battle/dark-jungle-wide-v1.webp';
 import mobileBackground from '@/assets/battle/dark-jungle-mobile-v1.webp';
 export default {
   components: {
-    RaidMist,RaidFieldEffects,RaidShield,BattleStatusPill,HealthBar,
+    RaidMist,RaidAllyCard,RaidFieldEffects,RaidShield,BattleStatusPill,HealthBar,
     RaidCorruptionEffect,
     PokemonPortrait,
     BattleMoveEffect,
@@ -243,6 +244,10 @@ export default {
         }[e.effect] || e.effect
       }];
     },
+    bossTargets(i) {
+      return this.display.intention ? !this.display.intention.area&&this.display.intention.target===i : !this.playing&&this.display.focus===i;
+    },
+    cardOrder(i) {return (this.actionOrder.length?this.actionOrder:this.display.order).filter(n=>n!==4).indexOf(i)+1;},
     targetable(i) {
       if (this.playing || this.loading || this.busy || this.focusPhase) return false;
       if (this.passing) return i !== this.slot && !this.frame.allies[i].ready && this.frame.allies[i].currentHp > 0 && !this.frame.allies[i].withdrawn;
@@ -485,4 +490,12 @@ export default {
 
 <style scoped>
 .raid-helping-hand{position:absolute;left:18%;top:15%;color:#ffe6a5;font-size:30px;text-shadow:0 0 8px #d8a545;pointer-events:none;animation:raid-support-shimmer 2.5s ease-in-out infinite alternate}.raid-ally-cards .is-helped{border-top-color:#e0c47e;box-shadow:inset 0 2px #e0c47e}.raid-reduced .raid-helping-hand{animation:none}@keyframes raid-support-shimmer{to{opacity:.4;translate:0 -3px}}@media(prefers-reduced-motion:reduce){.raid-helping-hand{animation:none}}
+</style>
+
+<style scoped>
+/* Explicit card roles reserve their own line; no label overlays the gauges. */
+.raid-console{height:238px;grid-template-rows:30px minmax(0,1fr);gap:7px 12px}.raid-ally-cards{gap:7px}.raid-ally-cards>.raid-card{padding:7px;min-height:0;gap:4px}.raid-ally-cards>.raid-card:disabled{opacity:1}.raid-ally-cards>.raid-card.is-selected{outline:2px solid #b88bd7;outline-offset:0}.raid-ally-cards>.raid-card.is-targeted{border-color:#df7c8b;box-shadow:inset 0 0 0 1px #d86d7c}.raid-console.is-waiting{height:238px}.raid-console:has(.raid-boss-choice){grid-template-rows:42px minmax(0,1fr)}
+@media(max-width:700px){.raid-console{height:342px;max-height:60dvh;padding:6px 7px;grid-template-rows:24px 196px minmax(86px,1fr);gap:6px}.raid-ally-cards{gap:6px}.raid-ally-cards>.raid-card{height:95px;min-height:95px;padding:5px 6px;gap:3px}.raid-console.is-waiting{height:240px;grid-template-rows:24px 196px}.raid-console.is-waiting .raid-controls{display:none}.raid-console:has(.raid-boss-choice){grid-template-rows:40px 196px minmax(64px,1fr)}.raid-controls{gap:3px}.raid-main-actions button{min-height:38px}.raid-moves>button{min-height:38px}.raid-targeting{min-height:40px}}
+@media(min-width:701px) and (max-height:600px){.raid-console,.raid-console.is-waiting{height:100%;max-height:100%;grid-template-rows:24px 196px minmax(80px,1fr)}.raid-ally-cards>.raid-card{height:95px;min-height:95px;padding:5px 6px}.raid-console:has(.raid-boss-choice){grid-template-rows:40px 196px minmax(64px,1fr)}}
+@media(max-width:700px) and (max-height:630px){.raid-console{max-height:65dvh}.raid-console.is-waiting{max-height:65dvh}}
 </style>
