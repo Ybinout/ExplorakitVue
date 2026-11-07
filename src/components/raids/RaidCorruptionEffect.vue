@@ -33,10 +33,10 @@ export default {
       const ctx = c.getContext('2d');
       ctx.scale(dpr, dpr);
       const e = this.event,
-        burst = e.kind === 'shieldBreak',
+        burst = ['shieldBreak','shieldHit'].includes(e.kind),
         saved = e.kind === 'friendship',
         recall=['recall','swapOut'].includes(e.kind), arrival=e.kind==='swapIn', relay=e.kind==='relay',
-        count = w < 640 ? 24 : 40;
+        count = e.kind === 'shieldHit' ? 16 : w < 640 ? 24 : 40;
       const shards = Array.from({
         length: count
       }, (_, i) => ({
