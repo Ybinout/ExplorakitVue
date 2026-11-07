@@ -2,7 +2,7 @@
 const live=p=>p&&p.currentHp>0&&!p.withdrawn;
 export function raidMovePlan(events, index, frame) {
   const move=events[index], outcomes=[];
-  for(let n=index+1;n<events.length&&events[n].kind!=='move';n++)outcomes.push(events[n]);
+  for(let n=index+1;n<events.length&&!['move','upkeep','turn'].includes(events[n].kind);n++)outcomes.push(events[n]);
   const results=new Map(),add=slot=>{if(slot!==null&&slot!==undefined&&!results.has(slot))results.set(slot,{slot,connected:true,hits:0,critical:false});};
   if(['allAdjacent','allAdjacentFoes','all','allies','allySide','allyTeam'].includes(move.moveTarget)){
     if(move.slot===4){if(!['allies','allySide','allyTeam'].includes(move.moveTarget))frame.allies.forEach((p,i)=>{if(live(p))add(i);});else add(4);}

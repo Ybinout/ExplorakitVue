@@ -35,6 +35,7 @@ export default {
       const e = this.event,
         burst = e.kind === 'shieldBreak',
         saved = e.kind === 'friendship',
+        recall=['recall','swapOut'].includes(e.kind), arrival=e.kind==='swapIn', relay=e.kind==='relay',
         count = w < 640 ? 24 : 40;
       const shards = Array.from({
         length: count
@@ -47,7 +48,8 @@ export default {
       }));
       const started = performance.now();
       const draw = now => {
-        const t = (now - started) / 900;
+        const duration=e.kind==='swapOut'?160:e.kind==='swapIn'?220:e.kind==='recall'?620:e.kind==='relay'?700:900;
+        const t = (now - started) / duration;
         ctx.clearRect(0, 0, w, h);
         if (t >= 1 || document.hidden) return;
         const p = e.point || {
@@ -59,14 +61,14 @@ export default {
         for (const s of shards) {
           const progress = Math.max(0, Math.min(1, (t - s.delay) / .85)),
             f = 1 - Math.pow(1 - progress, 3),
-            radius = burst ? s.r * f : s.r * (1 - f),
+            radius = burst||arrival ? s.r * f : s.r * (1 - f),
             x = Math.cos(s.a) * radius,
             y = Math.sin(s.a) * radius * .8 + (burst ? 24 * progress * progress : 0);
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(s.spin + progress * 3);
           ctx.globalAlpha = Math.sin(progress * Math.PI) * .9;
-          ctx.fillStyle = saved ? '#ffe9a9' : s.size > 5 ? '#e7d7ff' : '#ab7bdb';
+          ctx.fillStyle = saved||relay ? '#ffe9a9' : recall||arrival ? s.size>5?'#fff2dc':'#f3a7aa' : s.size > 5 ? '#e7d7ff' : '#ab7bdb';
           ctx.beginPath();
           ctx.moveTo(0, -s.size);
           ctx.lineTo(s.size * .55, s.size * .7);

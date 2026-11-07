@@ -19,7 +19,7 @@ export function drawRaidRifts(c, state, now, motion = true) {
   if (!state?.rifts?.length) return;
   const time = motion ? (now + (state.offset || 0)) / 1000 : 0;
   for (const r of state.rifts) {
-    const t = Math.min(1, Math.max(0, (now + (state.offset || 0) - r.movedAt) / 4000));
+    const t = Math.min(1, Math.max(0, (now + (state.offset || 0) - r.movedAt) / (r.moveDurationMs||4000)));
     const x = r.from.x + (r.to.x - r.from.x) * t,
       y = r.from.y + (r.to.y - r.from.y) * t,
       s = r.scale || 1,
