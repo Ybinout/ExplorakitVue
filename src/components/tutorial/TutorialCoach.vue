@@ -3,7 +3,7 @@
   <svg class="coach-shade" :width="viewport.w" :height="viewport.h" aria-hidden="true"><defs><mask :id="maskId"><rect width="100%" height="100%" fill="white"/><rect v-if="rect" :x="rect.x" :y="rect.y" :width="rect.w" :height="rect.h" rx="12" fill="black"/></mask></defs><rect width="100%" height="100%" fill="#081c2d" fill-opacity=".64" :mask="`url(#${maskId})`"/><rect v-if="rect" :x="rect.x" :y="rect.y" :width="rect.w" :height="rect.h" rx="12" fill="none" stroke="#e4c77e" stroke-width="2"/></svg>
   <div v-for="(block,i) in blockers" :key="i" class="coach-blocker" :style="block" @pointerdown.prevent @click.prevent />
   <section ref="card" class="coach-card" :style="position" role="dialog" :aria-labelledby="maskId+'-title'" aria-live="polite">
-   <div class="coach-heading"><span>PREMIERS PAS</span><small>{{ number }} / 8</small></div>
+   <div class="coach-heading"><span>PREMIERS PAS</span><small>{{ number }} / 10</small></div>
    <h3 :id="maskId+'-title'">{{ copy.title }}</h3><p>{{ copy.text }}</p>
    <p v-if="error" class="coach-error" role="alert">{{ error }}</p>
    <footer><span v-if="copy.interactive" class="coach-hint"><i/>{{ targetWaiting ? 'Préparation de la commande…' : blocked ? 'Un instant…' : copy.hint }}</span><button v-if="targetWaiting && !targetLoading && step==='capture'" @click="$emit('retry')">Recharger le sac</button><button v-if="!copy.interactive" :disabled="busy || blocked" @click="$emit('next')">{{ busy?'Enregistrement…':step==='care'?'C’est compris':'Continuer' }} <b aria-hidden="true">→</b></button></footer>
@@ -19,7 +19,9 @@ const messages={
  attack:{title:'Ta première attaque',text:'Choisis Attaque, puis une capacité. Tu verras ton Pokémon agir et la barre de vie adverse diminuer.',interactive:true,hint:'À toi de jouer'},
  capture_info:{title:'Un nouveau compagnon',text:'Tu as effectué ta première action ! Affaiblir un Pokémon facilite sa capture. Ouvre le Sac et lance une Poké Ball : cette première capture est garantie.'},
  capture:{title:'Lance ta Poké Ball',text:'Ouvre le Sac, puis sélectionne la Poké Ball. Le Pokémon capturé rejoindra ton équipe.',interactive:true,hint:'Utilise la Poké Ball'},
- care:{title:'Prends soin de ton équipe',text:'Si tous tes Pokémon sont K.O., tu seras ramené à l’abri. Ta maman ou l’infirmière d’un Centre Pokémon peuvent soigner ton équipe. Tu peux maintenant retourner voir Wayne !'}
+ menu:{title:'Le menu de ton aventure',text:'Ce bouton ouvre ton sac, le Pokédex, la minimap et les options. Tu y retrouveras aussi tes badges et tes amis.'},
+ team:{title:'Ton équipe Pokémon',text:'Ce bouton te donne directement accès à tes Pokémon : consulte leurs capacités et leur talent, change leur ordre ou confie-leur un objet. Tu es prêt à retourner voir Wayne !'},
+ care:{title:'Prends soin de ton équipe',text:'Si tous tes Pokémon sont K.O., tu seras ramené à l’abri. Ta maman ou l’infirmière d’un Centre Pokémon peuvent soigner ton équipe. Voyons maintenant comment retrouver les commandes de ton aventure.'}
 };
 export default {
  props: {step:String,selector:String,busy:Boolean,error:String,paused:Boolean,blocked:Boolean,targetLoading:Boolean},
@@ -28,7 +30,7 @@ export default {
   maskId(){return 'tutorial-mask-'+this._uid;},
   copy(){return messages[this.step]||messages.hp;},
   targetWaiting(){return this.copy.interactive&&!this.rect;},
-  number(){return ['hp','potential','types','actions','attack','capture_info','capture','care'].indexOf(this.step)+1;},
+  number(){return ['hp','potential','types','actions','attack','capture_info','capture','care','menu','team'].indexOf(this.step)+1;},
   position(){
    const {w,h}=this.viewport,width=Math.min(350,Math.max(0,w-24)),r=this.rect||this.lastRect,gap=14;
    const clamp=(v,min,max)=>Math.max(min,Math.min(Math.max(min,max),v));

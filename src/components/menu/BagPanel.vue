@@ -46,6 +46,7 @@
               <article v-for="item in visibleItems" :key="item.key" :data-item-key="item.key" class="bag-item-row" :class="{'item-open':selectedKey===item.key}" :style="machine(item) ? typeStyle(machine(item).type) : null">
                 <div class="bag-item-heading" :class="{'has-module-shortcut':activePocket==='modules'}">
                 <button v-if="activePocket==='modules'&&!expedition" class="module-shortcut-select" :data-module-shortcut="item.key" :aria-pressed="moduleShortcut===item.key" :disabled="shortcutBusy" :aria-label="(moduleShortcut===item.key?(english?'Unassign Y: ':'Retirer Y : '):(english?'Assign to Y: ':'Associer à Y : '))+item.name" @click="$emit('shortcut',moduleShortcut===item.key?null:item.key)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 16H5V5h9v4m-4 5 5-5m-5 0h5v5"/><rect x="12" y="14" width="9" height="8" rx="2"/><path d="m15 16 1.5 2 1.5-2m-1.5 2v2"/></svg></button>
+                <button class="bag-favorite" :class="{'is-favorite':favorites.has(item.key)}" :data-bag-favorite="item.key" :aria-pressed="favorites.has(item.key)" :disabled="favoriteBusy" :aria-label="(favorites.has(item.key)?(english?'Remove favorite: ':'Retirer des favoris : '):(english?'Add favorite: ':'Ajouter aux favoris : '))+item.name" @click="$emit('favorite',{itemKey:item.key,favorite:!favorites.has(item.key)})"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></svg></button>
                 <button class="bag-item-select" :aria-expanded="selectedKey===item.key" :aria-controls="`bag-item-${item.key}`" @click="selectedKey=selectedKey===item.key?null:item.key">
                   <span class="item-stamp"><bag-item-icon :pocket="activePocket" :item-key="item.key"/></span><span class="bag-item-name"><span :class="{'bag-machine-name':machine(item)}" :data-bag-machine-name="machine(item)?'':null">{{ itemName(item) }}</span><span v-if="machine(item)" class="bag-machine-meta"><span data-bag-machine-type>{{ english?machine(item).type:typeName(machine(item).type) }}</span><span aria-hidden="true">·</span><span data-bag-machine-class>{{ machineClass(item) }}</span></span><small v-if="item.experienceModule" class="item-module-status" :class="{enabled:item.active}">{{ item.active ? `${english?'Active':'Actif'} · +${item.levelBonus} ${english?'levels':'niveaux'}` : (english?'Inactive':'Désactivé') }}</small><small v-if="activePocket==='modules'&&moduleShortcut===item.key" class="module-assigned">Y · {{ english?'Shortcut assigned':'Raccourci associé' }}</small><small v-if="item.unique" class="item-unique">Unique</small></span><span class="bag-item-qty">x{{ item.quantity }}</span><span class="item-chevron" aria-hidden="true">{{ selectedKey===item.key?'⌄':'›' }}</span>
                 </button></div>
@@ -76,9 +77,10 @@ import reference from '@/data/pokemonReference.fr.json';
 import {localizeTypeName,typeBadgeStyle} from '@/services/pokemonTypes';
 export default {
   name:'BagPanel',components:{BagItemIcon},
-  props:{moduleShortcut:{type:String,default:null},shortcutBusy:Boolean,viewState:{type:Object,default:null},money:{type:Number,default:0},items:{type:Array,default:()=>[]},loading:Boolean,error:String,notice:String,repelSteps:{type:Number,default:0},emptyLabel:String,expedition:Boolean,language:String},
+  props:{favoriteKeys:{type:Array,default:()=>[]},favoriteBusy:Boolean,moduleShortcut:{type:String,default:null},shortcutBusy:Boolean,viewState:{type:Object,default:null},money:{type:Number,default:0},items:{type:Array,default:()=>[]},loading:Boolean,error:String,notice:String,repelSteps:{type:Number,default:0},emptyLabel:String,expedition:Boolean,language:String},
   data(){const saved=this.viewState||{};return {activePocket:saved.activePocket||'medicine',selectedKey:saved.selectedKey||null,previousFocus:null,trainingFilter:saved.trainingFilter||'all',corruptionFilter:saved.corruptionFilter||'all',machineSort:saved.machineSort||'name',pocketPositions:{...saved.pocketPositions}};},
   computed:{
+    favorites(){return new Set(this.favoriteKeys);},
     english(){return this.language==='en';},
     owned(){return this.items.filter(i=>Number(i.quantity)>0);},
     total(){return this.owned.reduce((n,i)=>n+Number(i.quantity),0);},
@@ -88,7 +90,7 @@ export default {
     trainingGroups(){return TRAINING_GROUPS.map(g=>({...g,count:this.owned.filter(i=>bagPocket(i)==='training'&&trainingGroup(i)===g.key).length})).filter(g=>g.count);},
     corruptionFamilies(){return [{key:'all',label:'Tous'},{key:'move',label:'CS'},{key:'ability',label:'Talents'},{key:'type',label:'Types'},{key:'combat',label:'Combat'}];},
     visibleItems(){const items=this.owned.filter(i=>bagPocket(i)===this.activePocket&&(this.activePocket!=='corruption'||this.corruptionFilter==='all'||i.corruptionModule?.family===this.corruptionFilter)&&(this.activePocket!=='training'||this.trainingFilter==='all'||trainingGroup(i)===this.trainingFilter));
-      if(this.activePocket==='machines')items.sort((a,b)=>(this.machineSort==='type'?(this.english?this.machine(a)?.type:this.typeName(this.machine(a)?.type)).localeCompare(this.english?this.machine(b)?.type:this.typeName(this.machine(b)?.type),'fr'):0)||a.name.localeCompare(b.name,'fr',{sensitivity:'base'})||a.key.localeCompare(b.key));return items;}
+      if(this.activePocket==='machines')items.sort((a,b)=>(this.machineSort==='type'?(this.english?this.machine(a)?.type:this.typeName(this.machine(a)?.type)).localeCompare(this.english?this.machine(b)?.type:this.typeName(this.machine(b)?.type),'fr'):0)||a.name.localeCompare(b.name,'fr',{sensitivity:'base'})||a.key.localeCompare(b.key));return items.sort((a,b)=>Number(this.favorites.has(b.key))-Number(this.favorites.has(a.key)));}
   },
   watch:{visibleItems(){if(!this.loading)this.reconcile();},loading(loading){if(!loading){this.reconcile();this.$nextTick(this.restoreScroll);}}},
   mounted(){this.previousFocus=document.activeElement;if(!this.viewState&&!this.loading&&!this.visibleItems.length&&this.owned.length)this.activePocket=bagPocket(this.owned[0]);if(!this.loading)this.reconcile();this.$refs.close.focus({preventScroll:true});this.$nextTick(this.restoreScroll);},
@@ -114,6 +116,8 @@ export default {
 };
 </script>
 <style scoped>
+.bag-item-heading{position:relative}.bag-favorite{flex:none;align-self:center;display:grid;place-items:center;width:34px;min-height:44px;padding:6px;border:0;background:transparent;color:var(--journal-muted);cursor:pointer}.bag-favorite svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6}.bag-favorite.is-favorite{color:#bd8c24}.bag-favorite.is-favorite svg{fill:#e6c66b}.bag-favorite:focus-visible{outline:2px solid var(--journal-accent);outline-offset:-3px;border-radius:6px}.bag-favorite:disabled{opacity:.5}
+
 .bag-corrupted-move{display:flex;flex-wrap:wrap;gap:10px 16px;margin:12px 0}.bag-corrupted-move dt{font-size:10px;font-weight:700;color:var(--journal-heading)}.bag-corrupted-move dd{margin:3px 0;font-size:12px;font-weight:700}
 
 .bag-corruption-filters{display:flex;gap:6px;flex-wrap:wrap;grid-column:1 / -1;padding:10px 0}.bag-corruption-filters button{min-height:44px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card);color:var(--journal-ink);padding:8px 12px;font:inherit;cursor:pointer}.bag-corruption-filters [aria-pressed=true]{background:var(--journal-selected);border-color:#a078b8}

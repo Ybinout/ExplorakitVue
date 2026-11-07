@@ -22,7 +22,7 @@ export default {
   methods:{
     rememberSocialConversation(value){this.$set(this.socialConversations,value.id,value);},
     resumeBattleConversation(){const pending=this.pendingBattleConversation;this.pendingBattleConversation=null;const friend=this.socialState.accepted.find(p=>p.id===pending?.id);if(friend)this.$nextTick(()=>this.openFriends(friend));},
-    async flyToFriend(person){this.friendsOpen=false;await this.flyToTown(person.location?.nodeId||this.map,{event:'flyToFriend',data:{targetId:person.id},onError:e=>{this.friendsTarget=person;this.friendsOpen=true;this.socialError=e.message;}});},
+    async flyToFriend(person){this.friendsOpen=false;await this.flyToTown(person.location?.nodeId||this.map,{event:'flyToFriend',data:{targetId:person.id},onError:e=>{this.friendsTarget=null;this.socialError=e.message;this.showInteractionNotice(e.message,6500);}});},
     socialReadingContext(){return (this.friendsOpen||this.battle&&this.battleChatOpen)&&!document.hidden?this.socialReading:null;},
     setSocialReading(value){this.socialReading=value;},
     rememberSocialDraft({id,text}){this.$set(this.socialDrafts,id,text);},

@@ -96,7 +96,7 @@
           <button v-if="isShopMap" class="location-shop-btn" data-open-sell type="button" @click="openShop('sell')">{{ preferences.language==='en'?'Sell':'Vendre' }}</button>
         </div>
         </div>
-        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid || corruptionInstall?'':null" :aria-hidden="trainingFeedback || heldPickerUuid || corruptionInstall?'true':null" ref="bagPanel" :module-shortcut="isDrift?null:moduleShortcut" :shortcut-busy="moduleShortcutBusy || medicineBusy" @shortcut="assignModuleShortcut" :view-state="bagViewState" @remember="bagViewState=$event" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
+        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid || corruptionInstall?'':null" :aria-hidden="trainingFeedback || heldPickerUuid || corruptionInstall?'true':null" ref="bagPanel" :favorite-keys="bagFavorites" :favorite-busy="bagFavoriteBusy" @favorite="setBagFavorite" :module-shortcut="isDrift?null:moduleShortcut" :shortcut-busy="moduleShortcutBusy || medicineBusy" @shortcut="assignModuleShortcut" :view-state="bagViewState" @remember="bagViewState=$event" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
               <button v-if="item.key==='fly_module' && !isDrift" class="bag-use-button" data-use-fly-module :disabled="!!battle || mapLoading || !!flight" @click="useModule(item)">{{ preferences.language==='en'?'Use':'Utiliser' }}</button>
               <template v-else-if="item.experienceModule && !isDrift">
@@ -415,7 +415,7 @@
     </div>
 
     <p v-if="earlyTutorial.grassHint&&map==='start'&&!battle&&!battleResult&&!textImageSequence.length" class="early-grass-message" data-early-grass-guide role="status">Promène-toi dans les hautes herbes jusqu’à rencontrer un Pokémon sauvage !</p>
-    <tutorial-coach v-if="!isDrift&&earlyTutorial.phase==='care'&&!battle&&!battleResult&&!pendingBattleResult&&!mapLoading&&socket?.connected" step="care" :busy="earlyTutorialBusy" :error="earlyTutorialError" @next="advanceEarlyTutorial"/>
+    <tutorial-coach v-if="!isDrift&&['care','menu','team'].includes(earlyTutorial.phase)&&!battle&&!battleResult&&!pendingBattleResult&&!mapLoading&&socket?.connected" :step="earlyTutorial.phase" :selector="earlyTutorial.phase==='menu'?'.menu-toggle-btn':earlyTutorial.phase==='team'?'.team-toggle-btn':null" :busy="earlyTutorialBusy" :error="earlyTutorialError" @next="advanceEarlyTutorial"/>
     <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" :busy="evolutionBusy" :error="evolutionError" @resolve="resolveEvolutionPresentation" @continue="evolutionError='';evolutionQueue.shift()" />
     <div v-if="teamDrag" class="team-drag-ghost" :style="{left:teamDrag.x+'px',top:teamDrag.y+'px'}" aria-hidden="true"><pokemon-portrait :src="getPokemonFrontSprite(teamPokemons.find(p=>p.uuid===teamDrag.uuid))"/><span>{{ teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.name }}</span></div>
     <div v-if="heldItemDrag && heldDragPokemon" class="team-held-ghost" :style="{left:heldItemDrag.x+'px',top:heldItemDrag.y+'px'}" aria-hidden="true"><bag-item-icon :item-key="heldDragPokemon.heldItem" :pocket="heldDragPokemon.heldItem?.endsWith('_berry')?'berries':'held'"/><strong>{{ heldItemName(heldDragPokemon.heldItem) }}</strong><span v-if="heldDragTarget">{{ heldDragTarget.heldItem?'Échanger avec':'Donner à' }} {{ heldDragTarget.name }}</span></div>
@@ -660,7 +660,7 @@ export default {
       },
       preferences: loadGamePreferences(),
       bagViewState: null,
-      bagItems: [],
+      bagItems: [],bagFavorites:[],bagFavoriteBusy:false,
       bagLoading: false,
       bagError: '',
       teamLoading: false,
@@ -848,7 +848,7 @@ export default {
     mirrorWakeReady(){return this.mirrorRift?.stage==='won'&&!this.battle&&!this.battleResult&&!this.pendingBattleResult&&!this.mapLoading&&this.mirrorScene?.phase!=='closing';},
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     worldChatAvailable(){return Boolean(!this.isDrift && this.socket?.connected && !this.worldInteractionBlocked && !this.mapLoading && !this.mapLoadError && !this.worldContextLost && this.renderedMap===this.map && this.players[this.socket.id]?.currentmap===this.map);},
-    movementSuspended(){return (!this.isDrift&&this.earlyTutorial.phase==='care'&&!this.battle&&!this.battleResult) || !!this.safariOffer || !!this.corruptedHeldWorkshop || !!this.corruptionWorkshop || !!this.corruptionInstall || !!this.darkPanel || this.worldChatOpen || this.worldInteractionBlocked;},
+    movementSuspended(){return (!this.isDrift&&['care','menu','team'].includes(this.earlyTutorial.phase)&&!this.battle&&!this.battleResult) || !!this.safariOffer || !!this.corruptedHeldWorkshop || !!this.corruptionWorkshop || !!this.corruptionInstall || !!this.darkPanel || this.worldChatOpen || this.worldInteractionBlocked;},
     patchNoticeReady() {
       return Boolean(this.socket?.connected && this.players[this.socket.id] && !this.mapLoading && !this.mapLoadError
         && this.renderedMap === this.map && !this.worldContextLost && !this.otherInteractionBlocked
@@ -1012,6 +1012,7 @@ export default {
       }
       if (this.pendingBattleResult !== result || this._isDestroyed || this._isBeingDestroyed) return;
       this.battleResult = result; this.pendingBattleResult = null;
+      if(result.loot.some(item=>/Plaque/i.test(item)))this._feedbackAudio?.play('unique');
       this.battle = false;
       this.showPostBattleDialogue();
       this.loadTeamPokemons();
@@ -1978,6 +1979,7 @@ export default {
       this.teleporterChargeNotice = 0;
       this._lastTeleporterCharge = null;
     },
+    async setBagFavorite(data){if(this.bagFavoriteBusy||!this.socket?.connected)return;this.bagFavoriteBusy=true;this.bagError='';try{const r=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit('bag:setFavorite',data,(e,v)=>e?reject(Error('Connexion interrompue. Réessaie pour vérifier le favori.')):resolve(v)));if(!r?.success)throw Error(r?.message||'Favori non enregistré.');this.bagFavorites=r.keys;}catch(e){this.bagError=e.message;}finally{this.bagFavoriteBusy=false;}},
     prepareBagItems(items){const now=Date.now();return items.map(item=>item.darkContinentTravel?{...item,travelClockOffset:(Number(item.travelServerNow)||now)-now}:item);},
     applyBagItems(items) {
       if (!Array.isArray(items)) return;
@@ -2420,7 +2422,7 @@ export default {
         if(!alive())return;
         this.flight={...this.flight,phase:'loading',startedAt:performance.now()};
         const response=departureReady?(departureReady(),{success:true}):await new Promise((resolve,reject)=>socket.timeout(10000).emit(event,{...data,map},(error,result)=>error?reject(new Error('Connexion interrompue. Vérifie ta position après reconnexion.')):resolve(result)));
-        if(!response?.success)throw new Error(response?.message||'Vol indisponible.');
+        if(!response?.success)throw Object.assign(new Error(response?.message||'Vol indisponible.'),{code:response?.code});
         const targetMap=response.destination?.map||map;
         const deadline=performance.now()+16000;
         while(alive()&&(this.mapLoading||this.renderedMap!==targetMap||this.map!==targetMap)){
@@ -3672,6 +3674,7 @@ export default {
     });
     this.socket.on('whitepeak:roster',payload=>{this.clubRosters=payload;});
     this.socket.on('whitepeak:trainers',payload=>{this.clubTrainers=payload.trainers||[];});
+    this.socket.on('bagFavoritesState',state=>{this.bagFavorites=Array.isArray(state?.keys)?state.keys:[];});
     this.socket.on('earlyTutorialState',state=>{this.earlyTutorial=state;this.earlyTutorialLoaded=true;this.earlyTutorialError='';});
     this.socket.on('whitepeak:doubleFrame',frame=>{if(this.doublesFrame?.id===frame.id&&this.doublesFrame.revision>=frame.revision)return;const first=this.doublesFrame?.id!==frame.id;this.doublesFrame=frame;this.clubPanel=null;this.battle=true;this.releaseAllMovementKeys();if(first){this.closeLegacyPanels();this.syncWorldMusic();this.$nextTick(()=>this.$refs.battleOverlay?.startMusic('pvp'));}});
     this.socket.on('whitepeak:control',payload=>{this.clubControl=payload;});
