@@ -19,7 +19,7 @@ export function bindSessionReplacement(socket, onReplaced) {
 export function createGameSocket(token, { mirrorRift = false, adventureOpening = false } = {}) {
   return io(socketOrigin, {
     path: `${process.env.BASE_URL || '/'}socket.io`,
-    auth: { token, rewardPlayback:true, houseModes:1,houseDoubles:1,earlyTutorial:1,tradeMoney:1, ...(mirrorRift ? { mirrorRift:true } : {}), ...(adventureOpening ? { adventureOpening:true } : {}) },
+    auth: { token, rewardPlayback:true, houseModes:1,houseDoubles:1,earlyTutorial:1,tradeMoney:1,corruptionRaids:1, ...(mirrorRift ? { mirrorRift:true } : {}), ...(adventureOpening ? { adventureOpening:true } : {}) },
     // v4.7 does not try the next transport after a blocked WebSocket handshake.
     // Establish HTTP first, then let Engine.IO upgrade when WebSocket is usable.
     transports: ['polling', 'websocket']

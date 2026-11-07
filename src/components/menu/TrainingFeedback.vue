@@ -1,16 +1,18 @@
 <template>
   <div class="training-feedback-backdrop" @keydown.esc.stop.prevent="close" @keydown.tab="trapFocus">
     <section ref="panel" class="training-feedback-panel" :role="confirmation?'alertdialog':'dialog'" aria-modal="true" aria-labelledby="training-feedback-title" :aria-busy="busy" data-training-feedback>
-      <header><div><small>{{ confirmation?'AVANT LA RELANCE':'ENTRAÎNEMENT TERMINÉ' }}</small><h2 id="training-feedback-title">{{ confirmation?'Relancer cet IV ?':entry.pokemonName }}</h2></div><button aria-label="Fermer" :disabled="busy" @click="close">×</button></header>
+      <header><div><small>{{ confirmation?'AVANT LA RELANCE':'ENTRAÎNEMENT TERMINÉ' }}</small><h2 id="training-feedback-title">{{ confirmation?(potential?'Augmenter son potentiel ?':'Relancer cet IV ?'):entry.pokemonName }}</h2></div><button aria-label="Fermer" :disabled="busy" @click="close">×</button></header>
       <template v-if="confirmation">
-        <p>{{ entry.pokemonName }} · {{ labels[entry.stat] }}</p>
-        <p class="training-current" data-iv-current>{{ entry.before }}<small> / 31</small></p>
-        <p class="training-warning">{{ entry.before>=26?'Cet IV est déjà élevé.':'Vérifie la valeur actuelle avant de relancer.' }} La nouvelle valeur sera tirée entre <strong>0 et 31</strong> et remplacera celle-ci, même si elle est plus basse.</p>
-        <footer><button ref="primary" data-iv-cancel :disabled="busy" @click="close">Conserver cet IV</button><button class="training-confirm" data-iv-confirm :disabled="busy" @click="$emit('confirm')">Relancer quand même</button></footer>
+        <p>{{ entry.pokemonName }} · {{ potential?'Potentiel':labels[entry.stat] }}</p>
+        <p class="training-current" data-iv-current>{{ potential?'K'+entry.before+' → K'+(entry.before+1):entry.before }}<small v-if="!potential"> / 31</small></p>
+        <p v-if="potential" class="training-warning">La Perle de Potentiel sera consommée. Les IV restent identiques ; les statistiques sont recalculées avec le nouveau potentiel.</p>
+        <p v-else class="training-warning">{{ entry.before>=26?'Cet IV est déjà élevé.':'Vérifie la valeur actuelle avant de relancer.' }} La nouvelle valeur sera tirée entre <strong>0 et 31</strong> et remplacera celle-ci, même si elle est plus basse.</p>
+        <footer><button ref="primary" data-iv-cancel :disabled="busy" @click="close">{{ potential?'Annuler':'Conserver cet IV' }}</button><button class="training-confirm" data-iv-confirm :disabled="busy" @click="$emit('confirm')">{{ potential?'Utiliser la Perle':'Relancer quand même' }}</button></footer>
       </template>
       <template v-else>
         <p class="training-item">{{ entry.itemName }}{{ entry.quantity>1?` × ${entry.quantity}`:'' }}</p>
-        <article v-if="entry.change.kind==='level'" class="training-result" data-training-result>
+        <article v-if="entry.change.kind==='potential'" class="training-result"><h3>Potentiel</h3><div class="training-values"><span>K{{ entry.change.before }}</span><span>→</span><strong>K{{ entry.change.after }}</strong></div><p>Statistiques recalculées et sauvegardées.</p></article>
+        <article v-else-if="entry.change.kind==='level'" class="training-result" data-training-result>
           <h3>Niveau</h3><div class="training-values"><span>{{ entry.change.before }}</span><span class="training-arrow" aria-hidden="true">→</span><strong>{{ entry.change.after }}</strong></div>
           <level-growth v-if="entry.change.growth" :growth="entry.change.growth" compact />
         </article>
@@ -46,7 +48,7 @@ export default {
   components:{LevelGrowth},
   props:{entry:{type:Object,required:true},busy:Boolean},
   data:()=>({labels,previousFocus:null}),
-  computed:{confirmation(){return this.entry.kind==='confirm';},rows(){const c=this.entry.change;if(!c||['ability','nature'].includes(c.kind))return [];if(c.kind==='evReset')return Object.keys(labels).filter(stat=>c.before[stat]!==c.after[stat]).map(stat=>({stat,before:c.before[stat],after:c.after[stat]}));return [{stat:c.stat,before:c.before,after:c.after}];}},
+  computed:{potential(){return this.entry.stat==='potential';},confirmation(){return this.entry.kind==='confirm';},rows(){const c=this.entry.change;if(!c||['ability','nature'].includes(c.kind))return [];if(c.kind==='evReset')return Object.keys(labels).filter(stat=>c.before[stat]!==c.after[stat]).map(stat=>({stat,before:c.before[stat],after:c.after[stat]}));return [{stat:c.stat,before:c.before,after:c.after}];}},
   mounted(){this.previousFocus=document.activeElement;this.$refs.primary?.focus({preventScroll:true});},
   beforeDestroy(){const previous=this.previousFocus;this.$nextTick(()=>{if(document.querySelector('[data-training-feedback]'))return;(previous?.isConnected?previous:document.querySelector('.pack-close, .bag-panel button'))?.focus({preventScroll:true});});},
   methods:{natureLabel,natureDescription,abilityName(name){return localizeAbilityName(name,'fr');},abilityDescription(name){return reference.abilities[name]||'';},close(){if(!this.busy)this.$emit('close');},trapFocus(event){const buttons=[...this.$refs.panel.querySelectorAll('button:not(:disabled)')],first=buttons[0],last=buttons[buttons.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}}

@@ -11,6 +11,11 @@ export class GameFeedbackAudio extends BattleAudio {
       this.tone(1175, .14, { delay:.08, type:'triangle', volume:.11 });
       return;
     }
+    if(kind==='raidEnter'){[110,165,220].forEach((n,i)=>this.tone(n,.65,{delay:i*.1,type:'triangle',volume:.14}));this.noise(.45,800,{volume:.1});return;}
+    if(kind==='raidHit'){this.noise(.09,1200,{volume:.11});this.tone(370,.09,{type:'triangle',volume:.08});return;}
+    if(kind==='raidBreak'){this.noise(.45,1800,{volume:.2});[660,420,220].forEach((n,i)=>this.tone(n,.25,{delay:i*.06,type:'triangle',volume:.12}));return;}
+    if(kind==='raidShield'){[180,270,360].forEach((n,i)=>this.tone(n,.35,{delay:i*.05,type:'sine',volume:.12}));return;}
+    if(kind==='raidSaved'){[784,988,1319].forEach((n,i)=>this.tone(n,.25,{delay:i*.09,type:'triangle',volume:.13}));return;}
     this.stop();
     if(kind==='unique'){[523,659,784,1047,1319].forEach((note,index)=>this.tone(note,.22,{delay:index*.1,volume:.14}));}
     else if (kind === 'heal') {

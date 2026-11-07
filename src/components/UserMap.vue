@@ -30,10 +30,17 @@
        <template #social-toggle><button class="battle-social-button" @click="battleChatOpen=!battleChatOpen" aria-label="Amis et messages"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
        <template #social-chat><combat-social-panel v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
       </doubles-battle>
-      <battle-overlay v-show="!doublesFrame"
+      <raid-panel v-if="raidPanelVisible && (raidPreview || raidState) && !raidCombatActive && !battle" :preview="raidPreview" :state="raidState" :inventory="raidInventory" :friends="socialState.accepted" :user-id="Number(currentUserId)" :busy="raidBusy" :error="raidError" :notice="raidNotice" :show-tutorial="raidTutorial" @command="raidCommand" @close="closeRaidPreview" @minimize="raidPanelVisible=false"/>
+      <button v-if="raidState && !raidPanelVisible && !battle" class="raid-resume" @click="raidPanelVisible=true">{{ raidState.phase==='lobby'?'Reprendre la préparation du raid':'Bilan du raid' }} →</button>
+      <aside v-if="raidInvitation" class="raid-invitation" :class="{'is-compact':battle&&!raidInviteExpanded}" role="status" aria-live="polite"><button v-if="battle&&!raidInviteExpanded" class="raid-invite-expand" @click="raidInviteExpanded=true">✧ Invitation raid · {{ raidInvitationSeconds }} s</button><template v-else><b>{{ raidInvitation.senderName }} t’invite dans une faille</b><small>{{ raidInvitation.rift.name }} · N. {{ raidInvitation.rift.level }} · {{ raidInvitationSeconds }} s</small><span><button :disabled="raidBusy" @click="raidCommand('invitation',{id:raidInvitation.id,accept:true})">{{ battle?'Réserver ma place':'Rejoindre' }}</button><button :disabled="raidBusy" @click="raidCommand('invitation',{id:raidInvitation.id,accept:false})">Refuser</button><button v-if="battle" @click="raidInviteExpanded=false" aria-label="Réduire l’invitation">−</button></span></template></aside>
+      <raid-battle v-if="raidCombatActive" :key="raidState.id" :frame="raidState.combat" :difficulty="raidState.rift.name" :busy="raidBusy" :error="raidError" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" @action="raidCommand('action',$event)" @results="showRaidResults" @sound="_feedbackAudio && _feedbackAudio.play($event)" @impact="raidImpact">
+       <template #social-toggle><button class="battle-social-button" @click="battleChatOpen=!battleChatOpen" aria-label="Amis et messages"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
+       <template #social-chat><combat-social-panel v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
+      </raid-battle>
+      <battle-overlay v-show="!doublesFrame && !raidCombatActive"
         ref="battleOverlay"
         :tutorial="isDrift?null:earlyTutorial" :tutorial-busy="earlyTutorialBusy" :tutorial-error="earlyTutorialError" @tutorial-next="advanceEarlyTutorial"
-        :social-chat-open="battleChatOpen" @social-close="battleChatOpen=false" :active="battle && !doublesFrame" :external-music-active="!!doublesFrame && battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
+        :social-chat-open="battleChatOpen" @social-close="battleChatOpen=false" :active="battle && !doublesFrame && !raidCombatActive" :external-music-active="(!!doublesFrame || raidCombatActive) && battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
         :bag-items="bagItems" :tournament="!!superTournament.active" @tournament-abandon="openTournamentAbandon"
         :bag-loading="bagLoading"
         :caught-species-ids="isDrift ? [] : caughtSpeciesIds"
@@ -539,6 +546,10 @@ import { WorldWeatherRenderer, worldWeatherEnabled, mapWorldWeather } from '@/se
 import { createEvolutionTracker } from '@/services/evolutionPresentation';
 import evolutionGraph from '@/data/evolutionGraph.json';
 import { buildBattleResult } from '@/services/battleResult';
+import raidsGame from '@/services/raidsGame';
+import {drawRaidRifts} from '@/services/raidRifts';
+import RaidPanel from './raids/RaidPanel.vue';
+import RaidBattle from './raids/RaidBattle.vue';
 import GameInfoPanels from './menu/GameInfoPanels.vue';
 import ShopPanel from './shop/ShopPanel.vue';
 import TextWithImage from './TextWithImage.vue';
@@ -558,7 +569,7 @@ import { WorldMusic } from '@/services/worldMusic';
 
 export default {
   props: { patchNoticeOpen: Boolean },
-  mixins:[socialGame,tradeGame],
+  mixins:[socialGame,tradeGame,raidsGame],
   components: { TutorialCoach, SafariTravelPanel,
     SuperTournamentPanel, TournamentRewardPanel, AdventureOpening,
     RoomObstacleAction,
@@ -574,7 +585,7 @@ export default {
     PokemonDetails,DarkContinentPanel,
     ExperienceBar,
     TextWithImage,
-    BattleOverlay,DoublesBattle,CorruptedHeldWorkshop,WhitepeakClubPanel,ClubSpectator,CombatSocialPanel,
+    BattleOverlay,DoublesBattle,RaidPanel,RaidBattle,CorruptedHeldWorkshop,WhitepeakClubPanel,ClubSpectator,CombatSocialPanel,
     GameInfoPanels,
     ShopPanel
   },
@@ -857,7 +868,7 @@ export default {
     },
     worldInteractionBlocked() { return this.patchNoticeOpen || this.otherInteractionBlocked; },
     otherInteractionBlocked() {
-      return !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.experienceLab || this.corruptedHeldWorkshop || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
@@ -1028,6 +1039,7 @@ export default {
       if (effect.revive) return !this.isDrift && pokemon.currentHp <= 0;
       if (pokemon.currentHp <= 0 && !(this.isDrift && pokemon.riftFainted && (effect.heal || effect.healFraction || item.category==='heal'))) return false;
       if(effect.levelUp)return !pokemon.isEgg && pokemon.level<(effect.maxLevel??100) && !pokemon.evolutionState?.pending;
+      if(effect.potentialIncrease)return !pokemon.isEgg && pokemon.k<4;
       if(effect.natureReroll)return !pokemon.isEgg;
       if(effect.abilityReroll)return !pokemon.isEgg && !!item.abilityOptions?.[pokemon.uuid]?.length;
       if(effect.ivReroll)return !pokemon.isEgg&&Number.isInteger(pokemon.iv?.[effect.ivReroll])&&pokemon.iv[effect.ivReroll]>=0&&pokemon.iv[effect.ivReroll]<=31;
@@ -1062,6 +1074,7 @@ export default {
       return `${p.name} · ${p.currentHp}/${p.maxHp} PV${this.medicineStatus(p)}`;
     },
     trainingNotice(change,name,quantity=1){
+      if(change.kind==='potential')return `${name} passe au potentiel K${change.after}. Statistiques recalculées.`;
       const stats={hp:'PV',attack:'Attaque',defense:'Défense',specialAttack:'Attaque Spéciale',specialDefense:'Défense Spéciale',speed:'Vitesse'};
       if(change.kind==='level')return `${name} · Niveau ${change.before} → ${change.after}. Statistiques recalculées et niveau sauvegardé.`;
       if(change.kind==='nature')return `${name} · Nature : ${natureLabel(change.before)} → ${natureLabel(change.after)}. Statistiques recalculées et nature sauvegardée.`;
@@ -1166,6 +1179,7 @@ export default {
       const pokemonUuid = targetUuid || this.medicineTargets[item.key];
       const pokemon = this.teamPokemons.find(p => p.uuid === pokemonUuid);
       if (this.trainingFeedback || this.medicineBusy || !this.canUseBagItem(item) || !this.canReceiveMedicine(item, pokemon)) return;
+      if(item.fieldUse?.potentialIncrease&&!ivConfirmation){this.trainingFeedback={kind:'confirm',pokemonUuid,itemKey:item.key,pokemonName:pokemon.name,stat:'potential',before:pokemon.k};return;}
       const stat=item.fieldUse?.ivReroll;
       if(stat && pokemon.iv?.[stat]>=26 && !ivConfirmation){
         this.trainingFeedback={kind:'confirm',pokemonUuid,itemKey:item.key,pokemonName:pokemon.name,stat,before:pokemon.iv[stat]};
@@ -3029,6 +3043,7 @@ export default {
       if(!document.hidden)drawWhitepeakSnow(c,this.map,now,mirrorMotion,camera);
       if(!document.hidden)drawWhitepeakPodiums(c,this.map,this.players,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       drawHonorRoll(c,this.map,this.clubHonor);
+      if(this.raidWorld?.map===this.map)drawRaidRifts(c,this.raidWorld,Date.now(),this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       drawWhitepeakRoom(c,this.map,this.clubRoulette,Date.now()+(this.clubRoulette?.serverOffset||0),this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       if(!this._pokemonComputers)this._pokemonComputers=new PokemonComputerRenderer();
       this._pokemonComputers.draw(c,this.worldDevices,this.map,now,mirrorMotion,scale,camera);
@@ -3170,6 +3185,7 @@ export default {
     }
 
     this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token,{mirrorRift:true,adventureOpening:true});
+    this.bindRaidSocket();
     this.bindSocialSocket();this.bindTradeSocket();
     this.socket.on('adventureOpening',scene=>{if(this.isDrift)return;this.releaseAllMovementKeys();this.openingScene=scene;});
     bindSessionReplacement(this.socket, () => this.$router.replace({path:'/connexion',query:{reason:'session-replaced'}}));
@@ -5032,3 +5048,9 @@ button:hover {
 <style scoped>
 .early-grass-message{position:fixed;left:50%;top:max(100px,17dvh);translate:-50% 0;z-index:80;box-sizing:border-box;width:min(470px,calc(100% - 24px));padding:11px 15px;border:1px solid var(--journal-border);border-left:3px solid #86a65c;border-radius:8px;background:var(--journal-paper);color:var(--journal-ink);box-shadow:0 4px 15px #112b3a22;text-align:center;font:12px/1.5 var(--journal-font);pointer-events:none}
 </style>
+
+<style scoped>
+.raid-resume{position:fixed;left:50%;bottom:20px;translate:-50% 0;z-index:1800;padding:12px 18px;border:1px solid #a183b5;border-radius:10px;background:var(--journal-paper);color:var(--journal-ink);font:13px var(--journal-font);cursor:pointer;box-shadow:0 5px 25px #0005}.raid-invitation{position:fixed;right:15px;top:74px;z-index:2400;width:min(320px,calc(100vw - 30px));padding:14px 16px;border:1px solid #aa88c2;border-left:4px solid #a77ac2;border-radius:10px;background:var(--journal-paper);box-shadow:0 8px 35px #0005;font:12px/1.5 var(--journal-font);color:var(--journal-ink)}.raid-invitation b,.raid-invitation small{display:block}.raid-invitation small{color:var(--journal-muted);margin:5px 0 8px}.raid-invitation span{display:flex;gap:8px}.raid-invitation button{min-height:38px;padding:6px 10px;border:1px solid var(--journal-border);border-radius:7px;background:var(--journal-card);color:inherit;font:inherit;cursor:pointer}.raid-invitation button:first-child{background:#806093;color:white}.raid-invitation button:disabled{opacity:.5}
+</style>
+
+<style scoped>.raid-invitation.is-compact{top:170px;width:auto;max-width:230px;padding:3px 6px}.raid-invitation .raid-invite-expand{background:transparent;color:var(--journal-ink);border:0;padding:3px 5px;font-size:11px;min-height:32px}</style>
