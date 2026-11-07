@@ -88,6 +88,7 @@
             </button>
             <button v-if="superTournament.active && !battle" class="menu-dropdown-item" data-menu-action="tournament-powers" @click="isMenuOpen=false;releaseAllMovementKeys();tournamentPanel={tab:'powers'}"><journal-icon name="drifts"/><span>Augmentations</span><small>{{ superTournament.passives?.length || 0 }} actives</small></button>
             <button class="menu-dropdown-item" :class="{'has-social-notification':socialAlertCount>0}" data-menu-action="friends" @click="openFriends()"><journal-icon name="friends"/><span>Amis</span><notification-badge :count="socialAlertCount" data-social-alert/></button>
+            <button v-if="!isDrift" class="menu-dropdown-item" data-menu-action="calculator" @click="openDamageCalculator"><journal-icon name="calculator"/><span>Calculateur de dégâts</span></button>
             <button class="menu-dropdown-item" data-menu-action="minimap" @click="handleMenuAction('minimap')"><journal-icon name="minimap" /><span>Minimap</span></button>
             <button class="menu-dropdown-item" data-menu-action="quit" :disabled="quitting" @click="quitGame"><journal-icon name="quit" /><span>{{ quitting ? tr('saving') : tr('saveAndQuit') }}</span><small>Accueil</small></button>
             <small v-if="isDrift" class="menu-quit-hint">Le temps continue hors du jeu. Une déconnexion prolongée compte comme un abandon.</small>
@@ -163,7 +164,7 @@
           <p v-if="appearanceError" class="team-state team-error" role="alert">{{ appearanceError }}</p>
         </div>
         <div v-if="isTeamPanelOpen" id="pokemon-team-panel" class="team-panel" ref="teamPanel" @click.capture="guardTeamDragClick" @dragstart.prevent>
-          <div class="team-title"><span><small>COMPAGNONS DE VOYAGE</small>{{ tr('team') }}</span><button class="team-close" :aria-label="tr('close')" @click="closeTeamPanel">×</button></div>
+          <div class="team-title"><span><small>COMPAGNONS DE VOYAGE</small>{{ tr('team') }}</span><button class="team-coverage-btn" :disabled="teamLoading||!teamPokemons.length" data-team-coverage @click="releaseAllMovementKeys();coverageOpen=true">Couverture des types</button><button class="team-close" :aria-label="tr('close')" @click="closeTeamPanel">×</button></div>
           <div v-if="teamLoading" class="team-state">{{ tr('loading') }}</div>
           <p v-if="teamError" class="team-state team-error" role="alert">{{ teamError }}</p>
           <div v-if="!teamLoading && teamPokemons.length === 0" class="team-state">{{ tr('noPokemon') }}</div>
@@ -288,7 +289,7 @@
           @pointerdown="startMobileGesture($event, 'map')" @pointermove="moveMobileGesture"
           @pointerup="endMobileGesture" @pointercancel="endMobileGesture" @lostpointercapture="endMobileGesture">
         <div
-          v-if="mobileControlsVisible && !tournamentPanel && !tradeModalVisible && !friendsOpen && !heldPickerUuid && !pc.visible && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
+          v-if="mobileControlsVisible && !tournamentPanel && !tradeModalVisible && !friendsOpen && !heldPickerUuid && !pc.visible && !trainerOffer && !battle && !battleResult && !driftSpectator && !learningVisible && !isMenuOpen && !isBagOpen && !isTeamPanelOpen && !isAppearancePanelOpen && !coverageOpen && !damageCalculatorOpen && !activeInfoPanel && !shop.visible && !selectedPokemonUuid && !isDriftPanelOpen"
           :class="['mobile-controls-shell', { 'dialogue-active': textImageSequence.length > 0 }]"
         >
           <div class="mobile-dpad" :inert="textImageSequence.length ? '' : null" :aria-hidden="textImageSequence.length ? 'true' : null" aria-label="Pad directionnel"
@@ -432,6 +433,8 @@
     <corruption-workbench v-if="corruptionWorkshop && !mapLoading && !battle" :panel="corruptionWorkshop" :items="bagItems" :command="corruptionCommand" @close="corruptionWorkshop=null" @crafted="showInteractionNotice($event.created?'Module ajouté au sac.':'Synthèse échouée : composants consommés.')" @bag="showCorruptionBag"/>
     <corruption-installer v-if="corruptionInstall && !battle" :key="corruptionInstall.id" :items="bagItems" :team="teamPokemons" :preset-item="corruptionInstall.item" :target-pokemon="corruptionInstall.pokemon" :source="corruptionInstall.source" :initial-family="corruptionInstall.family" :command="corruptionCommand" @close="corruptionInstall=null"/>
     <dark-continent-panel v-if="darkPanel && !mapLoading && !flight && !battle && !battleResult && !pendingBattleResult" :panel="darkPanel" :busy="darkBusy" :error="darkError" :notice="darkNotice" :team-size="teamPokemons.length" :money="progressionState.money" @return="returnFromDark" @rules="darkPanel={...darkPanel,mode:'rules'}" @close="darkPanel=null" @command="darkCommand"/>
+    <team-coverage v-if="coverageOpen&&!battle" :team="teamPokemons" @close="coverageOpen=false"/>
+    <damage-calculator v-if="damageCalculatorOpen&&!battle" :team="teamPokemons" :command="calculateStrategy" @close="damageCalculatorOpen=false"/>
     <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :corruption-allowed="!isDrift && !battle && !superTournament.active" @corruption="openCorruptionSheet" :rename-allowed="(canReorderMoves || renameBusy) && !superTournament.active" :rename-busy="renameBusy" :rename-error="renameError" :rename-notice="renameNotice" @rename="renamePokemon" :moves-order-allowed="canReorderMoves" :moves-order-busy="moveOrderBusy" :moves-order-error="moveOrderError" :moves-order-notice="moveOrderNotice" @reorder-moves="reorderPokemonMoves" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
@@ -582,6 +585,7 @@ export default {
     RiftSpectatorPanel,
     DriftGlyph,
     PokemonPortrait,
+    TeamCoverage:()=>import('./strategy/TeamCoverage.vue'),DamageCalculator:()=>import('./strategy/DamageCalculator.vue'),
     PokemonDetails,DarkContinentPanel,
     ExperienceBar,
     TextWithImage,
@@ -674,6 +678,7 @@ export default {
       bagItems: [],bagFavorites:[],bagFavoriteBusy:false,
       bagLoading: false,
       bagError: '',
+      coverageOpen:false,damageCalculatorOpen:false,
       teamLoading: false,
       teamSaving: false,
       teamError: '',
@@ -870,7 +875,7 @@ export default {
     otherInteractionBlocked() {
       return !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.experienceLab || this.corruptedHeldWorkshop || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
-        || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
+        || this.coverageOpen || this.damageCalculatorOpen || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
     },
@@ -2295,7 +2300,10 @@ export default {
       if (this.saveState.status === 'error') return `${this.tr('save')} !`;
       return this.tr('save');
     },
+    async openDamageCalculator(){this.releaseAllMovementKeys();this.isMenuOpen=false;this.closeLegacyPanels();this.closeInfoPanel();await this.loadTeamPokemons();this.damageCalculatorOpen=true;},
+    calculateStrategy(payload){return new Promise((resolve,reject)=>{if(!this.socket?.connected){reject(Error('Connexion interrompue.'));return;}this.socket.timeout(10000).emit('strategy:calculate',payload,(error,response)=>{if(error)reject(Error('Le serveur ne répond pas. Réessaie.'));else if(!response?.success)reject(Error(response?.message||'Simulation indisponible.'));else resolve(response.result);});});},
     closeLegacyPanels() {
+      this.coverageOpen=false;this.damageCalculatorOpen=false;
       this.friendsOpen=false;this.heldPickerUuid=null;
       this.pc.visible=false;
       this.isBagOpen = false;
@@ -2588,6 +2596,7 @@ export default {
       this.closeLegacyPanels();
     },
     handleOutsideMenuClick(event) {
+      if(this.coverageOpen||this.damageCalculatorOpen)return;
       if (this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.selectedPokemonUuid) return;
       const header = this.$refs.gameHeader;
       const bagPanel = this.$refs.bagPanel?.$el;
@@ -2791,6 +2800,7 @@ export default {
       else if (action === 'back') consume();
     },
     handleKeydown(e) {
+      if(this.coverageOpen||this.damageCalculatorOpen)return;
       if(e.target?.closest?.('[data-social-surface]'))return;
       if (this.patchNoticeOpen) { this.releaseAllMovementKeys(); return; }
       if(this.worldChatOpen){if(e.key==='Escape'){e.preventDefault();this.closeWorldChat();}return;}
@@ -4990,6 +5000,7 @@ button:hover {
 
 }
 .world-chat-toggle{position:absolute;z-index:23;right:12px;top:12px;display:grid;place-items:center;width:44px;height:44px;padding:10px;border:1px solid var(--journal-border);border-radius:12px;background:var(--journal-paper);color:var(--journal-accent);cursor:pointer}.world-chat-toggle svg{width:24px;height:24px}.world-chat-toggle:focus-visible{outline:2px solid var(--journal-progress);outline-offset:2px}.world-speech-announcement{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;pointer-events:none}
+.team-coverage-btn{min-height:40px;margin-left:auto;margin-right:8px;padding:7px 11px;background:var(--journal-selected);color:var(--journal-heading);border:1px solid var(--journal-border);border-radius:8px;font:600 11px var(--journal-font);cursor:pointer}@media(max-width:650px){.team-coverage-btn{max-width:115px;font-size:10px;padding:6px}}
 </style>
 
 <style scoped>

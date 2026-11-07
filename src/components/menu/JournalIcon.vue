@@ -6,6 +6,7 @@
 
 <script>
 const paths = {
+  calculator:'M5 3h14v18H5ZM8 6h8v4H8Zm0 8h1m6 0h1m-8 4h1m6 0h1',
   exchange:'M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4',
   flight:'m3 13 7-2 6-8 2 1-3 7 6 2v2l-7-1-3 7-2-1 1-7-7 2Z',
   palette:'M12 3a9 9 0 1 0 0 18h2a2 2 0 0 0 0-4h-1a2 2 0 0 1 0-4h4a4 4 0 0 0 4-4c0-4-4-6-9-6ZM7 9h.1M10 6h.1M15 6h.1M5 13h.1',

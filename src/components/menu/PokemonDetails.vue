@@ -8,6 +8,7 @@
       <nav class="companion-pagination" aria-label="Parcourir les Pokémon"><button data-companion-previous :disabled="position <= 1" @click="$emit('navigate', -1)">‹ Précédent</button><span>{{ position }} / {{ total }}</span><button data-companion-next :disabled="position >= total" @click="$emit('navigate', 1)">Suivant ›</button></nav>
       <nav class="companion-pages" aria-label="Rubriques de la fiche"><button v-for="item in pages" :key="item.key" :data-companion-page-button="item.key" :aria-pressed="page===item.key" @click="showPage(item.key)">{{ item.label }}</button></nav>
       <div ref="content" class="companion-content">
+      <section class="companion-coverage"><coverage-grid v-if="page==='offense'||page==='defense'" :key="page" :analysis="coverage" :team="[pokemon]" :defensive="page==='defense'"/></section>
       <div class="companion-body">
         <div class="companion-identity">
           <div class="companion-art"><span class="companion-number">N° {{ String(pokemon.spriteId).padStart(3, '0') }}</span><pokemon-portrait :src="$pokemonSprite(pokemon, {animated: true})" :alt="pokemon.truename || pokemon.name" /><span class="companion-level">Niv. {{ pokemon.level }}</span></div>
@@ -78,6 +79,8 @@
   </div>
 </template>
 <script>
+import CoverageGrid from '../strategy/CoverageGrid.vue';
+import {analyzeTeam} from '@/services/teamCoverage';
 import PotentialStar from '../PotentialStar.vue';
 import PokemonGender from '../PokemonGender.vue';
 import PokemonPortrait from '../PokemonPortrait.vue';
@@ -99,12 +102,13 @@ const stats = [
 ];
 
 export default {
-  components: { ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender, OwnedNameEditor, BagItemIcon },
+  components: { CoverageGrid,ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender, OwnedNameEditor, BagItemIcon },
   props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, corruptionAllowed:Boolean, renameAllowed:Boolean,renameBusy:Boolean,renameError:String,renameNotice:String, movesOrderAllowed:Boolean,movesOrderBusy:Boolean,movesOrderError:String,movesOrderNotice:String,contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
   data: () => ({ page: 'profile', mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
     typeNames: { Grass: 'Plante', Fire: 'Feu', Water: 'Eau', Bug: 'Insecte', Flying: 'Vol', Electric: 'Électrik', Ground: 'Sol', Rock: 'Roche', Ice: 'Glace', Fighting: 'Combat', Psychic: 'Psy', Ghost: 'Spectre', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' } }),
   computed: {
-    pages(){return [{key:'profile',label:'Profil et statistiques'},{key:'moves',label:'Capacités'},{key:'corruption',label:'Corruption'},...(!this.readOnly?[{key:'evolution',label:'Évolution'}]:[])];},
+    coverage(){return analyzeTeam([this.pokemon]);},
+    pages(){return [{key:'profile',label:'Profil et statistiques'},{key:'moves',label:'Capacités'},{key:'offense',label:'Couverture offensive'},{key:'defense',label:'Couverture défensive'},{key:'corruption',label:'Corruption'},...(!this.readOnly?[{key:'evolution',label:'Évolution'}]:[])];},
     mutationFamilies(){return CORRUPTION_FAMILIES;},
     progress() { return experienceProgress(this.pokemon); },
     hpPercent() { return Math.min(100, this.pokemon.currentHp / this.pokemon.maxHp * 100); },
@@ -239,4 +243,5 @@ export default {
  .companion-evolutions{border-top:0}.companion-evolutions h3{margin-top:16px}
  .companion-footer{display:none}
 }
+.companion-coverage{display:none;padding:20px 22px}.companion-sheet[data-companion-page=offense] .companion-content>:not(.companion-coverage),.companion-sheet[data-companion-page=defense] .companion-content>:not(.companion-coverage){display:none}.companion-sheet[data-companion-page=offense] .companion-coverage,.companion-sheet[data-companion-page=defense] .companion-coverage{display:block}@media(max-width:650px){.companion-coverage{padding:15px}}
 </style>
