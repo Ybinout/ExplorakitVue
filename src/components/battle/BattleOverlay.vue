@@ -723,8 +723,8 @@ export default {
       this._tutorialReadyTimer=setTimeout(()=>{if(this.tutorialPhase===phase)this.tutorialReadyPhase=phase;},180);
     },
     isVisuallyShiny(pokemon) { return this.$pokemonSprite(pokemon).includes('/shiny/'); },
-    preloadTrainerSequence() {
-      if (this.mapName !== 'route4_maison') return null;
+    preloadTrainerSequence(force = false) {
+      if (!force && this.mapName !== 'route4_maison') return null;
       this._trainerSequence ||= new SequencedMusic({intro:require('@/assets/msc/gwenn-intro.mp3'),loop:require('@/assets/msc/gwenn-loop.mp3')});
       this._trainerSequence.prepare().catch(()=>{});
       return this._trainerSequence;
@@ -871,7 +871,7 @@ export default {
       this.stopMusic(true);
       this.musicKind = kind;
       if (kind === 'gwenn') {
-        this.music=this.preloadTrainerSequence();this.syncMusic();return;
+        this.music=this.preloadTrainerSequence(true);this.syncMusic();return;
       }
       const tracks = { dark:require('@/assets/msc/dark-battle.mp3'),legendary:require('@/assets/msc/legendary-battle.mp3'),void:require('@/assets/msc/lucie-maison.mp3'), mounir: require('@/assets/msc/mounir.mp3'), hoze: require('@/assets/msc/hoze.mp3'), lucie: require('@/assets/msc/lucie-combat.mp3'), ana: require('@/assets/msc/ana.mp3'), wanda: require('@/assets/msc/wanda.mp3'), '7p': require('@/assets/msc/7p.mp3'), raph: require('@/assets/msc/raph.mp3'), wild: require('@/assets/msc/wild.mp3'), arena: require('@/assets/msc/arene.mp3'), trainer: require('@/assets/msc/arene.mp3'), colosseum: require('@/assets/msc/cyntia.mp3'), pvp: require('@/assets/msc/cyntia.mp3') };
       this.music = new Audio(tracks[kind] || tracks.wild);

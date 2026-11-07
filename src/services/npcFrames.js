@@ -4,10 +4,11 @@ import classic from '../data/classicNpcFrames.json';
 const worldSprites = Object.freeze({
   nrv_noz: 'nrv-noz-pixel-v1.png', nrv_tom: 'nrv-tom-pixel-v1.png', nrv_cry: 'nrv-cry-pixel-v1.png',
   gwenn_rochebrume: 'gwenn-pixel-v4.png', gwenn_route8: 'matthieu-pixel-v2.png', lucie_route2: 'lucie-pixel-v3.png',
-  professor_story:'professor-pixel-v1.png',lucie_lab:'lucie-pixel-v3.png',lucie_home:'lucie-pixel-v3.png',town_bastien:'clement-pixel-v2.png'
+  professor_story:'professor-pixel-v1.png',lucie_lab:'lucie-pixel-v3.png',lucie_home:'lucie-pixel-v3.png'
 });
 // Appearance stays client-side: legacy servers and clients keep their valid atlas frames.
 export function npcAppearance(actor) {
+  if (actor.name === 'town_bastien') return { ...actor, sprite:'6931.png', spriteFrame:{columns:8,rows:4,index:16} };
   return Object.hasOwn(worldSprites, actor.name)
     ? { ...actor, sprite: worldSprites[actor.name], spriteFrame: { columns: 1, rows: 1, index: 0 } }
     : actor;
