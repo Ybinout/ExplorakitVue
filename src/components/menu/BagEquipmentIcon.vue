@@ -1,6 +1,11 @@
 <template>
   <g>
     <bag-strategy-icon v-if="strategyShape" :shape="strategyShape" :kind="kind"/>
+    <g v-else-if="kind==='survival_kit'">
+      <path d="M15 12V8h18v4M9 15h30v25H9Z" fill="var(--item-main)"/>
+      <path d="M8 14h32v10H8ZM12 30h8v10h-8Zm16 0h8v10h-8Z" fill="var(--item-accent)"/>
+      <path d="M21 19h6v9h-6Z" fill="var(--item-light)"/><path d="m20 33 8-4-1 8-7-4Z" fill="var(--item-light)"/>
+    </g>
     <g v-else-if="kind==='clara_registry'">
       <path d="M12 5h25v38H12a5 5 0 0 1-5-5V10a5 5 0 0 1 5-5Z" fill="var(--item-main)"/>
       <path d="M13 5v38m21-8 6-2v10l-3-2-3 2Z" fill="var(--item-accent)"/>

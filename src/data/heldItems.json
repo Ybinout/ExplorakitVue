@@ -414,5 +414,9 @@
   "corrupted_leftovers": {
     "name": "Restes Corrompus",
     "description": "Restaure 8 % des PV max en fin de tour. Met K.O. à la fin du troisième tour consécutif sur le terrain. Un changement remet le compteur à zéro."
+  },
+  "survival_kit": {
+    "name": "Kit de survie",
+    "description": "À faire tenir avant un combat du Dark Continent. Si le porteur tombe K.O., le kit est consommé : le Pokémon reste dans l’équipe à 0 PV au lieu de disparaître. Utilisable aussi sur un Pokémon corrompu. Sans effet ailleurs."
   }
 }

@@ -4,6 +4,7 @@ import { AnaArenaRenderer, ANA_MAP } from './anaArena.js';
 import { WandaArenaRenderer, WANDA_MAP } from './wandaArena.js';
 import { TournamentLobbySkyRenderer, TOURNAMENT_SCENERY } from './tournamentLobbySky.js';
 import { villageWaterMask } from './villageWater.js';
+import { DarkContinentMist, isDarkMistMap } from './darkContinentMist.js';
 
 // Positions are authored in the 448 × 320 map artwork, never inferred from a colour
 // across the whole foreground. Decorations have no collision or gameplay state.
@@ -91,6 +92,7 @@ const butterflyGardens = {
     [353,255],[400,277],[348,104],[406,103]],
 };
 export function placeAmbienceProfile(map) {
+  if (isDarkMistMap(map)) return { kind: 'dark-continent', shade: '#371153', opacity: 0 };
   if (TOURNAMENT_SCENERY[map]) return { kind: 'tournament-lobby', shade: '#000000', opacity: 0 };
   if (butterflyGardens[map]) return {
     kind: 'garden', shade: '#000000', opacity: 0,
@@ -324,6 +326,11 @@ export class PlaceAmbienceRenderer {
     const c = this.context,
       p = this.profile;
     c.clearRect(0, 0, WIDTH, HEIGHT);
+    if (p.kind === 'dark-continent') {
+      if (!this.darkMist) this.darkMist = new DarkContinentMist(this.createCanvas);
+      this.darkMist.paint(c, this.map, t, motion, night);
+      return;
+    }
     if (this.lightingBase) c.drawImage(this.lightingBase, 0, 0);
     else this.paintBase(c);
     if (p.kind === 'summit' || p.kind === 'hall') {
@@ -453,6 +460,7 @@ export class PlaceAmbienceRenderer {
     for (const [x, y] of p.flags || []) cloth(c, x, y, t, p.color, motion ? Math.max(0.5, wind) : 0);
   }
   suspend() {
+    this.darkMist?.suspend();
     this.hoze?.suspend(); this.raph?.suspend(); this.ana?.suspend(); this.wanda?.suspend(); this.tournamentLobby?.suspend();
     for (const key of ['canvas', 'water', 'waterMask', 'lightingBase']) {
       if (this[key]) {

@@ -27,7 +27,7 @@ add('equipment',[
   ['choice_band','#da8e8a','#f0cc92'],['choice_specs','#b5a1d9','#d4e3f2'],['choice_scarf','#88bada','#e4c8a1'],
   ['focus_sash','#e6d5a3','#b9877a'],['assault_vest','#9fb19a','#e4cca0'],['eviolite','#bb9bcc','#e6c6e1'],
   ['expert_belt','#8a9caa','#debb73'],['shell_bell','#dcc692','#eab9a1'],['rocky_helmet','#a4b4c5','#dfcfaf'],
-  ['rift_talisman','#b6a1db','#8fcbd4'],['exp_share','#dbbd79','#9ac9d6']
+  ['survival_kit','#88ac9a','#e3c28a'],['rift_talisman','#b6a1db','#8fcbd4'],['exp_share','#dbbd79','#9ac9d6']
 ]);
 export const BAG_STRATEGY_SHAPES=Object.freeze({'silk_scarf': 'scarf', 'charcoal': 'coal', 'sea_incense': 'incense', 'magnet': 'magnet', 'miracle_seed': 'seed', 'never_melt_ice': 'ice', 'black_belt': 'belt', 'poison_barb': 'barb', 'soft_sand': 'sand', 'sharp_beak': 'beak', 'twisted_spoon': 'spoon', 'silver_powder': 'powder', 'hard_stone': 'rock', 'spell_tag': 'tag', 'dragon_fang': 'fang', 'black_glasses': 'glasses', 'metal_coat': 'coat', 'fairy_feather': 'feather', 'black_sludge': 'sludge', 'light_clay': 'clay', 'big_root': 'root', 'shed_shell': 'shell', 'white_herb': 'herb', 'mental_herb': 'herb', 'power_herb': 'herb', 'air_balloon': 'balloon', 'weakness_policy': 'policy', 'protective_pads': 'pads', 'damp_rock': 'weather-rock', 'heat_rock': 'weather-rock', 'smooth_rock': 'weather-rock', 'icy_rock': 'weather-rock'});
 add('equipment',[
