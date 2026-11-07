@@ -292,7 +292,12 @@ export default {
         groundY: p.bottom - r.top
       };
     },
+    async finishMoveFx() {
+      if (!this.reduced && this.fx?.visibilityScale > 1 && this._impactAt) await this.sleep(Math.max(0, this.fx.impactMs - (performance.now() - this._impactAt)));
+      this._impactAt = 0;
+    },
     async animate(e, events, index) {
+      await this.finishMoveFx(); if (this._closed) return;
       this.fx = null;
       if (e.slot < 4) this.shown = e.slot;else if (e.target < 4) this.shown = e.target;
       await this.$nextTick();
@@ -326,12 +331,12 @@ export default {
           }
         };
       this.fx = fx;
-      await this.sleep(this.reduced ? 20 : Math.min(v.windupMs, 380));
+      await this.sleep(this.reduced ? 20 : v.windupMs);
       this.fx = {
         ...fx,
         stage: 'travel'
       };
-      await this.sleep(this.reduced ? 20 : Math.min(v.travelMs, 400));
+      await this.sleep(this.reduced ? 20 : v.travelMs);
       this.fx = {
         ...fx,
         stage: e.damageClass === 'status' ? 'aura' : 'await'
@@ -384,11 +389,12 @@ export default {
             if (['-damage', '-heal'].includes(e.kind) && p) {
               if (e.slot < 4) this.shown = e.slot;
               this.amount = Math.abs(p.currentHp - e.hp);
-              if (e.kind === '-damage' && this.fx) this.fx = {
+              if (e.kind === '-damage' && this.fx) { this._impactAt = performance.now(); this.fx = {
                 ...this.fx,
                 stage: 'impact',
                 pulse: (this.fx.pulse || 0) + 1
               };
+              }
               if (e.kind === '-heal' && this.fx?.family === 'drain') this.fx = {
                 ...this.fx,
                 stage: 'drain'
@@ -466,6 +472,7 @@ export default {
             }
             this.phaseEffect = '';
           }
+          await this.finishMoveFx();
           this.display = JSON.parse(JSON.stringify(frame));
           this.fx = null;
           this.effect = null;

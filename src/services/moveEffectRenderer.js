@@ -2,6 +2,7 @@ import { ELEMENTS } from './moveVisuals.js';
 const TAU=Math.PI*2,clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const ease=t=>1-Math.pow(1-clamp(t),3),lerp=(a,b,t)=>a+(b-a)*t;
 const fract=n=>n-Math.floor(n);
+const flight=t=>{const u=clamp(t);return u*u*(3-2*u);};
 const SHAPES=[[0,-.5,.35,.8,0,1,-.35,.6],[.25,-1.6,-.9,.2,-.1,.15,-.45,1.5,1,-.4,.25,-.25],[0,-1.7,.8,-.4,.45,1.2,-.35,1.3,-.8,-.4],[-.8,-.65,-.3,-.95,.15,-.8,.6,-.65,.9,-.1,.55,.8,-.5,1,-.95,.25],[-1.3,.3,-.6,-.75,.6,-.55,1.3,.6,.2,1],[0,-1.3,1,.1,0,1.3,-1,-.1],[0,-.55,.45,0,0,.55,-.45,0],[0,0,-1.3,-1.1,-1.1,.6,0,1,1.1,.6,1.3,-1.1],[-1,-.7,.05,-1.2,1,-.4,.8,.8,-.5,1.1,-1.2,.2],[-1,-.7,.05,-1.2,.45,-.35,-.4,.1],[-.4,-.2,.4,-.2,0,.3],[-1.3,.5,-.8,-.8,-.25,-.1,0,-1.5,.45,-.4,1.3,-.7,.7,.8,-.2,1.2],[-.25,1.4,-.55,-.5,0,-1.5,.6,-.4,.3,1.3],[0,-1.5,.1,1.25,.6,-.4],[0,-1.5,.35,-.35,1.4,0,.35,.35,0,1.5,-.35,.35,-1.4,0,-.35,-.35],[-1.5,-.2,.65,-.4,1.5,.1,-.65,.35]];
 const SPECIAL_PALETTES={
  'spirit-flames':{ink:'#9ab5ff',light:'#eee0ff',dark:'#665097',shape:'wisp'},
@@ -18,12 +19,20 @@ export class MoveEffectRenderer {
   this.stats={frames:0,drawMs:0,maxDrawMs:0,particles:0,quality};this.lastFrame=0;this.exclusions=[];
  }
  resize(width,height,dpr=1){this.width=Math.max(1,width);this.height=Math.max(1,height);this.dpr=Math.min(1.5,Math.max(1,dpr));const w=Math.ceil(width*this.dpr),h=Math.ceil(height*this.dpr);if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}this.unit=clamp(Math.min(width/896,height/515),.58,1.35);}
- setEffect(fx,path,exclusions=[]){this.fx=fx;this.path=path;this.exclusions=exclusions;this.palette=SPECIAL_PALETTES[fx.style]||ELEMENTS[fx.moveType]||ELEMENTS.Normal;this.targets=(path.targets||[{x:path.targetX,y:path.targetY,groundY:path.groundY,connected:fx.result?!(fx.result.success===false||fx.result.missed||fx.result.immune||fx.result.blocked||fx.result.effectiveness===0):true}]).slice(0,4);this.areaTarget={x:this.targets.reduce((n,p)=>n+p.x,0)/Math.max(1,this.targets.length),y:this.targets.reduce((n,p)=>n+p.y,0)/Math.max(1,this.targets.length),groundY:this.targets.reduce((n,p)=>n+(p.groundY??p.y+40),0)/Math.max(1,this.targets.length),spreadX:(Math.max(...this.targets.map(p=>p.x))-Math.min(...this.targets.map(p=>p.x)))/2+120*this.unit};this.started=this.now();this.stop();this.closed=false;this.paintAt(0);this.schedule();}
+ setEffect(fx,path,exclusions=[]){this.fx=fx;this.path=path;this.exclusions=exclusions;this.palette=SPECIAL_PALETTES[fx.style]||ELEMENTS[fx.moveType]||ELEMENTS.Normal;this.presence=fx.visibilityScale||1;this.prepareGlow();this.targets=(path.targets||[{x:path.targetX,y:path.targetY,groundY:path.groundY,connected:fx.result?!(fx.result.success===false||fx.result.missed||fx.result.immune||fx.result.blocked||fx.result.effectiveness===0):true}]).slice(0,4);this.areaTarget={x:this.targets.reduce((n,p)=>n+p.x,0)/Math.max(1,this.targets.length),y:this.targets.reduce((n,p)=>n+p.y,0)/Math.max(1,this.targets.length),groundY:this.targets.reduce((n,p)=>n+(p.groundY??p.y+40),0)/Math.max(1,this.targets.length),spreadX:(Math.max(...this.targets.map(p=>p.x))-Math.min(...this.targets.map(p=>p.x)))/2+120*this.unit};this.started=this.now();this.stop();this.closed=false;this.paintAt(0);this.schedule();}
  duration(){return this.fx.stage==='windup'?(this.fx.windupMs||180):this.fx.stage==='travel'?(this.fx.travelMs||360):this.fx.stage==='drain'?560:(this.fx.impactMs||500);}
  schedule(){if(this.closed||this.frame||!this.c||['await','idle'].includes(this.fx?.stage))return;this.frame=this.requestFrame(time=>{this.frame=0;if(this.closed)return;const elapsed=this.now()-this.started;if(time-this.lastFrame>=(this.quality<.6?32:15)){this.lastFrame=time;this.paintAt(elapsed);}if(elapsed<this.duration())this.schedule();});}
  stop(){if(this.frame)this.cancelFrame(this.frame);this.frame=0;}
  clear(){this.stop();this.c?.clearRect(0,0,this.canvas.width,this.canvas.height);}
- dispose(){this.closed=true;this.clear();this.canvas.width=0;this.canvas.height=0;this.c=null;}
+ dispose(){if(this.glow)this.glow.width=this.glow.height=0;this.glow=null;this.closed=true;this.clear();this.canvas.width=0;this.canvas.height=0;this.c=null;}
+ prepareGlow(){
+  const key=this.palette.ink+this.palette.light;if(this.glowKey===key)return;this.glowKey=key;
+  const doc=this.canvas.ownerDocument;if(!doc)return;
+  if(!this.glow)this.glow=doc.createElement('canvas');this.glow.width=this.glow.height=96;
+  const c=this.glow.getContext('2d'),g=c.createRadialGradient(48,48,2,48,48,47);
+  g.addColorStop(0,this.palette.light+'e8');g.addColorStop(.22,this.palette.ink+'bb');g.addColorStop(.6,this.palette.ink+'48');g.addColorStop(1,this.palette.ink+'00');c.fillStyle=g;c.fillRect(0,0,96,96);
+ }
+ halo(x,y,radius,alpha=.8){if(!this.glow)return;const c=this.c;c.save();c.globalAlpha*=alpha;c.globalCompositeOperation='lighter';c.drawImage(this.glow,x-radius,y-radius,radius*2,radius*2);c.restore();}
  pathShape(points,fill,stroke,width=1){const c=this.c;c.beginPath();for(let i=0;i<points.length;i+=2){if(i===0)c.moveTo(points[i],points[i+1]);else c.lineTo(points[i],points[i+1]);}c.closePath();if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
  line(x1,y1,x2,y2,color,width=2){const c=this.c;c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.strokeStyle=color;c.lineWidth=width;c.stroke();}
  // Each element has its own silhouette. These are deliberately small, crisp
@@ -50,19 +59,19 @@ export class MoveEffectRenderer {
    default:this.pathShape(SHAPES[15],p.light);break;
   }c.restore();
  }
- burst(x,y,t,kind=this.palette.shape,strength=1){const count=Math.min(72,Math.ceil((12+this.fx.intensity*30)*this.quality/this.targetCount));this.stats.particles=Math.max(this.stats.particles,count*this.targetCount);const c=this.c;for(let n=0;n<count;n++){
-   const a=this.seeds[n*3]*TAU,r=(12+this.seeds[n*3+1]*70)*this.unit*ease(t)*strength;
-   c.globalAlpha=clamp((1-t)*1.6);this.particle(kind,x+Math.cos(a)*r,y+Math.sin(a)*r*.7+t*t*25*this.unit,(2+this.seeds[n*3+2]*4)*this.unit*(1-t*.55),a+t);
+ burst(x,y,t,kind=this.palette.shape,strength=1){const budget=Math.min(72,Math.ceil((12+this.fx.intensity*30)*this.quality*(this.presence>1?1.55:1))),count=Math.max(1,Math.floor(budget/this.targetCount));this.stats.particles=Math.max(this.stats.particles,count*this.targetCount);const c=this.c;for(let n=0;n<count;n++){
+   const a=this.seeds[n*3]*TAU,r=(12+this.seeds[n*3+1]*70)*this.unit*ease(t)*strength*(this.presence>1?1.55:1);
+   c.globalAlpha=clamp((1-t)*1.6);this.particle(kind,x+Math.cos(a)*r,y+Math.sin(a)*r*.7+t*t*25*this.unit,(2+this.seeds[n*3+2]*4)*this.unit*(this.presence>1?1.65:1)*(1-t*.55),a+t);
   }c.globalAlpha=1;
  }
  streak(x,y,angle,length,color,width){this.line(x-Math.cos(angle)*length,y-Math.sin(angle)*length,x,y,color,width);}
  bolt(x1,y1,x2,y2,t,width=4){const c=this.c,p=this.palette;c.beginPath();c.moveTo(x1,y1);for(let n=1;n<=10;n++){const u=n/10,k=Math.sin(n*11.2+Math.floor(t*8))*((n===10)?0:12*this.unit);c.lineTo(lerp(x1,x2,u)+k,lerp(y1,y2,u)-k*.4);}c.strokeStyle=p.dark;c.lineWidth=width*2.7;c.stroke();c.strokeStyle=p.ink;c.lineWidth=width*1.5;c.stroke();c.strokeStyle=p.light;c.lineWidth=width*.45;c.stroke();}
  beam(target,t){const p=this.path,c=this.c,k=this.palette,x=lerp(p.startX,target.x,ease(t)),y=lerp(p.startY,target.y,ease(t)),a=Math.atan2(y-p.startY,x-p.startX),s=this.unit,style=this.fx.style;
   if(['lightning-chain','charge-beam','volt-return'].includes(style)){this.bolt(p.startX,p.startY,x,y,t,4*s);return;}
-  const stream=style==='flame-stream'||style==='dragon-breath'||style==='bubble-stream',width=(style==='hyper-beam'?19:style==='water-cannon'?14:8)*s*(.65+this.fx.intensity*.6);
+  const stream=style==='flame-stream'||style==='dragon-breath'||style==='bubble-stream',width=(style==='hyper-beam'?19:style==='water-cannon'?14:8)*s*Math.min(this.presence,1.6)*(.65+this.fx.intensity*.6);
   if(stream){
    if(style!=='bubble-stream'){
-    const length=Math.hypot(x-p.startX,y-p.startY),breadth=(style==='flame-stream'?19:13)*s;c.save();c.translate(p.startX,p.startY);c.rotate(a);
+    const length=Math.hypot(x-p.startX,y-p.startY),breadth=(style==='flame-stream'?19:13)*s*Math.min(this.presence,1.5);c.save();c.translate(p.startX,p.startY);c.rotate(a);
     for(let layer=0;layer<2;layer++){const w=breadth*(layer? .65:1);c.beginPath();c.moveTo(0,-2*s);for(let n=1;n<=16;n++){const u=n/16;c.lineTo(u*length,-w*(.2+u)*(.8+Math.sin(n*.9-t*13)*.2));}for(let n=16;n>=1;n--){const u=n/16;c.lineTo(u*length,w*(.2+u)*(.8+Math.sin(n*.9-t*13+1.3)*.2));}c.closePath();c.fillStyle=layer?k.ink:k.dark;c.fill();}
     this.line(0,0,length,0,k.light,4*s);c.restore();
    }
@@ -73,18 +82,33 @@ export class MoveEffectRenderer {
   }
   for(let n=0;n<Math.floor(9*this.quality);n++){const u=fract(n/9+t*.65);this.particle(k.shape,lerp(p.startX,x,u)+Math.sin(n+t*7)*12*s,lerp(p.startY,y,u)+Math.cos(n+t*7)*12*s,3*s,a);}
  }
- projectile(target,t){const p=this.path,c=this.c,style=this.fx.style,s=this.unit,angle=Math.atan2(target.y-p.startY,target.x-p.startX);
+ projectile(target,t){const p=this.path,c=this.c,style=this.fx.style,s=this.unit,angle=Math.atan2(target.y-p.startY,target.x-p.startX),scale=this.presence;
   const actualHits=clamp(Number(this.fx.result?.hits)||1,1,10),multi=['seed-volley','pin-volley','rock-volley','ice-volley'].includes(style);
-  const volley=multi?actualHits:/leaves|shards|star-volley/.test(style)?(this.quality<.6?2:3):1;
-  for(let n=0;n<volley;n++){const u=clamp(t*1.25-n*.08),x=lerp(p.startX,target.x,ease(u)),y=lerp(p.startY,target.y,ease(u))-Math.sin(u*Math.PI)*(style==='toxic-bomb'?80:volley>1?35+n*8:17)*s;
-   for(let j=1;j<5;j++){c.globalAlpha=.38*(1-j/5);this.particle(this.palette.shape,x-Math.cos(angle)*j*10*s,y-Math.sin(angle)*j*10*s,(7-j)*s,angle+u*3);}
-   c.globalAlpha=1;
-   if(/orb|bomb/.test(style)){c.beginPath();c.ellipse(x,y,14*s,12*s,0,0,TAU);c.fillStyle=this.palette.dark;c.fill();this.particle(this.palette.shape,x,y,11*s,angle+u*4);this.particle(this.palette.shape,x-3*s,y-3*s,5*s,-u*2);}
-   else this.particle(style==='razor-leaves'?'leaf':this.palette.shape,x,y,(volley>1?8:12)*s,angle+t*7+n);
+  const volley=multi?actualHits:style==='psy-shock'?3:/leaves|shards|star-volley/.test(style)?(this.quality<.6?2:3):1;
+  const stagger=volley>1?.07:0;
+  for(let n=0;n<volley;n++){
+   const u=clamp((t-n*stagger)/Math.max(.35,1-(volley-1)*stagger)),progress=flight(u),arc=(style==='toxic-bomb'?65:volley>1?24+n*10:14)*s;
+   const point=q=>({x:lerp(p.startX,target.x,flight(q)),y:lerp(p.startY,target.y,flight(q))-Math.sin(q*Math.PI)*arc});
+   const{x,y}=point(u),size=(volley>1?8:12)*s*scale;
+   for(let j=7;j>=1;j--){const q=clamp(u-j*.026),prev=point(q),next=point(clamp(u-(j-1)*.026));c.globalAlpha=(1-j/8)*.6;
+    this.line(prev.x,prev.y,next.x,next.y,this.palette.ink,Math.max(1,size*(1-j/9)*.75));
+    if(j%2===0)this.particle(this.palette.shape,prev.x,prev.y,Math.max(1,size*(1-j/8)*.4),angle+u*3);
+   }c.globalAlpha=1;this.halo(x,y,size*2.3,.68);
+   if(/orb|bomb/.test(style)||style==='psy-shock'){
+    c.beginPath();c.ellipse(x,y,size*1.05,size*.95,angle+u,0,TAU);c.fillStyle=this.palette.dark;c.fill();
+    this.particle(this.palette.shape,x,y,size*.9,angle+u*4);this.particle(this.palette.shape,x-size*.24,y-size*.22,size*.42,-u*2);
+    if(scale>1)for(let spark=0;spark<3;spark++){const a=u*5+spark*TAU/3;this.particle(this.palette.shape,x+Math.cos(a)*size*1.25,y+Math.sin(a)*size*.9,size*.22,a);}
+   }else this.particle(style==='razor-leaves'?'leaf':this.palette.shape,x,y,size,angle+progress*7+n);
   }
  }
  area(target,t,impact=false){const c=this.c,k=this.palette,s=this.unit,style=this.fx.style,x=target.x,y=target.groundY??target.y+45*s,w=Math.min(this.width*.75,Math.max(180*s,target.spreadX||250*s)),p=ease(t);
-  if(['surf','mud-wave','toxic-wave'].includes(style)){
+  if(style==='fairy-field'){
+   const reach=Math.min(this.width*.45,155*s),count=Math.max(7,Math.floor(13*this.quality));
+   this.halo(x,target.y,100*s*(.65+Math.sin(t*Math.PI)*.4),.75);
+   for(let n=0;n<count;n++){const a=n*2.399+t*.55,r=(.3+this.seeds[n]*.7)*reach*(impact?.65+ease(t)*.35:1-ease(t)*.45),xx=x+Math.cos(a)*r,yy=target.y+Math.sin(a)*r*.65;
+    c.globalAlpha=Math.sin(clamp(t)*Math.PI)*.95;this.particle('star',xx,yy,(8+this.seeds[n+20]*10)*s,a);this.line(xx-11*s,yy,xx+11*s,yy,k.light,1.5*s);
+   }c.globalAlpha=1;
+  }else if(['surf','mud-wave','toxic-wave'].includes(style)){
    const yy=y+75*s-p*150*s;c.globalAlpha=(impact?1-t*.7:.8)*.72;c.beginPath();c.moveTo(x-w,this.height+20);c.lineTo(x-w,yy);for(let n=0;n<=20;n++){const xx=x-w+n*w/10;c.lineTo(xx,yy+Math.sin(n*.65-t*5)*14*s);}c.lineTo(x+w,this.height+20);c.lineTo(x-w,this.height+20);c.closePath();const water=c.createLinearGradient(0,yy,0,yy+140*s);water.addColorStop(0,k.ink+'aa');water.addColorStop(.5,k.dark+'66');water.addColorStop(1,k.dark+'00');c.fillStyle=water;c.fill();
    c.beginPath();for(let n=0;n<=24;n++){const xx=x-w+n*w/12,crest=yy+Math.sin(n*.55-t*5)*14*s;if(n===0)c.moveTo(xx,crest);else c.lineTo(xx,crest);}c.strokeStyle=k.ink;c.lineWidth=7*s;c.stroke();c.strokeStyle=k.light;c.lineWidth=1.8*s;c.stroke();c.globalAlpha=.85;
    for(let n=0;n<14*this.quality;n++)this.particle(style==='surf'?'drop':k.shape,x-w+fract(n*.137+t*.2)*w*2,yy+Math.sin(n+t*5)*13*s,4*s,n);c.globalAlpha=1;
@@ -118,6 +142,7 @@ export class MoveEffectRenderer {
   }c.globalAlpha=1;
  }
  impact(target,t){const c=this.c,k=this.palette,s=this.unit,x=target.x,y=target.y,style=this.fx.style;
+  if(this.presence>1){this.halo(x,y,(45+this.fx.intensity*35)*s*(.65+ease(t)*.6),(1-t)*.95);const rays=Math.floor(7*this.quality);c.globalAlpha=(1-t)*.85;for(let n=0;n<rays;n++){const a=n*TAU/Math.max(1,rays)+this.seeds[n]*.5,r=(20+ease(t)*80)*s;this.streak(x+Math.cos(a)*r,y+Math.sin(a)*r*.8,a,(12+20*(1-t))*s,k.light,(2.2+this.fx.intensity*2)*s);}c.globalAlpha=1;}
   if(this.fx.family==='bite'||style==='drain-bite'){
    c.save();c.translate(x,y);c.scale(s,s);const gap=(1-ease(Math.min(1,t*3)))*24; c.globalAlpha=clamp((1-t)*2);
    for(const sign of[-1,1]){c.save();c.scale(1,sign);c.translate(0,-gap);this.pathShape([-39,-31,-25,-36,-18,-12,-5,-33,5,-8,19,-30,26,-12,39,-31,31,-43,-31,-43],k.light,k.ink,2);c.restore();}c.restore();
@@ -146,7 +171,7 @@ export class MoveEffectRenderer {
   c.lineJoin='round';c.lineCap='round';this.stats.particles=0;
   const targets=this.targets;this.targetCount=Math.max(1,targets.length);
   if(stage==='windup'){
-   const count=Math.floor((8+fx.intensity*12)*this.quality);for(let n=0;n<count;n++){const a=n*2.4+t*3,r=(1-t)*60*this.unit;this.particle(this.palette.shape,p.startX+Math.cos(a)*r,p.startY+Math.sin(a)*r*.55,(2+t*3)*this.unit,a);}
+   const count=Math.floor((8+fx.intensity*12)*this.quality);for(let n=0;n<count;n++){const a=n*2.4+t*3,r=(1-t)*60*this.unit;this.particle(this.palette.shape,p.startX+Math.cos(a)*r,p.startY+Math.sin(a)*r*.55,(2+t*3)*this.unit*(this.presence>1?1.7:1),a);}
   }else {
   if(stage==='travel'&&AREA_STYLES.has(fx.style))this.area(this.areaTarget,t);
   for(const target of targets){

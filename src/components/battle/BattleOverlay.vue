@@ -1140,7 +1140,7 @@ export default {
       }
       if (move.visible) {
         clearTimeout(this.moveTimer);
-        this.moveTimer = setTimeout(() => { move.visible = false; this.moveTimer = null; }, 650);
+        this.moveTimer = setTimeout(() => { move.visible = false; this.moveTimer = null; }, Math.max(650,move.impactMs||0));
       }
       this.pendingCritical = null;
       if (hpChanged && !this.reducedMotion()) await this.transitionWait(1020);

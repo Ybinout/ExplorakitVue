@@ -80,7 +80,7 @@ export default {
      // residual damage never masquerade as another successful move impact.
      if(e.kind==='-damage'&&e.direct!==false&&this.fx){const target=this.fx.fullTargets.find(t=>t.side===e.actor.side&&t.slot===e.actor.slot);if(target?.connected){const key=`${e.actor.side}:${e.actor.slot}`,seen=this._moveHitCount[key]||0;
       if(seen>0&&target.hits>1&&!this.reduced){this.fx={...this.fx,stage:'travel',travelMs:130,result:{success:true,hits:1},path:{...this.fx.path,targets:[target]}};await this.sleep(130);}
-      this._moveHitCount[key]=seen+1;this.fx={...this.fx,stage:'impact',pulse:(this.fx.pulse||0)+1,result:{success:true,hits:1,critical:target.critical},path:{...this.fx.path,targets:[target]}};}}
+      this._moveHitCount[key]=seen+1;this._impactAt=performance.now();this.fx={...this.fx,stage:'impact',pulse:(this.fx.pulse||0)+1,result:{success:true,hits:1,critical:target.critical},path:{...this.fx.path,targets:[target]}};}}
      if(e.kind==='-heal'&&this.fx?.family==='drain'&&!this.reduced){this.fx={...this.fx,stage:'drain',path:{...this.fx.path,targets:this.fx.fullTargets.filter(t=>t.connected)}};await this.sleep(500);}
      this.effect.amount=Math.abs(p.currentHp-e.hp);this.$set(p,'currentHp',e.hp);if(e.maxHp)this.$set(p,'maxHp',e.maxHp);
     }
@@ -90,7 +90,7 @@ export default {
    if(['-immune','-miss','-fail'].includes(e.kind)&&this.fx){const point=this.point(e.kind==='-miss'?e.target:e.actor);this.fx={...this.fx,stage:'miss',path:{...this.fx.path,targets:[{...point,connected:false}]}};}
    await this.sleep(this.reduced?20:['-boost','-unboost'].includes(e.kind)?STAT_CHANGE_DURATION:e.message?330:0);
   }
-  this.display=JSON.parse(JSON.stringify(frame));this.effect=null;this.fx=null;
+  await this.finishMoveFx();this.display=JSON.parse(JSON.stringify(frame));this.effect=null;this.fx=null;
  }}finally{this.playing=false;this.autoSlot();}
 },
  point(actor){
@@ -99,7 +99,12 @@ export default {
   if(!spot||!stage)return{x:0,y:0,groundY:0};return{x:stage.clientWidth*spot.x/100,y:stage.clientHeight*(spot.y-14)/100,groundY:stage.clientHeight*spot.y/100};
  },
  isMoveActor(spot){return this.fx&&['charge','punch'].includes(this.fx.family)&&this.fx.actor?.side===spot.side&&this.fx.actor?.slot===spot.slot;},
+ async finishMoveFx(){
+  if(!this.reduced&&this.fx?.visibilityScale>1&&this._impactAt)await this.sleep(Math.max(0,this.fx.impactMs-(performance.now()-this._impactAt)));
+  this._impactAt=0;
+ },
  async animate(e,plan){
+  await this.finishMoveFx();if(this._closed)return;
   await this.$nextTick();const targets=plan.targets.map(t=>({...t,...this.point(t)})),target=targets[0]||this.point(e.target),start=e.delayed?{x:target.x,y:target.y-80}:this.point(e.actor),v=moveVisual({moveName:e.moveName,moveType:e.moveType,power:e.power,damageClass:e.category?.toLowerCase(),moveTarget:e.moveTarget,phase:plan.prepared?'prepare':undefined});
   const fx={...v,id:Math.random(),actor:e.actor,result:{success:!plan.failed,hits:1},stage:'windup',fullTargets:targets,path:{startX:start.x,startY:start.y,targetX:target.x,targetY:target.y,groundY:target.groundY,targets}};
   this._moveHitCount={};this.fx=fx;await this.sleep(this.reduced?0:v.windupMs);if(this._closed)return;

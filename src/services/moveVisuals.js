@@ -45,6 +45,7 @@ const signatures = {
  'Explosion':'detonation','Self-Destruct':'detonation','Dazzling Gleam':'fairy-field','Hurricane':'hurricane','Twister':'hurricane',
  'Ice Spinner':'ice-spin','Petal Dance':'petal-dance','Petal Blizzard':'petal-dance','Leaf Storm':'leaf-storm',
  'Razor Leaf':'razor-leaves','Bullet Seed':'seed-volley','Pin Missile':'pin-volley','Rock Blast':'rock-volley','Icicle Spear':'ice-volley',
+ 'Psyshock':'psy-shock','Psystrike':'psy-shock','Psychic':'psychic-orb','Moonblast':'moon-orb','Mist Ball':'mist-orb','Luster Purge':'prism-orb',
  'Shadow Ball':'shadow-orb','Aura Sphere':'aura-orb','Energy Ball':'seed-orb','Electro Ball':'electric-orb',
  'Sludge Bomb':'toxic-bomb','Ember':'embers','Flame Burst':'fire-burst','Ice Shard':'ice-shards','Swift':'star-volley',
  'Swords Dance':'sword-dance','Calm Mind':'calm-mind','Dragon Dance':'dragon-dance','Quiver Dance':'butterfly-dance',
@@ -76,12 +77,15 @@ export function moveVisual(payload = {}) {
   if(phase==='prepare')style='gather';
   // The existing presentation queue remains authoritative. Bounded phases never
   // wait for the renderer or add an asynchronous network dependency.
+  const magical=['Fairy','Psychic','Ghost','Dragon'].includes(moveType);
+  const vivid=damageClass!=='status'&&(['projectile','beam','drain','zone'].includes(family)||magical);
+  const visibilityScale=vivid?(family==='beam'?1.5:family==='zone'?1.45:magical?2.45:2.15):1;
   const heavy=['hyper-beam','draco-meteors','sky-thunder','fire-blast'].includes(style);
-  return {family,style,moveType,damageClass,power,intensity,
+  return {family,style,moveType,damageClass,power,intensity,visibilityScale,
     target:payload.moveTarget||meta[3]||'opponent',
-    windupMs:phase==='prepare'?460:heavy?280:family==='beam'?180:family==='charge'||family==='punch'?120:90,
-    travelMs:heavy?510:family==='beam'?390:family==='projectile'?360:family==='zone'?410:family==='charge'||family==='punch'?250:190,
-    impactMs:heavy?620:410,camera:power>=100||heavy};
+    windupMs:phase==='prepare'?460:vivid?(family==='beam'?300:magical?260:220):heavy?280:family==='beam'?180:family==='charge'||family==='punch'?120:90,
+    travelMs:vivid?(family==='zone'?620:family==='beam'?680:magical?780:700):heavy?510:family==='beam'?390:family==='projectile'?360:family==='zone'?410:family==='charge'||family==='punch'?250:190,
+    impactMs:vivid?(magical||heavy?700:640):heavy?620:410,camera:power>=100||heavy};
 }
 export function persistentMoveVisuals(pokemon) {
   if (!pokemon?.uuid || !(pokemon.currentHp > 0)) return {shield:false,clone:false};
