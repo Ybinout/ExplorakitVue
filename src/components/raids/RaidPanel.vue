@@ -18,7 +18,7 @@
      <footer><button :disabled="busy" @click="$emit('command','leave')">Quitter</button><button :disabled="busy||me?.reserved||me?.selected.length!==me?.quota||me?.ready" @click="$emit('command','ready')">{{ me?.ready?'Prêt ✓':'Je suis prêt' }}</button><button v-if="state.hostId===userId" class="raid-primary" :disabled="busy||!allReady" @click="$emit('command','start')">Lancer le raid →</button></footer>
     </template>
     <template v-else>
-     <div class="raid-ended"><span class="raid-end-symbol">{{ state.won?'✧':'◇' }}</span><h3>{{ state.won?'La corruption cède.':state.phase==='closed'?'Expédition annulée':'La faille a résisté.' }}</h3><p>{{ state.won?'Votre victoire est sauvegardée.':'Les Pokémon retirés sont en sécurité. Les K.O. suivent les règles du Dark Continent.' }}</p></div><p v-if="state.reopensAt" class="raid-cooldown">La faille se reformera avec un autre Pokémon à {{ new Date(state.reopensAt).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) }}.</p><p v-for="p in me?.casualties||[]" :key="p.uuid" class="raid-danger">{{ p.name }} : {{ p.protected?'Kit de survie consommé, K.O. récupérable après un soin.':'définitivement perdu.' }}</p><div v-if="state.reward" class="raid-prizes"><b>+{{ money(state.reward.money) }} ₽</b><span v-for="item in state.reward.items" :key="item.key">{{ item.name }} × {{ item.quantity }}</span><small v-if="!state.reward.items.length">Aucune plaque ni perle pour ce tirage.</small></div><button class="raid-primary" :disabled="busy" @click="$emit('command','leave')">Revenir à l’exploration</button>
+     <div class="raid-ended"><span class="raid-end-symbol">{{ state.won?'✧':'◇' }}</span><h3>{{ state.won?'La corruption cède.':state.phase==='closed'?'Expédition annulée':'La faille a résisté.' }}</h3><p>{{ state.won?'Votre victoire est sauvegardée.':'Les Pokémon retirés sont en sécurité. Les K.O. suivent les règles du Dark Continent.' }}</p></div><p v-if="state.reopensAt" class="raid-cooldown">La faille se reformera avec un autre Pokémon à {{ new Date(state.reopensAt).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) }}.</p><p v-for="p in me?.casualties||[]" :key="p.uuid" class="raid-danger">{{ p.name }} : {{ p.protected?'Kit de survie consommé, K.O. récupérable après un soin.':'définitivement perdu.' }}</p><raid-rewards v-if="state.reward" :reward="state.reward"/><button class="raid-primary" :disabled="busy" @click="$emit('command','leave')">Revenir à l’exploration</button>
     </template>
     <p v-if="error" class="raid-error" role="alert">{{ error }}</p><p v-if="notice" class="raid-muted" role="status">{{ notice }}</p>
    </div>
@@ -29,6 +29,7 @@
 </template>
 <script>
 import PokemonPortrait from '../PokemonPortrait.vue';
+import RaidRewards from './RaidRewards.vue';
 import PotentialStar from '../PotentialStar.vue';
 import PokemonDetails from '../menu/PokemonDetails.vue';
 import { computerPokemonDetails } from '@/services/pokemonComputer';
@@ -36,6 +37,7 @@ import { localizeTypeName } from '@/services/pokemonTypes';
 export default {
   components: {
     PokemonPortrait,
+    RaidRewards,
     PotentialStar,
     PokemonDetails
   },

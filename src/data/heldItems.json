@@ -418,5 +418,73 @@
   "survival_kit": {
     "name": "Kit de survie",
     "description": "À faire tenir avant un combat du Dark Continent. Si le porteur tombe K.O., le kit est consommé : le Pokémon reste dans l’équipe à 0 PV au lieu de disparaître. Utilisable aussi sur un Pokémon corrompu. Sans effet ailleurs."
+  },
+  "flame_plate": {
+    "name": "Plaque Flamme",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Feu. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "splash_plate": {
+    "name": "Plaque Hydro",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Eau. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "zap_plate": {
+    "name": "Plaque Volt",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Électrik. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "meadow_plate": {
+    "name": "Plaque Herbe",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Plante. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "icicle_plate": {
+    "name": "Plaque Glace",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Glace. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "fist_plate": {
+    "name": "Plaque Poing",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Combat. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "toxic_plate": {
+    "name": "Plaque Toxik",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Poison. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "earth_plate": {
+    "name": "Plaque Terre",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Sol. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "sky_plate": {
+    "name": "Plaque Ciel",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Vol. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "mind_plate": {
+    "name": "Plaque Esprit",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Psy. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "insect_plate": {
+    "name": "Plaque Insecte",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Insecte. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "stone_plate": {
+    "name": "Plaque Roc",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Roche. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "spooky_plate": {
+    "name": "Plaque Fantôme",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Spectre. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "draco_plate": {
+    "name": "Plaque Draco",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Dragon. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "dread_plate": {
+    "name": "Plaque Ombre",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Ténèbres. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "iron_plate": {
+    "name": "Plaque Fer",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Acier. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "pixie_plate": {
+    "name": "Plaque Pixie",
+    "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Fée. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
   }
 }
