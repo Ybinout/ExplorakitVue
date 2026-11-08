@@ -15,6 +15,34 @@
         ×
       </button>
     </header>
+    <section
+      v-if="card.kind === 'move' && card.compatibility"
+      class="draft-compatibility-list"
+      data-draft-compatibility-list
+    >
+      <h4>Tes Pokémon sélectionnés</h4>
+      <p v-if="!card.compatibility.length">
+        Sélectionne un Pokémon : sa compatibilité apparaîtra sur les cartes
+        d’attaque.
+      </p>
+      <div
+        v-for="p in card.compatibility"
+        :key="p.cardId"
+        :class="{ 'is-compatible': p.compatible && !p.known }"
+      >
+        <pokemon-portrait
+          :src="$pokemonSprite({ data: { id: p.pokemonId } })"
+          :alt="p.name"
+        /><b>{{ p.name }}</b
+        ><span>{{
+          p.known
+            ? 'Déjà connue'
+            : p.compatible
+            ? '✓ Compatible'
+            : 'Incompatible'
+        }}</span>
+      </div>
+    </section>
     <draft-card :card="card" :show-compatibility="false" />
     <template v-if="p"
       ><p class="draft-talent">
@@ -83,34 +111,7 @@
           : 'Cette amélioration reste temporaire et peut être retirée pendant la préparation.')
       }}
     </p>
-    <section
-      v-if="card.kind === 'move' && card.compatibility"
-      class="draft-compatibility-list"
-      data-draft-compatibility-list
-    >
-      <h4>Tes Pokémon sélectionnés</h4>
-      <p v-if="!card.compatibility.length">
-        Sélectionne un Pokémon : sa compatibilité apparaîtra sur les cartes
-        d’attaque.
-      </p>
-      <div
-        v-for="p in card.compatibility"
-        :key="p.cardId"
-        :class="{ 'is-compatible': p.compatible && !p.known }"
-      >
-        <pokemon-portrait
-          :src="$pokemonSprite({ data: { id: p.pokemonId } })"
-          :alt="p.name"
-        /><b>{{ p.name }}</b
-        ><span>{{
-          p.known
-            ? 'Déjà connue'
-            : p.compatible
-            ? '✓ Compatible'
-            : 'Incompatible'
-        }}</span>
-      </div>
-    </section>
+
     <slot />
   </section>
 </template>
@@ -229,7 +230,10 @@ export default {
   font-size: 11px;
 }
 .draft-compatibility-list {
-  margin-top: 15px;
+  margin: 6px 0 12px;
+  max-height: 190px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-top: 1px solid var(--journal-border);
 }
 .draft-compatibility-list h4 {

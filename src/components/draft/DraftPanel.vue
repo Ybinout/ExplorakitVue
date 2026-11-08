@@ -94,13 +94,14 @@
             <summary>Comment ça se joue ?</summary>
             <p>
               À chaque choix, prends une carte puis passe les autres à droite.
-              Tu as 30 secondes. Après 32 choix, le dernier booster ne contient
-              que des Rifts.
+              Tu as {{ pickSeconds }} secondes. Après 32 choix, le dernier
+              booster ne contient que des Rifts.
             </p>
             <p>
-              Tu disposes ensuite de 5 minutes pour préparer jusqu’à 6 Pokémon.
-              Les attaques suivent leur movepool, les cartes Talent sont libres.
-              Une amélioration retirée revient dans ta collection.
+              Tu disposes ensuite de {{ preparationMinutes }} minutes pour
+              préparer jusqu’à 6 Pokémon. Les attaques suivent leur movepool,
+              les cartes Talent sont libres. Une amélioration retirée revient
+              dans ta collection.
             </p>
             <p>
               Deux demi-finales et une finale, sans utiliser le sac. Ton équipe
@@ -273,7 +274,9 @@
           <template v-else-if="state.phase === 'preparation'">
             <div class="draft-round-title">
               <div>
-                <small>CINQ MINUTES POUR TOUT PRÉPARER</small>
+                <small
+                  >{{ preparationMinutes }} MINUTES POUR TOUT PRÉPARER</small
+                >
                 <h3>Compose ton équipe.</h3>
               </div>
               <button
@@ -308,12 +311,33 @@
                     6</small
                   >
                 </h4>
-                <div class="draft-team-grid">
+                <p
+                  v-if="selected?.kind === 'move'"
+                  ref="moveGuidance"
+                  class="draft-move-guidance"
+                  role="status"
+                  aria-live="polite"
+                  data-draft-move-guidance
+                >
+                  <b>{{ cardLabel(selected) }}</b> · Choisis un Pokémon apte
+                  ci-dessous.
+                </p>
+                <div ref="team" class="draft-team-grid">
                   <article
                     v-for="(p, i) in state.preparation.team"
                     :key="i"
                     class="draft-team-slot"
-                    :class="{ 'is-target': p && selectedPokemon === p.cardId }"
+                    :class="{
+                      'is-target': p && selectedPokemon === p.cardId,
+                      'is-apt':
+                        p &&
+                        selected?.kind === 'move' &&
+                        moveAptitude(p).eligible,
+                      'is-inapt':
+                        p &&
+                        selected?.kind === 'move' &&
+                        !moveAptitude(p).eligible,
+                    }"
                     :data-draft-drop="'team:' + i"
                     :data-draft-slot="i"
                   >
@@ -343,11 +367,24 @@
                         "
                       >
                         ×</button
-                      ><button class="draft-slot-face" @click="target(p)">
+                      ><button
+                        class="draft-slot-face"
+                        :disabled="
+                          selected?.kind === 'move' && !moveAptitude(p).eligible
+                        "
+                        @click="target(p)"
+                      >
                         <potential-star :value="p.potential" /><pokemon-portrait
                           :src="$pokemonSprite(p)"
                           :alt="p.name"
                         /><b>{{ p.name }}</b
+                        ><span
+                          v-if="selected?.kind === 'move'"
+                          class="draft-slot-aptitude"
+                          :data-draft-aptitude="
+                            moveAptitude(p).eligible ? 'apt' : 'inapt'
+                          "
+                          >{{ moveAptitude(p).label }}</span
                         ><small>{{
                           p.heldItemName || 'Sans objet'
                         }}</small></button
@@ -454,7 +491,12 @@
                       selected && !['pokemon', 'rift'].includes(selected.kind)
                     "
                     class="draft-primary"
-                    :disabled="locked || used(selected)"
+                    :disabled="
+                      locked ||
+                      used(selected) ||
+                      (selected.kind === 'move' &&
+                        !moveAptitude(selectedPokemonView).eligible)
+                    "
                     @click="applySelected"
                   >
                     Appliquer cette carte
@@ -729,6 +771,24 @@ export default {
     };
   },
   computed: {
+    pickSeconds() {
+      return (
+        (this.state?.timing?.pickMs || this.catalog.timing?.pickMs || 50000) /
+        1000
+      );
+    },
+    preparationMinutes() {
+      return (
+        (this.state?.timing?.preparationMs ||
+          this.catalog.timing?.preparationMs ||
+          420000) / 60000
+      );
+    },
+    moveTargets() {
+      return Object.fromEntries(
+        (this.selected?.compatibility || []).map((p) => [p.cardId, p])
+      );
+    },
     phaseLabel() {
       return (
         {
@@ -802,12 +862,14 @@ export default {
       immediate: true,
       handler(s) {
         if (s?.serverNow) this._offset = s.serverNow - Date.now();
-        if(this.inspection?.kind==='move')this.inspection=[...(s?.pack||[]),...(s?.collection||[])].find(c=>c.id===this.inspection.id)||null;
-        if (
-          this.selected &&
-          !s?.collection?.some((c) => c.id === this.selected.id)
-        )
-          this.selected = null;
+        if (this.inspection?.kind === 'move')
+          this.inspection =
+            [...(s?.pack || []), ...(s?.collection || [])].find(
+              (c) => c.id === this.inspection.id
+            ) || null;
+        if (this.selected)
+          this.selected =
+            s?.collection?.find((c) => c.id === this.selected.id) || null;
       },
     },
     'state.phase'() {
@@ -896,8 +958,31 @@ export default {
         pick: this.state.pick,
       });
     },
+    moveAptitude(p) {
+      const candidate = this.moveTargets[p?.cardId];
+      const eligible = !!candidate?.compatible && !candidate.known;
+      return {
+        eligible,
+        label: candidate?.known
+          ? 'Déjà connue'
+          : eligible
+          ? '✓ Apte'
+          : 'Inapte',
+      };
+    },
     selectUpgrade(c) {
+      if (this.locked) return;
       this.selected = c;
+      if (c.kind === 'move') {
+        this.selectedPokemon = null;
+        this.moveSlot = 0;
+        this.$nextTick(() =>
+          this.$refs.moveGuidance?.scrollIntoView({
+            block: innerWidth <= 700 ? 'start' : 'nearest',
+            behavior: 'auto',
+          })
+        );
+      }
       if (c.kind === 'rift')
         this.send('edit', { action: 'rift', cardId: c.id });
       else if (c.kind === 'pokemon') {
@@ -911,6 +996,11 @@ export default {
         this.send('edit', { action: 'slot', slot, cardId: this.selected.id });
     },
     target(p) {
+      if (
+        this.locked ||
+        (this.selected?.kind === 'move' && !this.moveAptitude(p).eligible)
+      )
+        return;
       if (this.selected?.kind === 'pokemon' && !this.locked) {
         const slot = this.state.preparation.team.findIndex(
           (q) => q?.cardId === p.cardId
@@ -923,6 +1013,12 @@ export default {
       }
     },
     applySelected() {
+      if (
+        this.locked ||
+        (this.selected?.kind === 'move' &&
+          !this.moveAptitude(this.selectedPokemonView).eligible)
+      )
+        return;
       if (this.selectedPokemon && this.selected)
         this.send('edit', {
           action: 'apply',
@@ -946,9 +1042,11 @@ export default {
         else if (c.kind === 'rift')
           this.send('edit', { action: 'rift', cardId: c.id });
         else if (p) {
-          this.selectedPokemon = p.cardId;
-          if (c.kind !== 'move') this.applySelected();
-          else this.showApplication();
+          if (c.kind === 'move') this.target(p);
+          else {
+            this.selectedPokemon = p.cardId;
+            this.applySelected();
+          }
         }
       });
     },
@@ -1352,6 +1450,32 @@ h2 {
   outline: 2px solid var(--journal-accent);
   outline-offset: -2px;
   background: var(--journal-selected);
+}
+.draft-move-guidance {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0 0 10px;
+  color: var(--journal-text);
+}
+.draft-team-slot.is-apt {
+  border-color: #61a68a;
+  box-shadow: inset 0 0 0 1px #61a68a55;
+}
+.draft-team-slot.is-inapt {
+  border-style: dashed;
+}
+.draft-slot-aptitude {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--journal-muted);
+  margin: 3px 0;
+}
+.is-apt .draft-slot-aptitude {
+  color: var(--journal-accent);
+}
+.draft-slot-face:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 .draft-empty-slot {
   display: flex;
