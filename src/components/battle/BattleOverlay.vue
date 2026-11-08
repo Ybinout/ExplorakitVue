@@ -1,5 +1,5 @@
 <template>
-  <div v-back="{active:active && (actionState.attackPanel || actionState.pokemonPanel || actionState.bagPanel),close:()=>{if(!replacementChoice)closePanels();}}" v-if="active" @pointerdown.capture="advanceExperience" @click.capture="consumeExperienceClick" :class="['battle', { 'battle-social-available':!!$slots['social-toggle'], 'battle-social-open':socialChatOpen, 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-void-arena':environment==='void-arena', 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle, ...daylightStyle}" :data-place-light="placeLight ? environment : null" :data-day-phase="outdoorLighting ? daylight.phase : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
+  <div v-back="{active:active && (actionState.attackPanel || actionState.pokemonPanel || actionState.bagPanel),close:()=>{if(!replacementChoice)closePanels();}}" v-if="active" @pointerdown.capture="advanceExperience" @click.capture="consumeExperienceClick" :class="['battle', { 'battle-social-available':!!$slots['social-toggle'], 'battle-social-open':socialChatOpen, 'battle-reduced-motion': !preferences.animationsEnabled, 'battle-entry-holding': entrancePhase === 'holding', 'battle-colosseum': challenge, 'battle-draft':environment==='draft-house', 'battle-void-arena':environment==='void-arena', 'battle-cave': environment === 'cave', 'battle-snow': environment === 'snow', 'battle-lake-gym': environment === 'lake-gym', 'battle-raph-gym': environment === 'raph-gym', 'battle-dedicated-gym': Boolean(gymBackground), 'battle-lake': environment === 'lake' }]" :style="{...(gymBackground ? gymBackground.platform : {}), ...placeLightStyle, ...daylightStyle}" :data-place-light="placeLight ? environment : null" :data-day-phase="outdoorLighting ? daylight.phase : null" role="region" :aria-label="tr('battle')" :aria-busy="entranceActive ? 'true' : null">
     <battle-entrance v-if="entranceActive" :key="visualEpoch" :champion="entranceChampion" @portrait-ready="onEntrancePortraitReady" :assets-loading="entranceAssetsLoading" :phase="entrancePhase" :language="preferences.language" :reduced-motion="!preferences.animationsEnabled" />
     <div
       ref="battleScene"
@@ -293,7 +293,7 @@
       <div v-if="!readOnly" class="battle-main-actions">
         <button data-tutorial-attack class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
         <button v-if="houseControl?.cooperative" class="battle-main-btn action-bag house-pass-button" data-house-pass :disabled="houseControl.busy || !houseControl.canPass || !canChooseAction" @click="$emit('house-pass')">Passer la main</button>
-        <button v-else-if="!opponent?.storyActor" data-tutorial-bag class="battle-main-btn action-bag" :disabled="tournament || environment==='whitepeak-club' || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
+        <button v-else-if="!opponent?.storyActor" data-tutorial-bag class="battle-main-btn action-bag" :disabled="tournament || ['whitepeak-club','draft-house'].includes(environment) || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
         <button class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
         <button class="battle-main-btn action-flee" :disabled="capturePolicy?.darkContinent || environment==='dark-jungle' || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
       </div>
@@ -353,6 +353,7 @@ const SNOW_BACKGROUNDS = Object.freeze({
   wide: require('@/assets/battle/snow-wide-v1.webp')
 });
 const GYM_BACKGROUNDS = Object.freeze({
+  'draft-house':{wide:require('@/assets/battle/draft-house.png'),mobile:require('@/assets/battle/draft-house-mobile.png'),platform:{'--gym-ground':'#426391','--gym-rim':'#d2ae6a','--gym-edge':'#21374e','--gym-light':'#b5c9dd'}},
   'dark-jungle':{wide:require('@/assets/battle/dark-jungle-wide-v1.webp'),mobile:require('@/assets/battle/dark-jungle-mobile-v1.webp'),platform:{'--gym-ground':'#677849','--gym-rim':'#92a66a','--gym-edge':'#34492b','--gym-light':'#bbc18a'}},
   'whitepeak-club':{wide:require('@/assets/battle/whitepeak-club.png'),mobile:require('@/assets/battle/whitepeak-club.png'),platform:{'--gym-ground':'#728b9b','--gym-rim':'#b79f6b','--gym-edge':'#394f66','--gym-light':'#d3dfe4'}},
   'super-tournament': {
@@ -777,7 +778,7 @@ export default {
       this._entranceStartedAt = performance.now();
       this._entrancePortraitAt = null;
       this._entranceSpecies = houseSpecies;
-      this.entranceAssetsLoading = this.environment === 'whitepeak-club';
+      this.entranceAssetsLoading = ['whitepeak-club','draft-house'].includes(this.environment);
       this.entranceChampion = tournamentEntrance?.portrait ? {...tournamentEntrance,city:'Super Tournoi',cityEn:'Super Tournament',story:true,eyebrow:'SUPER TOURNOI',eyebrowEn:'SUPER TOURNAMENT',accent:'#a0c8e2',minimumMs:2800,portraitMs:1600,src:require('@/assets/image/'+tournamentEntrance.portrait)} : this.arenaPortrait(encounterKind, trainerKey);
       this.entrancePhase = 'holding';
     },
@@ -796,7 +797,7 @@ export default {
       const obsolete = () => signal.aborted || epoch !== this.visualEpoch;
       await this.$nextTick();
       if (obsolete()) return;
-      const house = this.environment === 'whitepeak-club';
+      const house = ['whitepeak-club','draft-house'].includes(this.environment);
       // These trainer species are already public in the House selection menu.
       // Do not request or expose the hidden party of a PvP opponent.
       const sources = new Set();
@@ -1032,7 +1033,7 @@ export default {
       this.actionState.bagPanel = false;
     },
     openBag() {
-      if(this.tournament||this.environment==='whitepeak-club')return;
+      if(this.tournament||['whitepeak-club','draft-house'].includes(this.environment))return;
       if (!this.canChooseAction) {
         this.showMessage(this.tr('waitTurnBag'));
         return;
@@ -1641,7 +1642,7 @@ export default {
       this.clearCaptureTimers();
       this.clearHealthTimers();
     },
-    setEncounterEnvironment(environment) { this.encounterEnvironment=['lake','whitepeak-club'].includes(environment)?environment:null; },
+    setEncounterEnvironment(environment) { this.encounterEnvironment=['lake','whitepeak-club','draft-house'].includes(environment)?environment:null; },
     resetBattleUi() {
       clearTimeout(this._tutorialReadyTimer);this.tutorialReadyPhase=null;this.tutorialSubmittedPhase=null;
       this._pendingBattleField=null;
@@ -2943,6 +2944,7 @@ export default {
   }
 }
 .experience-notice { display:block; max-width:100%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:#297eb5; font-size:11px; font-weight:800; }
+.battle-draft .battle-platform{display:none}
 </style>
 
 <style scoped>

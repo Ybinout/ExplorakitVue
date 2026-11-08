@@ -6,7 +6,7 @@ export function worldMusicTrack(map) {
   if (/^jungle[1-9]$/.test(map)) return 'dark';
   if (map==='ville5_maison2')return 'casino';
   if (map==='ville5_maison1')return 'battle-house';
-  if (map?.startsWith('super_tournament_')) return 'sevenp-room';
+  if (map === 'draft_house' || map?.startsWith('super_tournament_')) return 'sevenp-room';
   if (map === 'professor_lab' || map === 'void_arena') return 'lucie-room';
   if (map === 'ville1_arene') return 'mounir-room';
   if (map === 'ville_safe1_arene') return 'hoze-room';

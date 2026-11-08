@@ -1,4 +1,5 @@
 export function battleEnvironment(mapName, colosseum = false, weather = null, encounter = null) {
+  if(encounter==='draft-house'||mapName==='draft_house')return 'draft-house';
   if (encounter === 'whitepeak-club') return 'whitepeak-club';
   if (/^jungle[1-9]$/.test(mapName)) return encounter === 'lake' ? 'lake' : 'dark-jungle';
   if (mapName === 'ville5_maison1') return 'whitepeak-club';

@@ -1,5 +1,6 @@
 const labels = {
   fr: {
+    draft_house:'Maison des Drafts',
     jungle1:'Dark Continent · Jungle 1',jungle2:'Dark Continent · Jungle 2',jungle3:'Dark Continent · Jungle 3',jungle4:'Dark Continent · Jungle 4',jungle5:'Dark Continent · Jungle 5',jungle6:'Dark Continent · Jungle 6',jungle7:'Dark Continent · Jungle 7',jungle8:'Dark Continent · Jungle 8',jungle9:'Dark Continent · Jungle 9',
     super_tournament_lobby:'Super Tournoi · Accueil',super_tournament_sas:'Super Tournoi · SAS',super_tournament_room:'Super Tournoi · Salle de duel',
     void_arena:'Arène oubliée', professor_lab:'Laboratoire du Professeur',
@@ -22,6 +23,7 @@ const labels = {
     gen_arene5: 'Arène d’Ocreville · Raphael'
   },
   en: {
+    draft_house:'Draft House',
     jungle1:'Dark Continent · Jungle 1',jungle2:'Dark Continent · Jungle 2',jungle3:'Dark Continent · Jungle 3',jungle4:'Dark Continent · Jungle 4',jungle5:'Dark Continent · Jungle 5',jungle6:'Dark Continent · Jungle 6',jungle7:'Dark Continent · Jungle 7',jungle8:'Dark Continent · Jungle 8',jungle9:'Dark Continent · Jungle 9',
     super_tournament_lobby:'Super Tournoi · Accueil',super_tournament_sas:'Super Tournoi · SAS',super_tournament_room:'Super Tournoi · Salle de duel',
     void_arena:'Forgotten Arena', professor_lab:'Professor’s Laboratory',

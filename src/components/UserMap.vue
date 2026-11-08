@@ -20,6 +20,9 @@
       <rift-spectator-panel v-back="closeDriftSpectator" v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
       <drift-run-panel v-back="{active:!learningVisible && !evolutionVisible,close:()=>isDriftPanelOpen=false}" v-show="!learningVisible && !evolutionVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
       <expedition-trainer-offer v-back="()=>trainerOffer=null" v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
+      <draft-panel v-back="()=>draftOpen=false" v-if="draftOpen && !battle && !battleResult && !pendingBattleResult" :state="draftState" :catalog="draftCatalog" :friends="draftFriends" :busy="draftBusy" :error="draftError" :connected="!!socket?.connected" @command="draftCommand" @friends="loadDraftFriends" @close="draftOpen=false" @finish="finishDraft"/>
+      <button v-if="draftState && !draftOpen && !battle && !battleResult" class="draft-resume" data-draft-resume @click="resumeDraft">{{ draftState.phase==='lobby'?'Ma table de Draft':'Reprendre la draft' }} →</button>
+      <aside v-if="draftInvitation && !draftState && !battle" class="draft-invitation" role="status"><b>{{ draftInvitation.host }} t’invite à une draft.</b><small>Rejoins la Maison des Drafts, à la Ville du Lac.</small><span><button @click="acceptDraftInvitation" :disabled="draftBusy">Prendre place</button><button @click="draftInvitation=null">Plus tard</button></span></aside>
       <whitepeak-club-panel v-back="()=>clubPanel=null" v-if="clubPanel && !battle && !battleResult && !clubWatch" :tab="clubPanel.tab" :roulette="clubRoulette" :duel="clubDuel" :rosters="clubRosters" :trainers="clubTrainers" :balance="Number(progressionState.money)||0" :user-id="Number(currentUserId)" :busy="clubBusy" :error="clubError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled && !worldWeatherReducedMotion" :rows="clubRows" :ranking="clubRanking" @close="clubPanel=null" @tab="clubPanel={tab:$event}" @command="clubCommand" />
       <button v-if="!clubPanel&&!battle&&clubDuel?.you>=0&&['review','preparation'].includes(clubDuel.phase)" class="house-resume-preparation" @click="clubPanel={tab:'duel'}">Reprendre la préparation →</button>
       <club-spectator v-back="closeClubWatch" v-if="clubWatch" :key="clubWatch.id" :start="clubWatch" :events="clubWatchEvents" :result="clubWatchResult" :mobile="showMobileControls" :preferences="preferences" @close="closeClubWatch" />
@@ -490,6 +493,7 @@ import {drawPlayerBattleIndicator,applyPlayerBattleStatus} from '@/services/play
 import NotificationBadge from './social/NotificationBadge.vue';
 import questJournalGame from '@/services/questJournalGame';
 import comfortGame from '@/services/comfortGame';
+import draftGame from '@/services/draftGame';
 import AutomaticTraining from './menu/AutomaticTraining.vue';
 import PatchHistory from './menu/PatchHistory.vue';
 import TeleporterChargeNotice from './menu/TeleporterChargeNotice.vue';
@@ -582,8 +586,8 @@ import { WorldMusic } from '@/services/worldMusic';
 
 export default {
   props: { patchNoticeOpen: Boolean },
-  mixins:[socialGame,tradeGame,raidsGame,questJournalGame,comfortGame],
-  components: { AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
+  mixins:[socialGame,tradeGame,raidsGame,questJournalGame,comfortGame,draftGame],
+  components: { DraftPanel:()=>import('./draft/DraftPanel.vue'),AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
     SuperTournamentPanel, TournamentRewardPanel, AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
@@ -874,7 +878,7 @@ export default {
     mirrorWakeReady(){return this.mirrorRift?.stage==='won'&&!this.battle&&!this.battleResult&&!this.pendingBattleResult&&!this.mapLoading&&this.mirrorScene?.phase!=='closing';},
     mirrorAwakeningReady(){return this.mirrorScene?.phase==='waiting'&&this.map===this.mirrorScene.map&&this.renderedMap===this.map&&!this.mapLoading&&!this.mapLoadError;},
     worldChatAvailable(){return Boolean(!this.isDrift && this.socket?.connected && !this.worldInteractionBlocked && !this.mapLoading && !this.mapLoadError && !this.worldContextLost && this.renderedMap===this.map && this.players[this.socket.id]?.currentmap===this.map);},
-    movementSuspended(){return (!this.isDrift&&['care','menu','team'].includes(this.earlyTutorial.phase)&&!this.battle&&!this.battleResult) || !!this.safariOffer || !!this.corruptedHeldWorkshop || !!this.corruptionWorkshop || !!this.corruptionInstall || !!this.darkPanel || this.worldChatOpen || this.worldInteractionBlocked;},
+    movementSuspended(){return this.draftOpen || (!this.isDrift&&['care','menu','team'].includes(this.earlyTutorial.phase)&&!this.battle&&!this.battleResult) || !!this.safariOffer || !!this.corruptedHeldWorkshop || !!this.corruptionWorkshop || !!this.corruptionInstall || !!this.darkPanel || this.worldChatOpen || this.worldInteractionBlocked;},
     patchNoticeReady() {
       return Boolean(this.socket?.connected && this.players[this.socket.id] && !this.mapLoading && !this.mapLoadError
         && this.renderedMap === this.map && !this.worldContextLost && !this.otherInteractionBlocked
@@ -2299,6 +2303,7 @@ export default {
       if (!this.socket || !this.socket.connected) return;
       const action = typeof payload.action === 'string' ? payload.action : '';
       if (!['attack', 'flee', 'change', 'bag'].includes(action)) return;
+      if(this.draftState?.activeMatch){this.draftCommand('action',{id:this.draftState.id,matchId:this.draftState.activeMatch.id,...payload});return;}
       if(this.clubControl){this.clubCommand('action',{id:this.clubControl.id,...payload,controlRevision:payload.controlRevision??this.clubControl.revision});return;}
       this.socket.emit('actionResponse', this.isDrift ? { ...payload, turnId: payload.turnId || this.driftTurnId } : payload);
     },
@@ -2607,7 +2612,7 @@ export default {
       this.closeLegacyPanels();
     },
     handleOutsideMenuClick(event) {
-      if(this.coverageOpen||this.damageCalculatorOpen||this.automaticTrainingOpen||this.patchHistoryOpen)return;
+      if(this.coverageOpen||this.damageCalculatorOpen||this.automaticTrainingOpen||this.patchHistoryOpen||this.draftOpen)return;
       if (this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.selectedPokemonUuid) return;
       const header = this.$refs.gameHeader;
       const bagPanel = this.$refs.bagPanel?.$el;
@@ -2918,7 +2923,7 @@ export default {
       // Queue the next frame before drawing: one failed image/effect must not
       // leave a non-null frame ID that prevents the world from ever restarting.
       this.animationFrameId = window.requestAnimationFrame(this.animate);
-      if (this.worldContextLost || document.hidden || this.clubWatch || this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible) {
+      if (this.draftOpen || this.worldContextLost || document.hidden || this.clubWatch || this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible) {
         this.lastAnimationTimestamp=null;this._worldRenderBudget?.reset();this._pokemonComputers?.suspend();return;
       }
       const now = Number.isFinite(timestamp) ? timestamp : performance.now();
@@ -5082,3 +5087,7 @@ button:hover {
 </style>
 
 <style scoped>.bag-medicine-buttons{display:flex;flex-wrap:wrap;gap:8px}.bag-medicine-buttons .bag-use-button{flex:1}.bag-auto-button{background:var(--journal-soft)!important;color:var(--journal-heading)!important}.bag-candy-quantity input{width:80px;min-height:40px;padding:6px;border:1px solid var(--journal-border);border-radius:6px;color:var(--journal-ink);background:var(--journal-card);margin-left:8px}.bag-candy-quantity small{display:block;font-size:10px;margin-top:5px}</style>
+
+<style scoped>
+.draft-resume{position:fixed;z-index:1200;left:50%;bottom:16px;translate:-50% 0;border:1px solid var(--journal-accent);border-radius:9px;padding:12px 20px;background:var(--journal-paper);color:var(--journal-heading);font:600 12px var(--journal-font);cursor:pointer;box-shadow:var(--journal-shadow)}.draft-invitation{position:fixed;z-index:2040;right:16px;top:90px;display:flex;flex-direction:column;gap:7px;width:min(320px,calc(100vw - 32px));padding:17px;border:1px solid var(--journal-border);border-radius:11px;background:var(--journal-paper);color:var(--journal-ink);box-shadow:var(--journal-shadow);font:12px/1.5 var(--journal-font)}.draft-invitation small{color:var(--journal-muted)}.draft-invitation span{display:flex;gap:8px}.draft-invitation button{padding:8px;border:1px solid var(--journal-border);border-radius:7px;background:var(--journal-card);color:inherit;cursor:pointer}
+</style>

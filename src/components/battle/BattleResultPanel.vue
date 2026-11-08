@@ -107,6 +107,7 @@ export default {
   computed: {
     outcome() { return outcomes.includes(this.result.outcome) ? this.result.outcome : 'interrupted'; },
     modeLabel() {
+      if(this.result.mode==='draft')return 'Maison des Drafts';
       if (this.gameMode === 'colosseum') return 'Colosseum';
       return this.gameMode === 'rift' || this.result.mode === 'drift' ? 'Rift' : 'Aventure';
     },
