@@ -92,6 +92,25 @@
       <small class="draft-inspect-label">Voir la carte ↗</small>
     </button>
     <button
+      v-if="showCompatibility && card.kind === 'move' && card.compatibility"
+      class="draft-compatibility"
+      :class="{ 'has-match': learners.length }"
+      :title="compatibilityLabel"
+      :aria-label="compatibilityLabel + ' — voir le détail'"
+      data-draft-compatibility
+      @click="$emit('inspect', card)"
+    >
+      <span aria-hidden="true">{{ learners.length ? '✓' : '·' }}</span
+      ><span>{{ compatibilityLabel }}</span
+      ><span class="draft-compat-sprites" aria-hidden="true"
+        ><pokemon-portrait
+          v-for="p in learners.slice(0, 3)"
+          :key="p.cardId"
+          :src="$pokemonSprite({ data: { id: p.pokemonId } })"
+          alt="" /></span
+      ><small v-if="learners.length > 3">+{{ learners.length - 3 }}</small>
+    </button>
+    <button
       v-if="action"
       class="draft-card-select"
       :disabled="disabled || used"
@@ -112,6 +131,7 @@ export default {
   components: { PokemonPortrait, PotentialStar, BagItemIcon },
   props: {
     card: Object,
+    showCompatibility: { type: Boolean, default: true },
     action: String,
     disabled: Boolean,
     draggable: Boolean,
@@ -119,6 +139,22 @@ export default {
     selected: Boolean,
   },
   computed: {
+    learners() {
+      return (this.card.compatibility || []).filter(
+        (p) => p.compatible && !p.known
+      );
+    },
+    compatibilityLabel() {
+      return !this.card.compatibility?.length
+        ? 'Pas encore de Pokémon'
+        : this.learners.length
+        ? this.learners.length +
+          ' compatible' +
+          (this.learners.length > 1 ? 's' : '')
+        : this.card.compatibility.some((p) => p.known)
+        ? 'Déjà connue'
+        : 'Aucun compatible';
+    },
     pokemon() {
       return this.card.kind === 'pokemon' ? this.card.pokemon : null;
     },
@@ -387,5 +423,41 @@ h3 {
   .draft-rift-glyph {
     animation: none;
   }
+}
+.draft-compatibility {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 5px 8px !important;
+  min-height: 32px !important;
+  font-size: 9px !important;
+  border: 0 !important;
+  border-top: 1px solid var(--journal-border) !important;
+  border-radius: 0 !important;
+  color: var(--journal-muted) !important;
+  background: var(--journal-soft) !important;
+  text-align: left;
+}
+.draft-compatibility.has-match {
+  color: var(--journal-accent) !important;
+}
+.draft-compatibility > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.draft-compat-sprites {
+  display: flex;
+  flex: none;
+}
+.draft-compat-sprites .pokemon-portrait {
+  width: 19px;
+  height: 22px;
+}
+.draft-compatibility > small {
+  font-size: 8px;
 }
 </style>

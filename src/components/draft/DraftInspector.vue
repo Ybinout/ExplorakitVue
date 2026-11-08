@@ -15,7 +15,7 @@
         ×
       </button>
     </header>
-    <draft-card :card="card" />
+    <draft-card :card="card" :show-compatibility="false" />
     <template v-if="p"
       ><p class="draft-talent">
         <b>{{ abilityName(p.passiveAbility) }}</b> —
@@ -83,18 +83,47 @@
           : 'Cette amélioration reste temporaire et peut être retirée pendant la préparation.')
       }}
     </p>
+    <section
+      v-if="card.kind === 'move' && card.compatibility"
+      class="draft-compatibility-list"
+      data-draft-compatibility-list
+    >
+      <h4>Tes Pokémon sélectionnés</h4>
+      <p v-if="!card.compatibility.length">
+        Sélectionne un Pokémon : sa compatibilité apparaîtra sur les cartes
+        d’attaque.
+      </p>
+      <div
+        v-for="p in card.compatibility"
+        :key="p.cardId"
+        :class="{ 'is-compatible': p.compatible && !p.known }"
+      >
+        <pokemon-portrait
+          :src="$pokemonSprite({ data: { id: p.pokemonId } })"
+          :alt="p.name"
+        /><b>{{ p.name }}</b
+        ><span>{{
+          p.known
+            ? 'Déjà connue'
+            : p.compatible
+            ? '✓ Compatible'
+            : 'Incompatible'
+        }}</span>
+      </div>
+    </section>
     <slot />
   </section>
 </template>
 <script>
 import DraftCard from './DraftCard.vue';
+import PokemonPortrait from '../PokemonPortrait.vue';
 import catalog from '@/data/pokemonReference.fr.json';
 import { createPokemonReference } from '@/services/pokemonReference';
 import { localizeMoveName, localizeAbilityName } from '@/services/i18n';
 import { localizeTypeName, typeBadgeStyle } from '@/services/pokemonTypes';
 import { natureLabel, natureDescription } from '@/services/pokemonNatures';
 export default {
-  components: { DraftCard },
+  components: { DraftCard, PokemonPortrait },
   props: { card: Object, compact: Boolean },
   data: () => ({
     reference: createPokemonReference(catalog),
@@ -198,5 +227,34 @@ export default {
 }
 .is-compact {
   font-size: 11px;
+}
+.draft-compatibility-list {
+  margin-top: 15px;
+  border-top: 1px solid var(--journal-border);
+}
+.draft-compatibility-list h4 {
+  font-size: 12px;
+}
+.draft-compatibility-list > div {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--journal-border);
+  font-size: 10px;
+}
+.draft-compatibility-list .pokemon-portrait {
+  width: 30px;
+  height: 32px;
+}
+.draft-compatibility-list b {
+  flex: 1;
+}
+.draft-compatibility-list span {
+  color: var(--journal-muted);
+}
+.draft-compatibility-list .is-compatible span {
+  color: var(--journal-accent);
+  font-weight: 600;
 }
 </style>

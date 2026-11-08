@@ -802,6 +802,7 @@ export default {
       immediate: true,
       handler(s) {
         if (s?.serverNow) this._offset = s.serverNow - Date.now();
+        if(this.inspection?.kind==='move')this.inspection=[...(s?.pack||[]),...(s?.collection||[])].find(c=>c.id===this.inspection.id)||null;
         if (
           this.selected &&
           !s?.collection?.some((c) => c.id === this.selected.id)
