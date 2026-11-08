@@ -1,5 +1,5 @@
 <template>
-  <div class="evolution-backdrop" @mousedown.stop @pointerdown.stop @click.stop @keydown.stop="onKeydown" @keyup.stop>
+  <div v-back="()=>{if(!busy){cancellable && !revealed ? cancel() : advance();}}" class="evolution-backdrop" @mousedown.stop @pointerdown.stop @click.stop @keydown.stop="onKeydown" @keyup.stop>
     <section ref="dialog" class="evolution-sheet" :class="{ revealed, still: reducedMotion }" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="evolution-title" aria-describedby="evolution-description">
       <small>UN NOUVEAU CHAPITRE</small>
       <h2 id="evolution-title">{{ revealed ? 'Évolution réussie !' : 'Ton Pokémon évolue…' }}</h2>

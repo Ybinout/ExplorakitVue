@@ -46,7 +46,7 @@
         </footer>
       </section>
     </div>
-    <pokemon-details v-if="detail" class="trade-pokemon-details" :pokemon="detail" :position="1" :total="1" :read-only="true" context-label="ÉCHANGE ENTRE AMIS" footer-label="Caractéristiques du Pokémon proposé" @close="detail=null"/>
+    <pokemon-details v-back="()=>detail=null" v-if="detail" class="trade-pokemon-details" :pokemon="detail" :position="1" :total="1" :read-only="true" context-label="ÉCHANGE ENTRE AMIS" footer-label="Caractéristiques du Pokémon proposé" @close="detail=null"/>
   </div>
 </template>
 <script>

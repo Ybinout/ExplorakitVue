@@ -27,6 +27,7 @@
 
       <template v-else-if="active === 'options'">
         <div class="option-list">
+          <button type="button" class="option-row appearance-option" data-option-patch-history @click="$emit('patch-history')"><span><strong>{{ preferences.language==='en'?'Patch notes':'Notes de patch' }}</strong><small>{{ preferences.language==='en'?'Public updates, newest first.':'Retrouve les dernières mises à jour publiques.' }}</small></span><span aria-hidden="true">›</span></button>
           <button type="button" class="option-row appearance-option" data-option-appearance @click="$emit('appearance')"><span><strong>{{ preferences.language==='en'?'Appearance':'Apparence' }}</strong><small>{{ preferences.language==='en'?'Choose your trainer.':'Choisis l’apparence de ton dresseur.' }}</small></span><span aria-hidden="true">›</span></button>
           <fullscreen-options v-if="desktop" :state="fullscreen" :language="preferences.language" @toggle="$emit('toggle-fullscreen')" />
           <label class="option-row touch-controls-option">

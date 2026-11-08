@@ -15,27 +15,27 @@
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
       <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
       <starter-choice v-if="isDrift && driftState?.phase==='selection'" :choices="driftState.starterChoices" :seconds="Math.max(0,Math.ceil((driftState.selectionEndsAt-driftClock-driftOffset)/1000))" :busy="starterBusy" :error="starterError" @choose="chooseStarter" @cancel="cancelStarter" />
-      <move-learning-panel v-if="learningVisible" :key="learningPokemon.pendingMoves[0].id" :pokemon="learningPokemon" :busy="learningBusy" :error="learningError" @choose="chooseLearnedMove" @later="learningDeferred = true" />
-      <battle-result-panel v-if="battleResult && !mirrorVictoryReady" :result="battleResult" :game-mode="isColosseum ? 'colosseum' : isDrift ? 'rift' : 'adventure'" :exploration-active="isDrift && driftState?.phase === 'exploration'" @continue="dismissBattleResult" />
-      <rift-spectator-panel v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
-      <drift-run-panel v-show="!learningVisible && !evolutionVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
-      <expedition-trainer-offer v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
-      <whitepeak-club-panel v-if="clubPanel && !battle && !battleResult && !clubWatch" :tab="clubPanel.tab" :roulette="clubRoulette" :duel="clubDuel" :rosters="clubRosters" :trainers="clubTrainers" :balance="Number(progressionState.money)||0" :user-id="Number(currentUserId)" :busy="clubBusy" :error="clubError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled && !worldWeatherReducedMotion" :rows="clubRows" :ranking="clubRanking" @close="clubPanel=null" @tab="clubPanel={tab:$event}" @command="clubCommand" />
+      <move-learning-panel v-back="()=>learningDeferred=true" v-if="learningVisible" :key="learningPokemon.pendingMoves[0].id" :pokemon="learningPokemon" :busy="learningBusy" :error="learningError" @choose="chooseLearnedMove" @later="learningDeferred = true" />
+      <battle-result-panel v-back="dismissBattleResult" v-if="battleResult && !mirrorVictoryReady" :result="battleResult" :game-mode="isColosseum ? 'colosseum' : isDrift ? 'rift' : 'adventure'" :exploration-active="isDrift && driftState?.phase === 'exploration'" @continue="dismissBattleResult" />
+      <rift-spectator-panel v-back="closeDriftSpectator" v-if="driftSpectator && !battle && !battleResult" :frame="driftSpectator" @close="closeDriftSpectator" />
+      <drift-run-panel v-back="{active:!learningVisible && !evolutionVisible,close:()=>isDriftPanelOpen=false}" v-show="!learningVisible && !evolutionVisible" v-if="isDrift && driftState?.phase!=='selection' && isDriftPanelOpen && !battle && !battleResult && !driftSpectator" :initial-tab="driftPanelTab" :run-command="driftCommand" :state="driftState" :catalogue="driftCatalogue" :in-shop="isShopMap" :feedback="interactionNotice" @close="isDriftPanelOpen = false" @command="driftCommand" @team="openDriftTeam" @leave="leaveDrift" @watch="watchDriftMatch" />
+      <expedition-trainer-offer v-back="()=>trainerOffer=null" v-if="trainerOffer && !battle && driftState?.phase==='exploration'" :offer="trainerOffer" :busy="trainerBusy" :error="trainerError" @close="trainerOffer=null" @challenge="challengeTrainer" />
+      <whitepeak-club-panel v-back="()=>clubPanel=null" v-if="clubPanel && !battle && !battleResult && !clubWatch" :tab="clubPanel.tab" :roulette="clubRoulette" :duel="clubDuel" :rosters="clubRosters" :trainers="clubTrainers" :balance="Number(progressionState.money)||0" :user-id="Number(currentUserId)" :busy="clubBusy" :error="clubError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled && !worldWeatherReducedMotion" :rows="clubRows" :ranking="clubRanking" @close="clubPanel=null" @tab="clubPanel={tab:$event}" @command="clubCommand" />
       <button v-if="!clubPanel&&!battle&&clubDuel?.you>=0&&['review','preparation'].includes(clubDuel.phase)" class="house-resume-preparation" @click="clubPanel={tab:'duel'}">Reprendre la préparation →</button>
-      <club-spectator v-if="clubWatch" :key="clubWatch.id" :start="clubWatch" :events="clubWatchEvents" :result="clubWatchResult" :mobile="showMobileControls" :preferences="preferences" @close="closeClubWatch" />
+      <club-spectator v-back="closeClubWatch" v-if="clubWatch" :key="clubWatch.id" :start="clubWatch" :events="clubWatchEvents" :result="clubWatchResult" :mobile="showMobileControls" :preferences="preferences" @close="closeClubWatch" />
       <button v-if="map==='ville5_maison1' && !battle && !battleResult && !clubWatch && !clubPanel" class="club-room-access" data-club-room-access @pointerdown.stop @click="openClubPanel">{{ clubDuel&&clubDuel.phase!=='finished' ? clubDuel.phase==='review'?'Vérifier les mises':clubDuel.phase==='battle'?'Duel en cours · Tribunes':'Combat préparé':'Organiser' }}</button>
-      <super-tournament-panel v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :passives="superTournament.passives" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @pause="pauseSuperTournament" @resume="resumeSuperTournament" @abandon="abandonSuperTournament" />
+      <super-tournament-panel v-back="closeTournamentPanel" v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :passives="superTournament.passives" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @pause="pauseSuperTournament" @resume="resumeSuperTournament" @abandon="abandonSuperTournament" />
       <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :rerolls="superTournament.rerolls" :cash="superTournament.cash" :team="superTournament.team" :passives="superTournament.passives" :victory-recovery="superTournament.victoryRecovery" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @reroll="rerollTournamentRewards" @leave="openTournamentAbandon" />
       <doubles-battle v-if="doublesFrame && battle" :frame="doublesFrame" :control="clubControl" :busy="clubBusy" :error="clubError" :settled="clubDuel?.phase==='finished'" :reduced="!preferences.animationsEnabled" @action="doubleAction" @pass="doublePass" @forfeit="clubCommand('forfeit',{id:clubControl?.id})" @close="closeDoublesBattle">
        <template #social-toggle><button class="battle-social-button" @click="battleChatOpen=!battleChatOpen" aria-label="Amis et messages"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
-       <template #social-chat><combat-social-panel v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
+       <template #social-chat><combat-social-panel v-back="()=>battleChatOpen=false" v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
       </doubles-battle>
-      <raid-panel v-if="raidPanelVisible && (raidPreview || raidState) && !raidCombatActive && !battle" :preview="raidPreview" :state="raidState" :inventory="raidInventory" :friends="socialState.accepted" :user-id="Number(currentUserId)" :busy="raidBusy" :error="raidError" :notice="raidNotice" :show-tutorial="raidTutorial" @command="raidCommand" @close="closeRaidPreview" @minimize="raidPanelVisible=false"/>
+      <raid-panel v-back="closeRaidPreview" v-if="raidPanelVisible && (raidPreview || raidState) && !raidCombatActive && !battle" :preview="raidPreview" :state="raidState" :inventory="raidInventory" :friends="socialState.accepted" :user-id="Number(currentUserId)" :busy="raidBusy" :error="raidError" :notice="raidNotice" :show-tutorial="raidTutorial" @command="raidCommand" @close="closeRaidPreview" @minimize="raidPanelVisible=false"/>
       <button v-if="raidState && !raidPanelVisible && !battle" class="raid-resume" @click="raidPanelVisible=true">{{ raidState.phase==='lobby'?'Reprendre la préparation du raid':'Bilan du raid' }} →</button>
       <aside v-if="raidInvitation" class="raid-invitation" :class="{'is-compact':battle&&!raidInviteExpanded}" role="status" aria-live="polite"><button v-if="battle&&!raidInviteExpanded" class="raid-invite-expand" @click="raidInviteExpanded=true">✧ Invitation raid · {{ raidInvitationSeconds }} s</button><template v-else><b>{{ raidInvitation.senderName }} t’invite dans une faille</b><small>{{ raidInvitation.rift.name }} · N. {{ raidInvitation.rift.level }} · {{ raidInvitationSeconds }} s</small><span><button :disabled="raidBusy" @click="raidCommand('invitation',{id:raidInvitation.id,accept:true})">{{ battle?'Réserver ma place':'Rejoindre' }}</button><button :disabled="raidBusy" @click="raidCommand('invitation',{id:raidInvitation.id,accept:false})">Refuser</button><button v-if="battle" @click="raidInviteExpanded=false" aria-label="Réduire l’invitation">−</button></span></template></aside>
       <raid-battle v-if="raidCombatActive" :key="raidState.id" :frame="raidState.combat" :difficulty="raidState.rift.name" :busy="raidBusy" :error="raidError" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" @action="raidCommand('action',$event)" @results="showRaidResults" @sound="_feedbackAudio && _feedbackAudio.play($event)" @impact="raidImpact">
        <template #social-toggle><button class="battle-social-button" @click="battleChatOpen=!battleChatOpen" aria-label="Amis et messages"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
-       <template #social-chat><combat-social-panel v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
+       <template #social-chat><combat-social-panel v-back="()=>battleChatOpen=false" v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
       </raid-battle>
       <battle-overlay v-show="!doublesFrame && !raidCombatActive"
         ref="battleOverlay"
@@ -53,7 +53,7 @@
         @music-prelude="onMusicPrelude"
       >
         <template #social-toggle><button class="battle-social-button" data-battle-social-toggle :class="{'has-social-notification':socialAlertCount>0}" :aria-expanded="battleChatOpen" :aria-label="`Amis et messages${socialAlertCount?' · '+socialAlertCount+' notification'+(socialAlertCount>1?'s':''):''}`" data-social-surface @pointerdown.stop @click.stop="battleChatOpen=!battleChatOpen"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
-        <template #social-chat><combat-social-panel v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
+        <template #social-chat><combat-social-panel v-back="()=>battleChatOpen=false" v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
       </battle-overlay>
       <div class="game-shell" :inert="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? '' : null" :aria-hidden="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? 'true' : null">
         <div class="world-toolbar">
@@ -73,7 +73,7 @@
             <div class="drift-clock"><drift-glyph name="clock" /><span><small>{{ driftPhaseLabel }}</small><strong>{{ driftCountdown || 'Rift' }}</strong></span></div>
             <button class="drift-hud-toggle" :aria-expanded="isDriftPanelOpen" aria-label="Ouvrir le carnet Drift" @click="toggleDriftPanel"><drift-glyph /><span>Drifts <small>{{ driftState?.equipped?.length || 0 }}/5</small></span></button>
           </div>
-          <nav v-if="isMenuOpen" id="adventure-menu" class="menu-dropdown" :aria-label="tr('menu')">
+          <nav v-back="()=>isMenuOpen=false" v-if="isMenuOpen" id="adventure-menu" class="menu-dropdown" :aria-label="tr('menu')">
             <button v-if="learningPokemon" class="menu-dropdown-item" data-menu-action="learning" @click="openMoveLearning"><journal-icon name="pokemon" /><span>Attaques à apprendre</span></button>
             <div class="menu-caption"><span>RiftMon</span><small>{{ isDrift ? (isColosseum ? 'Colosseum' : 'RiftMon') : (preferences.language === 'en' ? 'Adventure' : 'Aventure') }}</small></div>
             <button
@@ -106,7 +106,7 @@
           <button v-if="isShopMap" class="location-shop-btn" data-open-sell type="button" @click="openShop('sell')">{{ preferences.language==='en'?'Sell':'Vendre' }}</button>
         </div>
         </div>
-        <bag-panel v-if="isBagOpen" :inert="trainingFeedback || heldPickerUuid || corruptionInstall?'':null" :aria-hidden="trainingFeedback || heldPickerUuid || corruptionInstall?'true':null" ref="bagPanel" :favorite-keys="bagFavorites" :favorite-busy="bagFavoriteBusy" @favorite="setBagFavorite" :module-shortcut="isDrift?null:moduleShortcut" :shortcut-busy="moduleShortcutBusy || medicineBusy" @shortcut="assignModuleShortcut" :view-state="bagViewState" @remember="bagViewState=$event" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
+        <bag-panel v-back="()=>isBagOpen=false" v-if="isBagOpen" :inert="trainingFeedback || automaticTrainingOpen || heldPickerUuid || corruptionInstall?'':null" :aria-hidden="trainingFeedback || automaticTrainingOpen || heldPickerUuid || corruptionInstall?'true':null" ref="bagPanel" :favorite-keys="bagFavorites" :favorite-busy="bagFavoriteBusy" @favorite="setBagFavorite" :module-shortcut="isDrift?null:moduleShortcut" :shortcut-busy="moduleShortcutBusy || medicineBusy" @shortcut="assignModuleShortcut" :view-state="bagViewState" @remember="bagViewState=$event" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
               <button v-if="item.key==='fly_module' && !isDrift" class="bag-use-button" data-use-fly-module :disabled="!!battle || mapLoading || !!flight" @click="useModule(item)">{{ preferences.language==='en'?'Use':'Utiliser' }}</button>
               <template v-else-if="item.experienceModule && !isDrift">
@@ -125,7 +125,8 @@
                 </select>
                 <small v-if="(item.fieldUse?.effort||item.fieldUse?.ivReroll||item.fieldUse?.effortReset||item.fieldUse?.abilityReroll||item.fieldUse?.natureReroll) && medicineTargets[item.key]" class="bag-use-hint" data-effort-preview>{{ effortPreview(item) }}</small>
                 <label v-if="item.fieldUse?.effort?.amount>0&&item.quantity>=5" class="bag-use-hint">Quantité <select data-medicine-quantity :value="medicineQuantities[item.key]||1" :disabled="medicineBusy" @change="$set(medicineQuantities,item.key,Number($event.target.value))"><option v-for="n in [1,5,10,25].filter(n=>n<=item.quantity)" :key="n" :value="n">×{{ n }}</option></select><small>Seules les vitamines utiles seront consommées.</small></label>
-                <button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagItem(item) || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key]))" @click="useBagMedicine(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button>
+                <label v-if="item.fieldUse?.levelUp" class="bag-use-hint bag-candy-quantity">Quantité <input data-candy-quantity type="number" min="1" :max="candyLimit(item)" :value="medicineQuantities[item.key]||1" :disabled="medicineBusy||!medicineTargets[item.key]" @input="$set(medicineQuantities,item.key,Math.max(1,Math.min(candyLimit(item),Number($event.target.value)||1)))"><small>Maximum niveau {{ item.fieldUse.maxLevel }}. Seuls les bonbons utiles seront consommés.</small></label>
+                <div class="bag-medicine-buttons"><button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagItem(item) || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key]))" @click="useBagMedicine(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button><button v-if="item.fieldUse?.ivReroll || item.fieldUse?.natureReroll" class="bag-use-button bag-auto-button" data-open-automatic-training :disabled="medicineBusy||teamLoading||!canUseBagItem(item)" @click="openAutomaticTraining(item)">↻ Utiliser automatiquement</button></div>
                 <small v-if="!canUseBagItem(item)" class="bag-use-hint">{{ isDrift && driftState?.phase !== 'exploration' ? 'Soins automatiques entre les combats du tournoi.' : 'Disponible hors combat.' }}</small>
                 <small v-else-if="!teamPokemons.some(p => canReceiveMedicine(item, p))" class="bag-use-hint">{{ item.category === 'evolution' ? 'Aucun Pokémon compatible et apte dans ton équipe. Soigne les Pokémon K.O. avant de les faire évoluer.' : 'Aucun Pokémon n’a besoin de cet objet.' }}</small>
               </template>
@@ -141,12 +142,14 @@
               </div>
           </template>
         </bag-panel>
-        <game-trade-panel v-if="tradeModalVisible" :key="tradeState.id" :state="tradeState" :user-id="Number(currentUserId)" :busy="tradeBusy" :error="tradeError" :connected="tradeConnected" :command="tradeCommand" @action="runTradeAction" @cancel="cancelFriendTrade"/>
-        <game-friends-panel v-if="friendsOpen && !battle" :state="socialState" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" @draft="rememberSocialDraft" @reading="setSocialReading" :presence-revision="socialPresenceRevision" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError || tradeError" :trade-invite="incomingTrade" :trading="tradeBusy" :can-trade="!isDrift && !battle && !superTournament.active" :request-trade="requestFriendTrade" :request-flight="flyToFriend" @trade-answer="answerFriendTrade" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
-        <held-item-picker v-if="heldPickerPokemon" :pokemon="heldPickerPokemon" :items="heldBagItems" :busy="teamSaving" :error="teamError" @close="heldPickerUuid=null" @equip="equipPickedHeldItem"/>
-        <training-feedback v-if="trainingFeedback" :entry="trainingFeedback" :busy="medicineBusy" @close="trainingFeedback=null" @confirm="confirmIvReroll"/>
-        <pokemon-computer v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :corruption-allowed="!isDrift && !superTournament.active && !battle" @corruption="openCorruptionSheet" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
-        <div v-if="isAppearancePanelOpen" class="appearance-panel" ref="appearancePanel">
+        <game-trade-panel v-back="cancelFriendTrade" v-if="tradeModalVisible" :key="tradeState.id" :state="tradeState" :user-id="Number(currentUserId)" :busy="tradeBusy" :error="tradeError" :connected="tradeConnected" :command="tradeCommand" @action="runTradeAction" @cancel="cancelFriendTrade"/>
+        <game-friends-panel ref="friendsPanel" v-back="()=>$refs.friendsPanel.closeOrBack()" v-if="friendsOpen && !battle" :state="socialState" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" @draft="rememberSocialDraft" @reading="setSocialReading" :presence-revision="socialPresenceRevision" :user-id="Number(currentUserId)" :connected="socialConnected" :server-error="socialError || tradeError" :trade-invite="incomingTrade" :trading="tradeBusy" :can-trade="!isDrift && !battle && !superTournament.active" :request-trade="requestFriendTrade" :request-flight="flyToFriend" @trade-answer="answerFriendTrade" :initial-target="friendsTarget" :incoming-message="socialMessage" :command="socialCommand" @close="friendsOpen=false"/>
+        <held-item-picker v-back="()=>heldPickerUuid=null" v-if="heldPickerPokemon" :pokemon="heldPickerPokemon" :items="heldBagItems" :busy="teamSaving" :error="teamError" @close="heldPickerUuid=null" @equip="equipPickedHeldItem"/>
+        <automatic-training v-back="closeAutomaticTraining" v-if="automaticTrainingOpen" :key="automaticTrainingOpen.kind" :initial="automaticTrainingOpen" :team="teamPokemons" :items="bagItems" :job="automaticTrainingState" :busy="automaticTrainingBusy" :error="automaticTrainingError" @start="startAutomaticTraining" @stop="stopAutomaticTraining" @close="closeAutomaticTraining"/>
+        <patch-history v-back="()=>patchHistoryOpen=false" v-if="patchHistoryOpen" :language="preferences.language" @close="patchHistoryOpen=false"/>
+        <training-feedback v-back="()=>trainingFeedback=null" v-if="trainingFeedback" :entry="trainingFeedback" :busy="medicineBusy" @close="trainingFeedback=null" @confirm="confirmIvReroll"/>
+        <pokemon-computer v-back="()=>pc.visible=false" v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :corruption-allowed="!isDrift && !superTournament.active && !battle" @corruption="openCorruptionSheet" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
+        <div v-back="()=>isAppearancePanelOpen=false" v-if="isAppearancePanelOpen" class="appearance-panel" ref="appearancePanel">
           <div class="appearance-title"><span><small>RiftMon</small>{{ tr('appearance') }}</span><button class="panel-close" :aria-label="tr('close')" @click="isAppearancePanelOpen = false">×</button></div>
           <div class="appearance-grid">
             <button
@@ -165,7 +168,7 @@
           </div>
           <p v-if="appearanceError" class="team-state team-error" role="alert">{{ appearanceError }}</p>
         </div>
-        <div v-if="isTeamPanelOpen" id="pokemon-team-panel" class="team-panel" ref="teamPanel" @click.capture="guardTeamDragClick" @dragstart.prevent>
+        <div v-back="closeTeamPanel" v-if="isTeamPanelOpen" id="pokemon-team-panel" class="team-panel" ref="teamPanel" @click.capture="guardTeamDragClick" @dragstart.prevent>
           <div class="team-title"><span><small>COMPAGNONS DE VOYAGE</small>{{ tr('team') }}</span><button class="team-coverage-btn" :disabled="teamLoading||!teamPokemons.length" data-team-coverage @click="releaseAllMovementKeys();coverageOpen=true">Couverture des types</button><button class="team-close" :aria-label="tr('close')" @click="closeTeamPanel">×</button></div>
           <div v-if="teamLoading" class="team-state">{{ tr('loading') }}</div>
           <p v-if="teamError" class="team-state team-error" role="alert">{{ teamError }}</p>
@@ -211,7 +214,7 @@
                 <p v-if="pokemon.riftFainted" class="team-item-description team-fainted-notice">Sauvé par un talisman · K.O. jusqu’à un soin hors combat.</p>
               </div>
               <div class="team-row-actions">
-                <button class="team-drag-handle" data-team-drag :aria-label="`${preferences.language==='en'?'Drag to move':'Glisser pour déplacer'} ${pokemon.name}`" :disabled="teamSaving || teamLoading || !canReorderTeam" title="Glisser pour déplacer"><svg viewBox="0 0 20 24" aria-hidden="true"><circle v-for="n in 6" :key="n" :cx="n%2?6:14" :cy="4+Math.floor((n-1)/2)*8" r="2" fill="currentColor"/></svg></button>
+                <button v-if="fullscreenState.desktop" class="team-drag-handle" data-team-drag :aria-label="`${preferences.language==='en'?'Drag to move':'Glisser pour déplacer'} ${pokemon.name}`" :disabled="teamSaving || teamLoading || !canReorderTeam" title="Glisser pour déplacer"><svg viewBox="0 0 20 24" aria-hidden="true"><circle v-for="n in 6" :key="n" :cx="n%2?6:14" :cy="4+Math.floor((n-1)/2)*8" r="2" fill="currentColor"/></svg></button>
                 <button
                   class="team-order-btn"
                   :aria-label="`${preferences.language === 'en' ? 'Move up' : 'Monter'} ${pokemon.name}`"
@@ -231,10 +234,10 @@
               </div>
             </div>
           </div>
-          <p class="team-order-status" role="status">{{ teamSaving ? tr('saving') : teamOrderNotice || tr('orderAutoSave') }}<small v-if="canReorderTeam">{{ preferences.language==='en'?(superTournament.active?'Drag a companion or use the arrows to reorder.':'Drag a companion to reorder; drag its item onto a teammate to transfer or swap it.'):(superTournament.active?'Glisse un Pokémon ou utilise les flèches pour changer sa place.':'Glisse un Pokémon pour le déplacer, ou son objet sur un coéquipier pour le transférer ou l’échanger.') }}</small></p>
+          <p class="team-order-status" role="status">{{ teamSaving ? tr('saving') : teamOrderNotice || tr('orderAutoSave') }}<small v-if="canReorderTeam && fullscreenState.desktop">{{ preferences.language==='en'?(superTournament.active?'Drag a companion or use the arrows to reorder.':'Drag a companion to reorder; drag its item onto a teammate to transfer or swap it.'):(superTournament.active?'Glisse un Pokémon ou utilise les flèches pour changer sa place.':'Glisse un Pokémon pour le déplacer, ou son objet sur un coéquipier pour le transférer ou l’échanger.') }}</small></p>
         </div>
-        <game-info-panels
-          :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @toggle-fullscreen="toggleGameFullscreen" @appearance="handleMenuAction('appearance')"
+        <game-info-panels :inert="patchHistoryOpen?'':null" :aria-hidden="patchHistoryOpen?'true':null" v-back="{active:!!activeInfoPanel,close:closeInfoPanel}"
+          :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @patch-history="patchHistoryOpen=true" @toggle-fullscreen="toggleGameFullscreen" @appearance="handleMenuAction('appearance')"
           :flight-allowed="!isDrift && !superTournament.active && !onDarkContinent" @fly="flyToTown"
           :active="activeInfoPanel"
           :friend-members="socialState.accepted"
@@ -273,7 +276,7 @@
           <flight-transition v-else-if="flight" :flight="flight" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" :language="preferences.language" />
           <button v-if="nearbySocialTrainer" class="nearby-social" data-nearby-social @pointerdown.stop @click.stop="openNearbySocial"><journal-icon name="friends"/><span>{{ nearbySocialTrainer.username || 'Dresseur' }}</span><small>Amis / Message</small></button>
           <button v-if="showMobileControls && worldChatAvailable && !worldChatOpen" class="world-chat-toggle" data-world-chat-toggle aria-label="Parler sur cette carte" @pointerdown.stop @click.stop="openWorldChat"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8l-6 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7"/><path d="M7 9h10M7 13h7" stroke="currentColor" stroke-width="1.7"/></svg></button>
-          <world-chat-input v-if="worldChatOpen" :busy="worldChatBusy" :error="worldChatError" :language="preferences.language" @close="closeWorldChat" @send="sendWorldMessage" />
+          <world-chat-input v-back="closeWorldChat" v-if="worldChatOpen" :busy="worldChatBusy" :error="worldChatError" :language="preferences.language" @close="closeWorldChat" @send="sendWorldMessage" />
           <span class="world-speech-announcement" role="status" aria-live="polite">{{ worldSpeechAnnouncement }}</span>
           <span ref="interactionHintDot" class="world-interaction-hint" aria-hidden="true" data-interaction-hint></span>
           <canvas class="test" ref="monCanvas" tabindex="0" :aria-label="locationLabel"
@@ -430,15 +433,15 @@
     <evolution-presentation v-if="evolutionVisible" :key="evolutionQueue[0].key" :evolution="evolutionQueue[0]" :remaining="evolutionQueue.length" :animations-enabled="preferences.animationsEnabled" :busy="evolutionBusy" :error="evolutionError" @resolve="resolveEvolutionPresentation" @continue="evolutionError='';evolutionQueue.shift()" />
     <div v-if="teamDrag" class="team-drag-ghost" :style="{left:teamDrag.x+'px',top:teamDrag.y+'px'}" aria-hidden="true"><pokemon-portrait :src="getPokemonFrontSprite(teamPokemons.find(p=>p.uuid===teamDrag.uuid))"/><span>{{ teamPokemons.find(p=>p.uuid===teamDrag.uuid)?.name }}</span></div>
     <div v-if="heldItemDrag && heldDragPokemon" class="team-held-ghost" :style="{left:heldItemDrag.x+'px',top:heldItemDrag.y+'px'}" aria-hidden="true"><bag-item-icon :item-key="heldDragPokemon.heldItem" :pocket="heldDragPokemon.heldItem?.endsWith('_berry')?'berries':'held'"/><strong>{{ heldItemName(heldDragPokemon.heldItem) }}</strong><span v-if="heldDragTarget">{{ heldDragTarget.heldItem?'Échanger avec':'Donner à' }} {{ heldDragTarget.name }}</span></div>
-    <safari-travel-panel v-if="safariOffer && !mapLoading && !battle && !flight" :returning="safariOffer.returning" @close="safariOffer=null" @depart="departSafari"/>
-    <experience-exchange-lab v-if="experienceLab && !mapLoading && !battle" :panel="experienceLab" :command="experienceExchangeCommand" :animations-enabled="preferences.animationsEnabled" @close="experienceLab=null"/>
-    <corrupted-held-workshop v-if="corruptedHeldWorkshop && !mapLoading && !battle" :panel="corruptedHeldWorkshop" :inventory="bagItems" :command="corruptionCommand" @close="corruptedHeldWorkshop=null"/>
-    <corruption-workbench v-if="corruptionWorkshop && !mapLoading && !battle" :panel="corruptionWorkshop" :items="bagItems" :command="corruptionCommand" @close="corruptionWorkshop=null" @crafted="showInteractionNotice($event.created?'Module ajouté au sac.':'Synthèse échouée : composants consommés.')" @bag="showCorruptionBag"/>
-    <corruption-installer v-if="corruptionInstall && !battle" :key="corruptionInstall.id" :items="bagItems" :team="teamPokemons" :preset-item="corruptionInstall.item" :target-pokemon="corruptionInstall.pokemon" :source="corruptionInstall.source" :initial-family="corruptionInstall.family" :command="corruptionCommand" @close="corruptionInstall=null"/>
-    <dark-continent-panel v-if="darkPanel && !mapLoading && !flight && !battle && !battleResult && !pendingBattleResult" :panel="darkPanel" :busy="darkBusy" :error="darkError" :notice="darkNotice" :team-size="teamPokemons.length" :money="progressionState.money" @return="returnFromDark" @rules="darkPanel={...darkPanel,mode:'rules'}" @close="darkPanel=null" @command="darkCommand"/>
-    <team-coverage v-if="coverageOpen&&!battle" :team="teamPokemons" @close="coverageOpen=false"/>
-    <damage-calculator v-if="damageCalculatorOpen&&!battle" :team="teamPokemons" :command="calculateStrategy" @close="damageCalculatorOpen=false"/>
-    <pokemon-details v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :corruption-allowed="!isDrift && !battle && !superTournament.active" @corruption="openCorruptionSheet" :rename-allowed="(canReorderMoves || renameBusy) && !superTournament.active" :rename-busy="renameBusy" :rename-error="renameError" :rename-notice="renameNotice" @rename="renamePokemon" :moves-order-allowed="canReorderMoves" :moves-order-busy="moveOrderBusy" :moves-order-error="moveOrderError" :moves-order-notice="moveOrderNotice" @reorder-moves="reorderPokemonMoves" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
+    <safari-travel-panel v-back="()=>safariOffer=null" v-if="safariOffer && !mapLoading && !battle && !flight" :returning="safariOffer.returning" @close="safariOffer=null" @depart="departSafari"/>
+    <experience-exchange-lab v-back="()=>experienceLab=null" v-if="experienceLab && !mapLoading && !battle" :panel="experienceLab" :command="experienceExchangeCommand" :animations-enabled="preferences.animationsEnabled" @close="experienceLab=null"/>
+    <corrupted-held-workshop v-back="()=>corruptedHeldWorkshop=null" v-if="corruptedHeldWorkshop && !mapLoading && !battle" :panel="corruptedHeldWorkshop" :inventory="bagItems" :command="corruptionCommand" @close="corruptedHeldWorkshop=null"/>
+    <corruption-workbench v-back="()=>corruptionWorkshop=null" v-if="corruptionWorkshop && !mapLoading && !battle" :panel="corruptionWorkshop" :items="bagItems" :command="corruptionCommand" @close="corruptionWorkshop=null" @crafted="showInteractionNotice($event.created?'Module ajouté au sac.':'Synthèse échouée : composants consommés.')" @bag="showCorruptionBag"/>
+    <corruption-installer v-back="()=>corruptionInstall=null" v-if="corruptionInstall && !battle" :key="corruptionInstall.id" :items="bagItems" :team="teamPokemons" :preset-item="corruptionInstall.item" :target-pokemon="corruptionInstall.pokemon" :source="corruptionInstall.source" :initial-family="corruptionInstall.family" :command="corruptionCommand" @close="corruptionInstall=null"/>
+    <dark-continent-panel v-back="()=>darkPanel=null" v-if="darkPanel && !mapLoading && !flight && !battle && !battleResult && !pendingBattleResult" :panel="darkPanel" :busy="darkBusy" :error="darkError" :notice="darkNotice" :team-size="teamPokemons.length" :money="progressionState.money" @return="returnFromDark" @rules="darkPanel={...darkPanel,mode:'rules'}" @close="darkPanel=null" @command="darkCommand"/>
+    <team-coverage v-back="()=>coverageOpen=false" v-if="coverageOpen&&!battle" :team="teamPokemons" @close="coverageOpen=false"/>
+    <damage-calculator v-back="()=>damageCalculatorOpen=false" v-if="damageCalculatorOpen&&!battle" :team="teamPokemons" :command="calculateStrategy" @close="damageCalculatorOpen=false"/>
+    <pokemon-details v-back="{active:!evolutionVisible,close:()=>selectedPokemonUuid=null}" v-if="selectedPokemonUuid && selectedPokemon" v-show="!evolutionVisible" :pokemon="selectedPokemon" :position="teamPokemons.indexOf(selectedPokemon) + 1" :total="teamPokemons.length" :corruption-allowed="!isDrift && !battle && !superTournament.active" @corruption="openCorruptionSheet" :rename-allowed="(canReorderMoves || renameBusy) && !superTournament.active" :rename-busy="renameBusy" :rename-error="renameError" :rename-notice="renameNotice" @rename="renamePokemon" :moves-order-allowed="canReorderMoves" :moves-order-busy="moveOrderBusy" :moves-order-error="moveOrderError" :moves-order-notice="moveOrderNotice" @reorder-moves="reorderPokemonMoves" :evolution-options="evolutionOptions" :evolution-loading="evolutionLoading" :evolution-busy="evolutionBusy" :evolution-error="evolutionError" :evolution-notice="evolutionNotice" :evolution-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && !driftState?.storagePaused && !driftState?.recoveryWaiting))" @evolve="evolveCompanion" @reload-evolutions="loadEvolutionOptions" @close="selectedPokemonUuid = null" @navigate="navigatePokemonDetails" />
   </div>
 </template>
 
@@ -486,6 +489,9 @@ import {FriendTagRenderer} from '@/services/friendPresence';
 import {drawPlayerBattleIndicator,applyPlayerBattleStatus} from '@/services/playerBattlePresence';
 import NotificationBadge from './social/NotificationBadge.vue';
 import questJournalGame from '@/services/questJournalGame';
+import comfortGame from '@/services/comfortGame';
+import AutomaticTraining from './menu/AutomaticTraining.vue';
+import PatchHistory from './menu/PatchHistory.vue';
 import TeleporterChargeNotice from './menu/TeleporterChargeNotice.vue';
 import './social/socialNotifications.css';
 import tradeGame from '@/services/tradeGame';
@@ -576,8 +582,8 @@ import { WorldMusic } from '@/services/worldMusic';
 
 export default {
   props: { patchNoticeOpen: Boolean },
-  mixins:[socialGame,tradeGame,raidsGame,questJournalGame],
-  components: { TutorialCoach, SafariTravelPanel,
+  mixins:[socialGame,tradeGame,raidsGame,questJournalGame,comfortGame],
+  components: { AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
     SuperTournamentPanel, TournamentRewardPanel, AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
@@ -1200,7 +1206,7 @@ export default {
       this.medicineBusy = true;
       try {
         const event = item.category === 'evolution' ? (this.isDrift ? 'drift:evolve' : 'useEvolutionStone') : (this.isDrift ? 'drift:heal' : 'useMedicine');
-        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(event, { itemKey: item.key, pokemonUuid,ivConfirmation,quantity:item.fieldUse?.effort?.amount>0?Math.min(Number(this.medicineQuantities[item.key])||1,item.quantity):1 }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
+        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(event, { itemKey: item.key, pokemonUuid,ivConfirmation,quantity:(item.fieldUse?.effort?.amount>0||item.fieldUse?.levelUp)?Math.min(Number(this.medicineQuantities[item.key])||1,item.quantity):1 }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
         if(response?.ivConfirmationRequired){
           this.trainingFeedback={kind:'confirm',itemKey:item.key,pokemonName:pokemon.name,...response.ivConfirmationRequired};
           return;
@@ -2195,6 +2201,7 @@ export default {
     },
     startTeamDrag(event, uuid) {
       const handle = event.target.closest('[data-team-drag]');
+      if (event.pointerType === 'touch') return;
       if ((event.pointerType === 'touch' && !handle) || (!handle && event.target.closest('button,input,select,a') && !event.target.closest('.team-row-visual'))) return;
       if (!this._teamDragController) this._teamDragController = createTeamDrag({
         root: this.$refs.teamPanel, roster: () => this.teamPokemons.map(p => p.uuid),
@@ -2600,7 +2607,7 @@ export default {
       this.closeLegacyPanels();
     },
     handleOutsideMenuClick(event) {
-      if(this.coverageOpen||this.damageCalculatorOpen)return;
+      if(this.coverageOpen||this.damageCalculatorOpen||this.automaticTrainingOpen||this.patchHistoryOpen)return;
       if (this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.selectedPokemonUuid) return;
       const header = this.$refs.gameHeader;
       const bagPanel = this.$refs.bagPanel?.$el;
@@ -2804,7 +2811,7 @@ export default {
       else if (action === 'back') consume();
     },
     handleKeydown(e) {
-      if(this.coverageOpen||this.damageCalculatorOpen)return;
+      if(this.coverageOpen||this.damageCalculatorOpen||this.automaticTrainingOpen||this.patchHistoryOpen)return;
       if(e.target?.closest?.('[data-social-surface]'))return;
       if (this.patchNoticeOpen) { this.releaseAllMovementKeys(); return; }
       if(this.worldChatOpen){if(e.key==='Escape'){e.preventDefault();this.closeWorldChat();}return;}
@@ -5073,3 +5080,5 @@ button:hover {
 <style scoped>
 .menu-dropdown-item.has-journal-alert{background:var(--journal-selected);color:var(--journal-heading)}
 </style>
+
+<style scoped>.bag-medicine-buttons{display:flex;flex-wrap:wrap;gap:8px}.bag-medicine-buttons .bag-use-button{flex:1}.bag-auto-button{background:var(--journal-soft)!important;color:var(--journal-heading)!important}.bag-candy-quantity input{width:80px;min-height:40px;padding:6px;border:1px solid var(--journal-border);border-radius:6px;color:var(--journal-ink);background:var(--journal-card);margin-left:8px}.bag-candy-quantity small{display:block;font-size:10px;margin-top:5px}</style>

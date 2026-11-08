@@ -1,5 +1,5 @@
 <template>
-  <dialog ref="dialog" class="patch-notes" data-patch-notes role="dialog" aria-modal="true" aria-labelledby="patch-title" aria-describedby="patch-summary" @cancel.prevent="dismiss" @keydown.stop="onKeydown" @click.stop>
+  <dialog v-back="{active:visible,close:dismiss}" ref="dialog" class="patch-notes" data-patch-notes role="dialog" aria-modal="true" aria-labelledby="patch-title" aria-describedby="patch-summary" @cancel.prevent="dismiss" @keydown.stop="onKeydown" @click.stop>
     <template v-if="patch">
       <header><journal-icon name="progress" /><span>{{ english ? 'LATEST UPDATE' : 'DERNIÈRE MISE À JOUR' }}</span><time :datetime="patch.date">{{ date }}</time></header>
       <div class="patch-content">

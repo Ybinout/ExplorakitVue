@@ -1,4 +1,5 @@
 import Vue from 'vue';
+import {OverlayBackStack,backDirective} from './services/overlayBackStack';
 import App from './App.vue';
 import { initializePwa } from './services/pwa';
 import './styles/field-journal.css';
@@ -11,6 +12,7 @@ Vue.prototype.$assetBase = process.env.BASE_URL;
 Vue.prototype.$pokemonSprite = pokemonSprite;
 document.addEventListener('error', pokemonSpriteFallback, true);
 Vue.config.productionTip = false;
+Vue.directive('back',backDirective(new OverlayBackStack(window)));
 
 applyGameTheme(loadGamePreferences());
 setPokemonSpriteMotion(loadGamePreferences());

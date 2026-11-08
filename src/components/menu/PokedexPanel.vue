@@ -60,7 +60,7 @@
       </div>
       <footer class="dex-footer"><span role="status">{{ tr('dexResults', { count: loading ? '…' : filteredEntries.length }) }}</span><span>{{ tr('dexGenerations') }} <b>I — V</b></span></footer>
     </section>
-    <region-map-panel v-if="locatedPokemon" :pokemon="locatedPokemon" :entries="pokedex.entries" :current-map="currentMap" :current-region="currentRegion" :language="language" :animations-enabled="animationsEnabled" @close="locatedPokemon = null" />
+    <region-map-panel v-back="()=>locatedPokemon=null" v-if="locatedPokemon" :pokemon="locatedPokemon" :entries="pokedex.entries" :current-map="currentMap" :current-region="currentRegion" :language="language" :animations-enabled="animationsEnabled" @close="locatedPokemon = null" />
   </div>
 </template>
 

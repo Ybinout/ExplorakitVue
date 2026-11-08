@@ -1,0 +1,8 @@
+<template><ul v-if="stages.length" class="raid-stat-stages" aria-label="Modifications de statistiques" data-raid-stat-stages><li v-for="s in stages" :key="s.key" :class="s.value>0?'is-up':'is-down'" :title="s.title"><span>{{ s.name }}</span><b>{{ s.value>0?'+':'' }}{{ s.value }}</b></li></ul></template>
+<script>
+const labels={atk:['Att.','Attaque'],def:['Déf.','Défense'],spa:['Att. Spé.','Attaque Spéciale'],spd:['Déf. Spé.','Défense Spéciale'],spe:['Vit.','Vitesse'],accuracy:['Préc.','Précision'],evasion:['Esq.','Esquive']};
+export default{props:{boosts:Object},computed:{stages(){return Object.entries(labels).map(([key,[name,title]])=>({key,name,title,value:Math.max(-6,Math.min(6,Number(this.boosts?.[key])||0))})).filter(s=>s.value);}}};
+</script>
+<style scoped>
+.raid-stat-stages{display:flex;flex-wrap:wrap;gap:4px;list-style:none;margin:6px 0 1px;padding:0;font:9px/1.3 var(--journal-font);font-variant-numeric:tabular-nums}.raid-stat-stages li{display:inline-flex;gap:5px;align-items:center;padding:3px 5px;border-radius:4px;border:1px solid #6baf92;background:#235a4366;color:#c9f4de}.raid-stat-stages li.is-down{border-color:#c38b92;background:#6a2b3b55;color:#ffe0e2}.raid-active-hud .raid-stat-stages li.is-up{background:var(--journal-card);color:var(--journal-ink);border-color:#75a68f}.raid-active-hud .raid-stat-stages li.is-down{background:var(--journal-card);color:var(--journal-danger);border-color:#bb7884}.raid-stat-stages b{font-size:10px;white-space:nowrap}@media(max-width:400px){.raid-stat-stages{gap:3px;font-size:8px}.raid-stat-stages li{padding:2px 4px;gap:4px}.raid-stat-stages b{font-size:9px}}
+</style>

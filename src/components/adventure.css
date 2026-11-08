@@ -257,3 +257,7 @@ html[data-game-theme-mode="dark"] .game-root .game-stage .team-toggle-btn .journ
 
 .game-root .game-stage .menu-dropdown-item:is([data-menu-action="bag"],[data-menu-action="minimap"],[data-menu-action="pokedex"]){background:var(--menu-tint);color:var(--menu-ink)}
 .game-root .game-stage .menu-dropdown-item:is([data-menu-action="bag"],[data-menu-action="minimap"],[data-menu-action="pokedex"]):focus-visible{outline:2px solid var(--menu-ink);outline-offset:2px}
+
+/* Child windows stay above Options/the bag and fit Safari after rotation. */
+.game-root .game-stage :is(.patch-history-backdrop,.automatic-training-backdrop){z-index:1250;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;}
+.game-root .game-stage :is(.patch-history,.automatic-training){flex:0 1 auto;min-height:0;max-height:100%;}
