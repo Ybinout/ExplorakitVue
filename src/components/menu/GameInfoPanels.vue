@@ -1,5 +1,6 @@
 <template>
   <pokedex-panel v-if="active === 'pokedex'" :pokedex="pokedex" :loading="loading" :language="preferences.language" :current-map="currentMap" :current-region="currentRegion" :animations-enabled="preferences.animationsEnabled" @close="$emit('close')" />
+  <quest-journal v-else-if="active==='progress'" :journal="progress.journal" :loading="loading" :language="preferences.language" :read-busy="journalReadBusy" :read-error="journalReadError" @read="$emit('read-journal',$event)" @close="$emit('close')"/>
   <region-map-panel :friend-members="friendMembers" v-else-if="active === 'minimap'" :flight="progress.flight" :flight-allowed="flightAllowed" @fly="$emit('fly',$event)" :current-map="currentMap" :current-region="currentRegion" :language="preferences.language" :animations-enabled="preferences.animationsEnabled" @close="$emit('close')" />
   <badges-panel v-else-if="active === 'badges'" :badges="progress.badges || []" :capture="progress.capture" :loading="loading" :language="preferences.language" @close="$emit('close')" />
   <div v-else-if="active" class="info-backdrop" @mousedown.self="$emit('close')">
@@ -13,29 +14,6 @@
       </header>
 
       <div v-if="loading" class="panel-state">{{ tr('syncingServer') }}</div>
-
-      <template v-else-if="active === 'progress'">
-        <adventure-guide :objective="progress.objective || null" :language="preferences.language" />
-        <div class="progress-columns">
-          <section>
-            <h3>{{ tr('activeQuests') }}</h3>
-            <article v-for="quest in activeQuests" :key="quest.key" class="quest-card">
-              <div class="quest-heading"><strong>{{ quest.title }}</strong><span>{{ quest.progress }}/{{ quest.target }}</span></div>
-              <p>{{ quest.description }}</p>
-              <div class="quest-track"><span :style="{ width: questPercent(quest) + '%' }"></span></div>
-            </article>
-            <p v-if="activeQuests.length === 0" class="empty-copy">{{ tr('noActiveQuest') }}</p>
-          </section>
-          <section>
-            <h3>{{ tr('completedQuests') }}</h3>
-            <article v-for="quest in completedQuests" :key="quest.key" class="quest-card completed" :class="{ 'main-story-completed': quest.key === 'main_sister_search' }">
-              <strong>{{ quest.title }}</strong><span class="completed-label">{{ tr('completed') }}</span>
-              <p v-if="quest.key === 'main_sister_search'">{{ quest.description }}</p>
-            </article>
-            <p v-if="completedQuests.length === 0" class="empty-copy">{{ tr('noCompletedQuest') }}</p>
-          </section>
-        </div>
-      </template>
 
       <template v-else-if="active === 'save'">
         <div :class="['save-orb', saveState.status]">{{ saveIcon }}</div>
@@ -129,15 +107,16 @@
 import { translate } from '@/services/i18n';
 import RegionMapPanel from './RegionMapPanel.vue';
 import PokedexPanel from './PokedexPanel.vue';
-import AdventureGuide from './AdventureGuide.vue';
+import QuestJournal from './QuestJournal.vue';
 import BadgesPanel from './BadgesPanel.vue';
 import ControllerOptions from './ControllerOptions.vue';
 import FullscreenOptions from './FullscreenOptions.vue';
 
 export default {
   name: 'GameInfoPanels',
-  components: { RegionMapPanel, PokedexPanel, AdventureGuide, BadgesPanel, ControllerOptions, FullscreenOptions },
+  components: { RegionMapPanel, PokedexPanel, QuestJournal, BadgesPanel, ControllerOptions, FullscreenOptions },
   props: {
+    journalReadBusy:Boolean,journalReadError:String,
     friendMembers:{type:Array,default:()=>[]},
     desktop: Boolean,
     fullscreen: { type: Object, default: () => ({ active: false, supported: false, busy: false, error: '' }) },

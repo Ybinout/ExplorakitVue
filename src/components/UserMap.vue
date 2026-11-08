@@ -59,10 +59,10 @@
         <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
           <div class="header-actions">
-          <button ref="menuToggle" class="menu-toggle-btn" :class="{ 'has-contract-reward': readyContractCount > 0, 'has-social-notification':socialAlertCount>0 }" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
+          <button ref="menuToggle" class="menu-toggle-btn" :class="{ 'has-contract-reward': readyContractCount > 0, 'has-social-notification':globalAlertCount>0 }" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
             <journal-icon name="menu" />
             {{ tr('menu') }}
-            <notification-badge class="social-menu-alert" data-social-notification :count="socialAlertCount" :label="`${socialAlertCount} notification${socialAlertCount>1?'s':''} du carnet d’amis`" role="status" aria-live="polite"/>
+            <notification-badge class="social-menu-alert" data-social-notification data-global-notification :count="globalAlertCount" :label="`${socialAlertCount} notification(s) d’amis, ${questAlertCount} nouvelle(s) quête(s)`" role="status" aria-live="polite"/>
             <span v-if="readyContractCount" class="contract-reward-dot" data-contract-alert role="status" :aria-label="`${readyContractCount} récompense${readyContractCount > 1 ? 's' : ''} de contrat disponible${readyContractCount > 1 ? 's' : ''}`">{{ readyContractCount }}</span>
           </button>
           <button ref="teamToggle" class="team-toggle-btn" data-menu-action="pokemon" :aria-expanded="isTeamPanelOpen" aria-controls="pokemon-team-panel" @click="handleMenuAction('pokemon')">
@@ -81,9 +81,11 @@
               :key="item.key"
               class="menu-dropdown-item"
               :data-menu-action="item.key"
+              :class="{'has-journal-alert':item.key==='progress'&&questAlertCount>0}"
               @click="handleMenuAction(item.key)"
             >
               <journal-icon :name="item.key==='contracts'?'progress':item.key" /><span>{{ menuItemLabel(item) }}</span>
+              <notification-badge v-if="item.key==='progress'" :count="questAlertCount" data-quest-alert/>
               <small v-if="item.key==='contracts' && readyContractCount" class="contract-reward-label">{{ readyContractCount }} à récupérer</small>
             </button>
             <button v-if="superTournament.active && !battle" class="menu-dropdown-item" data-menu-action="tournament-powers" @click="isMenuOpen=false;releaseAllMovementKeys();tournamentPanel={tab:'powers'}"><journal-icon name="drifts"/><span>Augmentations</span><small>{{ superTournament.passives?.length || 0 }} actives</small></button>
@@ -245,6 +247,7 @@
           :loading="menuDataLoading"
           :pokedex="pokedexState"
           :progress="progressionState"
+          :journal-read-busy="journalReadBusy" :journal-read-error="journalReadError" @read-journal="markJournalRead"
           :save-state="saveState"
           :preferences="preferences"
           @close="closeInfoPanel"
@@ -482,6 +485,7 @@ import CombatSocialPanel from './social/CombatSocialPanel.vue';
 import {FriendTagRenderer} from '@/services/friendPresence';
 import {drawPlayerBattleIndicator,applyPlayerBattleStatus} from '@/services/playerBattlePresence';
 import NotificationBadge from './social/NotificationBadge.vue';
+import questJournalGame from '@/services/questJournalGame';
 import TeleporterChargeNotice from './menu/TeleporterChargeNotice.vue';
 import './social/socialNotifications.css';
 import tradeGame from '@/services/tradeGame';
@@ -572,7 +576,7 @@ import { WorldMusic } from '@/services/worldMusic';
 
 export default {
   props: { patchNoticeOpen: Boolean },
-  mixins:[socialGame,tradeGame,raidsGame],
+  mixins:[socialGame,tradeGame,raidsGame,questJournalGame],
   components: { TutorialCoach, SafariTravelPanel,
     SuperTournamentPanel, TournamentRewardPanel, AdventureOpening,
     RoomObstacleAction,
@@ -5065,3 +5069,7 @@ button:hover {
 </style>
 
 <style scoped>.raid-invitation.is-compact{top:170px;width:auto;max-width:230px;padding:3px 6px}.raid-invitation .raid-invite-expand{background:transparent;color:var(--journal-ink);border:0;padding:3px 5px;font-size:11px;min-height:32px}</style>
+
+<style scoped>
+.menu-dropdown-item.has-journal-alert{background:var(--journal-selected);color:var(--journal-heading)}
+</style>

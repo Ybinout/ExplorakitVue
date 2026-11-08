@@ -1,8 +1,8 @@
 <template>
-  <section class="adventure-guide" :aria-label="english ? 'Your objective' : 'Ton objectif'">
-    <h3>{{ english ? 'Your objective' : 'Ton objectif' }}</h3>
-    <p class="objective">{{ objective ? objective.text : (english ? 'Explore, complete quests and look after your team.' : 'Explore, complète tes quêtes et prends soin de ton équipe.') }}</p>
-    <p v-if="objective && objective.destination" class="destination">Destination : {{ objective.destination }}</p>
+  <section class="adventure-guide" :class="{'help-only':helpOnly}" :aria-label="english ? 'Your objective' : 'Ton objectif'">
+    <h3 v-if="!helpOnly">{{ english ? 'Your objective' : 'Ton objectif' }}</h3>
+    <p v-if="!helpOnly" class="objective">{{ objective ? objective.text : (english ? 'Explore, complete quests and look after your team.' : 'Explore, complète tes quêtes et prends soin de ton équipe.') }}</p>
+    <p v-if="!helpOnly && objective && objective.destination" class="destination">Destination : {{ objective.destination }}</p>
     <details class="help">
       <summary>{{ english ? 'How to play' : 'Comment jouer ?' }}</summary>
       <ol>
@@ -18,7 +18,7 @@
 </template>
 <script>
 export default {
-  props: { objective: { type: Object, default: null }, language: { type: String, default: 'fr' } },
+  props: { helpOnly:Boolean, objective: { type: Object, default: null }, language: { type: String, default: 'fr' } },
   computed: { english() { return this.language === 'en'; } }
 };
 </script>
@@ -35,4 +35,5 @@ export default {
 .help ol { padding-left:20px; }
 .help li { margin-bottom:8px; }
 .help p { color:var(--journal-muted); }
+.adventure-guide.help-only{margin:20px 0 0;padding:10px 14px;background:var(--journal-soft)}.help-only .help{border:0;margin:0;padding:0}
 </style>
