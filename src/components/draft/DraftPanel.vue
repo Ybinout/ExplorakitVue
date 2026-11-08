@@ -104,10 +104,10 @@
               dans ta collection.
             </p>
             <p>
-              Deux demi-finales et une finale, sans utiliser le sac. Ton équipe
-              est soignée avant chaque duel. Vainqueur : 150 000 ₽ ; finaliste :
-              50 000 ₽. Aucun Pokémon ni objet permanent n’est utilisé et aucune
-              XP n’est gagnée.
+              Deux Rifts cumulables, deux demi-finales et une finale, sans
+              utiliser le sac. Ton équipe est soignée avant chaque duel.
+              Vainqueur : 150 000 ₽ ; finaliste : 50 000 ₽. Aucun Pokémon ni
+              objet permanent n’est utilisé et aucune XP n’est gagnée.
             </p>
           </details>
         </template>
@@ -220,6 +220,9 @@
               </div>
               <span>Choix {{ state.pick + 1 }} / {{ state.packSize }}</span>
             </div>
+            <p class="draft-swipe-hint">
+              ↓ Glisse vers le bas pour sélectionner, ou touche une carte.
+            </p>
             <div
               :key="'round-' + state.round + '-' + state.pick"
               class="draft-pack"
@@ -232,13 +235,11 @@
                 :card="card"
                 :style="{ '--deal-index': i }"
                 :selected="state.picked === card.id"
-                :disabled="busy || !!state.picked || !connected"
-                :draggable="!state.picked && !busy"
+                :disabled="busy || gestureBusy || !!state.picked || !connected"
+                :draggable="!state.picked && !busy && !gestureBusy && connected"
                 action="Sélectionner"
                 @select="choose"
-                @inspect="inspect"
-                @preview="preview = $event"
-                @drag="drag"
+                @gesture="swipe"
               />
             </div>
             <div
@@ -249,7 +250,7 @@
               <b>{{
                 state.picked
                   ? 'Ta carte est choisie.'
-                  : 'Glisse ta carte ici pour la garder.'
+                  : 'Glisse une carte vers le bas pour la garder.'
               }}</b
               ><span>{{
                 state.picked
@@ -266,7 +267,6 @@
                   v-for="card in state.collection"
                   :key="card.id"
                   :card="card"
-                  @inspect="inspect"
                 />
               </div>
             </details>
@@ -281,12 +281,7 @@
               </div>
               <button
                 class="draft-primary"
-                :disabled="
-                  busy ||
-                  state.preparation.confirmed ||
-                  !state.preparation.team.some(Boolean) ||
-                  !connected
-                "
+                :disabled="locked || !state.preparation.team.some(Boolean)"
                 data-draft-confirm
                 @click="send('confirm')"
               >
@@ -298,9 +293,12 @@
               </button>
             </div>
             <p class="draft-muted">
-              Choisis une carte puis un emplacement, ou utilise sa poignée pour
-              la glisser. Une carte d’amélioration ne s’utilise qu’une fois ; tu
-              peux la retirer avant de valider.
+              Sélectionne tes Pokémon, puis leurs améliorations. Maintiens une
+              carte pour la déplacer. Tout reste modifiable jusqu’à ta
+              validation.
+            </p>
+            <p v-if="prepNotice" class="draft-inline-notice" role="status">
+              {{ prepNotice }}
             </p>
             <div class="draft-preparation">
               <section class="draft-team-area">
@@ -312,15 +310,21 @@
                   >
                 </h4>
                 <p
-                  v-if="selected?.kind === 'move'"
+                  v-if="
+                    selected && !['pokemon', 'rift'].includes(selected.kind)
+                  "
                   ref="moveGuidance"
                   class="draft-move-guidance"
                   role="status"
                   aria-live="polite"
                   data-draft-move-guidance
                 >
-                  <b>{{ cardLabel(selected) }}</b> · Choisis un Pokémon apte
-                  ci-dessous.
+                  <b>{{ cardLabel(selected) }}</b> ·
+                  {{
+                    selected.kind === 'move'
+                      ? 'Choisis un Pokémon apte.'
+                      : 'Choisis le Pokémon qui reçoit cette carte.'
+                  }}
                 </p>
                 <div ref="team" class="draft-team-grid">
                   <article
@@ -330,16 +334,16 @@
                     :class="{
                       'is-target': p && selectedPokemon === p.cardId,
                       'is-apt':
-                        p &&
-                        selected?.kind === 'move' &&
-                        moveAptitude(p).eligible,
+                        p && selectedUpgrade && moveAptitude(p).eligible,
                       'is-inapt':
-                        p &&
-                        selected?.kind === 'move' &&
-                        !moveAptitude(p).eligible,
+                        p && selectedUpgrade && !moveAptitude(p).eligible,
+                      'is-landed': landedSlot === i,
                     }"
                     :data-draft-drop="'team:' + i"
                     :data-draft-slot="i"
+                    @dragstart.prevent
+                    @pointerdown="teamGesture($event, p)"
+                    @touchstart="teamGesture($event, p)"
                   >
                     <button
                       v-if="!p"
@@ -352,69 +356,94 @@
                         selected?.kind === 'pokemon'
                           ? 'Placer ici +'
                           : 'Emplacement libre'
-                      }}</button
-                    ><template v-else
-                      ><button
+                      }}
+                    </button>
+                    <template v-else>
+                      <button
                         class="draft-slot-remove"
                         :disabled="locked"
                         :aria-label="'Retirer ' + p.name + ' de l’équipe'"
-                        @click="
-                          send('edit', {
-                            action: 'slot',
-                            slot: i,
-                            cardId: null,
-                          })
-                        "
+                        @click="removePokemon(i)"
                       >
-                        ×</button
-                      ><button
+                        ×
+                      </button>
+                      <div
                         class="draft-slot-face"
-                        :disabled="
-                          selected?.kind === 'move' && !moveAptitude(p).eligible
+                        role="button"
+                        tabindex="0"
+                        :aria-disabled="
+                          locked ||
+                          (selectedUpgrade && !moveAptitude(p).eligible)
                         "
                         @click="target(p)"
+                        @keydown.enter.prevent.stop="target(p)"
+                        @keydown.space.prevent.stop="target(p)"
+                        @keydown.alt.left.prevent.stop="shiftTeam(i, -1)"
+                        @keydown.alt.right.prevent.stop="shiftTeam(i, 1)"
                       >
                         <potential-star :value="p.potential" /><pokemon-portrait
                           :src="$pokemonSprite(p)"
                           :alt="p.name"
                         /><b>{{ p.name }}</b
                         ><span
-                          v-if="selected?.kind === 'move'"
+                          v-if="selectedUpgrade"
                           class="draft-slot-aptitude"
                           :data-draft-aptitude="
                             moveAptitude(p).eligible ? 'apt' : 'inapt'
                           "
                           >{{ moveAptitude(p).label }}</span
-                        ><small>{{
-                          p.heldItemName || 'Sans objet'
-                        }}</small></button
-                      ><button
-                        class="draft-slot-detail"
-                        @click="
-                          inspect({ id: p.cardId, kind: 'pokemon', pokemon: p })
-                        "
-                      >
-                        Fiche ↗
-                      </button></template
-                    >
+                        ><small>{{ p.heldItemName || 'Sans objet' }}</small>
+                      </div>
+                      <button class="draft-slot-detail" @click="viewPokemon(p)">
+                        Détails
+                      </button>
+                    </template>
                   </article>
                 </div>
-                <div class="draft-active-rift">
-                  <small>RIFT D’ÉQUIPE</small
-                  ><template v-if="activeRift"
-                    ><b>{{ activeRift.name }}</b
-                    ><span>{{ activeRift.bonus }}</span
-                    ><span class="draft-danger">{{ activeRift.penalty }}</span
-                    ><button
-                      :disabled="locked"
-                      @click="send('edit', { action: 'rift', cardId: null })"
-                    >
-                      Retirer
-                    </button></template
+                <div class="draft-rifts-heading">
+                  <b>Rifts d’équipe</b
+                  ><small>{{ activeRifts.length }} / 2</small>
+                </div>
+                <div class="draft-rift-slots">
+                  <article
+                    v-for="i in 2"
+                    :key="i"
+                    class="draft-active-rift"
+                    :class="{ 'can-replace': selected?.kind === 'rift' }"
+                    :data-draft-drop="'rift:' + (i - 1)"
                   >
-                  <p v-else>
-                    Choisis un seul Rift dans ta collection, ou joue sans Rift.
-                  </p>
+                    <template v-if="riftSlots[i - 1]"
+                      ><button
+                        class="draft-rift-remove"
+                        :disabled="locked"
+                        :aria-label="'Retirer ' + riftSlots[i - 1].name"
+                        @click="
+                          send('edit', {
+                            action: 'rift',
+                            cardId: null,
+                            riftSlot: i - 1,
+                          })
+                        "
+                      >
+                        ×</button
+                      ><b>{{ riftSlots[i - 1].name }}</b
+                      ><span>{{ riftSlots[i - 1].bonus }}</span
+                      ><span class="draft-danger">{{
+                        riftSlots[i - 1].penalty
+                      }}</span></template
+                    >
+                    <template v-else
+                      ><b>Rift {{ i }}</b
+                      ><span>Choisis ou dépose un Rift ici.</span></template
+                    >
+                    <button
+                      v-if="selected?.kind === 'rift'"
+                      :disabled="locked"
+                      @click="equipRift(i - 1)"
+                    >
+                      {{ riftSlots[i - 1] ? 'Remplacer' : 'Sélectionner' }}
+                    </button>
+                  </article>
                 </div>
               </section>
               <section class="draft-prep-collection">
@@ -423,13 +452,12 @@
                     v-for="f in filters"
                     :key="f.key"
                     :class="{ 'is-active': filter === f.key }"
+                    :data-draft-filter="f.key"
                     @click="filter = f.key"
                   >
                     {{ f.label }}
                     <small>{{
-                      state.collection.filter(
-                        (c) => f.key === 'all' || c.kind === f.key
-                      ).length
+                      state.collection.filter((c) => c.kind === f.key).length
                     }}</small>
                   </button>
                 </nav>
@@ -438,72 +466,59 @@
                     v-for="card in filtered"
                     :key="card.id"
                     :card="card"
-                    :used="used(card)"
+                    :used="cardUsed(card)"
                     :selected="selected?.id === card.id"
                     :draggable="!locked && !used(card)"
                     :disabled="locked"
-                    :action="
-                      card.kind === 'pokemon'
-                        ? 'Choisir'
-                        : card.kind === 'rift'
-                        ? 'Activer'
-                        : 'Appliquer'
-                    "
+                    reversible
+                    action="Sélectionner"
                     @select="selectUpgrade"
-                    @inspect="inspect"
-                    @preview="preview = $event"
-                    @drag="drag"
+                    @gesture="drag"
                   />
                 </div>
               </section>
-              <aside ref="application" class="draft-application">
+              <aside
+                ref="application"
+                class="draft-application"
+                :class="{ 'is-empty': !selectedPokemonView }"
+              >
                 <template v-if="selectedPokemonView"
                   ><h4>{{ selectedPokemonView.name }}</h4>
-                  <p
-                    v-if="
-                      selected &&
-                      selected.kind !== 'pokemon' &&
-                      selected.kind !== 'rift'
-                    "
-                  >
-                    Carte choisie : <b>{{ cardLabel(selected) }}</b>
-                  </p>
-                  <label v-if="selected?.kind === 'move'"
-                    >Capacité à remplacer<select v-model.number="moveSlot">
-                      <option
+                  <template v-if="selected?.kind === 'move'"
+                    ><p>
+                      <b>{{ cardLabel(selected) }}</b> · sélectionne la capacité
+                      à remplacer.
+                    </p>
+                    <div class="draft-replace-moves">
+                      <button
                         v-for="(m, i) in selectedPokemonView.moveDetails || []"
                         :key="i"
-                        :value="i"
+                        :disabled="
+                          locked ||
+                          used(selected) ||
+                          !moveAptitude(selectedPokemonView).eligible
+                        "
+                        :style="typeStyle(m.type)"
+                        @click="applyMove(i)"
                       >
-                        {{ moveName(m.name) }}
-                      </option>
-                      <option
+                        <b>Remplacer {{ moveName(m.name) }}</b
+                        ><small
+                          >{{ typeName(m.type) }} · {{ m.power || '—' }} puiss.
+                          · {{ m.maxPp }} PP</small
+                        ></button
+                      ><button
                         v-if="
                           (selectedPokemonView.moveDetails || []).length < 4
                         "
-                        :value="selectedPokemonView.moveDetails.length"
+                        :disabled="locked || used(selected)"
+                        @click="
+                          applyMove(selectedPokemonView.moveDetails.length)
+                        "
                       >
-                        Nouvel emplacement
-                      </option>
-                    </select></label
-                  ><button
-                    v-if="
-                      selected && !['pokemon', 'rift'].includes(selected.kind)
-                    "
-                    class="draft-primary"
-                    :disabled="
-                      locked ||
-                      used(selected) ||
-                      (selected.kind === 'move' &&
-                        !moveAptitude(selectedPokemonView).eligible)
-                    "
-                    @click="applySelected"
+                        Ajouter la capacité
+                      </button>
+                    </div></template
                   >
-                    Appliquer cette carte
-                  </button>
-                  <p v-else class="draft-muted">
-                    Sélectionne une carte d’amélioration dans ta collection.
-                  </p>
                   <ul class="draft-applied">
                     <li v-for="a in applied" :key="a.slot">
                       <span>{{ cardLabel(a.card) }}</span
@@ -520,18 +535,20 @@
                         Retirer ↩
                       </button>
                     </li>
-                  </ul></template
-                >
+                  </ul>
+                  <draft-card
+                    :card="{
+                      id: selectedPokemonView.cardId,
+                      kind: 'pokemon',
+                      pokemon: selectedPokemonView,
+                    }"
+                  />
+                </template>
                 <p v-else class="draft-muted">
-                  Choisis un Pokémon placé dans l’équipe pour lui attribuer tes
-                  améliorations.
+                  Choisis une amélioration, puis touche le Pokémon qui la
+                  reçoit. Pour modifier l’ordre, maintiens un Pokémon de
+                  l’équipe et déplace-le vers un autre emplacement.
                 </p>
-                <draft-inspector
-                  v-if="preview"
-                  :card="preview"
-                  compact
-                  class="draft-desktop-inspector"
-                />
               </aside>
             </div>
           </template>
@@ -686,14 +703,6 @@
         </button>
       </footer>
       <div
-        v-if="inspection"
-        v-back="() => (inspection = null)"
-        class="draft-inspect-backdrop"
-        @click.self="inspection = null"
-      >
-        <draft-inspector :card="inspection" @close="inspection = null" />
-      </div>
-      <div
         v-if="quitConfirm"
         v-back="() => (quitConfirm = false)"
         class="draft-inspect-backdrop"
@@ -730,14 +739,14 @@
 </template>
 <script>
 import DraftCard from './DraftCard.vue';
-import DraftInspector from './DraftInspector.vue';
 import PokemonPortrait from '../PokemonPortrait.vue';
 import PotentialStar from '../PotentialStar.vue';
 import { startDraftDrag } from '@/services/draftDrag';
+import { startDraftSwipe } from '@/services/draftSwipe';
+import { localizeTypeName, typeBadgeStyle } from '@/services/pokemonTypes';
 import { localizeMoveName, localizeAbilityName } from '@/services/i18n';
 import { natureLabel } from '@/services/pokemonNatures';
 const filters = [
-  { key: 'all', label: 'Tout' },
   { key: 'pokemon', label: 'Pokémon' },
   { key: 'move', label: 'Capacités' },
   { key: 'item', label: 'Objets' },
@@ -747,7 +756,7 @@ const filters = [
   { key: 'rift', label: 'Rifts' },
 ];
 export default {
-  components: { DraftCard, DraftInspector, PokemonPortrait, PotentialStar },
+  components: { DraftCard, PokemonPortrait, PotentialStar },
   props: {
     state: Object,
     catalog: { type: Object, default: () => ({}) },
@@ -760,12 +769,13 @@ export default {
     return {
       level: this.catalog.defaultLevel || 100,
       filters,
-      filter: 'all',
+      filter: 'pokemon',
       selected: null,
       selectedPokemon: null,
       moveSlot: 0,
-      inspection: null,
-      preview: null,
+      gestureBusy: false,
+      prepNotice: '',
+      landedSlot: null,
       quitConfirm: false,
       at: Date.now(),
     };
@@ -808,7 +818,10 @@ export default {
     },
     locked() {
       return (
-        this.busy || !!this.state?.preparation?.confirmed || !this.connected
+        this.busy ||
+        this.gestureBusy ||
+        !!this.state?.preparation?.confirmed ||
+        !this.connected
       );
     },
     seconds() {
@@ -828,13 +841,22 @@ export default {
     },
     filtered() {
       return (this.state?.collection || []).filter(
-        (c) => this.filter === 'all' || c.kind === this.filter
+        (c) => c.kind === this.filter
       );
     },
-    activeRift() {
-      return this.state?.collection?.find(
-        (c) => c.id === this.state.preparation?.rift
+    riftSlots() {
+      const plan = this.state?.preparation;
+      const ids = plan?.rifts || (plan?.rift ? [plan.rift] : []);
+      return Array.from(
+        { length: 2 },
+        (_, i) => this.state.collection.find((c) => c.id === ids[i]) || null
       );
+    },
+    activeRifts() {
+      return this.riftSlots.filter(Boolean);
+    },
+    selectedUpgrade() {
+      return this.selected && !['pokemon', 'rift'].includes(this.selected.kind);
     },
     selectedPokemonView() {
       return this.state?.preparation?.team?.find(
@@ -862,19 +884,21 @@ export default {
       immediate: true,
       handler(s) {
         if (s?.serverNow) this._offset = s.serverNow - Date.now();
-        if (this.inspection?.kind === 'move')
-          this.inspection =
-            [...(s?.pack || []), ...(s?.collection || [])].find(
-              (c) => c.id === this.inspection.id
-            ) || null;
         if (this.selected)
           this.selected =
             s?.collection?.find((c) => c.id === this.selected.id) || null;
       },
     },
+    'state.pick'() {
+      this._stopGesture?.();
+    },
+    'state.round'() {
+      this._stopGesture?.();
+    },
     'state.phase'() {
-      this.inspection = null;
-      this.preview = null;
+      this._stopGesture?.();
+      this.filter = 'pokemon';
+      this.prepNotice = '';
       this.selected = null;
       this.selectedPokemon = null;
     },
@@ -888,14 +912,15 @@ export default {
   },
   beforeDestroy() {
     clearInterval(this._clock);
-    this._stopDrag?.();
+    this._stopGesture?.();
+    clearTimeout(this._landTimer);
     if (this._before?.isConnected) this._before.focus({ preventScroll: true });
   },
   methods: {
     keyDown(e) {
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (this.inspection) this.inspection = null;
+        if (this.gestureBusy) this._stopGesture?.();
         else if (this.quitConfirm) this.quitConfirm = false;
         else this.$emit('close');
         return;
@@ -925,7 +950,7 @@ export default {
       if (innerWidth <= 700)
         this.$nextTick(() =>
           this.$refs.application?.scrollIntoView({
-            block: 'nearest',
+            block: 'start',
             behavior: 'smooth',
           })
         );
@@ -944,110 +969,253 @@ export default {
         ? natureLabel(c.nature)
         : c.name;
     },
-    inspect(c) {
-      this.inspection = c;
-    },
     used(c) {
       return !!this.state?.preparation?.used?.includes(c.id);
     },
     choose(c) {
-      if (this.busy || this.state.picked) return;
+      if (
+        this.busy ||
+        this.state?.phase !== 'draft' ||
+        this.state.picked ||
+        !this.connected ||
+        !this.state.pack.some((x) => x.id === c.id)
+      )
+        return;
       this.send('pick', {
         cardId: c.id,
         round: this.state.round,
         pick: this.state.pick,
       });
     },
+    typeName: localizeTypeName,
+    typeStyle: typeBadgeStyle,
     moveAptitude(p) {
-      const candidate = this.moveTargets[p?.cardId];
-      const eligible = !!candidate?.compatible && !candidate.known;
-      return {
-        eligible,
-        label: candidate?.known
-          ? 'Déjà connue'
-          : eligible
-          ? '✓ Apte'
-          : 'Inapte',
-      };
+      if (!p) return { eligible: false, label: 'Inapte' };
+      if (this.selected?.kind === 'move') {
+        const candidate = this.moveTargets[p.cardId];
+        const eligible = !!candidate?.compatible && !candidate.known;
+        return {
+          eligible,
+          label: candidate?.known
+            ? 'Déjà connue'
+            : eligible
+            ? '✓ Apte'
+            : 'Inapte',
+        };
+      }
+      const c = this.selected;
+      const same =
+        c?.kind === 'ability'
+          ? p.passiveAbility === c.ability
+          : c?.kind === 'nature'
+          ? p.nature === c.nature
+          : c?.kind === 'iv'
+          ? p.iv?.[c.stat] === 31
+          : false;
+      return { eligible: !same, label: same ? 'Déjà appliquée' : '✓ Apte' };
+    },
+    cardUsed(c) {
+      return c.kind === 'pokemon'
+        ? this.state.preparation.team.some((p) => p?.cardId === c.id)
+        : this.used(c);
+    },
+    removePokemon(slot) {
+      if (this.locked) return;
+      if (this.state.preparation.team[slot]?.cardId === this.selectedPokemon)
+        this.selectedPokemon = null;
+      this.selected = null;
+      this.prepNotice = '';
+      this.send('edit', { action: 'slot', slot, cardId: null });
+    },
+    shiftTeam(slot, direction) {
+      if (
+        this.locked ||
+        !this.state.preparation.team[slot] ||
+        slot + direction < 0 ||
+        slot + direction > 5
+      )
+        return;
+      this.send('edit', {
+        action: 'slot',
+        slot: slot + direction,
+        cardId: this.state.preparation.team[slot].cardId,
+      });
     },
     selectUpgrade(c) {
       if (this.locked) return;
-      this.selected = c;
-      if (c.kind === 'move') {
-        this.selectedPokemon = null;
-        this.moveSlot = 0;
+      this.prepNotice = '';
+      if (c.kind === 'pokemon') {
+        const before = this.state.preparation.team.findIndex(
+          (p) => p?.cardId === c.id
+        );
+        if (before >= 0) {
+          this.removePokemon(before);
+          return;
+        }
+        this.selected = c;
+        const empty = this.state.preparation.team.findIndex((p) => !p);
+        if (empty >= 0) this.place(empty);
+        else
+          this.prepNotice =
+            'Ton équipe est complète. Retire un Pokémon ou dépose cette carte sur celui à remplacer.';
+        return;
+      }
+      if (this.used(c)) {
+        if (c.kind === 'rift')
+          this.send('edit', {
+            action: 'rift',
+            cardId: null,
+            riftSlot: this.riftSlots.findIndex((r) => r?.id === c.id),
+          });
+        else
+          for (const [pokemonId, attachments] of Object.entries(
+            this.state.preparation.attachments
+          ))
+            for (const [slot, id] of Object.entries(attachments))
+              if (id === c.id) {
+                this.send('edit', { action: 'remove', pokemonId, slot });
+                return;
+              }
+        this.selected = null;
+        return;
+      }
+      this.selected = this.selected?.id === c.id ? null : c;
+      this.selectedPokemon = null;
+      if (!this.selected) return;
+      if (c.kind === 'rift') {
+        if (this.activeRifts.length < 2)
+          this.equipRift(this.riftSlots.findIndex((r) => !r));
+        else {
+          this.prepNotice =
+            'Deux Rifts sont actifs. Choisis celui à remplacer.';
+          this.$nextTick(() =>
+            this.$el
+              .querySelector('.draft-rift-slots')
+              ?.scrollIntoView({ block: 'nearest' })
+          );
+        }
+      } else
         this.$nextTick(() =>
           this.$refs.moveGuidance?.scrollIntoView({
             block: innerWidth <= 700 ? 'start' : 'nearest',
             behavior: 'auto',
           })
         );
-      }
-      if (c.kind === 'rift')
-        this.send('edit', { action: 'rift', cardId: c.id });
-      else if (c.kind === 'pokemon') {
-        const empty = this.state.preparation.team.findIndex((p) => !p);
-        if (empty >= 0) this.place(empty);
-      }
+    },
+    equipRift(riftSlot) {
+      if (this.locked || this.selected?.kind !== 'rift') return;
+      this.send('edit', { action: 'rift', cardId: this.selected.id, riftSlot });
+      this.selected = null;
+      this.prepNotice = '';
     },
     place(slot) {
-      if (this.locked) return;
-      if (this.selected?.kind === 'pokemon')
-        this.send('edit', { action: 'slot', slot, cardId: this.selected.id });
+      if (this.locked || this.selected?.kind !== 'pokemon') return;
+      this.send('edit', { action: 'slot', slot, cardId: this.selected.id });
+      this.selected = null;
+    },
+    viewPokemon(p) {
+      this.selected = null;
+      this.selectedPokemon = p.cardId;
+      this.showApplication();
     },
     target(p) {
       if (
         this.locked ||
-        (this.selected?.kind === 'move' && !this.moveAptitude(p).eligible)
+        (this.selectedUpgrade && !this.moveAptitude(p).eligible)
       )
         return;
-      if (this.selected?.kind === 'pokemon' && !this.locked) {
-        const slot = this.state.preparation.team.findIndex(
-          (q) => q?.cardId === p.cardId
-        );
-        this.place(slot);
-      } else {
-        this.selectedPokemon = p.cardId;
-        this.moveSlot = 0;
-        this.showApplication();
-      }
+      this.selectedPokemon = p.cardId;
+      if (this.selectedUpgrade && this.selected.kind !== 'move')
+        this.applySelected();
+      else this.showApplication();
+    },
+    applyMove(slot) {
+      this.moveSlot = slot;
+      this.applySelected();
     },
     applySelected() {
       if (
         this.locked ||
-        (this.selected?.kind === 'move' &&
-          !this.moveAptitude(this.selectedPokemonView).eligible)
+        !this.selectedUpgrade ||
+        !this.selectedPokemonView ||
+        !this.moveAptitude(this.selectedPokemonView).eligible
       )
         return;
-      if (this.selectedPokemon && this.selected)
-        this.send('edit', {
-          action: 'apply',
-          cardId: this.selected.id,
-          pokemonId: this.selectedPokemon,
-          moveSlot: this.moveSlot,
-        });
+      this.send('edit', {
+        action: 'apply',
+        cardId: this.selected.id,
+        pokemonId: this.selectedPokemon,
+        moveSlot: this.moveSlot,
+      });
+      this.selected = null;
+    },
+    gestureCallbacks() {
+      return {
+        active: () => {
+          this.gestureBusy = true;
+        },
+        ended: () => {
+          this.gestureBusy = false;
+        },
+      };
+    },
+    swipe(event, card) {
+      if (
+        event.pointerType === 'touch' ||
+        this.busy ||
+        this.gestureBusy ||
+        this.state.picked ||
+        !this.connected
+      )
+        return;
+      this._stopGesture?.();
+      this._stopGesture = startDraftSwipe(event, card, {
+        ...this.gestureCallbacks(),
+        select: (c) => this.choose(c),
+      });
+    },
+    teamGesture(event, p) {
+      if (p) this.drag(event, { id: p.cardId, kind: 'pokemon', pokemon: p });
     },
     drag(event, card) {
-      this._stopDrag?.();
-      this._stopDrag = startDraftDrag(event, card, (c, where) => {
-        if (this.state.phase === 'draft') {
-          if (where === 'pick') this.choose(c);
-          return;
-        }
-        const index = Number(where.split(':')[1]);
-        if (!Number.isInteger(index)) return;
-        const p = this.state.preparation.team[index];
-        this.selected = c;
-        if (c.kind === 'pokemon') this.place(index);
-        else if (c.kind === 'rift')
-          this.send('edit', { action: 'rift', cardId: c.id });
-        else if (p) {
-          if (c.kind === 'move') this.target(p);
-          else {
-            this.selectedPokemon = p.cardId;
-            this.applySelected();
+      if (event.pointerType === 'touch' || this.locked) return;
+      this._stopGesture?.();
+      this._stopGesture = startDraftDrag(event, card, {
+        ...this.gestureCallbacks(),
+        accepts: (c, where) => {
+          if (where.startsWith('rift:'))
+            return c.kind === 'rift' && !this.used(c);
+          if (!where.startsWith('team:') || c.kind === 'rift') return false;
+          if (c.kind === 'pokemon') return true;
+          const p = this.state.preparation.team[Number(where.split(':')[1])];
+          if (!p || this.used(c)) return false;
+          if (c.kind !== 'move') return true;
+          return c.compatibility?.some(
+            (x) => x.cardId === p.cardId && x.compatible && !x.known
+          );
+        },
+        drop: (c, where) => {
+          if (this.state?.phase !== 'preparation' || this.locked) return;
+          const slot = Number(where.split(':')[1]);
+          if (where.startsWith('rift:')) {
+            this.selected = c;
+            this.equipRift(slot);
+            return;
           }
-        }
+          this.landedSlot = slot;
+          clearTimeout(this._landTimer);
+          this._landTimer = setTimeout(() => {
+            this.landedSlot = null;
+          }, 600);
+          if (c.kind === 'pokemon') {
+            this.send('edit', { action: 'slot', slot, cardId: c.id });
+            this.selected = null;
+            return;
+          }
+          this.selected = c;
+          const p = this.state.preparation.team[slot];
+          if (p) this.target(p);
+        },
       });
     },
   },
@@ -2015,5 +2183,226 @@ h2 {
   .draft-pack > .draft-card {
     animation: none !important;
   }
+}
+
+/* Full cards, direct selection and two visible Rift slots. */
+.draft-swipe-hint {
+  margin: 0 0 12px;
+  font-size: 11px;
+  color: var(--journal-accent);
+}
+.draft-preparation {
+  grid-template-columns: minmax(0, 1fr) 280px;
+}
+.draft-team-area {
+  grid-column: 1/-1;
+  position: static;
+}
+.draft-team-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.draft-team-slot {
+  min-height: 118px;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.draft-slot-face {
+  cursor: grab;
+  box-sizing: border-box;
+}
+.draft-slot-face[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.55;
+}
+.draft-team-slot.is-inapt .draft-slot-face {
+  opacity: 0.4;
+  filter: grayscale(0.8);
+}
+.draft-team-slot.is-gesture-origin {
+  opacity: 0.15;
+}
+.draft-empty-slot {
+  min-height: 118px;
+}
+.draft-team-slot.is-landed {
+  animation: draft-slot-land 0.5s ease-out;
+}
+.draft-prep-collection {
+  grid-column: 1;
+}
+.draft-small-cards {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+.draft-application {
+  grid-column: 2;
+  position: sticky;
+  top: 0;
+  min-width: 0;
+}
+.draft-rifts-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 13px 0 7px;
+  font-size: 12px;
+}
+.draft-rifts-heading small {
+  color: var(--journal-muted);
+}
+.draft-rift-slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.draft-active-rift {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 28px 10px 12px;
+  min-width: 0;
+}
+.draft-active-rift b {
+  font-size: 12px;
+}
+.draft-active-rift span {
+  font-size: 10px;
+  line-height: 1.4;
+}
+.draft-active-rift .draft-rift-remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  border: 0;
+  min-height: 24px;
+  width: 24px;
+  padding: 0;
+}
+.draft-active-rift.can-replace {
+  border-style: dashed;
+  box-shadow: inset 0 0 0 1px #ac87cd55;
+}
+.draft-replace-moves {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.draft-replace-moves button {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px;
+  text-align: left;
+  border-left: 4px solid var(--pokemon-type-color, var(--journal-accent));
+}
+.draft-replace-moves b {
+  font-size: 12px;
+}
+.draft-replace-moves small {
+  font-size: 10px;
+  color: var(--journal-muted);
+}
+.draft-inline-notice {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--journal-selected);
+  font-size: 12px;
+  line-height: 1.5;
+}
+@keyframes draft-slot-land {
+  0% {
+    transform: scale(0.94);
+    box-shadow: 0 0 0 3px var(--journal-accent);
+  }
+  55% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@media (max-width: 700px) {
+  .draft-preparation {
+    display: flex;
+  }
+  .draft-team-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .draft-small-cards {
+    grid-template-columns: 1fr;
+  }
+  .draft-application {
+    position: static;
+    width: 100%;
+    order: 1;
+    box-sizing: border-box;
+  }
+  .draft-prep-collection {
+    order: 2;
+  }
+  .draft-pack > .draft-card {
+    flex: 0 0 min(310px, calc(100vw - 56px));
+  }
+  .draft-active-rift {
+    padding: 9px 25px 9px 9px;
+  }
+  .draft-active-rift b {
+    font-size: 11px;
+  }
+  .draft-active-rift span {
+    font-size: 9px;
+  }
+  .draft-filters {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--journal-paper);
+    padding: 8px 0;
+  }
+}
+@media (max-width: 700px) {
+  .draft-application.is-empty {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .draft-team-slot.is-landed {
+    animation: none;
+  }
+}
+</style>
+
+<style>
+[data-draft-gesture] {
+  font-family: var(--journal-font, sans-serif);
+}
+.draft-drop-target {
+  outline: 3px solid var(--journal-accent) !important;
+  outline-offset: -3px;
+  background: var(--journal-selected) !important;
+}
+.draft-swipe-ghost[data-ready='true'] {
+  outline: 3px solid #66b693;
+  box-shadow: 0 18px 50px #0006, 0 0 24px #66b69355 !important;
+}
+.draft-swipe-ghost::after {
+  content: 'SÉLECTIONNER ↓';
+  position: absolute;
+  bottom: 50px;
+  left: 12%;
+  right: 12%;
+  padding: 10px;
+  border: 2px solid #bfe8d5;
+  border-radius: 8px;
+  text-align: center;
+  font: 700 13px sans-serif;
+  color: #eafff5;
+  background: #245e4ee8;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.draft-swipe-ghost[data-ready='true']::after {
+  opacity: 1;
 }
 </style>

@@ -1,28 +1,32 @@
 <template>
   <article
     class="draft-card"
-    :class="['kind-' + card.kind, { 'is-used': used, 'is-selected': selected }]"
+    :class="[
+      'kind-' + card.kind,
+      { 'is-used': used, 'is-selected': selected, 'is-interactive': !!action },
+    ]"
     :style="tone"
     :data-draft-card="card.id"
-    @mouseenter="$emit('preview', card)"
+    @dragstart.prevent
+    @pointerdown="gesture"
+    @touchstart="gesture"
   >
     <header>
       <small>{{ kind }}</small
-      ><button
-        v-if="draggable && !used"
-        class="draft-grip"
-        aria-label="Glisser cette carte"
-        title="Glisser cette carte"
-        @pointerdown.stop.prevent="$emit('drag', $event, card)"
-        @click.stop
-      >
-        ⠿</button
-      ><potential-star v-if="pokemon" :value="pokemon.potential || pokemon.k" />
+      ><potential-star
+        v-if="pokemon"
+        :value="pokemon.potential || pokemon.k"
+      /><span v-if="used" class="draft-used-label">Sélectionnée ✓</span>
     </header>
-    <button
+    <div
       class="draft-card-face"
-      @click="$emit('inspect', card)"
-      :aria-label="'Inspecter ' + label"
+      :role="action ? 'button' : undefined"
+      :tabindex="action && !disabled ? 0 : undefined"
+      :aria-label="action ? action + ' ' + label : undefined"
+      :aria-disabled="action ? disabled || (used && !reversible) : undefined"
+      @click="activate"
+      @keydown.enter.prevent.stop="activate"
+      @keydown.space.prevent.stop="activate"
     >
       <div class="draft-card-art">
         <pokemon-portrait
@@ -47,76 +51,113 @@
           typeName(type)
         }}</span>
       </div>
-      <template v-if="pokemon"
-        ><small
+      <template v-if="pokemon">
+        <small
           >Niv. {{ pokemon.level }} · {{ natureName(pokemon.nature) }}</small
         >
         <p class="draft-card-ability">
-          {{ abilityName(pokemon.passiveAbility) }}
+          <b>{{ abilityName(pokemon.passiveAbility) }}</b> ·
+          {{ abilityDescription(pokemon.passiveAbility) }}
         </p>
-        <div class="draft-card-stats">
-          <span
-            >PV <b>{{ pokemon.maxHp }}</b></span
-          ><span
-            >ATQ <b>{{ pokemon.stats.attack }}</b></span
-          ><span
-            >VIT <b>{{ pokemon.stats.speed }}</b></span
+        <div class="draft-card-stats" data-draft-full-stats>
+          <span v-for="stat in stats" :key="stat[0]"
+            ><small>{{ stat[1] }}</small
+            ><b>{{
+              stat[0] === 'hp' ? pokemon.maxHp : pokemon.stats[stat[0]]
+            }}</b
+            ><small class="draft-genetics"
+              >IV {{ pokemon.iv?.[stat[0]] ?? '—' }} · EV
+              {{ pokemon.ev?.[stat[0]] ?? '—' }}</small
+            ></span
           >
-        </div></template
+        </div>
+        <div class="draft-card-moves" data-draft-full-moves>
+          <span v-for="m in moves" :key="m.name" :style="typeStyle(m.type)"
+            ><b>{{ moveName(m.name) }}</b
+            ><small
+              >{{ typeName(m.type) }} ·
+              {{
+                m.damageClass === 'physical'
+                  ? 'Phys.'
+                  : m.damageClass === 'special'
+                  ? 'Spé.'
+                  : 'Statut'
+              }}
+              · {{ m.powerLabel }} · {{ m.maxPp }} PP</small
+            ></span
+          >
+        </div>
+      </template>
+      <template v-else-if="card.kind === 'move'"
+        ><p class="draft-card-effect">
+          <b>{{
+            card.damageClass === 'physical'
+              ? 'Physique'
+              : card.damageClass === 'special'
+              ? 'Spéciale'
+              : 'Statut'
+          }}</b>
+          · {{ moveDetail.powerLabel }} puiss. ·
+          {{ card.accuracy || '—' }} préc. · {{ card.pp }} PP
+        </p>
+        <p class="draft-card-description">
+          {{ moveDetail.description }}
+        </p></template
       >
       <p v-else-if="card.kind === 'rift'" class="draft-rift-effect">
         <b>{{ card.bonus }}</b
         ><span>{{ card.penalty }}</span>
       </p>
-      <p v-else-if="card.kind === 'move'" class="draft-card-effect">
-        {{
-          card.damageClass === 'physical'
-            ? 'Physique'
-            : card.damageClass === 'special'
-            ? 'Spéciale'
-            : 'Statut'
-        }}<br />{{ card.power || '—' }} puiss. ·
-        {{ card.accuracy || '—' }} préc. · {{ card.pp }} PP
-      </p>
-      <p v-else class="draft-card-effect">
+      <p v-else class="draft-card-description">
         {{
           card.kind === 'iv'
-            ? 'Fixe cet IV à 31'
+            ? 'Fixe à 31 l’IV de ' +
+              ivName +
+              '. Les statistiques sont recalculées.'
             : card.kind === 'nature'
             ? natureEffect(card.nature)
             : card.kind === 'ability'
-            ? 'Un talent libre pour ton Pokémon'
+            ? abilityDescription(card.ability)
             : card.description
         }}
       </p>
-      <small class="draft-inspect-label">Voir la carte ↗</small>
-    </button>
-    <button
+    </div>
+    <div
       v-if="showCompatibility && card.kind === 'move' && card.compatibility"
       class="draft-compatibility"
-      :class="{ 'has-match': learners.length }"
-      :title="compatibilityLabel"
-      :aria-label="compatibilityLabel + ' — voir le détail'"
       data-draft-compatibility
-      @click="$emit('inspect', card)"
+      data-draft-no-gesture
     >
-      <span aria-hidden="true">{{ learners.length ? '✓' : '·' }}</span
-      ><span>{{ compatibilityLabel }}</span
-      ><span class="draft-compat-sprites" aria-hidden="true"
-        ><pokemon-portrait
-          v-for="p in learners.slice(0, 3)"
+      <small>{{ compatibilityLabel }}</small>
+      <div class="draft-compat-sprites">
+        <span
+          v-for="p in card.compatibility"
           :key="p.cardId"
-          :src="$pokemonSprite({ data: { id: p.pokemonId } })"
-          alt="" /></span
-      ><small v-if="learners.length > 3">+{{ learners.length - 3 }}</small>
-    </button>
+          :class="{ 'has-match': p.compatible && !p.known }"
+          :title="
+            p.name +
+            ' : ' +
+            (p.known ? 'déjà connue' : p.compatible ? 'apte' : 'inapte')
+          "
+          :aria-label="
+            p.name +
+            ' : ' +
+            (p.known ? 'déjà connue' : p.compatible ? 'apte' : 'inapte')
+          "
+          ><pokemon-portrait
+            :src="$pokemonSprite({ data: { id: p.pokemonId } })"
+            alt=""
+          /><b>{{ p.known ? '=' : p.compatible ? '✓' : '×' }}</b></span
+        >
+      </div>
+    </div>
     <button
       v-if="action"
       class="draft-card-select"
-      :disabled="disabled || used"
-      @click="$emit('select', card)"
+      :disabled="disabled || (used && !reversible)"
+      @click.stop="activate"
     >
-      {{ used ? 'Utilisée' : action }}
+      {{ used ? (reversible ? 'Désélectionner' : 'Sélectionnée ✓') : action }}
     </button>
   </article>
 </template>
@@ -127,6 +168,17 @@ import BagItemIcon from '../menu/BagItemIcon.vue';
 import { localizeTypeName, typeBadgeStyle } from '@/services/pokemonTypes';
 import { natureLabel, natureDescription } from '@/services/pokemonNatures';
 import { localizeMoveName, localizeAbilityName } from '@/services/i18n';
+import catalog from '@/data/pokemonReference.fr.json';
+import { createPokemonReference } from '@/services/pokemonReference';
+const reference = createPokemonReference(catalog);
+const stats = [
+  ['hp', 'PV'],
+  ['attack', 'ATQ'],
+  ['defense', 'DÉF'],
+  ['specialAttack', 'ATQ SPÉ'],
+  ['specialDefense', 'DÉF SPÉ'],
+  ['speed', 'VIT'],
+];
 export default {
   components: { PokemonPortrait, PotentialStar, BagItemIcon },
   props: {
@@ -137,8 +189,26 @@ export default {
     draggable: Boolean,
     used: Boolean,
     selected: Boolean,
+    reversible: Boolean,
   },
   computed: {
+    stats: () => stats,
+    moves() {
+      return this.pokemon ? reference.moves(this.pokemon) : [];
+    },
+    moveDetail() {
+      return reference.moves({ abilities: [this.card.move] })[0] || {};
+    },
+    ivName() {
+      return {
+        hp: 'PV',
+        attack: 'l’Attaque',
+        defense: 'la Défense',
+        specialAttack: 'l’Attaque Spéciale',
+        specialDefense: 'la Défense Spéciale',
+        speed: 'la Vitesse',
+      }[this.card.stat];
+    },
     learners() {
       return (this.card.compatibility || []).filter(
         (p) => p.compatible && !p.known
@@ -208,12 +278,21 @@ export default {
     },
   },
   methods: {
+    activate() {
+      if (this.action && !this.disabled && (!this.used || this.reversible))
+        this.$emit('select', this.card);
+    },
+    gesture(event) {
+      if (this.draggable && !this.disabled && (!this.used || this.reversible))
+        this.$emit('gesture', event, this.card);
+    },
     typeName: localizeTypeName,
     typeStyle: typeBadgeStyle,
     natureName: natureLabel,
     natureEffect: natureDescription,
     moveName: (n) => localizeMoveName(n, 'fr'),
     abilityName: (n) => localizeAbilityName(n, 'fr'),
+    abilityDescription: reference.abilityDescription,
   },
 };
 </script>
@@ -225,29 +304,35 @@ export default {
   border: 1px solid
     color-mix(in srgb, var(--draft-card-color) 65%, var(--journal-border));
   border-top: 4px solid var(--draft-card-color);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--journal-card);
   box-shadow: 0 3px 0 var(--journal-border);
   overflow: hidden;
-  transition: transform 0.15s, border-color 0.15s;
+  transition: border-color 0.18s, opacity 0.18s;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
-.draft-card:hover {
-  transform: translateY(-3px);
+.draft-card.is-interactive {
+  cursor: grab;
 }
 .draft-card.is-selected {
   outline: 2px solid var(--journal-accent);
   outline-offset: 2px;
 }
 .draft-card.is-used {
-  opacity: 0.65;
+  opacity: 0.57;
+  filter: saturate(0.55);
+}
+.draft-card.is-gesture-origin {
+  opacity: 0.16;
 }
 .draft-card header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 33px;
+  min-height: 30px;
   gap: 5px;
-  padding: 4px 9px;
+  padding: 4px 10px;
   background: color-mix(
     in srgb,
     var(--draft-card-color) 13%,
@@ -259,36 +344,22 @@ export default {
   font-size: 8px;
   letter-spacing: 0.08em;
 }
-.draft-grip {
-  touch-action: none;
-  cursor: grab;
-  font-size: 20px;
-  line-height: 1;
-  min-height: 28px;
-  min-width: 28px;
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  color: var(--journal-muted);
+.draft-used-label {
+  font-size: 8px;
 }
 .draft-card-face {
   flex: 1;
-  width: 100%;
   display: flex;
   align-items: center;
   flex-direction: column;
-  padding: 10px 9px 8px;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
+  padding: 9px 10px 11px;
   color: inherit;
-  font: inherit;
-  cursor: pointer;
   text-align: center;
   min-width: 0;
+  outline-offset: -3px;
 }
 .draft-card-art {
-  height: 86px;
+  height: 66px;
   width: 100%;
   display: grid;
   place-items: center;
@@ -298,32 +369,29 @@ export default {
     color-mix(in srgb, var(--draft-card-color) 22%, transparent),
     transparent 72%
   );
-  margin-bottom: 5px;
 }
 .draft-card-art .pokemon-portrait {
-  width: 95px;
-  height: 86px;
+  width: 80px;
+  height: 66px;
 }
 .draft-card-art .bag-item-icon {
-  width: 62px;
-  height: 62px;
+  width: 46px;
+  height: 46px;
 }
 .draft-move-glyph {
-  font-size: 66px;
+  font-size: 52px;
   color: var(--draft-card-color);
   text-shadow: 0 3px 0 #0002;
 }
 .draft-rift-glyph {
-  font: 85px Georgia, serif;
+  font: 66px Georgia, serif;
   color: #b48bdd;
-  text-shadow: 0 0 13px #b98ad388;
   line-height: 1;
-  animation: draft-rift-breathe 3s ease-in-out infinite;
 }
 h3 {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.25;
-  margin: 4px 0;
+  margin: 5px 0;
   overflow-wrap: anywhere;
 }
 .draft-card-types {
@@ -347,36 +415,81 @@ h3 {
 }
 .draft-card-ability {
   font-size: 10px;
-  line-height: 1.4;
-  margin: 6px 0;
+  line-height: 1.45;
+  margin: 6px 0 9px;
+  color: var(--journal-muted);
+}
+.draft-card-ability b {
   color: var(--journal-accent);
 }
 .draft-card-stats {
   width: 100%;
-  display: flex;
-  justify-content: space-around;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
   border-top: 1px solid var(--journal-border);
   padding-top: 8px;
-  margin-top: auto;
   font-size: 8px;
   color: var(--journal-muted);
 }
-.draft-card-stats b {
-  display: block;
-  font-size: 12px;
-  color: var(--journal-ink);
-  margin-top: 2px;
+.draft-card-stats > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.draft-card-effect {
-  font-size: 10px;
+.draft-card-stats b {
+  font-size: 13px;
+  color: var(--journal-ink);
+}
+.draft-card-stats small {
+  font-size: 8px;
+  white-space: nowrap;
+}
+.draft-card-stats .draft-genetics {
+  font-size: 7px;
+}
+.draft-card-moves {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 10px;
+  text-align: left;
+}
+.draft-card-moves > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-left: 3px solid var(--pokemon-type-color);
+  background: color-mix(
+    in srgb,
+    var(--pokemon-type-color) 9%,
+    var(--journal-card)
+  );
+  border-radius: 4px;
+  padding: 5px;
+  min-width: 0;
+}
+.draft-card-moves b {
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+.draft-card-moves small {
+  font-size: 7px;
+  line-height: 1.35;
+  color: var(--journal-muted);
+}
+.draft-card-effect,
+.draft-card-description {
+  font-size: 11px;
   line-height: 1.55;
   margin: 7px 0;
   color: var(--journal-muted);
-  max-height: 65px;
-  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 .draft-rift-effect {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .draft-rift-effect b,
@@ -390,10 +503,6 @@ h3 {
   color: var(--journal-danger);
   margin-top: 7px;
 }
-.draft-inspect-label {
-  margin: 7px 0 0;
-  font-size: 8px !important;
-}
 .draft-card-select {
   width: 100%;
   border: 0 !important;
@@ -403,61 +512,50 @@ h3 {
   font: 600 11px var(--journal-font);
   background: var(--journal-soft) !important;
   color: var(--journal-heading);
-  min-height: 38px;
+  min-height: 40px;
   cursor: pointer;
 }
 .draft-card-select:disabled {
   opacity: 0.5;
   cursor: default;
 }
-@keyframes draft-rift-breathe {
-  50% {
-    transform: scale(1.06);
-    filter: brightness(1.15);
-  }
+.draft-compatibility {
+  padding: 6px 9px;
+  border-top: 1px solid var(--journal-border);
+  color: var(--journal-muted);
+}
+.draft-compatibility > small {
+  font-size: 9px;
+}
+.draft-compat-sprites {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+.draft-compat-sprites > span {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--journal-border);
+  border-radius: 5px;
+  opacity: 0.55;
+}
+.draft-compat-sprites .has-match {
+  opacity: 1;
+  border-color: var(--journal-accent);
+  color: var(--journal-accent);
+}
+.draft-compat-sprites .pokemon-portrait {
+  width: 23px;
+  height: 25px;
+}
+.draft-compat-sprites b {
+  font-size: 10px;
+  padding-right: 4px;
 }
 @media (prefers-reduced-motion: reduce) {
   .draft-card {
     transition: none;
   }
-  .draft-rift-glyph {
-    animation: none;
-  }
-}
-.draft-compatibility {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  width: 100%;
-  padding: 5px 8px !important;
-  min-height: 32px !important;
-  font-size: 9px !important;
-  border: 0 !important;
-  border-top: 1px solid var(--journal-border) !important;
-  border-radius: 0 !important;
-  color: var(--journal-muted) !important;
-  background: var(--journal-soft) !important;
-  text-align: left;
-}
-.draft-compatibility.has-match {
-  color: var(--journal-accent) !important;
-}
-.draft-compatibility > span:nth-child(2) {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.draft-compat-sprites {
-  display: flex;
-  flex: none;
-}
-.draft-compat-sprites .pokemon-portrait {
-  width: 19px;
-  height: 22px;
-}
-.draft-compatibility > small {
-  font-size: 8px;
 }
 </style>

@@ -1,67 +1,129 @@
-// A dedicated grip leaves card scrolling native. Both touch and mouse use the
-// same pointer path; movement updates the floating preview, never game state.
-export function startDraftDrag(event, card, onDrop) {
-  if (event.button !== undefined && event.button !== 0) return () => {};
-  const handle = event.currentTarget,
-    root = handle.closest('[data-draft-card]'),
-    ghost = root.cloneNode(true);
-  ghost.classList.add('draft-drag-ghost');
-  ghost.style.cssText =
-    'position:fixed;left:0;top:0;width:145px;z-index:8000;pointer-events:none;opacity:.88;transform:translate(-999px,-999px);box-shadow:0 10px 30px #0005';
-  document.body.append(ghost);
-  let target = null,
-    point = event,
-    frame = null;
-  const scroll = handle.closest('.draft-body');
-  const autoScroll = () => {
-    if (scroll) {
-      const b = scroll.getBoundingClientRect(),
-        delta =
-          point.clientY < b.top + 50
-            ? -12
-            : point.clientY > b.bottom - 50
-            ? 12
-            : 0;
-      if (delta) scroll.scrollTop += delta;
+import {
+  canStart,
+  pointer,
+  track,
+  floatingCard,
+  suppressClick,
+} from './draftGestureInput';
+// Preparation only: hold a card, then move it freely onto a precise team slot.
+export function startDraftDrag(
+  event,
+  card,
+  { drop, ended, active, accepts = () => true }
+) {
+  if (!canStart(event)) return () => {};
+  const root = event.currentTarget.closest(
+      '[data-draft-card],[data-draft-slot]'
+    ),
+    panel = root.closest('[data-draft-panel]'),
+    start = pointer(event),
+    touch = !!event.touches;
+  let p = start,
+    visual,
+    unbind = () => {},
+    hold,
+    frame,
+    done = false,
+    target = null;
+  const clearTarget = () => {
+    target?.classList.remove('draft-drop-target');
+    target = null;
+  };
+  const updateTarget = () => {
+    const el = document
+      .elementFromPoint(p.x, p.y)
+      ?.closest('[data-draft-drop]');
+    if (el !== target) {
+      clearTarget();
+      if (el && panel.contains(el) && accepts(card, el.dataset.draftDrop)) {
+        target = el;
+        target.classList.add('draft-drop-target');
+      }
     }
-    frame = requestAnimationFrame(autoScroll);
   };
-  frame = requestAnimationFrame(autoScroll);
-  const move = (e) => {
-    point = e;
-    ghost.style.transform = `translate(${e.clientX - 65}px,${
-      e.clientY - 30
-    }px) rotate(-3deg)`;
-    target =
-      document
-        .elementFromPoint(e.clientX, e.clientY)
-        ?.closest('[data-draft-drop]') || null;
+  const loop = () => {
+    if (!visual || done) return;
+    const body = panel.querySelector('.draft-body'),
+      r = body.getBoundingClientRect();
+    if (p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom) {
+      const delta = p.y < r.top + 38 ? -12 : p.y > r.bottom - 38 ? 12 : 0;
+      if (delta) body.scrollTop += delta;
+    }
+    updateTarget();
+    frame = requestAnimationFrame(loop);
   };
-  const clean = () => {
+  const begin = () => {
+    if (done || !root.isConnected) return;
+    visual = floatingCard(root, 'drag');
+    active?.();
+    visual.render(p.x - start.x, p.y - start.y, -2);
+    frame = requestAnimationFrame(loop);
+  };
+  const context = (e) => e.preventDefault();
+  root.addEventListener('contextmenu', context);
+  const finish = () => {
+    if (done) return;
+    done = true;
+    unbind();
+    clearTimeout(hold);
     cancelAnimationFrame(frame);
-    ghost.remove();
-    handle.removeEventListener('pointermove', move);
-    handle.removeEventListener('pointerup', up);
-    handle.removeEventListener('pointercancel', cancel);
-    window.removeEventListener('blur', cancel);
-    try {
-      handle.releasePointerCapture(event.pointerId);
-    } catch {
-      /* Pointer may already have ended. */
-    }
+    clearTarget();
+    visual?.clean();
+    root.removeEventListener('contextmenu', context);
+    ended?.();
   };
-  const up = (e) => {
-      move(e);
-      const where = target?.dataset.draftDrop;
-      clean();
-      if (where) onDrop(card, where);
+  unbind = track(event, {
+    cancel: finish,
+    move(e, point) {
+      p = point;
+      const distance = Math.hypot(p.x - start.x, p.y - start.y);
+      if (!visual) {
+        if (touch && distance > 10) {
+          finish();
+          return;
+        }
+        if (!touch && distance >= 7) begin();
+      }
+      if (visual) {
+        if (e.cancelable) e.preventDefault();
+        visual.render(p.x - start.x, p.y - start.y, -2);
+        updateTarget();
+      }
     },
-    cancel = () => clean();
-  handle.setPointerCapture?.(event.pointerId);
-  handle.addEventListener('pointermove', move);
-  handle.addEventListener('pointerup', up);
-  handle.addEventListener('pointercancel', cancel);
-  window.addEventListener('blur', cancel);
-  move(event);
-  return clean;
+    end(e, point) {
+      p = point;
+      clearTimeout(hold);
+      unbind();
+      cancelAnimationFrame(frame);
+      if (!visual) {
+        finish();
+        return;
+      }
+      if (e.cancelable) e.preventDefault();
+      suppressClick(root);
+      updateTarget();
+      const destination = target?.dataset.draftDrop,
+        r = target?.getBoundingClientRect(),
+        origin = root.getBoundingClientRect();
+      const dx = r
+        ? r.left + r.width / 2 - visual.rect.left - visual.rect.width / 2
+        : origin.left - visual.rect.left;
+      const dy = r
+        ? r.top + r.height / 2 - visual.rect.top - visual.rect.height / 2
+        : origin.top - visual.rect.top;
+      const scale = r
+        ? Math.min(
+            1,
+            r.width / visual.rect.width,
+            r.height / visual.rect.height
+          )
+        : 1;
+      visual.settle(dx, dy, scale, () => {
+        finish();
+        if (destination) drop(card, destination);
+      });
+    },
+  });
+  if (touch) hold = setTimeout(begin, 230);
+  return finish;
 }
