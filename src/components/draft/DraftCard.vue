@@ -17,6 +17,27 @@
         v-if="pokemon"
         :value="pokemon.potential || pokemon.k"
       /><span v-if="used" class="draft-used-label">Sélectionnée ✓</span>
+      <button
+        v-if="discardable"
+        class="draft-card-discard"
+        :disabled="disabled"
+        :aria-label="'Supprimer définitivement ' + label + ' de cette draft'"
+        title="Supprimer définitivement de cette partie"
+        data-draft-discard
+        @click.stop="$emit('discard', card)"
+      >
+        <svg
+          viewBox="0 0 20 20"
+          width="15"
+          height="15"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          aria-hidden="true"
+        >
+          <path d="M3 5h14M7 5V2.8h6V5M5 5l.7 12h8.6L15 5M8 8v6M12 8v6" />
+        </svg>
+      </button>
     </header>
     <div
       class="draft-card-face"
@@ -190,6 +211,7 @@ export default {
     used: Boolean,
     selected: Boolean,
     reversible: Boolean,
+    discardable: Boolean,
   },
   computed: {
     stats: () => stats,
@@ -346,6 +368,29 @@ export default {
 }
 .draft-used-label {
   font-size: 8px;
+}
+.draft-card-discard {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 5px !important;
+  border: 0 !important;
+  border-radius: 5px;
+  background: transparent !important;
+  color: var(--journal-danger);
+  cursor: pointer;
+}
+.draft-card-discard:hover,
+.draft-card-discard:focus-visible {
+  outline: 1px solid var(--journal-danger);
+  background: var(--journal-soft) !important;
+}
+.draft-card-discard:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .draft-card-face {
   flex: 1;

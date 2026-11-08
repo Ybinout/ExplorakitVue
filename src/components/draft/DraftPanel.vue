@@ -95,7 +95,9 @@
             <p>
               À chaque choix, prends une carte puis passe les autres à droite.
               Tu as {{ pickSeconds }} secondes. Après 32 choix, le dernier
-              booster ne contient que des Rifts.
+              booster contient {{ draftFormat.riftPackSize }} Rifts, pour
+              {{ draftFormat.riftPicks }} choix chacun. Les cartes restantes
+              sont défaussées.
             </p>
             <p>
               Tu disposes ensuite de {{ preparationMinutes }} minutes pour
@@ -218,7 +220,10 @@
                   }}
                 </h3>
               </div>
-              <span>Choix {{ state.pick + 1 }} / {{ state.packSize }}</span>
+              <span
+                >Choix {{ state.pick + 1 }} /
+                {{ state.roundPicks || state.packSize }}</span
+              >
             </div>
             <p class="draft-swipe-hint">
               ↓ Glisse vers le bas pour sélectionner, ou touche une carte.
@@ -471,7 +476,9 @@
                     :draggable="!locked && !used(card)"
                     :disabled="locked"
                     reversible
+                    discardable
                     action="Sélectionner"
+                    @discard="discardCard"
                     @select="selectUpgrade"
                     @gesture="drag"
                   />
@@ -485,10 +492,17 @@
                 <template v-if="selectedPokemonView"
                   ><h4>{{ selectedPokemonView.name }}</h4>
                   <template v-if="selected?.kind === 'move'"
-                    ><p>
-                      <b>{{ cardLabel(selected) }}</b> · sélectionne la capacité
-                      à remplacer.
-                    </p>
+                    ><div
+                      class="draft-replace-instruction"
+                      role="status"
+                      data-draft-replace-instruction
+                    >
+                      <strong>Sélectionner la capacité à remplacer</strong>
+                      <span
+                        >Pour apprendre <b>{{ cardLabel(selected) }}</b> à
+                        {{ selectedPokemonView.name }}.</span
+                      >
+                    </div>
                     <div class="draft-replace-moves">
                       <button
                         v-for="(m, i) in selectedPokemonView.moveDetails || []"
@@ -781,6 +795,12 @@ export default {
     };
   },
   computed: {
+    draftFormat() {
+      return (
+        this.state?.draftFormat ||
+        this.catalog.draftFormat || { riftPackSize: 4, riftPicks: 2 }
+      );
+    },
     pickSeconds() {
       return (
         (this.state?.timing?.pickMs || this.catalog.timing?.pickMs || 50000) /
@@ -887,6 +907,11 @@ export default {
         if (this.selected)
           this.selected =
             s?.collection?.find((c) => c.id === this.selected.id) || null;
+        if (
+          this.selectedPokemon &&
+          !s?.preparation?.team?.some((p) => p?.cardId === this.selectedPokemon)
+        )
+          this.selectedPokemon = null;
       },
     },
     'state.pick'() {
@@ -1018,6 +1043,14 @@ export default {
       return c.kind === 'pokemon'
         ? this.state.preparation.team.some((p) => p?.cardId === c.id)
         : this.used(c);
+    },
+    discardCard(card) {
+      if (this.locked) return;
+      this._stopGesture?.();
+      if (this.selected?.id === card.id) this.selected = null;
+      if (this.selectedPokemon === card.id) this.selectedPokemon = null;
+      this.prepNotice = '';
+      this.send('edit', { action: 'discard', cardId: card.id });
     },
     removePokemon(slot) {
       if (this.locked) return;
@@ -2282,6 +2315,27 @@ h2 {
 .draft-active-rift.can-replace {
   border-style: dashed;
   box-shadow: inset 0 0 0 1px #ac87cd55;
+}
+.draft-replace-instruction {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 15px;
+  padding: 15px 13px;
+  border: 2px solid var(--journal-accent);
+  border-left-width: 5px;
+  border-radius: 9px;
+  background: var(--journal-selected);
+  color: var(--journal-heading);
+}
+.draft-replace-instruction strong {
+  font-size: 19px;
+  line-height: 1.3;
+}
+.draft-replace-instruction span {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--journal-ink);
 }
 .draft-replace-moves {
   display: flex;
