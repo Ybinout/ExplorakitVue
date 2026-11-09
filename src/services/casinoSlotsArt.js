@@ -1,5 +1,5 @@
 import config from '@/data/casinoSlots.json';
-const source = require('@/assets/casino/slot-cabinet-v3.png');
+const source = require('@/assets/casino/slot-cabinet-v4.png');
 let art;
 function image() {
   if (!art) {

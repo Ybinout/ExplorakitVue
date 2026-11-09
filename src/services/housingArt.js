@@ -2,7 +2,7 @@ import config from '@/data/housing.json';
 import metrics from '@/data/housingArt.json';
 import { drawPokemonTerminal } from './pokemonComputer';
 const sources = {
-  furniture: require('@/assets/housing/furniture-rotations-v3.png'),
+  furniture: require('@/assets/housing/furniture-rotations-v4.png'),
   cultivation: require('@/assets/berries/cultivation-furniture-v1.png'),
   growth: require('@/assets/berries/growth-v1.png'),
   architecture: require('@/assets/housing/architecture-v1.png'),
