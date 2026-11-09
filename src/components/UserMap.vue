@@ -11,6 +11,7 @@
       <button v-if="superTournament.active && !isDrift && tournamentPanel?.tab!=='abandon'" ref="tournamentExit" class="super-tournament-exit" data-super-tournament-exit type="button" :disabled="tournamentBusy || !socket?.connected" :aria-label="preferences.language==='en'?'Abandon the Super Tournament':'Abandonner le Super Tournoi'" :title="preferences.language==='en'?'Abandon the Super Tournament':'Abandonner le Super Tournoi'" aria-haspopup="dialog" aria-controls="super-tournament-dialog" @pointerdown.stop @click.stop="openTournamentAbandon">
         <svg viewBox="0 0 32 32" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 28V4" stroke="currentColor"/><path d="M8 6c6-4 11 4 17 0v13c-6 4-11-4-17 0Z" fill="#fff" stroke="#415565"/></svg>
       </button>
+      <casino-slots-panel v-back="()=>slotsOpen=false" v-if="slotsOpen && !battle" :state="slotsState" :machine="slotsMachine" :balance="Number(progressionState.money)||0" :busy="slotsBusy" :error="slotsError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled&&!worldWeatherReducedMotion" @command="slotsCommand" @asset-error="slotsError=$event" @close="slotsOpen=false"/>
       <housing-panel v-back="()=> $refs.housingPanel?.close()" ref="housingPanel" v-if="housingPanel && !battle" :payload="housingPanel" :room="housingState" :friends="socialState.accepted" :busy="housingBusy" :error="housingError" :notice="housingNotice" :command="housingCommand" @close="closeHousingPanel"/>
       <button v-if="housingState?.isOwner && !housingPanel && !worldInteractionBlocked" class="housing-manage-button" data-housing-manage aria-label="Aménager ma maison" @pointerdown.stop @click.stop="openHousingManage"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="m3 15 11-10 11 10M6 13v14h9V17H11v10M22 20l1-2 3 1 2-1 2 3-1 2 1 2-2 3-2-1-3 1-1-2-2-1v-3Z"/><circle cx="25" cy="24" r="2"/></svg><span>Ma maison</span></button>
       <aside v-if="housingInvitation && !battle" class="housing-invitation" role="status"><small>UNE PORTE OUVERTE</small><b>{{ housingInvitation.name }} t’invite chez lui.</b><span>{{ housingInvitation.entryName }}</span><div><button :disabled="housingBusy" @click="housingCommand('invitation',{id:housingInvitation.id,accept:true})">Visiter →</button><button :disabled="housingBusy" @click="housingCommand('invitation',{id:housingInvitation.id,accept:false})">Plus tard</button></div></aside>
@@ -569,6 +570,8 @@ import evolutionGraph from '@/data/evolutionGraph.json';
 import { buildBattleResult } from '@/services/battleResult';
 import raidsGame from '@/services/raidsGame';
 import housingGame from '@/services/housingGame';
+import casinoSlotsGame from '@/services/casinoSlotsGame';
+import {isCasino,slotMachines,machineBottom,drawSlotMachine} from '@/services/casinoSlotsArt';
 import {drawFurniture, drawStair} from '@/services/housingArt';
 import {drawRaidRifts} from '@/services/raidRifts';
 import {drawSafariSign} from '@/services/safariSigns';
@@ -593,8 +596,8 @@ import { WorldMusic } from '@/services/worldMusic';
 
 export default {
   props: { patchNoticeOpen: Boolean },
-  mixins:[socialGame,tradeGame,raidsGame,questJournalGame,comfortGame,draftGame,housingGame],
-  components: { HousingPanel:()=>import('./housing/HousingPanel.vue'), DraftPanel:()=>import('./draft/DraftPanel.vue'),AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
+  mixins:[socialGame,tradeGame,raidsGame,questJournalGame,comfortGame,draftGame,housingGame,casinoSlotsGame],
+  components: { CasinoSlotsPanel:()=>import('./whitepeak/CasinoSlotsPanel.vue'), HousingPanel:()=>import('./housing/HousingPanel.vue'), DraftPanel:()=>import('./draft/DraftPanel.vue'),AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
     SuperTournamentPanel, TournamentRewardPanel, AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
@@ -894,7 +897,7 @@ export default {
     },
     worldInteractionBlocked() { return this.patchNoticeOpen || this.otherInteractionBlocked; },
     otherInteractionBlocked() {
-      return !!this.housingPanel || !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return this.slotsOpen || !!this.housingPanel || !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.experienceLab || this.corruptedHeldWorkshop || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.coverageOpen || this.damageCalculatorOpen || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
@@ -1964,7 +1967,7 @@ export default {
           // Original pixels at 2x, cropped to one person; preserve the feet anchor.
           const size = classicCustomSprite ? spriteSheet.naturalWidth * 2 : npcWorldSize(spriteSheet);
           let frame = pnj.spriteFrame || { columns: 1, rows: 1, index: 0 };
-          if(pnj.sprite==='clement-walk-v3.png'){const dx=pnj.x-(pnj.fromX??pnj.x),dy=pnj.y-(pnj.fromY??pnj.y);const row=Math.abs(dx)>Math.abs(dy)?dx>0?2:1:dy<0?3:0;frame={columns:3,rows:4,index:row*3+(moving&&motion?(Math.floor(progress*4)%2===0?0:2):1)};}
+          if(/^clement-walk-v[34]\.png$/.test(pnj.sprite)){const dx=pnj.x-(pnj.fromX??pnj.x),dy=pnj.y-(pnj.fromY??pnj.y);const row=Math.abs(dx)>Math.abs(dy)?dx>0?2:1:dy<0?3:0;frame={columns:3,rows:4,index:row*3+(moving&&motion?(Math.floor(progress*4)%2===0?0:2):1)};}
           // Player-based cells preserve the player's transparent padding and feet.
           drawNpcFrame(context, spriteSheet, frame, drawX + (64-size)/2, drawY + (playerBasedSprite ? 64 : 52)-size-(pnj.sprite==='professor-ko-pixel-v1.png'?12:0), size, pnj);
           context.restore();
@@ -3093,11 +3096,13 @@ export default {
         drawStair(c,this.housingArt,this.housingFloor?.stairs?.down,false);
       }
       const playerOrder=Object.keys(this.players);
-      if(this.housingActive)playerOrder.sort((a,b)=>this.visualPlayer(a,this.players[a],now).y-this.visualPlayer(b,this.players[b],now).y);
+      const casinoObjects=isCasino(this.map)?slotMachines:[];let casinoObject=0;
+      if(this.housingActive||casinoObjects.length)playerOrder.sort((a,b)=>this.visualPlayer(a,this.players[a],now).y-this.visualPlayer(b,this.players[b],now).y);
       // Housing furniture joins the same depth order as the characters' feet.
       for (const playerId of playerOrder) {
         const player = this.players[playerId];
         const position=this.visualPlayer(playerId,player,now);
+        while(casinoObject<casinoObjects.length && machineBottom(casinoObjects[casinoObject])<=position.y+10)drawSlotMachine(c,casinoObjects[casinoObject++],now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
         if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length && (housePlan.objects[houseObject].y + this.housingItemHeight(housePlan.objects[houseObject].key))*32 <= position.y+10)drawFurniture(c,this.housingArt,housePlan.objects[houseObject++]);
 
         // DÃ©finit une direction par dÃ©faut si la direction actuelle est indÃ©finie
@@ -3146,6 +3151,7 @@ export default {
         }
       }
 
+      while(casinoObject<casinoObjects.length)drawSlotMachine(c,casinoObjects[casinoObject++],now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length)drawFurniture(c,this.housingArt,housePlan.objects[houseObject++]);
       if(!this.battle && !document.hidden && this.roomObstacleAction?.map===this.map)
         drawRoomStrike(c,this.roomObstacleAction,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
@@ -3233,6 +3239,7 @@ export default {
     this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token,{mirrorRift:true,adventureOpening:true});
     this.bindRaidSocket();
     this.bindHousingSocket();
+    this.bindSlotsSocket();
     this.bindSocialSocket();this.bindTradeSocket();
     this.socket.on('adventureOpening',scene=>{if(this.isDrift)return;this.releaseAllMovementKeys();this.openingScene=scene;});
     bindSessionReplacement(this.socket, () => this.$router.replace({path:'/connexion',query:{reason:'session-replaced'}}));
@@ -3602,6 +3609,7 @@ export default {
     });
 
     this.socket.on('newmap', ({ mapname, playersList }) => {
+      if(mapname!=='ville5_maison2')this.slotsOpen=false;
       this.clubPanel=null;if(this.clubWatch)this.closeClubWatch();
       clearTimeout(this._lucieDepartureTimer);this.lucieDeparture=null;this._lucieDepartureResult=null;
       this._npcTeleport=null;

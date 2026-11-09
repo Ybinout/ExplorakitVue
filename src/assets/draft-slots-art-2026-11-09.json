@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-09",
+  "tool": "image_gen.imagegen (built-in)",
+  "assets": [
+    {
+      "path": "src/assets/casino/slot-cabinet-v1.png",
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-de4b450f-2f14-4267-bba2-c1cdea45a1c1.png",
+      "prompt": "Production asset for a classic top-down pixel-art monster RPG. Use reference casino room ONLY for colour palette, perspective and low-detail chunky pixel style. Generate ONE isolated compact SLOT MACHINE cabinet for placement against LEFT vertical wall of a top-down room, so its screen/front faces lower-right into the room, three-quarter top-down right-facing perspective. Cabinet dark navy with burgundy panels and restrained gold trim, three small ivory reel windows showing cherry star bell, small red lever on right side, chunky feet. Native logical sprite48x64 pixels, crisp square pixel clusters and dark outlines, few shades, no fine noise, readable at tiny size, proportional to a 32px chibi character. All silhouette inside canvas with transparent margins, true transparent background, no room, floor, person, shadow outside cabinet, text or labels. The cabinet has an upright back against the left wall, not an oblique floating rectangle. Render one sprite only.",
+      "processing": "Alpha threshold170, transparent-bounds crop, nearest-neighbour normalization48×72. Shared by exactly two instances at world tiles(1,7) and(1,11). Original casino background remains byte-for-byte unchanged."
+    },
+    {
+      "path": "src/assets/casino/slot-symbols-v1.png",
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-a92e1011-8354-48e2-9770-44142f935050.png",
+      "prompt": "Production pixel-art reel SYMBOL atlas for a classic handheld monster RPG casino. Exactly FOUR icons in ONE horizontal row, equally spaced centered in four square cells with wide transparent gutters. Reading order: a pair of red CHERRIES on green stem; a golden five-point STAR; a small golden BELL with dark red clapper; a bold red digit 7 with gold edge. Tiny chunky readable pixel clusters, dark navy outlines, vibrant simple2-3 shade palette consistent with dark blue burgundy and gold casino, no gradients, no letters except the7. Each icon occupies about20x20 logical pixels in a32x32 cell, whole logical128x32. Sharp clean pixel art, true transparent background. No boxes, backgrounds, slot machine or extra symbols.",
+      "processing": "Four cells cropped independently with alpha threshold170, nearest-neighbour fit within26×26 and centered in a128×32 transparent shared atlas."
+    },
+    {
+      "path": "src/assets/pnj/clement-walk-v4.png",
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-927923ad-c638-45e2-8d39-f120ca06f294.png",
+      "prompt": "Precise pixel sprite edit of this EXACT 3 columns by4 rows character walking sheet. Preserve original character identity, hair/curls, glasses, skin, white shirt, black trousers, palette, dark outlines, all12 poses and all transparent gutters. ONLY shorten the black trouser legs by about TWO logical pixels in each pose (about8% of the character height). Keep shoes, stride, and same foot baseline and grid cell alignment. Upper body and head should remain unchanged in shape and pixel detail. 12 sprites only, same3x4 layout, logical96x128 total,32x32 cells, do not add detail, no redraw or change of clothing. Tiny square pixels exactly like input, true transparent background.",
+      "processing": "Generated proportions used as edit reference. Original pixel clusters and palette retained: each pose's upper body copied identically two pixels lower, bottom eight-pixel leg band normalized to six with nearest-neighbour; same feet baseline, twelve32×32 cells. Pixel equality and alpha bounds checked for all twelve poses."
+    },
+    {
+      "path": "src/assets/pnj/maria-blue-v1.png",
+      "processing": "Existing asset unchanged. Renderer uses70 instead of64 logical screen pixels (+9.375%), with unchanged feet anchor and nearest-neighbour sampling. No new image generation or design change."
+    }
+  ]
+}

@@ -802,7 +802,7 @@ export default {
     draftFormat() {
       return (
         this.state?.draftFormat ||
-        this.catalog.draftFormat || { riftPackSize: 4, riftPicks: 2 }
+        this.catalog.draftFormat || { riftPackSize: 4, riftPicks: 3 }
       );
     },
     pickSeconds() {
