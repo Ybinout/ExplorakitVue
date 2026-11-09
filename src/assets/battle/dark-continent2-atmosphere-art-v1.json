@@ -1,0 +1,36 @@
+{
+  "mode": "built-in imagegen",
+  "date": "2026-11-09",
+  "prompts": [
+    "Use case: stylized-concept. Asset type: production pixel-art battle background for RiftMon, a 2D monster RPG. Landscape 1536x1024. Polished hand-crafted 16-bit pixel art, clearly visible square pixel clusters, restrained detail and clean silhouettes matching a classic top-down monster RPG. Ground-level battle camera, broad empty fighting clearing in bottom half, depth toward upper half. No characters, creatures, text, UI, logos, circles, platforms or floor discs: Pokémon and their single enemy platform are drawn separately by the game. Dark green jungle, giant trees and hanging vines at edges, ominous purple-violet volumetric mist curling through the distant trees and ground edges, dusky plum lighting, ground still readable. Keep central foreground clear and bottom-left foreground unobstructed for our large back-facing Pokémon. No sun beams, blue sky or photorealism. Primary request: a new background for the true Dark Continent. Ancient overgrown stone ruins framing the clearing, mossy broken columns at far left/right, cracked earth and sparse grass, heavy layered violet mist, mysterious threatening atmosphere. The scene must read as a vast dark jungle beyond the familiar island. Balanced game composition: the enemy occupies the right half above the midpoint, our Pokémon the lower-left.",
+    "Use case: stylized-concept. Asset type: production pixel-art battle background for RiftMon, a 2D monster RPG. Landscape 1536x1024. Polished hand-crafted 16-bit pixel art, clearly visible square pixel clusters, restrained detail and clean silhouettes matching a classic top-down monster RPG. Ground-level battle camera, broad empty fighting clearing in bottom half, depth toward upper half. No characters, creatures, text, UI, logos, circles, platforms or floor discs: Pokémon and their single enemy platform are drawn separately by the game. Dark green jungle, giant trees and hanging vines at edges, ominous purple-violet volumetric mist curling through the distant trees and ground edges, dusky plum lighting, ground still readable. Keep central foreground clear and bottom-left foreground unobstructed for our large back-facing Pokémon. No sun beams, blue sky or photorealism. Primary request: a separate background for the FINAL PYRAMID RIFT raid. In the upper middle stands a massive weathered stepped jungle pyramid built of pale gray-beige square blocks, a straight narrow stair ascending its front, a dark rectangular shrine entrance at the summit, vines draping the blocks. A huge vertical violet dimensional rift opens in front of the shrine; purple mist streams down the stairs, subtle lavender light spills onto the stone plaza. Broken column remnants at edges. Lower half remains an open flat ancient paved battle plaza, with clear space at right-center for a huge boss and bottom-left for our Pokémon. Pyramid is visible and imposing but does not cover the battle floor."
+  ],
+  "portraitPrompt": "Use case: style-transfer / game background composition. Edit target: the attached generated landscape battle background. Recompose it into a finished PORTRAIT 1024x1536 battle background for a phone. Preserve the same pixel-art style, square pixel clusters, purple mist, stone colors and jungle palette, architecture and atmosphere. This is a new portrait composition, not a crop of the landscape. Keep the full main distant scenery in the UPPER 45% and a large empty readable battle ground from 45% to the bottom. Far-side monster is drawn at right around 60% of image height; our back-facing monster at bottom-left. Leave these positions unobstructed. For the temple reference, keep the whole stepped pyramid with its straight front stairs, summit shrine and violet rift visible in the upper half, not cut off. Foreground plants may frame only the extreme corners. No characters, Pokémon, text, interface, circular platforms, floor discs, logos, watermarks or sun. Polish the composition for an immersive dark monster RPG.",
+  "assets": [
+    {
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-523c18bb-891e-4717-a22f-4529e5aae61b.png",
+      "target": "src/assets/battle/dark-continent2-wide-v1.webp",
+      "promptIndex": 0
+    },
+    {
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-ab6c7f84-18d2-4031-9fd5-d0b129eb9781.png",
+      "target": "src/assets/battle/dark-continent2-mobile-v1.webp",
+      "reference": "dark-continent2-wide-v1.webp",
+      "prompt": "portraitPrompt then portraitCorrectionPrompt",
+      "originalGeneratedSource": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-a7fc7ca9-0e87-4f70-b776-0e5e922d1f35.png"
+    },
+    {
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-0d7ee404-c81e-424c-9863-fc90ba3eeb5a.png",
+      "target": "src/assets/battle/dark-pyramid-wide-v1.webp",
+      "promptIndex": 1
+    },
+    {
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-f19a30dc-dc7d-453a-8cfd-45d90ab54344.png",
+      "target": "src/assets/battle/dark-pyramid-mobile-v1.webp",
+      "reference": "dark-pyramid-wide-v1.webp",
+      "prompt": "portraitPrompt"
+    }
+  ],
+  "packaging": "Lossless WebP encoding only; original dimensions, colors and pixels retained. Original generated PNGs retained.",
+  "portraitCorrectionPrompt": "Edit the FIRST attached portrait game background only. Keep its portrait 1024x1536 dimensions, all square pixel clusters, the entire empty purple cracked-earth battle clearing from 45% image height to bottom, framing mossy ruined columns and giant jungle trees, colors, dark violet mist and game camera unchanged. Replace ONLY the distant pyramid, its stairs, summit shrine and overhead purple spiral/vortex with a thick distant DARK JUNGLE skyline and misty silhouettes of giant trees and hanging vines, using the SECOND attached landscape reference for that distant jungle scenery. This ordinary jungle background must contain NO pyramid, NO temple, NO monumental stairs, NO dimensional rift, NO portal and NO sky spiral. Add layered violet mist amongst distant trees instead. No characters, Pokemon, text, interface, circular platforms or symbols. It is the ordinary true Dark Continent battle clearing; the pyramid belongs to a separate final boss background. Preserve hand-crafted clean 16-bit pixel art and the lower half of the first image exactly."
+}

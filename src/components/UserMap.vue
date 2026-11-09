@@ -40,7 +40,7 @@
       <raid-panel v-back="closeRaidPreview" v-if="raidPanelVisible && (raidPreview || raidState) && !raidCombatActive && !battle" :preview="raidPreview" :state="raidState" :inventory="raidInventory" :friends="socialState.accepted" :user-id="Number(currentUserId)" :busy="raidBusy" :error="raidError" :notice="raidNotice" :show-tutorial="raidTutorial" @command="raidCommand" @close="closeRaidPreview" @minimize="raidPanelVisible=false"/>
       <button v-if="raidState && !raidPanelVisible && !battle" class="raid-resume" @click="raidPanelVisible=true">{{ raidState.phase==='lobby'?'Reprendre la préparation du raid':'Bilan du raid' }} →</button>
       <aside v-if="raidInvitation" class="raid-invitation" :class="{'is-compact':battle&&!raidInviteExpanded}" role="status" aria-live="polite"><button v-if="battle&&!raidInviteExpanded" class="raid-invite-expand" @click="raidInviteExpanded=true">✧ Invitation raid · {{ raidInvitationSeconds }} s</button><template v-else><b>{{ raidInvitation.senderName }} t’invite à un raid</b><small>{{ raidInvitation.rift.name }} · N. {{ raidInvitation.rift.level }} · {{ raidInvitationSeconds }} s</small><span><button :disabled="raidBusy" @click="raidCommand('invitation',{id:raidInvitation.id,accept:true})">{{ battle?'Réserver ma place':'Rejoindre' }}</button><button :disabled="raidBusy" @click="raidCommand('invitation',{id:raidInvitation.id,accept:false})">Refuser</button><button v-if="battle" @click="raidInviteExpanded=false" aria-label="Réduire l’invitation">−</button></span></template></aside>
-      <raid-battle v-if="raidCombatActive" :key="raidState.id" :frame="raidState.combat" :difficulty="raidState.rift.name" :permanent-deaths="raidState.rift.permanentDeaths!==false" :training="!!raidState.rift.training" :busy="raidBusy" :error="raidError" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" @action="raidCommand('action',$event)" @results="showRaidResults" @sound="_feedbackAudio && _feedbackAudio.play($event)" @impact="raidImpact">
+      <raid-battle v-if="raidCombatActive" :key="raidState.id" :frame="raidState.combat" :difficulty="raidState.rift.name" :map-name="raidState.rift.map" :final-rift="raidState.rift.difficulty?.id==='dc2-final'" :permanent-deaths="raidState.rift.permanentDeaths!==false" :training="!!raidState.rift.training" :busy="raidBusy" :error="raidError" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" @action="raidCommand('action',$event)" @results="showRaidResults" @sound="_feedbackAudio && _feedbackAudio.play($event)" @impact="raidImpact">
        <template #social-toggle><button class="battle-social-button" @click="battleChatOpen=!battleChatOpen" aria-label="Amis et messages"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
        <template #social-chat><combat-social-panel v-back="()=>battleChatOpen=false" v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
       </raid-battle>
@@ -484,6 +484,7 @@ import {resolveMapAsset} from '@/services/mapAssets';
 import {drawDepartment} from '@/services/departmentLayout';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
 import { createMapSceneLoader } from '@/services/mapScene';
+import { TouchAction } from '@/services/touchAction';
 import { moveTouchGesture } from '@/services/touchMovement';
 import JournalIcon from './menu/JournalIcon.vue';
 import BagPanel from './menu/BagPanel.vue';
@@ -896,13 +897,15 @@ export default {
         && (this.isDrift || (this.earlyTutorialLoaded && (!this.earlyTutorial.enabled || this.earlyTutorial.phase==='complete'))));
     },
     worldInteractionBlocked() { return this.patchNoticeOpen || this.otherInteractionBlocked; },
-    otherInteractionBlocked() {
+    otherInteractionBlocked() { return this.nonDialogueInteractionBlocked || this.textImageSequence.length > 0; },
+    nonDialogueInteractionBlocked() {
       return this.slotsOpen || !!this.housingPanel || !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.experienceLab || this.corruptedHeldWorkshop || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.coverageOpen || this.damageCalculatorOpen || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
-        || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
+        || this.shop.visible || this.interactionChoice.visible || this.incomingRequest.visible
         || (this.isDrift && (!this.driftState?.alive || this.driftState.phase !== 'exploration' || this.driftState.storagePaused || this.driftState.recoveryWaiting));
     },
+    doubleTapAllowed() { return this.showMobileControls && !this.patchNoticeOpen && !this.nonDialogueInteractionBlocked && !this.worldChatOpen && !this.mapLoading && !this.mapLoadError && !this.worldContextLost; },
     canUseModuleShortcut(){return !!this.socket?.connected && !this.isDrift && !this.superTournament.active && !this.movementBlocked && !this.moduleShortcutBusy && !this.medicineBusy && !this.fishing;},
     moduleShortcutLabel(){const names={experience_module:'Module d’expérience',fly_module:'Module Vol',professional_trainer_card:'Carte du Dresseur Professionnel',super_tournament_pass:'PASS Super Tournoi',void_teleporter:'Téléporteur chargé'};return `Y · ${names[this.moduleShortcut]||'Module'}`;},
     canUseBagConsumables() {
@@ -936,7 +939,7 @@ export default {
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldNightActive(active) { if (!active) this._worldNight?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); } },
-    map() { this.experienceLab=null; this.closeWorldChat(); this.clearWorldSpeech(); this._worldRenderBudget?.reset(performance.now());this._worldMovement?.clear(); this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  },
+    map() { this._touchAction?.reset(); this.experienceLab=null; this.closeWorldChat(); this.clearWorldSpeech(); this._worldRenderBudget?.reset(performance.now());this._worldMovement?.clear(); this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  },
     dirtFootprintsActive(active) { if (!active) this._dirtFootprints?.suspend(); },
     snowFootprintsActive(active) { if (!active) this._snowFootprints?.suspend(); },
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
@@ -1709,6 +1712,10 @@ export default {
       this.syncPlayerIdleState();
     },
     startMobileGesture(event, surface) {
+      this._touchAction ||= new TouchAction();
+      const bare = surface === 'map' && !event.target.closest?.('button,input,select,textarea,a,[contenteditable]');
+      this._touchAction.start(event, this.map, bare && this.doubleTapAllowed);
+
       if (!this.showMobileControls || this.movementSuspended || this.mapLoadError || this._touchGesture || event.isPrimary === false
         || (surface === 'map' && !['touch', 'pen'].includes(event.pointerType)) || event.button > 0) return;
       event.preventDefault();
@@ -1721,6 +1728,7 @@ export default {
       if (surface === 'pad') this.moveMobileGesture(event);
     },
     moveMobileGesture(event) {
+      this._touchAction?.move(event);
       const gesture = this._touchGesture;
       if (!gesture || gesture.id !== event.pointerId) return;
       if (this.movementSuspended || this.mapLoadError) { this.releaseAllMovementKeys(); return; }
@@ -1744,14 +1752,16 @@ export default {
       if (direction && !this.movementBlocked && !this.keysPressed[direction]) this.setMobileDirection(direction);
     },
     endMobileGesture(event) {
+      const action = this._touchAction?.end(event, this.map, this.doubleTapAllowed);
       if (this._touchGesture?.id === event.pointerId) this.releaseAllMovementKeys();
+      if (action) this.triggerMobileActionA();
     },
     tapMobileDirection(direction, event) {
       // Keyboard/assistive activation of the existing buttons still takes one step.
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { releaseMirrorEffects(); this._mirrorAudio?.stop(); this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  } },
+    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { this._touchAction?.reset(); releaseMirrorEffects(); this._mirrorAudio?.stop(); this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       if (this.patchNoticeOpen) return;
@@ -3900,6 +3910,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    this._touchAction?.reset();
     this.clearTeleporterCharge();
     this.closeWorldChat();this.clearWorldSpeech();
     this.cancelTeamDrag();

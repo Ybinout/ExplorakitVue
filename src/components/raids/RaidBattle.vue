@@ -1,7 +1,7 @@
 <template>
- <section ref="dialog" tabindex="-1" class="raid-battle" :class="{'raid-reduced':reduced}" role="dialog" aria-modal="true" aria-label="Raid de corruption" @keydown.stop="onKey" @keyup.stop data-raid-battle>
+ <section ref="dialog" tabindex="-1" class="raid-battle" :class="{'raid-reduced':reduced}" :style="{'--raid-bg':'url('+backgrounds.wide+')','--raid-mobile-bg':'url('+backgrounds.mobile+')'}" role="dialog" aria-modal="true" aria-label="Raid de corruption" @keydown.stop="onKey" @keyup.stop data-raid-battle>
   <div ref="stage" class="raid-stage" :class="[phaseEffect,{'is-enraged':display?.boss.rage?.value>=75,'is-entering':loading,'is-critical':effect?.kind==='-crit'}]">
-   <raid-mist :reduced="reduced"/><raid-field-effects :frame="display||frame" :reduced="reduced"/><battle-rain v-if="weather==='rain'" environment="arena" :animations-enabled="!reduced"/><battle-snow v-if="['hail','snow'].includes(weather)" environment="arena" :animations-enabled="!reduced"/><battle-sandstorm v-if="weather==='sandstorm'" environment="arena" :animations-enabled="!reduced"/>
+   <raid-mist :map-name="mapName" :reduced="reduced"/><raid-field-effects :frame="display||frame" :reduced="reduced"/><battle-rain v-if="weather==='rain'" environment="arena" :animations-enabled="!reduced"/><battle-snow v-if="['hail','snow'].includes(weather)" environment="arena" :animations-enabled="!reduced"/><battle-sandstorm v-if="weather==='sandstorm'" environment="arena" :animations-enabled="!reduced"/>
    <div class="raid-boss-info"><article class="raid-boss-hud" aria-label="État du boss">
     <small class="raid-boss-context">Tour {{ display.turn }} · {{ difficulty }}</small>
     <span class="raid-boss-title"><b>{{ display.boss.name }}</b><small>N. {{ display.boss.level }} · CORROMPU</small></span>
@@ -70,8 +70,7 @@ import { moveVisual } from '@/services/moveVisuals';
 import { raidMovePlan, EFFECT_DETAILS } from '@/services/raidPresentation';
 import timing from '../../../../data/game/raid_presentation.json';
 import { localizeTypeName, typeBadgeStyle } from '@/services/pokemonTypes';
-import background from '@/assets/battle/dark-jungle-wide-v1.webp';
-import mobileBackground from '@/assets/battle/dark-jungle-mobile-v1.webp';
+import {darkBattleBackgroundKey,darkBattleBackgrounds} from '@/services/darkBattleBackgrounds';
 export default {
   components: {
     RaidMist,RaidStatStages,RaidAllyCard,RaidFieldEffects,RaidShield,BattleStatusPill,HealthBar,
@@ -86,6 +85,8 @@ export default {
     BattleWeatherInfo
   },
   props: {
+    mapName: {type:String,default:''},
+    finalRift: Boolean,
     training: Boolean,
     frame: Object,
     difficulty: String,
@@ -117,6 +118,7 @@ export default {
     clock: Date.now()
   }),
   computed: {
+    backgrounds() {return darkBattleBackgrounds[darkBattleBackgroundKey(this.mapName,this.finalRift)];},
     main() {
       return this.display?.allies[this.shown];
     },
@@ -179,8 +181,6 @@ export default {
     this.$refs.dialog.focus({
       preventScroll: true
     });
-    this.$el.style.setProperty('--raid-bg', `url(${background})`);
-    this.$el.style.setProperty('--raid-mobile-bg', `url(${mobileBackground})`);
     this._clock = setInterval(() => {
       this.clock = Date.now() + (this._serverOffset || 0);
     }, 250);
@@ -464,7 +464,7 @@ export default {
         const frame=this._frames.shift(),eventKey=frame.eventKey||frame.token;
         if(!this.display){
           this.display=JSON.parse(JSON.stringify(frame));this.bossFainted=frame.boss.currentHp<=0;this._eventToken=eventKey;await this.sleep(0);
-          await Promise.race([Promise.all([background,mobileBackground,...[frame.boss,...frame.allies].flatMap(p=>[this.sprite(p),this.sprite(p,true)])].map(src=>new Promise(done=>{const i=new Image();i.onload=i.onerror=done;i.src=src;}))),this.sleep(5000)]);
+          await Promise.race([Promise.all([this.backgrounds.wide,this.backgrounds.mobile,...[frame.boss,...frame.allies].flatMap(p=>[this.sprite(p),this.sprite(p,true)])].map(src=>new Promise(done=>{const i=new Image();i.onload=i.onerror=done;i.src=src;}))),this.sleep(5000)]);
           await this.sleep(this.reduced?0:900);this.loading=false;this.phaseEffect=this.bossFainted?'':'boss-arrives';this.$emit('sound','raidEnter');await this.$nextTick();this.corruptionFx={id:Math.random(),kind:'entry',point:this.point(4)};await this.sleep(this.reduced?0:850);this.phaseEffect='';
         }
         const events=eventKey!==this._eventToken?frame.events||[]:[];this._eventToken=eventKey;

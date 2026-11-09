@@ -52,10 +52,12 @@ export class DarkContinentMist {
   }
   paintNew(c,map,seconds,motion,night){
     const i=Number(map.slice(4))-1,ox=i%6*WIDTH,oy=Math.floor(i/6)*HEIGHT,t=motion?seconds:0,darkness=1-Math.min(1,Math.max(0,night))*.2;
-    c.save();c.globalAlpha=darkness;c.fillStyle=`rgba(55,17,83,${.22+.08*(1-Math.floor(i/6)/7)})`;c.fillRect(0,0,WIDTH,HEIGHT);
-    for(let n=0;n<384;n++){
-      const w=210+n%4*19,h=65+n%3*11,x=wrap(n*193+t*(2.1+n%3*.22),WIDTH*6+360)-180-ox,y=wrap(n*137+Math.sin(t*.09+n)*8,HEIGHT*8+110)-55-oy;
-      if(x+w<0||y+h<0||x>WIDTH||y>HEIGHT)continue;c.globalAlpha=darkness*.9;c.drawImage(this.cloud,x,y,w,h);
+    c.save();c.globalAlpha=darkness;c.fillStyle=`rgba(55,17,83,${.29+.06*(1-Math.floor(i/6)/7)})`;c.fillRect(0,0,WIDTH,HEIGHT);
+    // Four times as many, broader wisps on the new continent only. The bitmap
+    // and 20 Hz clock are shared with the island; only visible wisps are drawn.
+    for(let n=0;n<1536;n++){
+      const w=260+n%4*24,h=92+n%4*12,x=wrap(n*193+t*(2.1+n%3*.22),WIDTH*6+400)-200-ox,y=wrap(n*137+Math.sin(t*.09+n)*8,HEIGHT*8+160)-80-oy;
+      if(x+w<0||y+h<0||x>WIDTH||y>HEIGHT)continue;c.globalAlpha=darkness*.98;c.drawImage(this.cloud,x,y,w,h);
     }c.restore();
   }
   suspend() {if (this.cloud) {this.cloud.width = 0; this.cloud.height = 0;} this.cloud = null;if(this.grade){this.grade.width=0;this.grade.height=0;this.grade=null;}}

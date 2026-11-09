@@ -295,7 +295,7 @@
         <button v-if="houseControl?.cooperative" class="battle-main-btn action-bag house-pass-button" data-house-pass :disabled="houseControl.busy || !houseControl.canPass || !canChooseAction" @click="$emit('house-pass')">Passer la main</button>
         <button v-else-if="!opponent?.storyActor" data-tutorial-bag class="battle-main-btn action-bag" :disabled="tournament || ['whitepeak-club','draft-house'].includes(environment) || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
         <button class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
-        <button class="battle-main-btn action-flee" :disabled="capturePolicy?.darkContinent || environment==='dark-jungle' || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
+        <button class="battle-main-btn action-flee" :disabled="capturePolicy?.darkContinent || ['dark-jungle','dark-continent2'].includes(environment) || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
       </div>
     </div>
     <tutorial-coach v-if="tutorialEnabled" :paused="!tutorialVisible" :blocked="presentationBusy || (['attack','capture'].includes(tutorialPhase) && !canChooseAction)" :target-loading="bagLoading" :step="tutorial.phase" :selector="tutorialSelector" :busy="tutorialBusy" :error="tutorialError" @next="$emit('tutorial-next')" @retry="openBag"/>
@@ -354,6 +354,7 @@ const SNOW_BACKGROUNDS = Object.freeze({
 });
 const GYM_BACKGROUNDS = Object.freeze({
   'draft-house':{wide:require('@/assets/battle/draft-house.png'),mobile:require('@/assets/battle/draft-house-mobile.png'),platform:{'--gym-ground':'#426391','--gym-rim':'#d2ae6a','--gym-edge':'#21374e','--gym-light':'#b5c9dd'}},
+  'dark-continent2':{wide:require('@/assets/battle/dark-continent2-wide-v1.webp'),mobile:require('@/assets/battle/dark-continent2-mobile-v1.webp'),platform:{'--gym-ground':'#79617e','--gym-rim':'#a184a9','--gym-edge':'#49344f','--gym-light':'#c0a0c6'}},
   'dark-jungle':{wide:require('@/assets/battle/dark-jungle-wide-v1.webp'),mobile:require('@/assets/battle/dark-jungle-mobile-v1.webp'),platform:{'--gym-ground':'#677849','--gym-rim':'#92a66a','--gym-edge':'#34492b','--gym-light':'#bbc18a'}},
   'whitepeak-club':{wide:require('@/assets/battle/whitepeak-club.png'),mobile:require('@/assets/battle/whitepeak-club.png'),platform:{'--gym-ground':'#728b9b','--gym-rim':'#b79f6b','--gym-edge':'#394f66','--gym-light':'#d3dfe4'}},
   'super-tournament': {
