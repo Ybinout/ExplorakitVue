@@ -1,5 +1,6 @@
 <template>
-  <div class="housing-backdrop" @keydown.stop="keyDown" @keyup.stop>
+  <berry-garden-panel v-if="['garden','mutator'].includes(payload.kind)" :payload="payload" :busy="busy" :error="error" :command="command" @close="$emit('close')"/>
+  <div v-else class="housing-backdrop" @keydown.stop="keyDown" @keyup.stop>
     <section
       ref="dialog"
       tabindex="-1"
@@ -352,6 +353,7 @@
 <script>
 import { housingModels, housingItems } from '@/services/housingArt';
 import HousingEditor from './HousingEditor.vue';
+import BerryGardenPanel from './BerryGardenPanel.vue';
 import HousingItemIcon from './HousingItemIcon.vue';
 import HousingModelPreview from './HousingModelPreview.vue';
 const categories = {
@@ -364,9 +366,10 @@ const categories = {
   lumieres: 'Lumières',
   equipements: 'Équipements Pokémon',
   plantes: 'Plantes',
+  cultures: 'Culture et mutation',
 };
 export default {
-  components: { HousingEditor, HousingItemIcon, HousingModelPreview },
+  components: { BerryGardenPanel, HousingEditor, HousingItemIcon, HousingModelPreview },
   props: {
     payload: Object,
     room: Object,
@@ -427,7 +430,7 @@ export default {
   },
   mounted() {
     this._before = document.activeElement;
-    this.$refs.dialog.focus({ preventScroll: true });
+    this.$refs.dialog?.focus({ preventScroll: true });
   },
   beforeDestroy() {
     this._before?.isConnected && this._before.focus({ preventScroll: true });

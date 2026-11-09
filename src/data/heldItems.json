@@ -486,5 +486,509 @@
   "pixie_plate": {
     "name": "Plaque Pixie",
     "description": "Objet tenu : augmente de 20 % la puissance des attaques de type Fée. Avec Multitype, Arceus prend ce type. Ce n’est pas une plaque de synthèse du Dark Continent."
+  },
+  "mutant_stat_attack_common_berry": {
+    "name": "Baie Vigueur",
+    "description": "+10 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_attack_rare_berry": {
+    "name": "Baie Vigueur vive",
+    "description": "+18 % de Attaque, −2 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_attack_legendary_berry": {
+    "name": "Baie Vigueur souveraine",
+    "description": "+30 % de Attaque, +1 niveau de Attaque Spéciale, −25 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_specialattack_common_berry": {
+    "name": "Baie Oracle",
+    "description": "+10 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_specialattack_rare_berry": {
+    "name": "Baie Oracle vive",
+    "description": "+18 % de Attaque Spéciale, −2 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_specialattack_legendary_berry": {
+    "name": "Baie Oracle souveraine",
+    "description": "+30 % de Attaque Spéciale, +1 niveau de Défense, −25 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_defense_common_berry": {
+    "name": "Baie Rempart",
+    "description": "+10 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_defense_rare_berry": {
+    "name": "Baie Rempart vive",
+    "description": "+18 % de Défense, −2 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_defense_legendary_berry": {
+    "name": "Baie Rempart souveraine",
+    "description": "+30 % de Défense, +1 niveau de Défense Spéciale, −25 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_specialdefense_common_berry": {
+    "name": "Baie Quiétude",
+    "description": "+10 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_specialdefense_rare_berry": {
+    "name": "Baie Quiétude vive",
+    "description": "+18 % de Défense Spéciale, −2 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_specialdefense_legendary_berry": {
+    "name": "Baie Quiétude souveraine",
+    "description": "+30 % de Défense Spéciale, +1 niveau de Vitesse, −25 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_speed_common_berry": {
+    "name": "Baie Zéphyr",
+    "description": "+10 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_speed_rare_berry": {
+    "name": "Baie Zéphyr vive",
+    "description": "+18 % de Vitesse, −2 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_speed_legendary_berry": {
+    "name": "Baie Zéphyr souveraine",
+    "description": "+30 % de Vitesse, +1 niveau de Attaque, −25 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_maxhp_common_berry": {
+    "name": "Baie Vitalité",
+    "description": "+10 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_maxhp_rare_berry": {
+    "name": "Baie Vitalité vive",
+    "description": "+18 % de PV maximum, −2 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_stat_maxhp_legendary_berry": {
+    "name": "Baie Vitalité souveraine",
+    "description": "+30 % de PV maximum, +1 niveau de Attaque Spéciale, −25 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_normal_common_berry": {
+    "name": "Baie Ivoire",
+    "description": "+10 % de dégâts Normal. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_normal_rare_berry": {
+    "name": "Baie Ivoire vive",
+    "description": "+18 % de dégâts Normal, −2 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_normal_legendary_berry": {
+    "name": "Baie Ivoire souveraine",
+    "description": "+30 % de dégâts Normal, +1 niveau de Défense, −25 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_fire_common_berry": {
+    "name": "Baie Braise",
+    "description": "+10 % de dégâts Feu. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_fire_rare_berry": {
+    "name": "Baie Braise vive",
+    "description": "+18 % de dégâts Feu, −2 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_fire_legendary_berry": {
+    "name": "Baie Braise souveraine",
+    "description": "+30 % de dégâts Feu, +1 niveau de Défense Spéciale, −25 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_water_common_berry": {
+    "name": "Baie Marée",
+    "description": "+10 % de dégâts Eau. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_water_rare_berry": {
+    "name": "Baie Marée vive",
+    "description": "+18 % de dégâts Eau, −2 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_water_legendary_berry": {
+    "name": "Baie Marée souveraine",
+    "description": "+30 % de dégâts Eau, +1 niveau de Vitesse, −25 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_electric_common_berry": {
+    "name": "Baie Étincelle",
+    "description": "+10 % de dégâts Électrik. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_electric_rare_berry": {
+    "name": "Baie Étincelle vive",
+    "description": "+18 % de dégâts Électrik, −2 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_electric_legendary_berry": {
+    "name": "Baie Étincelle souveraine",
+    "description": "+30 % de dégâts Électrik, +1 niveau de Attaque, −25 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_grass_common_berry": {
+    "name": "Baie Sylve",
+    "description": "+10 % de dégâts Plante. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_grass_rare_berry": {
+    "name": "Baie Sylve vive",
+    "description": "+18 % de dégâts Plante, −2 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_grass_legendary_berry": {
+    "name": "Baie Sylve souveraine",
+    "description": "+30 % de dégâts Plante, +1 niveau de Attaque Spéciale, −25 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_ice_common_berry": {
+    "name": "Baie Givre",
+    "description": "+10 % de dégâts Glace. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_ice_rare_berry": {
+    "name": "Baie Givre vive",
+    "description": "+18 % de dégâts Glace, −2 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_ice_legendary_berry": {
+    "name": "Baie Givre souveraine",
+    "description": "+30 % de dégâts Glace, +1 niveau de Défense, −25 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_fighting_common_berry": {
+    "name": "Baie Ferveur",
+    "description": "+10 % de dégâts Combat. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_fighting_rare_berry": {
+    "name": "Baie Ferveur vive",
+    "description": "+18 % de dégâts Combat, −2 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_fighting_legendary_berry": {
+    "name": "Baie Ferveur souveraine",
+    "description": "+30 % de dégâts Combat, +1 niveau de Défense Spéciale, −25 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_poison_common_berry": {
+    "name": "Baie Venin",
+    "description": "+10 % de dégâts Poison. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_poison_rare_berry": {
+    "name": "Baie Venin vive",
+    "description": "+18 % de dégâts Poison, −2 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_poison_legendary_berry": {
+    "name": "Baie Venin souveraine",
+    "description": "+30 % de dégâts Poison, +1 niveau de Vitesse, −25 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_ground_common_berry": {
+    "name": "Baie Argile",
+    "description": "+10 % de dégâts Sol. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_ground_rare_berry": {
+    "name": "Baie Argile vive",
+    "description": "+18 % de dégâts Sol, −2 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_ground_legendary_berry": {
+    "name": "Baie Argile souveraine",
+    "description": "+30 % de dégâts Sol, +1 niveau de Attaque, −25 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_flying_common_berry": {
+    "name": "Baie Alizé",
+    "description": "+10 % de dégâts Vol. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_flying_rare_berry": {
+    "name": "Baie Alizé vive",
+    "description": "+18 % de dégâts Vol, −2 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_flying_legendary_berry": {
+    "name": "Baie Alizé souveraine",
+    "description": "+30 % de dégâts Vol, +1 niveau de Attaque Spéciale, −25 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_psychic_common_berry": {
+    "name": "Baie Songe",
+    "description": "+10 % de dégâts Psy. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_psychic_rare_berry": {
+    "name": "Baie Songe vive",
+    "description": "+18 % de dégâts Psy, −2 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_psychic_legendary_berry": {
+    "name": "Baie Songe souveraine",
+    "description": "+30 % de dégâts Psy, +1 niveau de Défense, −25 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_bug_common_berry": {
+    "name": "Baie Chrysalide",
+    "description": "+10 % de dégâts Insecte. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_bug_rare_berry": {
+    "name": "Baie Chrysalide vive",
+    "description": "+18 % de dégâts Insecte, −2 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_bug_legendary_berry": {
+    "name": "Baie Chrysalide souveraine",
+    "description": "+30 % de dégâts Insecte, +1 niveau de Défense Spéciale, −25 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_rock_common_berry": {
+    "name": "Baie Silex",
+    "description": "+10 % de dégâts Roche. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_rock_rare_berry": {
+    "name": "Baie Silex vive",
+    "description": "+18 % de dégâts Roche, −2 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_rock_legendary_berry": {
+    "name": "Baie Silex souveraine",
+    "description": "+30 % de dégâts Roche, +1 niveau de Vitesse, −25 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_ghost_common_berry": {
+    "name": "Baie Brume",
+    "description": "+10 % de dégâts Spectre. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_ghost_rare_berry": {
+    "name": "Baie Brume vive",
+    "description": "+18 % de dégâts Spectre, −2 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_ghost_legendary_berry": {
+    "name": "Baie Brume souveraine",
+    "description": "+30 % de dégâts Spectre, +1 niveau de Attaque, −25 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_dragon_common_berry": {
+    "name": "Baie Écaille",
+    "description": "+10 % de dégâts Dragon. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_dragon_rare_berry": {
+    "name": "Baie Écaille vive",
+    "description": "+18 % de dégâts Dragon, −2 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_dragon_legendary_berry": {
+    "name": "Baie Écaille souveraine",
+    "description": "+30 % de dégâts Dragon, +1 niveau de Attaque Spéciale, −25 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_dark_common_berry": {
+    "name": "Baie Éclipse",
+    "description": "+10 % de dégâts Ténèbres. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_dark_rare_berry": {
+    "name": "Baie Éclipse vive",
+    "description": "+18 % de dégâts Ténèbres, −2 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_dark_legendary_berry": {
+    "name": "Baie Éclipse souveraine",
+    "description": "+30 % de dégâts Ténèbres, +1 niveau de Défense, −25 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_steel_common_berry": {
+    "name": "Baie Alliage",
+    "description": "+10 % de dégâts Acier. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_steel_rare_berry": {
+    "name": "Baie Alliage vive",
+    "description": "+18 % de dégâts Acier, −2 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_steel_legendary_berry": {
+    "name": "Baie Alliage souveraine",
+    "description": "+30 % de dégâts Acier, +1 niveau de Défense Spéciale, −25 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_fairy_common_berry": {
+    "name": "Baie Crépuscule",
+    "description": "+10 % de dégâts Fée. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_fairy_rare_berry": {
+    "name": "Baie Crépuscule vive",
+    "description": "+18 % de dégâts Fée, −2 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_offense_fairy_legendary_berry": {
+    "name": "Baie Crépuscule souveraine",
+    "description": "+30 % de dégâts Fée, +1 niveau de Vitesse, −25 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_normal_common_berry": {
+    "name": "Baie Égide Ivoire",
+    "description": "−10 % de dégâts Normal reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_normal_rare_berry": {
+    "name": "Baie Égide Ivoire vive",
+    "description": "−18 % de dégâts Normal reçus, −2 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_normal_legendary_berry": {
+    "name": "Baie Égide Ivoire souveraine",
+    "description": "−30 % de dégâts Normal reçus, +1 niveau de Attaque, −25 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_fire_common_berry": {
+    "name": "Baie Égide Braise",
+    "description": "−10 % de dégâts Feu reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_fire_rare_berry": {
+    "name": "Baie Égide Braise vive",
+    "description": "−18 % de dégâts Feu reçus, −2 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_fire_legendary_berry": {
+    "name": "Baie Égide Braise souveraine",
+    "description": "−30 % de dégâts Feu reçus, +1 niveau de Attaque Spéciale, −25 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_water_common_berry": {
+    "name": "Baie Égide Marée",
+    "description": "−10 % de dégâts Eau reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_water_rare_berry": {
+    "name": "Baie Égide Marée vive",
+    "description": "−18 % de dégâts Eau reçus, −2 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_water_legendary_berry": {
+    "name": "Baie Égide Marée souveraine",
+    "description": "−30 % de dégâts Eau reçus, +1 niveau de Défense, −25 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_electric_common_berry": {
+    "name": "Baie Égide Étincelle",
+    "description": "−10 % de dégâts Électrik reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_electric_rare_berry": {
+    "name": "Baie Égide Étincelle vive",
+    "description": "−18 % de dégâts Électrik reçus, −2 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_electric_legendary_berry": {
+    "name": "Baie Égide Étincelle souveraine",
+    "description": "−30 % de dégâts Électrik reçus, +1 niveau de Défense Spéciale, −25 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_grass_common_berry": {
+    "name": "Baie Égide Sylve",
+    "description": "−10 % de dégâts Plante reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_grass_rare_berry": {
+    "name": "Baie Égide Sylve vive",
+    "description": "−18 % de dégâts Plante reçus, −2 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_grass_legendary_berry": {
+    "name": "Baie Égide Sylve souveraine",
+    "description": "−30 % de dégâts Plante reçus, +1 niveau de Vitesse, −25 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_ice_common_berry": {
+    "name": "Baie Égide Givre",
+    "description": "−10 % de dégâts Glace reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_ice_rare_berry": {
+    "name": "Baie Égide Givre vive",
+    "description": "−18 % de dégâts Glace reçus, −2 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_ice_legendary_berry": {
+    "name": "Baie Égide Givre souveraine",
+    "description": "−30 % de dégâts Glace reçus, +1 niveau de Attaque, −25 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_fighting_common_berry": {
+    "name": "Baie Égide Ferveur",
+    "description": "−10 % de dégâts Combat reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_fighting_rare_berry": {
+    "name": "Baie Égide Ferveur vive",
+    "description": "−18 % de dégâts Combat reçus, −2 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_fighting_legendary_berry": {
+    "name": "Baie Égide Ferveur souveraine",
+    "description": "−30 % de dégâts Combat reçus, +1 niveau de Attaque Spéciale, −25 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_poison_common_berry": {
+    "name": "Baie Égide Venin",
+    "description": "−10 % de dégâts Poison reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_poison_rare_berry": {
+    "name": "Baie Égide Venin vive",
+    "description": "−18 % de dégâts Poison reçus, −2 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_poison_legendary_berry": {
+    "name": "Baie Égide Venin souveraine",
+    "description": "−30 % de dégâts Poison reçus, +1 niveau de Défense, −25 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_ground_common_berry": {
+    "name": "Baie Égide Argile",
+    "description": "−10 % de dégâts Sol reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_ground_rare_berry": {
+    "name": "Baie Égide Argile vive",
+    "description": "−18 % de dégâts Sol reçus, −2 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_ground_legendary_berry": {
+    "name": "Baie Égide Argile souveraine",
+    "description": "−30 % de dégâts Sol reçus, +1 niveau de Défense Spéciale, −25 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_flying_common_berry": {
+    "name": "Baie Égide Alizé",
+    "description": "−10 % de dégâts Vol reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_flying_rare_berry": {
+    "name": "Baie Égide Alizé vive",
+    "description": "−18 % de dégâts Vol reçus, −2 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_flying_legendary_berry": {
+    "name": "Baie Égide Alizé souveraine",
+    "description": "−30 % de dégâts Vol reçus, +1 niveau de Vitesse, −25 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_psychic_common_berry": {
+    "name": "Baie Égide Songe",
+    "description": "−10 % de dégâts Psy reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_psychic_rare_berry": {
+    "name": "Baie Égide Songe vive",
+    "description": "−18 % de dégâts Psy reçus, −2 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_psychic_legendary_berry": {
+    "name": "Baie Égide Songe souveraine",
+    "description": "−30 % de dégâts Psy reçus, +1 niveau de Attaque, −25 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_bug_common_berry": {
+    "name": "Baie Égide Chrysalide",
+    "description": "−10 % de dégâts Insecte reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_bug_rare_berry": {
+    "name": "Baie Égide Chrysalide vive",
+    "description": "−18 % de dégâts Insecte reçus, −2 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_bug_legendary_berry": {
+    "name": "Baie Égide Chrysalide souveraine",
+    "description": "−30 % de dégâts Insecte reçus, +1 niveau de Attaque Spéciale, −25 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_rock_common_berry": {
+    "name": "Baie Égide Silex",
+    "description": "−10 % de dégâts Roche reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_rock_rare_berry": {
+    "name": "Baie Égide Silex vive",
+    "description": "−18 % de dégâts Roche reçus, −2 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_rock_legendary_berry": {
+    "name": "Baie Égide Silex souveraine",
+    "description": "−30 % de dégâts Roche reçus, +1 niveau de Défense, −25 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_ghost_common_berry": {
+    "name": "Baie Égide Brume",
+    "description": "−10 % de dégâts Spectre reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_ghost_rare_berry": {
+    "name": "Baie Égide Brume vive",
+    "description": "−18 % de dégâts Spectre reçus, −2 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_ghost_legendary_berry": {
+    "name": "Baie Égide Brume souveraine",
+    "description": "−30 % de dégâts Spectre reçus, +1 niveau de Défense Spéciale, −25 % de Attaque Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_dragon_common_berry": {
+    "name": "Baie Égide Écaille",
+    "description": "−10 % de dégâts Dragon reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_dragon_rare_berry": {
+    "name": "Baie Égide Écaille vive",
+    "description": "−18 % de dégâts Dragon reçus, −2 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_dragon_legendary_berry": {
+    "name": "Baie Égide Écaille souveraine",
+    "description": "−30 % de dégâts Dragon reçus, +1 niveau de Vitesse, −25 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_dark_common_berry": {
+    "name": "Baie Égide Éclipse",
+    "description": "−10 % de dégâts Ténèbres reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_dark_rare_berry": {
+    "name": "Baie Égide Éclipse vive",
+    "description": "−18 % de dégâts Ténèbres reçus, −2 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_dark_legendary_berry": {
+    "name": "Baie Égide Éclipse souveraine",
+    "description": "−30 % de dégâts Ténèbres reçus, +1 niveau de Attaque, −25 % de Défense Spéciale. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_steel_common_berry": {
+    "name": "Baie Égide Alliage",
+    "description": "−10 % de dégâts Acier reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_steel_rare_berry": {
+    "name": "Baie Égide Alliage vive",
+    "description": "−18 % de dégâts Acier reçus, −2 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_steel_legendary_berry": {
+    "name": "Baie Égide Alliage souveraine",
+    "description": "−30 % de dégâts Acier reçus, +1 niveau de Attaque Spéciale, −25 % de Vitesse. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_fairy_common_berry": {
+    "name": "Baie Égide Crépuscule",
+    "description": "−10 % de dégâts Fée reçus. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_fairy_rare_berry": {
+    "name": "Baie Égide Crépuscule vive",
+    "description": "−18 % de dégâts Fée reçus, −2 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+  },
+  "mutant_defense_fairy_legendary_berry": {
+    "name": "Baie Égide Crépuscule souveraine",
+    "description": "−30 % de dégâts Fée reçus, +1 niveau de Défense, −25 % de PV maximum. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
   }
 }

@@ -3,6 +3,8 @@ import metrics from '@/data/housingArt.json';
 import { drawPokemonTerminal } from './pokemonComputer';
 const sources = {
   furniture: require('@/assets/housing/furniture-rotations-v3.png'),
+  cultivation: require('@/assets/berries/cultivation-furniture-v1.png'),
+  growth: require('@/assets/berries/growth-v1.png'),
   architecture: require('@/assets/housing/architecture-v1.png'),
 };
 let pending;
@@ -72,9 +74,9 @@ export function drawFurniture(c, art, p, alpha = 1) {
   if (p.key === 'pokemon_pc' && a.face === 0) drawPokemonTerminal(c, b.x, b.y);
   else
     c.drawImage(
-      art.furniture,
+      a.index>=22?art.cultivation:art.furniture,
       a.face * 64 + Math.floor((64 - a.w) / 2),
-      a.index * 64 + 64 - a.h,
+      (a.index>=22?a.index-22:a.index) * 64 + 64 - a.h,
       a.w,
       a.h,
       b.x,
@@ -82,7 +84,17 @@ export function drawFurniture(c, art, p, alpha = 1) {
       b.w,
       b.h
     );
+  if (a.index>=22 && a.index<24 && art.growth) drawCrops(c,art,p,b);
   c.restore();
+}
+function drawCrops(c,art,p,b){
+  const item=artItem(p.key),count=item.slots,side=(p.rotation||0)%180!==0;
+  for(let i=0;i<count;i++){
+    const crop=p.crops?.find(x=>x.slot===i);if(!crop)continue;
+    const elapsed=Math.max(0,(p.growthNow||Date.now())-crop.plantedAt),stage=elapsed>=1200000?2:elapsed>=300000?1:0;
+    const x=b.x+(count===1?b.w/2:side?b.w/2:b.w*(i+.5)/count), y=b.y+(count===1?b.h*.35:side?b.h*(i+.5)/count:b.h*.27);
+    c.drawImage(art.growth,stage*32,0,32,32,x-20,y-29,40,40);
+  }
 }
 export function drawStair(c, art, p, up = true) {
   if (!art?.architecture || !p) return;
@@ -117,9 +129,9 @@ export function drawItemIcon(c, art, key) {
     c.restore();
   } else
     c.drawImage(
-      art.furniture,
+      a.index>=22?art.cultivation:art.furniture,
       Math.floor((64 - a.w) / 2),
-      a.index * 64 + 64 - a.h,
+      (a.index>=22?a.index-22:a.index) * 64 + 64 - a.h,
       a.w,
       a.h,
       (64 - a.w * scale) / 2,
@@ -128,12 +140,13 @@ export function drawItemIcon(c, art, key) {
       a.h * scale
     );
 }
-export function housingRenderPlan(floor) {
+export function housingRenderPlan(floor,crops=[],growthNow=Date.now()) {
   const ground = [],
     objects = [];
   for (const p of floor?.placements || [])
     (artItem(p.key)?.solid ? objects : ground).push({
       ...p,
+      crops: crops.filter(c=>c.furnitureId===p.id),growthNow,
       backWallLift:
         artItem(p.key)?.backWall && p.y === housingModel(floor.model).y + 1
           ? 16

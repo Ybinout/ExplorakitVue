@@ -25,6 +25,7 @@ export function trainingGroup(item) {
 }
 export function bagPocket(item) {
   if(['experience_module','fly_module','professional_trainer_card','super_tournament_pass'].includes(item.key)||item.key==='void_teleporter'&&item.usable)return 'modules';
+  if(item.berryKind)return 'berries';
   if(item.category==='corruption')return 'corruption';
   if(item.category==='treasure')return 'treasures';
   if(item.category==='machine')return 'machines';

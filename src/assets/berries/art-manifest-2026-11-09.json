@@ -1,0 +1,41 @@
+{
+  "mode": "built-in image_gen",
+  "prompts": [
+    {
+      "kind": "cultivation furniture and growth stages",
+      "prompt": "Use case: stylized-concept. Asset type: production transparent pixel-art spritesheet for a top-down Pokémon-style 2D housing game. Reference image: existing furniture sheet, match its clean chunky pixels, dark outlines, simple tiny furnishings, slightly overhead three-quarter perspective, top faces clearly visible even in side views. Generate a NEW sheet with exactly 4 columns and 4 rows, each cell same size and isolated by ample transparent padding, no labels/no text/no ground/shadows outside sprite. Columns are front, right-facing side, back, left-facing side. Row 1: a small squat round terracotta cultivation pot filled with bare dark soil, single planting hole, no plant. Row 2: an elongated rectangular dark-wood planter with three clearly separate bare-soil pockets, horizontal front/back, depth visible and vertically elongated when side-facing. Row 3: a squat purple experimental berry mutator machine, three circular glass berry input sockets on its visible upper surface, subtle violet crystal core, compact laboratory equipment, unmistakable new silhouette. Row 4: in the four cells respectively a tiny planted seed, small young two-leaf sprout, mature leafy plant with ONE large purple berry, and a failed shrivelled grey berry. No pot in row 4. Sprites must be simple actual pixel art, not smooth illustration, no tiny ornamentation. Transparent alpha background. All content contained fully within its cell. Reference is style only, do not copy existing furniture.",
+      "source": "exec-2c230ad2-9854-4c82-a9bc-e95c91a7bcc8.png",
+      "outputs": [
+        "cultivation-furniture-v1.png",
+        "growth-v1.png"
+      ]
+    },
+    {
+      "kind": "common mutation berries",
+      "prompt": "Use case: stylized-concept. Asset type: transparent spritesheet for tiny Pokémon-style berry inventory icons. Create EXACTLY 42 DIFFERENT invented berry sprites arranged in a strict regular SIX COLUMNS by SEVEN ROWS grid, each isolated centered in its equal cell with generous transparent gap. Crisp simple 24x24-pixel-like game pixel art with dark outlines, 3-color shading, small leaves, recognizable differing silhouettes, saturated fruit colors, NOT realistic/not smooth/not text/not UI/not labels. Read row-major: first six berries represent attack crimson spiky, special attack violet teardrop, defense ochre armoured, special defense pale blue round, speed green winged, vitality pink heart. Next 18 berries represent types in this exact order: Normal cream, Fire orange, Water blue, Electric yellow, Grass green, Ice cyan; Fighting red, Poison purple, Ground brown, Flying sky blue, Psychic magenta, Bug lime; Rock stone grey, Ghost indigo, Dragon turquoise, Dark black violet, Steel silver, Fairy pink. Final 18 berries are distinct defensive-themed fruits in SAME type/color order, use firmer round/cluster silhouettes. Every icon a unique fruit, no backgrounds, no circles/frames, no typography. All 42 fully contained in separate cells; true transparent alpha background. These are common mutation berries, modest magical appearance.",
+      "source": "exec-c9075a15-6fde-49b2-a57d-63eca4ecda9d.png",
+      "outputs": [
+        "mutations-common-v1.png"
+      ]
+    },
+    {
+      "kind": "rare mutation berries",
+      "prompt": "Use case: precise-object-edit. Edit target: attached common berry spritesheet. Preserve EXACTLY the same 42 fruits, their identities, silhouettes and exact SIX COLUMN by SEVEN ROW grid/cell placements. Turn each fruit into its RARE mutation variant: add a few violet corruption veins or pale glowing dots to its skin, a slightly brighter edge, and subtle secondary fruit lobe or leaf variation. Keep original main type colors clearly recognizable; do not turn all fruit purple. Each icon still simple crisp chunky Pokémon-style pixel art at 24x24-like detail, never smooth illustration. True transparent background, no frames/text/labels, no glow extending into neighboring cells. All 42 icons, no omissions. This should look like the middle rarity, more magical than common but still readable as a small inventory sprite.",
+      "source": "exec-4d9c0e9a-4e5f-43cc-b1cf-356385420e7b.png",
+      "outputs": [
+        "mutations-rare-v1.png"
+      ]
+    },
+    {
+      "kind": "legendary mutation berries",
+      "prompt": "Use case: precise-object-edit. Edit target: attached common berry spritesheet. Keep EXACTLY 42 fruits and their same identity, dominant type colors and strict SIX COLUMNS by SEVEN ROWS grid with equal cells. Create LEGENDARY variants of each: more elaborate fruit silhouette with a small crystalline crest/extra lobe, subtle golden stem, bright pale inner spots and violet corruption accents, clear 3-tone pixel shading. Must stay recognizable as the original fruit in corresponding cell, not jewels alone. Each icon unique, spectacular yet small readable Pokémon-style inventory pixel art, dark outline, no smooth rendering. True transparent alpha background; ample gap between all icons; no typography/no labels/no frames/no background/no effects outside cells. All 42 icons fully contained. Preserve grid positions.",
+      "source": "exec-5033f3a6-1edc-4e53-a42b-3f42370dd9f3.png",
+      "outputs": [
+        "mutations-legendary-v1.png"
+      ]
+    }
+  ],
+  "classicSprites": "The 39 classic sprites retain their canonical appearance using PokeAPI/sprites, provenance and SHA256 in classic-sources.json. Corrupted ingredients use the same individual sprite with a purple CSS filter.",
+  "packing": "scripts/packBerryArt.py crops grid cells and resizes with nearest neighbour only; no repainting. Each sprite keeps generated alpha.",
+  "root": "vue-explorakit/src/assets/berries/"
+}

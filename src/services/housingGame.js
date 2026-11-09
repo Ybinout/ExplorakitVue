@@ -14,6 +14,7 @@ export default {
     housingInvitation: null,
     housingNotice: '',
     housingArt: null,
+    housingGrowthClock: 0,
   }),
   computed: {
     housingActive() {
@@ -23,13 +24,20 @@ export default {
       return this.housingState?.floors[this.housingState.floor];
     },
     housingPlan() {
-      return housingRenderPlan(this.housingFloor);
+      this.housingGrowthClock;
+      return housingRenderPlan(this.housingFloor,this.housingState?.crops,Date.now()+(this._housingClockOffset||0));
     },
   },
   beforeDestroy() {
     this._unbindHousing?.();
+    clearTimeout(this._housingGrowthTimer);
   },
   methods: {
+    scheduleHousingGrowth(){
+      clearTimeout(this._housingGrowthTimer);
+      const now=Date.now()+(this._housingClockOffset||0),dates=(this.housingState?.crops||[]).flatMap(c=>[c.plantedAt+300000,c.plantedAt+1200000]).filter(d=>d>now);
+      if(dates.length)this._housingGrowthTimer=setTimeout(()=>{this.housingGrowthClock++;this.drawPlayers();this.scheduleHousingGrowth();},Math.min(...dates)-now+30);
+    },
     housingItemBottom(p) {
       return furnitureBounds(p).bottom;
     },
@@ -42,6 +50,8 @@ export default {
       };
       on('housing:state', (state) => {
         this.housingState = state;
+        this._housingClockOffset=(state?.serverNow||Date.now())-Date.now();
+        this.scheduleHousingGrowth();
         this.housingError = '';
         if (!state) this.housingPanel = null;
         else {
@@ -99,8 +109,10 @@ export default {
                 : resolve(r)
             )
         );
-        if (!r?.success)
-          throw Error(r?.message || 'Cette action n’est pas disponible.');
+        if (!r?.success) {
+          const error=Error(r?.message || 'Cette action n’est pas disponible.');
+          error.confirmationRejected=true;error.retryable=!!r?.retryable;throw error;
+        }
         if (r.money !== undefined)
           this.$set(this.progressionState, 'money', r.money);
         if (r.kind === 'sold') {
@@ -122,6 +134,7 @@ export default {
       } catch (e) {
         this.housingError = e.message;
         if (!this.housingPanel) this.showInteractionNotice(e.message, 6500);
+        if(['garden','plant','harvest','mutate'].includes(name))return{success:false,retryable:!e.confirmationRejected||e.retryable};
       } finally {
         this.housingBusy = false;
       }

@@ -1,0 +1,197 @@
+[
+  {
+    "key": "oran_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/oran-berry.png",
+    "sha256": "4d4d31e7c29a4540d5f438b87bb1762bf3cd7b0920e523fc9020f6c0bace1c1a"
+  },
+  {
+    "key": "sitrus_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sitrus-berry.png",
+    "sha256": "934d9dcfdc189fd01987f1e0356e079cf32d4d3aafac89ca3e77158c8f44c10e"
+  },
+  {
+    "key": "lum_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lum-berry.png",
+    "sha256": "eab0124365d18b7439b553edd5cf02e17297b72495a79e37114ee5398d0e3996"
+  },
+  {
+    "key": "cheri_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/cheri-berry.png",
+    "sha256": "949f8cb36532f09ff97ca41f97db3104abc16c209496181fea38839d79c5ce00"
+  },
+  {
+    "key": "chesto_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chesto-berry.png",
+    "sha256": "6620e6507a3bc28c08f5f264e5b461cad0db9dce647d3cab0a4f5421e36abafd"
+  },
+  {
+    "key": "pecha_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pecha-berry.png",
+    "sha256": "9efb16dc703ef654ce0532329613d51150dcc3c9a77f0101f33d54b15a00028a"
+  },
+  {
+    "key": "rawst_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rawst-berry.png",
+    "sha256": "3c3976d2121647f4c1b19673de8424baa80f59f5d4ea91e447c14fef5da64066"
+  },
+  {
+    "key": "aspear_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/aspear-berry.png",
+    "sha256": "162489a00a8cac2545b74fad77dc79632198d3e09e153e688130b4238a563ae7"
+  },
+  {
+    "key": "persim_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/persim-berry.png",
+    "sha256": "e09597ca2770a12a55683e4e631361093491883a111363641a9b46f4b8929b2d"
+  },
+  {
+    "key": "leppa_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leppa-berry.png",
+    "sha256": "69db79560fd815477f5a6901ee08c4ebaed368bb420e07547dfea0a79b5bd2f4"
+  },
+  {
+    "key": "liechi_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/liechi-berry.png",
+    "sha256": "e6278b9b9db67497cf5833c964b960453cb81a34b914b8ad27cf545fec550fd1"
+  },
+  {
+    "key": "ganlon_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ganlon-berry.png",
+    "sha256": "4f51fee468b67db200a44a3920b27cd2c9215a5fd7507f6ff1f0f7652822ad54"
+  },
+  {
+    "key": "salac_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/salac-berry.png",
+    "sha256": "822648e085456e3df9de8d342bb6969790ee7981492c4ffd0cbf68100f483a01"
+  },
+  {
+    "key": "petaya_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/petaya-berry.png",
+    "sha256": "f955acdb9b3bdc652400d17d469c9e7fa5a766eabf8b680daef2e6b751e439e8"
+  },
+  {
+    "key": "apicot_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/apicot-berry.png",
+    "sha256": "e76593848f83824a10e36efb40899d3b38f2c44a3e4db0ed1ca54a4edc09170a"
+  },
+  {
+    "key": "occa_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/occa-berry.png",
+    "sha256": "b4c94b94159227fed46ccad3c063f3a9b418f7ef9eab635ccd17197c1ca814fb"
+  },
+  {
+    "key": "passho_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/passho-berry.png",
+    "sha256": "48786c103dcde11eee3b938c360259c687ab44b0d4ea3aae6fcc8099f1b05671"
+  },
+  {
+    "key": "wacan_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wacan-berry.png",
+    "sha256": "f31ca263b9ccc47d2a743878fc271fadedf36925b7e6bd26d54c29f42f821b19"
+  },
+  {
+    "key": "rindo_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rindo-berry.png",
+    "sha256": "5b00f01a17471cc2f3587b476c9f76900d8049cf2542bcc9efb46431d6255d03"
+  },
+  {
+    "key": "yache_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/yache-berry.png",
+    "sha256": "77e7e38bddcd0ad8368da55b9fc8ee40b3949e7ab53130cbd4b455ba5a272d62"
+  },
+  {
+    "key": "chople_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chople-berry.png",
+    "sha256": "03e499f067f5679b0cec8eb015b90bfa7ae26e0507d1815fdedf48e41190a56e"
+  },
+  {
+    "key": "kebia_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kebia-berry.png",
+    "sha256": "bca389c73eaa1475e9d3733b409e960763f56963e1c066b5498ab32e15c83243"
+  },
+  {
+    "key": "shuca_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shuca-berry.png",
+    "sha256": "6932f15326f90ea473005d18a7c13b4d50be5247455cf4daecdb7399c00499b8"
+  },
+  {
+    "key": "coba_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/coba-berry.png",
+    "sha256": "db26fb90b9b56dfa8f74f09571f0b591ba55954494de6aba6543afbe79983b08"
+  },
+  {
+    "key": "payapa_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/payapa-berry.png",
+    "sha256": "95bced7a647a219b7e6ba313a6fb83b0d911dd6428beca1b4f6403d3a3e7457b"
+  },
+  {
+    "key": "tanga_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/tanga-berry.png",
+    "sha256": "b3791845d1536fdf02926b447727cfbedadeca89dbcee05af794c1774a801601"
+  },
+  {
+    "key": "charti_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/charti-berry.png",
+    "sha256": "8675038a42a47bd002532214af1fa94ead6573476fef7eab5ef0c65502d0e16f"
+  },
+  {
+    "key": "kasib_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kasib-berry.png",
+    "sha256": "8ebdffc2650b06e7a70a066051d04621e23a3ba1f0026219b3ce6bc67e5ae61c"
+  },
+  {
+    "key": "haban_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/haban-berry.png",
+    "sha256": "06e19bce4e09c45c180538eb85ea1ce9fb05df2d510f2a79c6cf1c3c35d48759"
+  },
+  {
+    "key": "colbur_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/colbur-berry.png",
+    "sha256": "98a92b28058e3059dd139a4a5652bc496c0ad2778ad6a3c5f72491a69a0503e0"
+  },
+  {
+    "key": "babiri_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/babiri-berry.png",
+    "sha256": "4ccd5cc64b20575bafe64ef861725b964b4f621c038169df30b3cac211b37bd5"
+  },
+  {
+    "key": "roseli_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/roseli-berry.png",
+    "sha256": "bc238c15f94a67d8895b1b941c22f43c1f78ec3922719c335db23585d5cf9bc4"
+  },
+  {
+    "key": "chilan_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chilan-berry.png",
+    "sha256": "f84548b41899db4755f6c07259d9d0750452e8879d9f574101197e1aea3667df"
+  },
+  {
+    "key": "pomeg_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pomeg-berry.png",
+    "sha256": "e2dc10911c7e3b498ca26abad6dc8cf8bbd667e41813bd81b72bc24b6824696b"
+  },
+  {
+    "key": "kelpsy_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kelpsy-berry.png",
+    "sha256": "268be43d67d885c936380b7ec286348cf8abd499e4981668eff0ad8fb4501c6f"
+  },
+  {
+    "key": "qualot_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/qualot-berry.png",
+    "sha256": "114deb9da05466efd480c2f6f2779b140148c0845de51abe1a92ab83dc593922"
+  },
+  {
+    "key": "hondew_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/hondew-berry.png",
+    "sha256": "6386b16db2945bed60da6ed8477e6fd8d56aa39b17370f1dc2d27f2265c25b4c"
+  },
+  {
+    "key": "grepa_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/grepa-berry.png",
+    "sha256": "672f53f1c7c375f0c3a6931cd75cbf6eecab1ccc63ac432fd218dc5a0cb288e7"
+  },
+  {
+    "key": "tamato_berry",
+    "url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/tamato-berry.png",
+    "sha256": "c4be796fd85d0a125793b6da625d410eaff37f4e43ee643ec0c4d7916f2d3298"
+  }
+]
