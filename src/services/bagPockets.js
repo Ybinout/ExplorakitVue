@@ -8,6 +8,7 @@ export const BAG_POCKETS = Object.freeze([
   {key:'balls',name:'Balls',en:'Balls',hint:'Pour tes prochaines rencontres.',enHint:'Ready for your next encounter.'},
   {key:'field',name:'Objets',en:'Field items',hint:'Pour explorer plus tranquillement.',enHint:'For a quieter journey.'},
   {key:'berries',name:'Baies',en:'Berries',hint:'À consommer ou à faire tenir.',enHint:'Use them or give them to a Pokémon.'},
+  {key:'corrupted_berries',name:'Baies corrompues',en:'Corrupted berries',hint:'Baies cultivées pour le Mutateur et baies mutées à faire tenir, y compris aux Pokémon corrompus.',enHint:'Grown ingredients for the Mutator and mutated held berries, including for corrupted Pokémon.'},
   {key:'held',name:'Objets tenus',en:'Held items',hint:'À faire tenir depuis le sac ou le menu Pokémon.',enHint:'Give these from the bag or Pokémon menu.'},
   {key:'evolution',name:'Évolution',en:'Evolution',hint:'Une nouvelle forme pour un compagnon compatible.',enHint:'A new form for a compatible companion.'},
   {key:'treasures',name:'Trésors',en:'Treasures',hint:'Des trouvailles à revendre dans les boutiques.',enHint:'Finds to sell at any shop.'},
@@ -25,7 +26,7 @@ export function trainingGroup(item) {
 }
 export function bagPocket(item) {
   if(['experience_module','fly_module','professional_trainer_card','super_tournament_pass'].includes(item.key)||item.key==='void_teleporter'&&item.usable)return 'modules';
-  if(item.berryKind)return 'berries';
+  if(item.berryKind)return 'corrupted_berries';
   if(item.category==='corruption')return 'corruption';
   if(item.category==='treasure')return 'treasures';
   if(item.category==='machine')return 'machines';

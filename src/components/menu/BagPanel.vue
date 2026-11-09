@@ -25,7 +25,7 @@
         </aside>
         <div class="pack-content">
           <nav class="pack-pockets" role="tablist" :aria-label="english?'Bag pockets':'Poches du sac'">
-            <button v-for="p in pockets" :id="`bag-pocket-${p.key}`" :key="p.key" :ref="`pocket-${p.key}`" role="tab" :data-bag-pocket="p.key" :aria-selected="activePocket===p.key" :tabindex="activePocket===p.key?0:-1" aria-controls="bag-pocket-content" @click="choosePocket(p.key)" @keydown="movePocket($event,p.key)">
+            <button v-for="p in pockets" :id="`bag-pocket-${p.key}`" :key="p.key" :ref="`pocket-${p.key}`" role="tab" :data-bag-pocket="p.key" :title="english?p.en:p.name" :aria-selected="activePocket===p.key" :tabindex="activePocket===p.key?0:-1" aria-controls="bag-pocket-content" @click="choosePocket(p.key)" @keydown="movePocket($event,p.key)">
               <bag-item-icon :pocket="p.key"/><span>{{ english?p.en:p.name }}</span><small :aria-label="`${p.count} ${english?'items':'objets'}`">{{ p.count }}</small>
             </button>
           </nav>
@@ -55,7 +55,7 @@
                   <p v-if="item.unique" class="bag-use-hint">{{ english?'Only one discovery per Adventure or expedition.':`Un seul exemplaire à trouver dans ${expedition?'cette expédition':'ton aventure'}.` }}</p>
                   <slot name="actions" :item="item"/>
                   <p v-if="activePocket==='balls'" class="bag-use-hint">{{ english?'Choose a Ball from your bag during a wild battle.':'Choisis une Ball dans le sac pendant un combat sauvage.' }}</p>
-                  <button v-if="activePocket==='held' || activePocket==='berries'" class="bag-equip-link" @click="$emit('team')">{{ english?'Give to a Pokémon':'Faire tenir à un Pokémon' }} <span aria-hidden="true">→</span></button>
+                  <button v-if="activePocket==='held' || activePocket==='berries' || activePocket==='corrupted_berries' && item.category==='held'" class="bag-equip-link" @click="$emit('team')">{{ english?'Give to a Pokémon':'Faire tenir à un Pokémon' }} <span aria-hidden="true">→</span></button>
                   <p v-if="item.key==='exp_share'" class="bag-use-hint" data-exp-share-active>{{ english ? `Equip on the first Pokémon in your team · fighter 100% · reserves ${expedition ? 'at least 50%' : '40%'} · no stacking.` : `À faire tenir au premier Pokémon de ton équipe · combattant 100 % · réserves ${expedition ? 'au moins 50 %' : '40 %'} · sans cumul.` }}</p>
                   <p v-else-if="activePocket==='key'" class="bag-use-hint">{{ english?'Keep this item: it is part of your story.':'Cet objet est conservé pour ton histoire.' }}</p>
                 </div>
@@ -116,6 +116,7 @@ export default {
 };
 </script>
 <style scoped>
+.pack-pockets [data-bag-pocket="corrupted_berries"]>span{white-space:normal;line-height:1.15}
 .bag-item-heading{position:relative}.bag-favorite{flex:none;align-self:center;display:grid;place-items:center;width:34px;min-height:44px;padding:6px;border:0;background:transparent;color:var(--journal-muted);cursor:pointer}.bag-favorite svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6}.bag-favorite.is-favorite{color:#bd8c24}.bag-favorite.is-favorite svg{fill:#e6c66b}.bag-favorite:focus-visible{outline:2px solid var(--journal-accent);outline-offset:-3px;border-radius:6px}.bag-favorite:disabled{opacity:.5}
 
 .bag-corrupted-move{display:flex;flex-wrap:wrap;gap:10px 16px;margin:12px 0}.bag-corrupted-move dt{font-size:10px;font-weight:700;color:var(--journal-heading)}.bag-corrupted-move dd{margin:3px 0;font-size:12px;font-weight:700}
