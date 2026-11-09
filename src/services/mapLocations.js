@@ -57,6 +57,7 @@ const generatedCities = {
 
 export function getMapLocationLabel(mapName, language = 'fr') {
   const locale = language === 'en' ? 'en' : 'fr';
+  if (/^DC2_(?:0[1-9]|[1-3][0-9]|4[0-8])$/.test(mapName || '')) return 'Dark Continent · '+(mapName==='DC2_44'?(locale==='fr'?'Plage des confins':'Far shore'):mapName==='DC2_04'?(locale==='fr'?'Pyramide oubliée':'Forgotten pyramid'):(locale==='fr'?'Terres oubliées ':'Forgotten lands ')+Number(mapName.slice(4)));
   if (/^safari(?:[1-9]|1[0-5])$/.test(mapName || '')) return (locale==='fr'?'Île Safari':'Safari Island') + (mapName==='safari8'?(locale==='fr'?' · Bourg':' · Town'):' · '+mapName.slice(6));
   if(mapName==='safari_shop')return locale==='fr'?'Marché Safari':'Safari Market';
   if(mapName==='safari_lab')return locale==='fr'?'Laboratoire du Safari':'Safari Laboratory';

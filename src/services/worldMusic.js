@@ -4,7 +4,7 @@ export function worldMusicTrack(map) {
   if(/^housing_(?:nid|atelier|traversee|salon|loft|pavillon)$/.test(map))return 'village';
   if(map==='safari8'||map==='safari_shop'||map==='safari_lab')return 'village';
   if(/^safari(?:[1-9]|1[0-5])$/.test(map))return 'route';
-  if (/^jungle[1-9]$/.test(map)) return 'dark';
+  if (/^(?:jungle[1-9]|DC2_(?:0[1-9]|[1-3][0-9]|4[0-8]))$/.test(map)) return 'dark';
   if (map==='ville5_maison2')return 'casino';
   if (map==='ville5_maison1')return 'battle-house';
   if (map === 'draft_house' || map?.startsWith('super_tournament_')) return 'sevenp-room';

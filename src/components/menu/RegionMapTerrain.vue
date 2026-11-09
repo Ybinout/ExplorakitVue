@@ -13,6 +13,7 @@
    <pattern id="atlas-canopy" width="19" height="19" patternUnits="userSpaceOnUse"><path d="M2 10C0 5 4 3 7 5C10 1 16 5 14 9C19 12 13 17 9 14C4 17 1 14 2 10Z" fill="#497d55" fill-opacity=".2"/><path d="M4 8q3-3 6-1" fill="none" stroke="#d3dfab" stroke-opacity=".26" stroke-width="1"/></pattern>
    <clipPath id="atlas-mainland-clip"><path :d="coasts.mainland"/></clipPath>
    <clipPath id="atlas-dark-clip"><path :d="coasts.dark"/></clipPath>
+   <clipPath id="atlas-dc2-clip"><path :d="dc2Art.coast"/></clipPath>
    <clipPath id="atlas-safari-clip"><path :d="coasts.safari"/></clipPath>
   </defs>
   <rect :width="width" :height="height" fill="url(#atlas-ocean)"/>
@@ -52,7 +53,7 @@
     <path d="M604 205C613 197 630 207 629 215C638 223 622 236 613 230C599 232 596 213 604 205ZM679 282C691 272 704 281 700 291C715 303 699 318 688 314C674 318 668 291 679 282Z" fill="url(#atlas-lake)" stroke="#bfc99f" stroke-width="2"/>
     <path d="M694 185L711 155L735 188L723 184L714 174L707 188Z" fill="#486e5c" opacity=".65"/>
    </g>
-   <text x="646" y="399" class="island-label">DARK CONTINENT</text>
+   <text x="646" y="399" class="island-label">{{ darkLabel || 'Dark Continent' }}</text>
   </g>
   <g v-if="safari" data-safari-scenery :transform="`translate(${safari.x},${safari.y})`">
    <path :d="coasts.safari" fill="#67b4b2" stroke="#67b4b2" stroke-width="30" opacity=".45"/>
@@ -66,6 +67,16 @@
    </g>
    <text x="147" y="163" class="island-label">{{ en?'SAFARI ISLAND':'ÎLE SAFARI' }}</text>
   </g>
+  <g v-if="dark2" data-true-dark-continent :transform="`translate(${dark2.x},${dark2.y})`">
+   <g :transform="`scale(${dark2.width/168},${dark2.height/160})`">
+    <path :d="dc2Art.coast" fill="#579a9c" stroke="#579a9c" stroke-width="7" stroke-linejoin="round" opacity=".5"/>
+    <path :d="dc2Art.coast" fill="url(#atlas-dark-land)" stroke="#cfbd9d" stroke-width="1.6" stroke-linejoin="round"/>
+    <g clip-path="url(#atlas-dc2-clip)"><path :d="dc2Art.coast" fill="url(#atlas-canopy)"/><path :d="dc2Art.water" fill="url(#atlas-lake)" stroke="#adc5a5" stroke-width=".55"/>
+     <path d="m93 18 5-9 5 9-5 3Z" fill="#b6ad91" stroke="#594d76" stroke-width=".7"/><path d="m98 9 0 12 5-3Z" fill="#7b7790"/>
+    </g>
+   </g>
+   <text :x="dark2.width/2" :y="dark2.height+25" class="island-label true-continent-label">DARK CONTINENT</text>
+  </g>
   <g data-tournament-island>
    <path :d="coasts.tournament" fill="#8dc4b8" stroke="#8dc4b8" stroke-width="15"/>
    <path :d="coasts.tournament" fill="#95b17c" stroke="#e2d6ac" stroke-width="3"/>
@@ -74,12 +85,14 @@
  </g>
 </template>
 <script>
+import dc2Art from '@/data/dark2Atlas';
 import {atlasCoasts,mainlandForests,mainlandRidges,seaCurrents} from '@/services/regionMapTerrain';
 export default{
- name:'RegionMapTerrain',props:{width:Number,height:Number,darkOffset:{type:Number,default:0},safari:Object,en:Boolean},
- data:()=>({coasts:atlasCoasts,forests:mainlandForests,ridges:mainlandRidges,currents:seaCurrents})
+ name:'RegionMapTerrain',props:{width:Number,height:Number,darkOffset:{type:Number,default:0},safari:Object,dark2:Object,darkLabel:String,en:Boolean},
+ data:()=>({dc2Art,coasts:atlasCoasts,forests:mainlandForests,ridges:mainlandRidges,currents:seaCurrents})
 };
 </script>
 <style scoped>
 .island-label{font:600 10px var(--journal-font);text-anchor:middle;letter-spacing:2px;fill:#d8e8da;paint-order:stroke;stroke:#275a70;stroke-width:2px;stroke-linejoin:round}
+.true-continent-label{font-size:14px;letter-spacing:4px}
 </style>

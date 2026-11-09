@@ -1,7 +1,7 @@
 export function battleEnvironment(mapName, colosseum = false, weather = null, encounter = null) {
   if(encounter==='draft-house'||mapName==='draft_house')return 'draft-house';
   if (encounter === 'whitepeak-club') return 'whitepeak-club';
-  if (/^jungle[1-9]$/.test(mapName)) return encounter === 'lake' ? 'lake' : 'dark-jungle';
+  if (/^(?:jungle[1-9]|DC2_(?:0[1-9]|[1-3][0-9]|4[0-8]))$/.test(mapName)) return encounter === 'lake' ? 'lake' : 'dark-jungle';
   if (mapName === 'ville5_maison1') return 'whitepeak-club';
   if (mapName === 'super_tournament_room') return 'super-tournament';
   if (colosseum) return 'colosseum';

@@ -8,7 +8,8 @@ const LIGHT=['82,155,111','117,184,112','54,113,78','160,225,152','143,195,122',
 // Authored tile 2961: icy blades and snow tips only. Snow floor 217,230,233,
 // its speckles, earth, shadows and transparent pixels remain fixed.
 const SNOW=['152,184,200','183,207,215','240,240,240','214,232,237','200,224,232'];
-const palette=id=>new Set(id===2961?SNOW:id===3225?DARK:LIGHT);
+const DARK2=['111,138,83','182,226,160','91,117,74','174,212,153'];
+const palette=id=>new Set(id===2958?DARK2:id===2961?SNOW:id===3225?DARK:LIGHT);
 export function hasRustlingGrass(map){return Object.prototype.hasOwnProperty.call(profiles,map);}
 export function grassCells(map){return profiles[map]||[];}
 export function grassPose(now,event,row){

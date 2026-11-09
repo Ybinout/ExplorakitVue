@@ -18,7 +18,7 @@
           @wheel.prevent="wheelZoom" @pointerdown.prevent="beginPointer" @pointermove="movePointer" @pointerup="endPointer" @pointercancel="endPointer" @lostpointercapture="endPointer" @click.capture="mapClick">
           <div class="map-surface" :style="surfaceStyle">
           <svg class="region-art" :style="artStyle" :viewBox="`0 0 ${atlas.width} ${atlas.height}`" role="group" :aria-label="en ? 'Towns, routes and your position' : 'Villes, routes et ta position'">
-            <region-map-terrain :width="atlas.width" :height="atlas.height" :dark-offset="atlas.darkContinent?.offsetX || 0" :safari="atlas.safari" :en="en"/>
+            <region-map-terrain :width="atlas.width" :height="atlas.height" :dark-offset="atlas.darkContinent?.offsetX || 0" :safari="atlas.safari" :dark2="atlas.darkContinent2" :dark-label="en?atlas.darkContinent?.enLabel:atlas.darkContinent?.label" :en="en"/>
             <g shape-rendering="geometricPrecision" stroke-linejoin="round" stroke-linecap="round">
               <g v-for="edge in edges" :key="edge.id">
                 <path :d="edge.path" fill="none" :stroke="edge.cave ? '#7e8765' : '#d1aa65'" stroke-width="8"/>
@@ -103,13 +103,13 @@ export default {
     legendaryNote(){const rare=this.habitat.legendary;if(!rare)return '';const odds=Number(rare.oneIn).toLocaleString(this.en?'en-US':'fr-FR');return this.en?`1 in ${odds} chance of a legendary, then a draw among ${rare.poolSize} species.`:`1 chance sur ${odds} pour un légendaire, puis tirage parmi ${rare.poolSize} espèces.`;},
     locations(){return this.habitat.kind==='evolution' ? (this.habitat.ancestors || []).flatMap(a=>a.locations.map(l=>({...l,speciesId:a.speciesId}))) : this.habitat.locations || [];},
     currentNode(){return this.atlas?.nodes.find(n=>n.id===(this.currentRegion || this.atlas.aliases[this.currentMap]));},
-    currentLabel(){return this.isDark(this.currentNode?.id)?'Dark Continent':this.currentNode ? this.label(this.currentNode.id) : this.label(this.currentMap);},
+    currentLabel(){return this.currentNode ? this.label(this.currentNode.id) : this.label(this.currentMap);},
     houseNode(){if(this.pokemon||!this.flight?.house)return null;const n=this.atlas?.nodes.find(n=>n.id===this.flight.house.nodeId);return n?{id:'owned-house',kind:'house',x:n.x+17,y:n.y+12}:null;},
     displayNodes(){return [...(this.atlas?.nodes||[]).filter(n=>!this.isDark(n.id)),...(this.houseNode?[this.houseNode]:[])];},
-    selectedNode(){return this.displayNodes.find(n=>n.id===this.selected);},
+    selectedNode(){return [...(this.atlas?.nodes||[]),...(this.houseNode?[this.houseNode]:[])].find(n=>n.id===this.selected);},
     selectedHabitats(){return this.locations.filter(l=>l.map===this.selected);},
     habitatNodes(){const ids=new Set(this.locations.map(l=>l.map));return (this.atlas?.nodes || []).filter(n=>ids.has(n.id));},
-    selectableNodes(){return this.pokemon ? this.habitatNodes : this.displayNodes;},
+    selectableNodes(){return this.pokemon ? this.habitatNodes : [...this.displayNodes,...(this.isDark(this.currentNode?.id)?[this.currentNode]:[])];},
     edges(){return (this.atlas?.edges || []).filter(([a,b])=>!this.isDark(a)&&!this.isDark(b)&&!this.isSafari(a)&&!this.isSafari(b)).map(([a,b])=>{const from=this.atlas.nodes.find(n=>n.id===a),to=this.atlas.nodes.find(n=>n.id===b);return {id:a+':'+b,path:`M${from.x} ${from.y}H${to.x}V${to.y}`,cave:from.kind==='cave'||to.kind==='cave'};});}
   },
   mounted(){this.previousFocus=document.activeElement;this.$refs.close.focus({preventScroll:true});this.load();},
@@ -119,8 +119,8 @@ export default {
     selectFriendMember(member){this.selected=member.nodeId;this.centerOn(this.atlas.nodes.find(n=>n.id===member.nodeId));},
 
     isSafari(id){return /^safari(?:[1-9]|1[0-5])$/.test(id||'');},
-    isDark(id){return /^jungle[1-9]$/.test(id||'');},
-    label(id){if(id==='owned-house')return this.en?'My house':'Ma maison';return this.isDark(id)?'Dark Continent':getMapLocationLabel(id,this.language);},
+    isDark(id){return /^(?:jungle[1-9]|DC2_\d{2})$/.test(id||'');},
+    label(id){if(id==='owned-house')return this.en?'My house':'Ma maison';return /^jungle[1-9]$/.test(id||'')?(this.en?this.atlas?.darkContinent?.enLabel:this.atlas?.darkContinent?.label)||'Dark Continent':getMapLocationLabel(id,this.language);},
     routeLabel(id){return /^jungle[1-9]$/.test(id)?'Jungle '+id.slice(6):this.label(id).replace('Route ','');},
     shortLabel(id){return id==='start' ? (this.en?'Home village':'Village de départ') : this.label(id);},
     speciesName(id){return this.entries.find(p=>p.id===id)?.name || `#${id}`;},

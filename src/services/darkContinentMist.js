@@ -1,6 +1,6 @@
 // Small reusable bitmap layers, painted by the existing 20 FPS ambience clock.
 // No timers, filters, pixel readbacks or full-size allocations during movement.
-export const isDarkMistMap = map => /^jungle[1-9]$/.test(String(map || ''));
+export const isDarkMistMap = map => /^(?:jungle[1-9]|DC2_(?:0[1-9]|[1-3][0-9]|4[0-8]))$/.test(String(map || ''));
 const WIDTH = 448, HEIGHT = 320, WORLD_W = WIDTH * 3, WORLD_H = HEIGHT * 3;
 const wrap = (n, size) => ((n % size) + size) % size;
 // Difficulty of the nine raid territories. Bilinear world coordinates make
@@ -33,6 +33,7 @@ export class DarkContinentMist {
   paint(c, map, seconds, motion, night = 0) {
     if (!isDarkMistMap(map)) return;
     this.prepare(); if (!this.cloud) return;
+    if(map.startsWith('DC2_')){this.paintNew(c,map,seconds,motion,night);return;}
     const index = Number(map.slice(6)) - 1, ox = index % 3 * WIDTH, oy = Math.floor(index / 3) * HEIGHT;
     const t = motion ? seconds : 0;
     c.save();
@@ -48,6 +49,14 @@ export class DarkContinentMist {
       c.drawImage(this.cloud, x, y, w, h);
     }
     c.restore();
+  }
+  paintNew(c,map,seconds,motion,night){
+    const i=Number(map.slice(4))-1,ox=i%6*WIDTH,oy=Math.floor(i/6)*HEIGHT,t=motion?seconds:0,darkness=1-Math.min(1,Math.max(0,night))*.2;
+    c.save();c.globalAlpha=darkness;c.fillStyle=`rgba(55,17,83,${.22+.08*(1-Math.floor(i/6)/7)})`;c.fillRect(0,0,WIDTH,HEIGHT);
+    for(let n=0;n<384;n++){
+      const w=210+n%4*19,h=65+n%3*11,x=wrap(n*193+t*(2.1+n%3*.22),WIDTH*6+360)-180-ox,y=wrap(n*137+Math.sin(t*.09+n)*8,HEIGHT*8+110)-55-oy;
+      if(x+w<0||y+h<0||x>WIDTH||y>HEIGHT)continue;c.globalAlpha=darkness*.9;c.drawImage(this.cloud,x,y,w,h);
+    }c.restore();
   }
   suspend() {if (this.cloud) {this.cloud.width = 0; this.cloud.height = 0;} this.cloud = null;if(this.grade){this.grade.width=0;this.grade.height=0;this.grade=null;}}
 }
