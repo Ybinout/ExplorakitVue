@@ -1,0 +1,4 @@
+export function drawSafariSign(c,x,y,direction){
+ c.save();c.imageSmoothingEnabled=false;c.translate(x,y);c.fillStyle='#4a3527';c.fillRect(-3,-25,6,27);c.fillStyle='#b18b58';c.fillRect(-1,-24,2,24);
+ c.beginPath();if(direction==='left'){c.moveTo(-31,-30);c.lineTo(-22,-41);c.lineTo(28,-41);c.lineTo(28,-19);c.lineTo(-22,-19);}else if(direction==='right'){c.moveTo(31,-30);c.lineTo(22,-41);c.lineTo(-28,-41);c.lineTo(-28,-19);c.lineTo(22,-19);}else{c.rect(-28,-41,56,22);}c.closePath();c.fillStyle='#715336';c.fill();c.strokeStyle='#d8bb7d';c.lineWidth=2;c.stroke();c.font='bold 12px monospace';c.fillStyle='#fff2c9';c.textAlign='center';c.fillText('Bourg',0,-26);if(direction==='up'||direction==='down'){c.fillStyle='#fff2c9';c.beginPath();const tip=direction==='up'?-49:-12,base=direction==='up'?-43:-18;c.moveTo(0,tip);c.lineTo(-5,base);c.lineTo(5,base);c.closePath();c.fill();}c.restore();
+}

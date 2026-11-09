@@ -15,7 +15,7 @@
      <house-rankings :ranking="ranking" :user-id="userId" :busy="busy" @command="forwardCommand"/>
     </template>
     <template v-else>
-     <battle-house-menu v-if="newHouse" :duel="duel" :rosters="rosters" :trainers="trainers" :user-id="userId" :busy="busy" :connected="connected" :clock="clock" @command="forwardCommand" @close="$emit('close')"/>
+     <battle-house-menu :raid-bosses="raidBosses" :raid-busy="raidBusy" :raid-error="raidError" @raid-catalog="$emit('raid-catalog')" @training="$emit('training',$event)" v-if="newHouse" :duel="duel" :rosters="rosters" :trainers="trainers" :user-id="userId" :busy="busy" :connected="connected" :clock="clock" @command="forwardCommand" @close="$emit('close')"/>
      <template v-else>
      <template v-if="!duel||duel.phase==='finished'">
       <div v-if="duel?.result" class="previous-result"><b>{{ resultText }}</b><p v-if="duel.result.wonPokemon">{{ duel.result.wonPokemon.name }} {{ duel.result.winnerId===userId?'a rejoint ton PC.':'rejoint le PC du vainqueur.' }}</p><p v-if="duel.config.money">{{ duel.result.refunded?'Les mises ont été rendues.':`Mise du duel : ${money(duel.config.money)} ₽ par joueur.` }}</p><p>Tes niveaux et tes ressources d’Aventure sont conservés.</p></div>
@@ -63,7 +63,7 @@ import {numberColor} from '@/services/whitepeakRoulette';
 const outside=[{kind:'red',name:'Rouge'},{kind:'black',name:'Noir'},{kind:'even',name:'Pair'},{kind:'odd',name:'Impair'},{kind:'low',name:'1 à 18'},{kind:'high',name:'19 à 36'}];
 export default{
  components:{HouseRankings,BattleHouseMenu,RouletteWheel,PokemonPortrait,PotentialStar,PokemonDetails},
- props:{ranking:Object,rosters:Object,trainers:{type:Array,default:()=>[]},tab:String,roulette:Object,duel:Object,balance:Number,userId:Number,busy:Boolean,error:String,connected:Boolean,motion:Boolean,rows:{type:Array,default:()=>[]}},
+ props:{raidBosses:Array,raidBusy:Boolean,raidError:String,ranking:Object,rosters:Object,trainers:{type:Array,default:()=>[]},tab:String,roulette:Object,duel:Object,balance:Number,userId:Number,busy:Boolean,error:String,connected:Boolean,motion:Boolean,rows:{type:Array,default:()=>[]}},
  data:()=>({viewportHeight:window.innerHeight,viewportTop:0,config:{level:null,uniqueItems:false,money:0,pokemonStake:false},betAmount:100,allIn:false,betChoice:{kind:'red'},box:'team',query:'',detail:null,clock:Date.now(),pendingBet:null}),
  computed:{panelStyle(){const available=Math.max(0,this.viewportHeight-24);return{maxHeight:available+'px',height:this.newHouse||this.tab==='board'?Math.min(this.tab==='board'?850:900,available)+'px':'auto'};},viewportStyle(){return{'--club-viewport-height':this.viewportHeight+'px',height:this.viewportHeight+'px',top:this.viewportTop+'px',bottom:'auto'};},newHouse(){return !['roulette','board'].includes(this.tab)&&(!this.duel||this.duel.phase==='finished'||this.duel.advanced);},outside:()=>outside,numbers:()=>Array.from({length:37},(_,i)=>i),phaseLabel(){return{betting:'Mises ouvertes',spinning:'Tirage en cours',result:'Résultat partagé'}[this.roulette?.phase]||'La table se prépare';},seconds(){const s=this.roulette;if(!s)return 0;return Math.max(0,Math.ceil(((s.phase==='betting'?s.closesAt:s.phase==='spinning'?s.resultAt:s.nextAt)-this.clock-(s.serverOffset||0))/1000));},
  placementSeconds(){return Math.max(0,Math.ceil((this.duel.placementDeadline-this.clock-(this.duel.serverOffset||0))/1000));},

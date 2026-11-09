@@ -98,6 +98,7 @@ export function placeAmbienceProfile(map) {
     kind: 'garden', shade: '#000000', opacity: 0,
     butterflies: butterflyGardens[map],
   };
+  if (map === 'route3')return {kind:'nrv',shade:'#000000',opacity:0};
   if (map === 'ville5')
     return {
       kind: 'snow',
@@ -347,6 +348,7 @@ export class PlaceAmbienceRenderer {
       }
       c.globalAlpha = 1;
     }
+    if(p.kind==='nrv'&&motion){for(let i=0;i<9;i++){const age=mod(t*.12+i/9,1),x=Math.round(412+Math.sin(age*4+i*.3)*2+age*8),y=Math.round(151-age*39),size=2+Math.floor(age*4);c.globalAlpha=Math.sin(Math.PI*age)*.48;c.fillStyle=i%2?'#6dba64':'#98d37a';c.fillRect(x-size,y,size*2,size);c.fillRect(x-size+1,y-2,size*2-2,size+4);}c.globalAlpha=1;}
     if (p.kind === 'snow') {
       for (const [x, y] of p.chimneys) {
         if (motion)

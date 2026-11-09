@@ -3,7 +3,7 @@
     <nav class="home-nav" aria-label="Compte"><router-link class="brand" to="/">✧ <span>RIFTMON</span></router-link><div v-if="session"><router-link class="profile-nav-link" :to="`/profil/${session.id}`">Mon profil</router-link><button @click="logout">Déconnexion</button></div><router-link v-else to="/connexion">Se connecter</router-link></nav>
     <section class="mode-grid" aria-label="Choisir un mode de jeu">
       <component :is="mode.available ? 'router-link' : 'article'" v-for="mode in visibleModes" :key="mode.key" :to="mode.available ? mode.path : null" :aria-disabled="mode.available ? null : 'true'" :data-mode="mode.key" class="mode-card" :class="[mode.key, { 'is-unavailable': !mode.available }]">
-        <div class="mode-art" aria-hidden="true"><span class="art-ring"></span><drift-glyph :name="mode.icon" /><img :src="$pokemonSprite(mode.pokemon)" alt="" /></div>
+        <div class="mode-art" aria-hidden="true"><span class="art-ring"></span><drift-glyph :name="mode.icon" /><img :src="$pokemonSprite(mode.pokemon, {animated:true})" alt="" /></div>
         <div class="mode-copy"><span class="mode-label">{{ mode.label }}</span><h2>{{ mode.title }}</h2><p>{{ mode.description }}</p><div class="mode-tags"><span v-for="tag in mode.tags" :key="tag">{{ tag }}</span></div><span class="mode-cta"><template v-if="mode.available">{{ mode.cta }} <span aria-hidden="true">↗</span></template><span v-else class="mode-soon" aria-label="Bientôt disponible">Soon</span></span></div>
       </component>
     </section>
@@ -22,7 +22,7 @@ import { isModeAvailable } from '@/services/gameModes';
 export default {
   name: 'HomeMenu', components: { DriftGlyph, PwaInstall },
   data() { return { session: getSession(), modes: [
-    { key:'adventure', path:'/game', label:'À TON RYTHME', title:'L’Aventure', description:'Explore le monde, collectionne les badges et fais grandir ton équipe. Le multijoueur reste facultatif.', tags:['Sauvegarde permanente','Sans chrono'], cta:'Continuer l’aventure', pokemon:133, icon:'compass' },
+    { key:'adventure', path:'/game', label:'À TON RYTHME', title:'L’Aventure', description:'Explore le monde, collectionne les badges et fais grandir ton équipe.', tags:['Sauvegarde permanente','Sans chrono'], cta:'Continuer l’aventure', pokemon:133, icon:'compass' },
     { key:'rift', path:'/drift', label:'ENTRE AMIS', title:'Rift multijoueur', description:'Compose ton équipe avant le tournoi final. Survis à tes rivaux et invente ta combinaison de Drifts.', tags:['2 à 16 joueurs','K.O. définitifs'], cta:'Rejoindre un Rift', pokemon:25, icon:'players' },
     { key:'colosseum', path:'/colosseum', label:'LE DÉFI SOLO', title:'Rift Colosseum', description:'30 minutes ou 1 heure pour bâtir ton équipe, puis des dresseurs toujours plus forts. Jusqu’où iras-tu ?', tags:['30 min ou 1 h','Classement'], cta:'Entrer au Colosseum', pokemon:448, icon:'trophy' }
   ].map(mode => ({ ...mode, available: isModeAvailable(mode.key) })) }; },
@@ -55,4 +55,9 @@ export default {
 <style scoped>
 .mode-grid{grid-template-columns:minmax(0,1fr);margin-bottom:26px}.mode-card.adventure{display:grid;grid-template-columns:minmax(180px,35%) 1fr}.adventure .mode-art{height:auto;min-height:260px;border-bottom:0;border-right:1px solid #d3ddd2}.adventure .mode-art img{width:200px;height:200px;right:15%;bottom:25px}.adventure .mode-art>svg{top:30px}.adventure .mode-copy{padding:34px}.adventure .mode-copy h2{font-size:40px}.adventure .mode-copy>p{max-width:480px}
 @media(max-width:640px){.mode-card.adventure{grid-template-columns:94px minmax(0,1fr)}.adventure .mode-art{min-height:240px}.adventure .mode-art img{width:108px;height:108px;right:-9px;bottom:auto}.adventure .mode-copy{padding:22px 15px}.adventure .mode-copy h2{font-size:29px}}
+</style>
+
+<style scoped>
+.mode-card.adventure{min-height:340px}.adventure .mode-art{min-height:340px}.adventure .mode-art img{width:240px;height:240px;max-width:90%}.adventure .mode-copy{padding:42px}.adventure .mode-copy h2{font-size:46px}.adventure .mode-copy>p{font-size:15px}
+@media(max-width:640px){.mode-home{padding-inline:14px}.mode-card.adventure{grid-template-columns:1fr}.adventure .mode-art{min-height:210px;height:210px;border-right:0;border-bottom:1px solid #d3ddd2}.adventure .mode-art img{width:190px;height:190px;top:auto;bottom:4px;right:calc(50% - 95px);transform:none}.adventure .mode-art>svg{top:24px;left:25px;width:48px;height:48px}.adventure .art-ring{top:14px;right:calc(50% - 90px);width:180px;height:180px}.adventure .mode-copy{padding:26px 24px}.adventure .mode-copy h2{font-size:36px}.adventure .mode-copy>p{font-size:14px;line-height:1.7}.adventure .mode-label{font-size:10px}.adventure .mode-tags span{font-size:11px}.adventure .mode-cta{font-size:14px;min-height:38px}}
 </style>

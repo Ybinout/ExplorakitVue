@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-09",
+  "tool": "image_gen.imagegen (built-in)",
+  "assets": [
+    {
+      "path": "src/assets/pnj/clement-walk-v3.png",
+      "prompt": "Use case: stylized-concept. Create a production pixel-art overworld sprite sheet for Clément in a classic handheld monster-catching RPG. Image 1 (6931.png) is STRICT pixel style reference: huge head about half total height, simple dark one-pixel outline, tiny white eye glints, limited palette, no excessive detail. Image 2 clement-v2.png is CHARACTER IDENTITY: young man light brown mixed skin, short tight black curls, thin dark glasses, white open collar rolled sleeve shirt, black trousers, white sneakers. True transparent background. Exactly a regular grid THREE columns and FOUR rows, all cells equal, no labels. Row1 facing down/front, row2 left, row3 right, row4 up/back. Each row: left step, standing, right step, same identity/proportions/alignment in every cell. Entire silhouette including feet inside its cell with wide transparent gutters. Aim for native logical 32x32 pixels per cell, whole sheet96x128 upscale in perfectly square pixels; character occupies 20px wide by28px tall, baseline same in all cells. No shadows, no text, no ground, no props. Must look like reference player, not illustration.",
+      "processing": "Transparent generated 3×4 sheet normalized to twelve 32×32 cells using nearest-neighbor; alpha threshold150; each silhouette19×28."
+    },
+    {
+      "path": "src/assets/pnj/maria-blue-v1.png",
+      "prompt": "Use case precise-object-edit. Edit only COLORS of this exact tiny RPG pixel sprite, preserve every pixel boundary, silhouette, pose and dimensions. Pink umbrella becomes blue (shaded medium and dark blue). Brown hair becomes black with dark grey highlights. Pink outfit becomes light blue. Keep original face skin and black outlines, eyes, legs and all transparency. No redrawing, no extra detail. Transparent background. This is palette recolor only, for sprite consistency.",
+      "processing": "Generated colour reference transferred to the existing native Maria sprite palette, preserving original pixel geometry, alpha, pose, eyes and skin. Native 32×32 canvas."
+    },
+    {
+      "path": "src/assets/draft_house.png",
+      "prompt": "Use case precise-object-edit. Edit target Image1 draft_house.png; supporting style/geography Image2 ville1.png. Redesign this same top-down pixel RPG interior, preserving EXACT enclosing rectangular walls, window locations, bottom central doorway, dark blue carpet, golden trims, pixel art style and canvas aspect ratio. Reduce round central green card table to about 60% of current width AND height, keep centered at image50% x and51% y. Four compact chairs alignedaround it. Reduce side bookshelves and upper-right desk so proportions suit small 32px chibi characters; more clear walking space. Windows must show nearby actual town buildings from Image2: left window red roof Pokécenter, right window blue/grey roof market, wall facades partial in perspective, NOT lake or wilderness. Beautiful cozy blue-and-gold club with clean simple pixel clusters, no people, no text, no extra doors, no floor clutter. Existing footprint 28x20 tiles; each tile32 in engine. Table should fit tiles12..15 x8..11, chairs11,10;16,10;13,7;13,12. Maintain bottomcenter clear entry and aisle. Output matching original aspect ratio.",
+      "finalEditPrompt": "Use case precise-object-edit. Correct ONLY what is seen through the left window of the edited interior. Image1 is edit target, image2 ville1.png is geographical building reference. In left window REMOVE red sphere-roof arena and replace it with the actual RED RECTANGULAR ROOF POKEMON CENTER building in Image2 at x55% y32%: red/orange tiled hip roof, cream walls, blue windows, tiny pale sign; no giant ball on roof. Keep exact same room, smaller table, chairs, walls, carpet, rightwindow blue/grey market. Absolutely no changes outside leftwindow glass. Preserve 448x320 aspect pixel art, no characters.",
+      "processing": "Generated revised interior normalized to native448×320 using nearest-neighbor, furniture collisions authored against the final artwork."
+    }
+  ]
+}

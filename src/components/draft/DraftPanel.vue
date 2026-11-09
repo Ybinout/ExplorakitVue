@@ -45,7 +45,7 @@
             </p>
             <div class="draft-features">
               <span><b>4 × 8</b>cartes classiques</span
-              ><span><b>1 × 8</b>cartes Rift</span
+              ><span><b>1 × {{ draftFormat.riftPackSize }}</b>cartes Rift</span
               ><span><b>150 000 ₽</b>pour le vainqueur</span>
             </div>
           </div>
@@ -233,9 +233,11 @@
               class="draft-pack"
               :class="{ 'is-rift-pack': state.round === 4 }"
               data-draft-pack
+              ref="booster"
+              :style="{'--booster-card-height':boosterHeight+'px'}"
             >
               <draft-card
-                v-for="(card, i) in state.pack"
+                v-for="(card, i) in sortedPack"
                 :key="card.id"
                 :card="card"
                 :style="{ '--deal-index': i }"
@@ -788,6 +790,7 @@ export default {
       selectedPokemon: null,
       moveSlot: 0,
       gestureBusy: false,
+      boosterHeight: 0,
       prepNotice: '',
       landedSlot: null,
       quitConfirm: false,
@@ -795,6 +798,7 @@ export default {
     };
   },
   computed: {
+    sortedPack(){const order=['pokemon','move','item','nature','iv','ability','rift'];return [...(this.state?.pack||[])].sort((a,b)=>order.indexOf(a.kind)-order.indexOf(b.kind));},
     draftFormat() {
       return (
         this.state?.draftFormat ||
@@ -903,6 +907,7 @@ export default {
     state: {
       immediate: true,
       handler(s) {
+        this.$nextTick(()=>this.sizeBooster());
         if (s?.serverNow) this._offset = s.serverNow - Date.now();
         if (this.selected)
           this.selected =
@@ -929,6 +934,9 @@ export default {
     },
   },
   mounted() {
+    this._resizeBooster=()=>{this.boosterHeight=0;this.$nextTick(()=>this.sizeBooster());};
+    window.addEventListener('resize',this._resizeBooster);
+    this.$nextTick(()=>this.sizeBooster());
     this._before = document.activeElement;
     this.$refs.panel.focus({ preventScroll: true });
     this._clock = setInterval(() => {
@@ -936,12 +944,14 @@ export default {
     }, 250);
   },
   beforeDestroy() {
+    window.removeEventListener('resize',this._resizeBooster);
     clearInterval(this._clock);
     this._stopGesture?.();
     clearTimeout(this._landTimer);
     if (this._before?.isConnected) this._before.focus({ preventScroll: true });
   },
   methods: {
+    sizeBooster(){const pack=this.$refs.booster;if(!pack)return;let height=this.boosterHeight;for(const card of pack.children){const box=card.getBoundingClientRect();if(!box.width)continue;const clone=card.cloneNode(true);clone.style.cssText='position:absolute;visibility:hidden;pointer-events:none;height:auto!important;min-height:0!important;max-height:none!important;width:'+box.width+'px;animation:none;';pack.appendChild(clone);height=Math.max(height,Math.ceil(clone.getBoundingClientRect().height));clone.remove();}if(height!==this.boosterHeight)this.boosterHeight=height;},
     keyDown(e) {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -2459,4 +2469,10 @@ h2 {
 .draft-swipe-ghost[data-ready='true']::after {
   opacity: 1;
 }
+</style>
+
+<style scoped>
+/* Fixed common reference persists as boosters circulate; content is never cropped. */
+.draft-pack,.draft-pack.is-rift-pack{grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch}.draft-pack>.draft-card{box-sizing:border-box;height:var(--booster-card-height,auto);min-height:var(--booster-card-height,auto);max-height:none;align-self:stretch}.draft-pack.is-rift-pack{padding:0;border:0;background:none}
+@media(max-width:760px){.draft-pack>.draft-card{flex:0 0 min(310px,calc(100vw - 56px));width:min(310px,calc(100vw - 56px));}}
 </style>

@@ -7,7 +7,8 @@
     <div class="house-mode-scroll">
     <div v-if="duel?.phase==='finished'&&duel.result" class="house-previous" role="status"><b>{{ resultText }}</b><small>{{ duel.config.mode==='pve'?'Entraînement terminé.':duel.result.refunded?'Les mises ont été rendues.':'Les mises et le classement sont à jour.' }} Ton équipe d’Aventure est conservée.</small></div>
     <div class="house-mode-intro"><div><small>MAISON DES COMBATS</small><h3>{{ selected.title }}</h3><p>{{ selected.description }}</p></div><span class="house-no-xp">Sans XP</span></div>
-    <template v-if="!active">
+    <training-raid-setup v-if="!active&&mode==='raid'" :bosses="raidBosses" :error="raidError" :busy="raidBusy" :connected="connected" @reload="$emit('raid-catalog')" @create="$emit('training',$event)"/>
+    <template v-else-if="!active">
      <div v-if="mode==='pve'" class="house-trainer-picker"><div class="trainer-picker-title"><h4>Choisis ton adversaire</h4><input v-model="search" type="search" placeholder="Un dresseur…" aria-label="Rechercher un dresseur"></div><div class="house-trainers"><button v-for="t in filteredTrainers" :key="t.key" class="house-trainer" :class="{selected:config.trainerKey===t.key}" :aria-pressed="config.trainerKey===t.key" :data-house-trainer="t.key" @click="config.trainerKey=t.key"><img :src="portrait(t.portrait)" alt="" loading="lazy"><span><small>{{ t.role }}</small><b>{{ t.name }}</b><span class="trainer-species"><img v-for="id in t.species.slice(0,6)" :key="id" :src="$pokemonSprite(id)" alt="" loading="lazy"></span></span><i aria-hidden="true">{{ config.trainerKey===t.key?'✓':'+' }}</i></button></div><p v-if="!filteredTrainers.length" class="house-help">Aucun dresseur avec ce nom.</p><p class="house-help">Des Pokémon à leur évolution finale, en nombre et niveaux adaptés à ton équipe. Le PvE ne compte pas dans le classement et ne donne aucune récompense.</p></div>
      <form id="house-setup-form" @submit.prevent="create">
       <div class="house-options"><fieldset><legend>Règles du combat</legend><label>Niveaux<select v-model="config.level" data-duel-level><option :value="null">{{ mode==='pve'?'Adaptés à mon équipe':'Libres · niveaux actuels' }}</option><option v-for="n in [25,50,75,100]" :key="n" :value="n">Tous au niveau {{ n }}</option></select></label><div v-if="['2v2','2v2-double'].includes(mode)" class="house-formats" aria-label="Taille des équipes"><button v-for="size in [6,12]" :key="size" type="button" :aria-pressed="config.format===size" @click="config.format=size">{{ size }} contre {{ size }}<small>{{ size===12?'6 Pokémon par allié':'Une équipe partagée' }}</small></button></div><label class="house-check"><input v-model="config.uniqueItems" type="checkbox"><span>Objets tenus uniques<small>Un même objet une seule fois dans chaque camp.</small></span></label></fieldset>
@@ -20,19 +21,22 @@
      <p v-else-if="duel.phase==='preparation'" class="house-help">Les participants préparent leurs équipes. Leurs compositions et discussions restent privées.</p><p v-else class="house-help">{{ duel.phase==='settling'?'Le résultat est en cours de sauvegarde…':'Le combat est en cours.' }}</p>
     </template>
     </div>
-      <footer v-if="!active" class="house-menu-footer"><span>{{ mode==='pve'?'Choisis un dresseur, puis lance l’entraînement.':['1v1','1v1-double'].includes(mode)?'Après création, rejoignez chacun un socle.':'Après placement, vous avez deux minutes pour confirmer vos équipes.' }}</span><button type="submit" form="house-setup-form" class="house-primary" data-create-duel :disabled="busy||!connected||mode==='pve'&&!config.trainerKey">{{ busy?'Préparation…':mode==='pve'?'Lancer le combat':'Organiser' }} <span aria-hidden="true">→</span></button></footer>
-     <footer v-else class="house-menu-footer"><button v-if="duel.you>=0||duel.hostId===userId" :disabled="busy" @click="cancel">Annuler l’inscription</button><button v-if="duel.canWatch" class="house-primary" data-watch-duel :disabled="busy" @click="action('watch')">Regarder depuis les tribunes</button><button v-else @click="$emit('close')">Retour dans la salle</button></footer>
+      <footer v-if="!active&&mode!=='raid'" class="house-menu-footer"><span>{{ mode==='pve'?'Choisis un dresseur, puis lance l’entraînement.':['1v1','1v1-double'].includes(mode)?'Après création, rejoignez chacun un socle.':'Après placement, vous avez deux minutes pour confirmer vos équipes.' }}</span><button type="submit" form="house-setup-form" class="house-primary" data-create-duel :disabled="busy||!connected||mode==='pve'&&!config.trainerKey">{{ busy?'Préparation…':mode==='pve'?'Lancer le combat':'Organiser' }} <span aria-hidden="true">→</span></button></footer>
+     <footer v-else-if="active" class="house-menu-footer"><button v-if="duel.you>=0||duel.hostId===userId" :disabled="busy" @click="cancel">Annuler l’inscription</button><button v-if="duel.canWatch" class="house-primary" data-watch-duel :disabled="busy" @click="action('watch')">Regarder depuis les tribunes</button><button v-else @click="$emit('close')">Retour dans la salle</button></footer>
+      <footer v-if="mode==='raid'&&!active" class="house-menu-footer"><span>1 à 4 dresseurs · équipe temporaire · aucune récompense</span><button type="submit" form="training-raid-form" class="house-primary" :disabled="raidBusy||!connected||!raidBosses?.length">{{ raidBusy?'Préparation…':'Préparer le raid' }} →</button></footer>
    </section>
   </template>
   <pokemon-details v-if="detail" class="house-detail" :pokemon="detail" :position="1" :total="1" read-only context-label="PRÉPARATION · COPIE DE COMBAT" footer-label="Ton Pokémon d’Aventure et son propriétaire restent inchangés." @close="detail=null"/>
  </div>
 </template>
 <script>
+import TrainingRaidSetup from './TrainingRaidSetup.vue';
 import HousePreparation from './HousePreparation.vue';
 import PokemonDetails from '../menu/PokemonDetails.vue';
 import {computerPokemonDetails} from '@/services/pokemonComputer';
 const portraits=require.context('@/assets/image',false,/\.(png|webp)$/);
 const modes=[
+ {key:'raid',label:'Raid',hint:'Boss · 1 à 4 joueurs',icon:'◈',title:'Entraînez votre alliance',description:'Le raid de corruption, sans risque : aggro, boucliers, rage et soutiens. Choisis librement ton boss et son niveau.'},
  {key:'1v1',label:'Combat 1v1',hint:'Le duel classique',icon:'⚔',title:'Un duel à vos conditions',description:'Deux dresseurs, deux socles. Fixez vos règles et vos mises avant de vous affronter.'},
  {key:'pve',label:'Combat PvE',hint:'Contre un dresseur IA',icon:'◇',title:'L’adversaire de ton choix',description:'Retrouve les dresseurs de l’aventure et entraîne ta stratégie contre leur IA.'},
  {key:'2v1',label:'Combat 2v1',hint:'Un duo contre un solo',icon:'♧',title:'Deux esprits, une équipe',description:'Le duo prépare six Pokémon en commun, avec un seul corrompu par camp. Le propriétaire du Pokémon actif joue, ou passe la main à son allié.'},
@@ -40,7 +44,7 @@ const modes=[
  {key:'2v2-double',label:'2v2 Double',hint:'Deux duos · 6 ou 12',icon:'✧',title:'Un duo, deux Pokémon sur le terrain',description:'Composez ensemble votre équipe. Chaque propriétaire commande son Pokémon actif ou passe la main à son partenaire. Deux corrompus au maximum par camp.'},
  {key:'2v2',label:'Combat 2v2',hint:'Deux duos, un duel',icon:'✧',title:'Votre alliance entre en scène',description:'Chaque duo compose six ou douze Pokémon, dont deux corrompus au maximum. Un seul Pokémon reste actif de chaque côté.'}
 ];
-export default{components:{HousePreparation,PokemonDetails},props:{duel:Object,rosters:Object,trainers:{type:Array,default:()=>[]},userId:Number,busy:Boolean,connected:Boolean,clock:Number},
+export default{components:{TrainingRaidSetup,HousePreparation,PokemonDetails},props:{raidBosses:Array,raidBusy:Boolean,raidError:String,duel:Object,rosters:Object,trainers:{type:Array,default:()=>[]},userId:Number,busy:Boolean,connected:Boolean,clock:Number},
  data(){return{mode:this.duel?.config?this.duel.config.mode+(this.duel.config.battleFormat==='double'?'-double':''):'1v1',config:{level:null,uniqueItems:false,money:0,pokemonStake:false,format:6,trainerKey:this.trainers[0]?.key||''},search:'',detail:null};},
  computed:{modes:()=>modes,selected(){return modes.find(m=>m.key===this.mode)||modes[0];},active(){return this.duel&&!['finished','cancelled'].includes(this.duel.phase);},filteredTrainers(){return this.trainers.filter(t=>t.name.toLocaleLowerCase().includes(this.search.toLocaleLowerCase()));},resultText(){const r=this.duel?.result;if(!r)return'';if(this.duel.config.mode==='pve')return r.pveLost?'Cet adversaire prend sa revanche.':'Entraînement terminé.';if(r.winners?.includes(this.userId))return'Votre camp remporte le duel !';const winners=r.winners||[r.winnerId];return this.duel.participants.filter(p=>p&&winners.includes(p.userId)).map(p=>p.username).join(' & ')+(r.winnerId?' remporte le duel.':'Le duel est terminé.');}},
  watch:{'duel.config.mode'(mode){if(mode)this.mode=mode+(this.duel.config.battleFormat==='double'?'-double':'');},trainers(list){if(!this.config.trainerKey)this.config.trainerKey=list[0]?.key||'';}},
@@ -64,4 +68,9 @@ export default{components:{HousePreparation,PokemonDetails},props:{duel:Object,r
 
 <style scoped>
 @media(min-width:761px) and (max-height:650px){.house-modes{grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin-bottom:10px}.house-modes button{min-height:58px;padding:5px 7px}.house-modes button>span{height:18px;font-size:16px}.house-modes b{font-size:10px}.house-modes small{font-size:8px;margin-top:2px}.house-mode-intro{margin-bottom:10px}.house-mode-intro h3{font-size:20px}.house-menu-footer{padding-top:8px;margin-top:8px}}
+</style>
+
+<style scoped>
+.house-modes{grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.house-modes button{padding:10px 7px}.house-modes b{font-size:11px}.house-modes small{font-size:9px}
+@media(max-width:760px){.house-modes{display:flex;overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:5px;scroll-snap-type:x proximity}.house-modes button{flex:0 0 102px;min-height:65px;scroll-snap-align:start}.house-modes button>span{height:20px;font-size:17px}.house-modes b{font-size:10px}.house-modes small{font-size:8px}}
 </style>

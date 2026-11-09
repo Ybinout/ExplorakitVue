@@ -1,6 +1,7 @@
 const activePhase = s => s?.phase === 'active';
 export default {
   data: () => ({
+    raidBosses: [],
     raidWorld: null,
     raidState: null,
     raidPreview: null,
@@ -115,6 +116,8 @@ export default {
       try {
         const r = await new Promise((resolve, reject) => this.socket.timeout(12000).emit('raid:' + name, data, (e, r) => e ? reject(Error('La réponse tarde. Reconnecte-toi pour retrouver ton raid sauvegardé.')) : resolve(r)));
         if (!r?.success) throw Error(r?.message || 'Cette action est indisponible.');
+        if (r.bosses) this.raidBosses=r.bosses;
+        if(name==='training')this.clubPanel=null;
         if (r.pokemons) this.raidInventory = r.pokemons;
         if (name === 'tutorial') this.raidTutorial = false;
         if (name === 'invite') this.raidNotice = 'Invitation envoyée. Ton ami a 60 secondes pour répondre.';
