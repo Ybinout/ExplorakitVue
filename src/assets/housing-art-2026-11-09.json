@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-09",
+  "tool": "image_gen.imagegen (built-in)",
+  "assets": [
+    {
+      "paths": [
+        "src/assets/housing/furniture-v1.png"
+      ],
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-d93c9a07-a773-43eb-8d40-b379b86707e8.png",
+      "prompt": "Use case stylized-concept. Production pixel-art FURNITURE SPRITE ATLAS for a classic top-down monster-catching RPG housing feature. References show REQUIRED low-detail pixel style, three-quarter top-down view, small simple readable chunky pixels, dark outlines, two or three shades per material. EXACT regular grid 5 columns × 4 rows. Each cell square, centered sprite with wide completely transparent gutters. No cell border, text, numbers, shadows outside objects, people or room backgrounds. Objects in exact reading order: row1 small round wood table, single wood chair, blue two-seat sofa, red single bed with white pillow, oak wardrobe; row2 low bookshelf of colourful books, standing oval mirror on wooden legs, blue rectangular rug, warm floor lamp, broadleaf plant in clay pot; row3 compact desk, round stool, glass aquarium on small cabinet, red round rug, wooden chest; row4 green sofa, blue single bed, small white side table, tall potted palm, short stack of cushions. All furniture proportional to tiny chibi characters32px tall: table~32px wide, sofa~44px wide, bed~32px wide40px tall, wardrobe~28x36px; NEVER giant furniture. Native logical canvas320x256 (cells64x64), upscale with crisp nearest-neighbour pixel clusters. Top of objects face upward, feet aligned bottom in every cell. True transparent background.",
+      "processing": "Shared 5×4 atlas sliced into20 sprites. Alpha threshold170 and nearest-neighbour normalization to native tile16 proportional furniture. Per-sprite bounds in housingArt.json. Atlas320×256."
+    },
+    {
+      "paths": [
+        "src/assets/housing/architecture-v1.png",
+        "src/assets/housing_nid.png",
+        "src/assets/housing_atelier.png",
+        "src/assets/housing_traversee.png",
+        "src/assets/housing_salon.png",
+        "src/assets/housing_loft.png",
+        "src/assets/housing_pavillon.png",
+        "src/assets/housing_*_upper.png"
+      ],
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-9dcd7426-2257-4cd5-84f6-92216d263eb8.png",
+      "prompt": "Use case stylized-concept. Production low-resolution pixel-art HOUSING TILE AND FIXTURE atlas for top-down classic handheld monster-catching RPG. Match attached references: simple tiny chunky pixels, restrained warm colours, no excessive detail. Regular grid SIX columns by FOUR rows, every cell same square, full canvas384x256 logical, may upscale with crisp pixels. Rows1 and2 filled rectangular tile textures extending exactly to edges with no gutters; row3 and4 isolated fixture sprites transparent gutters. NO labels, no numbers, no people. Exact cell reading order. Row1 SIX seamless top-down floor textures: honey wooden boards, pale oak boards, blue stone squares, warm terracotta squares, dark walnut parquet, pale sage tiles. Row2 SIX seamless interior wall textures for front upper room wall: ivory plaster with wood skirting, sage plaster with wood skirting, pale blue plaster with white skirting, rose plaster with dark wood skirting, blue wood panels, ivory brick. Row3 six isolated fixtures: blue-curtained double window with bright sky and greenery, small square oak-framed window, arched window with evening blue sky, open wood door frame with BLACK doorway void, ascending wooden staircase pointing up with light upper landing, descending staircase pointing up into a DARK opening. Row4: small high rectangular window with sky, rounded double wood window with greenery, slender ivory column capital, dark blue interior doorway with pale frame, ascending white stone staircase pointing up with light upper landing, descending white stone staircase pointing up into a DARK opening. Fixtures correctly three-quarter top-down perspective, staircase2 tiles wide3tiles long at native16px per tile, windows2–3tiles wide. Textures soft visible plank/tile lines, avoid random noise. Crisp true pixel art, dark clean boundaries. Transparency only around isolated fixtures rows3–4.",
+      "processing": "Shared6×4 architecture atlas normalized384×256. Edge-connected white background removed only around isolated fixtures, preserving enclosed window highlights. Six interiors composed from the same shared textures according to housing.json; native448×320. Upper-floor variants close the exterior doorway. Collision grid follows composition."
+    }
+  ]
+}

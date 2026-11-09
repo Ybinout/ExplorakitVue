@@ -9,7 +9,7 @@
       <store-departments v-if="metadata.directory && mode==='buy'" :selected="browseStore?selectedDepartment:metadata.department" :interactive="browseStore" :busy="loading" :english="english" @choose="chooseDepartment" />
       <div :class="{'store-toolbar':browseStore}">
         <div v-if="!browseStore" class="shop-wallet"><span>{{ stageLabel }}</span><span>{{ english?'Your money':'Ton argent' }} <strong>{{ money.toLocaleString(english?'en':'fr') }} ₽</strong></span></div>
-        <nav class="shop-operations" :aria-label="english?'Trade':'Échanger'"><button v-for="operation in ['buy','sell']" :key="operation" :data-shop-operation="operation" :aria-pressed="mode===operation" :disabled="loading" @click="mode=operation">{{ operation==='buy'?(english?'Buy':'Acheter'):(english?'Sell':'Vendre') }}</button></nav>
+        <nav class="shop-operations" :aria-label="english?'Trade':'Échanger'"><button v-for="operation in ['buy','sell']" :key="operation" :data-shop-operation="operation" :aria-pressed="mode===operation" :disabled="loading" @click="mode=operation">{{ operation==='buy'?(english?'Buy':'Acheter'):(english?'Sell':'Vendre') }}</button><button v-if="metadata.housingAvailable" data-shop-housing :disabled="loading" @click="$emit('housing')">⌂ {{ english?'Furniture':'Meubles' }}</button></nav>
         <div v-if="browseStore" class="shop-wallet"><span>{{ english?'Your money':'Ton argent' }} <strong>{{ money.toLocaleString(english?'en':'fr') }} ₽</strong></span></div>
       </div>
       <div class="counter-layout">

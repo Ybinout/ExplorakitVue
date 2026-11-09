@@ -11,6 +11,9 @@
       <button v-if="superTournament.active && !isDrift && tournamentPanel?.tab!=='abandon'" ref="tournamentExit" class="super-tournament-exit" data-super-tournament-exit type="button" :disabled="tournamentBusy || !socket?.connected" :aria-label="preferences.language==='en'?'Abandon the Super Tournament':'Abandonner le Super Tournoi'" :title="preferences.language==='en'?'Abandon the Super Tournament':'Abandonner le Super Tournoi'" aria-haspopup="dialog" aria-controls="super-tournament-dialog" @pointerdown.stop @click.stop="openTournamentAbandon">
         <svg viewBox="0 0 32 32" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 28V4" stroke="currentColor"/><path d="M8 6c6-4 11 4 17 0v13c-6 4-11-4-17 0Z" fill="#fff" stroke="#415565"/></svg>
       </button>
+      <housing-panel v-back="()=> $refs.housingPanel?.close()" ref="housingPanel" v-if="housingPanel && !battle" :payload="housingPanel" :room="housingState" :friends="socialState.accepted" :busy="housingBusy" :error="housingError" :notice="housingNotice" :command="housingCommand" @close="closeHousingPanel"/>
+      <button v-if="housingState?.isOwner && !housingPanel && !worldInteractionBlocked" class="housing-manage-button" data-housing-manage aria-label="Aménager ma maison" @pointerdown.stop @click.stop="openHousingManage"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="m3 15 11-10 11 10M6 13v14h9V17H11v10M22 20l1-2 3 1 2-1 2 3-1 2 1 2-2 3-2-1-3 1-1-2-2-1v-3Z"/><circle cx="25" cy="24" r="2"/></svg><span>Ma maison</span></button>
+      <aside v-if="housingInvitation && !battle" class="housing-invitation" role="status"><small>UNE PORTE OUVERTE</small><b>{{ housingInvitation.name }} t’invite chez lui.</b><span>{{ housingInvitation.entryName }}</span><div><button :disabled="housingBusy" @click="housingCommand('invitation',{id:housingInvitation.id,accept:true})">Visiter →</button><button :disabled="housingBusy" @click="housingCommand('invitation',{id:housingInvitation.id,accept:false})">Plus tard</button></div></aside>
       <fishing-prompt v-if="fishing && !battle" :state="fishing" @start="fishingAction" @cancel="cancelFishing()" />
       <p v-if="isDrift && driftState && driftState.storagePaused" class="recovery-notice" role="status">Sauvegarde indisponible. La partie est en pause ; elle reprendra automatiquement.</p>
       <p v-else-if="isDrift && driftState && driftState.recoveryWaiting" class="recovery-notice" role="status">Expédition restaurée. Le temps est suspendu : les dresseurs ont cinq minutes pour revenir.</p>
@@ -244,7 +247,7 @@
           :flight-allowed="!isDrift && !superTournament.active && !onDarkContinent" @fly="flyToTown"
           :active="activeInfoPanel"
           :friend-members="socialState.accepted"
-          :current-map="map" :current-region="players[socket?.id]?.regionLocation"
+          :current-map="housingState?.entry?.map || map" :current-region="players[socket?.id]?.regionLocation"
           :recovery-busy="positionRecoveryBusy" :recovery-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && driftState?.phase === 'exploration' && !driftState?.storagePaused && !driftState?.recoveryWaiting))" :recovery-notice="positionRecoveryNotice"
           @recover-position="recoverPosition"
           :arena-test-state="isDrift ? {allowed:false} : arenaTestState"
@@ -270,6 +273,7 @@
           :error="shop.error"
           :language="preferences.language"
           @close="closeShop"
+          @housing="openHousingShop"
           @buy="buyShopItem"
           @sell="sellShopItem"
         />
@@ -564,6 +568,8 @@ import { createEvolutionTracker } from '@/services/evolutionPresentation';
 import evolutionGraph from '@/data/evolutionGraph.json';
 import { buildBattleResult } from '@/services/battleResult';
 import raidsGame from '@/services/raidsGame';
+import housingGame from '@/services/housingGame';
+import {drawFurniture, drawStair} from '@/services/housingArt';
 import {drawRaidRifts} from '@/services/raidRifts';
 import {drawSafariSign} from '@/services/safariSigns';
 import RaidPanel from './raids/RaidPanel.vue';
@@ -587,8 +593,8 @@ import { WorldMusic } from '@/services/worldMusic';
 
 export default {
   props: { patchNoticeOpen: Boolean },
-  mixins:[socialGame,tradeGame,raidsGame,questJournalGame,comfortGame,draftGame],
-  components: { DraftPanel:()=>import('./draft/DraftPanel.vue'),AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
+  mixins:[socialGame,tradeGame,raidsGame,questJournalGame,comfortGame,draftGame,housingGame],
+  components: { HousingPanel:()=>import('./housing/HousingPanel.vue'), DraftPanel:()=>import('./draft/DraftPanel.vue'),AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
     SuperTournamentPanel, TournamentRewardPanel, AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
@@ -844,7 +850,7 @@ export default {
     evolutionLookupKey() { const p = this.selectedPokemon; return p ? [p.uuid,p.data?.id,p.level,p.currentHp,p.attack,p.defense,(p.abilities || []).join(',')].join(':') : ''; },
     locationLabel() {
       if (this.isColosseum && this.map === 'ville1_arene' && this.driftState?.phase !== 'exploration') return 'Colosseum';
-      return getMapLocationLabel(this.map, this.preferences.language);
+      return this.housingActive ? this.housingLabel() : getMapLocationLabel(this.map, this.preferences.language);
     },
     isShopMap() {
       return ['safari_shop','tour_rdc','tour_etage1','tour_etage2','tour_etage3','ville_safe1_shop', 'ville1_shop', 'gen_shop1', 'gen_shop_ville2_1', 'gen_shop_ville5_1', 'gen_shop_route10', 'ville3_shop', 'ville4_shop', 'ville5_shop'].includes(this.map);
@@ -888,7 +894,7 @@ export default {
     },
     worldInteractionBlocked() { return this.patchNoticeOpen || this.otherInteractionBlocked; },
     otherInteractionBlocked() {
-      return !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.housingPanel || !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.experienceLab || this.corruptedHeldWorkshop || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.coverageOpen || this.damageCalculatorOpen || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.textImageSequence.length > 0 || this.interactionChoice.visible || this.incomingRequest.visible
@@ -2747,7 +2753,7 @@ export default {
       this.pauseMovementForMap();
       this._mapScenes ||= createMapSceneLoader(resolveMapAsset);
       try {
-        const scene = await this._mapScenes.load(requestedMap);
+        const scene = await this._mapScenes.load(this.housingBackgroundKey(requestedMap));
         if (version !== this._mapLoadVersion || this.map !== requestedMap || this._isBeingDestroyed || this._isDestroyed) return;
         this.mapImage = scene.background;
         this.foregroundImage = scene.foreground;
@@ -3079,10 +3085,20 @@ export default {
       this.drawPnjs(c, now);
       drawMirrorClone(c,this.map,this.mirrorRift,this.mirrorScene,now,this.mirrorRift?.appearance?.sprite?this.ensureSpriteSheet(this.mirrorRift.appearance.sprite):null,mirrorMotion);
 
-      // Loop through all the players and draw them
-      for (const playerId in this.players) {
+      const housePlan=this.housingPlan;
+      let houseObject=0;
+      if(this.housingActive && this.housingArt){
+        for(const p of housePlan.ground)drawFurniture(c,this.housingArt,p);
+        drawStair(c,this.housingArt,this.housingFloor?.stairs?.up,true);
+        drawStair(c,this.housingArt,this.housingFloor?.stairs?.down,false);
+      }
+      const playerOrder=Object.keys(this.players);
+      if(this.housingActive)playerOrder.sort((a,b)=>this.visualPlayer(a,this.players[a],now).y-this.visualPlayer(b,this.players[b],now).y);
+      // Housing furniture joins the same depth order as the characters' feet.
+      for (const playerId of playerOrder) {
         const player = this.players[playerId];
         const position=this.visualPlayer(playerId,player,now);
+        if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length && (housePlan.objects[houseObject].y + this.housingItemHeight(housePlan.objects[houseObject].key))*32 <= position.y+10)drawFurniture(c,this.housingArt,housePlan.objects[houseObject++]);
 
         // DÃ©finit une direction par dÃ©faut si la direction actuelle est indÃ©finie
         if (!player.direction) {
@@ -3130,6 +3146,7 @@ export default {
         }
       }
 
+      if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length)drawFurniture(c,this.housingArt,housePlan.objects[houseObject++]);
       if(!this.battle && !document.hidden && this.roomObstacleAction?.map===this.map)
         drawRoomStrike(c,this.roomObstacleAction,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       if(this.arenaCollapse?.map===this.map&&!this.battle&&!document.hidden)drawHozeCeiling(c,this.arenaCollapse,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
@@ -3215,6 +3232,7 @@ export default {
 
     this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token,{mirrorRift:true,adventureOpening:true});
     this.bindRaidSocket();
+    this.bindHousingSocket();
     this.bindSocialSocket();this.bindTradeSocket();
     this.socket.on('adventureOpening',scene=>{if(this.isDrift)return;this.releaseAllMovementKeys();this.openingScene=scene;});
     bindSessionReplacement(this.socket, () => this.$router.replace({path:'/connexion',query:{reason:'session-replaced'}}));
@@ -5093,4 +5111,8 @@ button:hover {
 
 <style scoped>
 .draft-resume{position:fixed;z-index:1200;left:50%;bottom:16px;translate:-50% 0;border:1px solid var(--journal-accent);border-radius:9px;padding:12px 20px;background:var(--journal-paper);color:var(--journal-heading);font:600 12px var(--journal-font);cursor:pointer;box-shadow:var(--journal-shadow)}.draft-invitation{position:fixed;z-index:2040;right:16px;top:90px;display:flex;flex-direction:column;gap:7px;width:min(320px,calc(100vw - 32px));padding:17px;border:1px solid var(--journal-border);border-radius:11px;background:var(--journal-paper);color:var(--journal-ink);box-shadow:var(--journal-shadow);font:12px/1.5 var(--journal-font)}.draft-invitation small{color:var(--journal-muted)}.draft-invitation span{display:flex;gap:8px}.draft-invitation button{padding:8px;border:1px solid var(--journal-border);border-radius:7px;background:var(--journal-card);color:inherit;cursor:pointer}
+</style>
+
+<style scoped>
+.housing-manage-button{position:absolute;left:15px;top:76px;z-index:20;display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--journal-border);border-radius:9px;background:var(--journal-paper);color:var(--journal-heading);box-shadow:0 3px 14px #07172233;font:600 11px var(--journal-font);cursor:pointer}.housing-manage-button svg{width:25px;height:25px}.housing-invitation{position:absolute;right:16px;top:76px;z-index:1500;width:min(310px,calc(100% - 32px));box-sizing:border-box;padding:17px;background:var(--journal-paper);border:1px solid var(--journal-border);border-radius:12px;box-shadow:var(--journal-shadow);color:var(--journal-ink);font:12px var(--journal-font)}.housing-invitation>b,.housing-invitation>small,.housing-invitation>span{display:block;margin-bottom:9px}.housing-invitation>small{font-size:8px;letter-spacing:.15em;color:var(--journal-muted)}.housing-invitation>div{display:flex;gap:7px}.housing-invitation button{padding:10px 12px;border:1px solid var(--journal-border);border-radius:7px;font:600 11px var(--journal-font);background:var(--journal-accent);color:var(--journal-on-accent);cursor:pointer}.housing-invitation button+button{background:var(--journal-card);color:var(--journal-ink)}@media(max-width:700px){.housing-manage-button{top:71px;padding:6px 9px;left:10px}.housing-manage-button svg{width:22px;height:22px}.housing-invitation{top:72px}}
 </style>
