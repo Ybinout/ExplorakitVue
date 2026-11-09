@@ -34,3 +34,22 @@ export default{components:{PokemonPortrait,BattleStatusPill},props:{pokemon:Obje
 .is-acting .raid-card-order{background:#275846;border-color:#85cba8;color:#e7fff0}.raid-card-active{color:#54a47b}
 .raid-card-life ::v-deep .battle-status-pill{max-width:58px;font-size:7px}
 </style>
+
+<style scoped>
+/* Compact phones keep every HP, threat and owner line inside its card. */
+@media(max-width:700px) and (max-height:700px){
+ .raid-card-header{min-height:24px}
+ .raid-card-order{width:24px;height:24px;font-size:15px}
+ .raid-card-pick{gap:2px}
+ .raid-card-body{grid-template-columns:28px minmax(0,1fr);gap:4px}
+ .raid-card-portrait{width:28px;min-height:32px}
+ .raid-card-portrait .pokemon-portrait{width:28px;height:32px}
+ .raid-card-detail{gap:3px}
+ .raid-card-name b{font-size:10px}
+ .raid-card-life{font-size:8px;line-height:11px}
+ .raid-card-health{height:4px}
+ .raid-card-threat{height:3px}
+ .raid-card-meta{font-size:7px;line-height:10px}
+ .raid-card-meta small{font-size:7px}
+}
+</style>

@@ -1,0 +1,47 @@
+{
+  "date": "2026-11-09",
+  "mode": "built-in imagegen",
+  "assets": [
+    "housing/furniture-rotations-v3.png",
+    "casino/slot-cabinet-v3.png"
+  ],
+  "invariants": "All 22 front and rear views and all four bed orientations preserved byte-for-byte; housing footprints and gameplay unchanged. Two casino cabinets lowered together with their native collision/interaction footprints; base casino image and odds unchanged.",
+  "processing": "Native RGBA transparency threshold 190, crop specified sprite rows, nearest-neighbour scaling, copy only columns 1 and 3 of affected rows into v2 atlas. No front rotation or color-key background removal.",
+  "jobs": [
+    {
+      "key": "housingA",
+      "prompt": "Edit the provided furniture atlas as a style reference, creating a NEW isolated pixel-art furniture sprite sheet. Exactly 2 columns and 6 rows, equally spaced cells, transparent background, no labels. Left column furniture facing EAST (right), right column facing WEST (left). Row 1 round wooden table; row 2 wooden red upholstered chair; row 3 long blue THREE-SEAT sofa; row 4 tall wooden wardrobe; row 5 wooden bookcase; row 6 standing oval mirror. Crucial: match the slightly overhead orthographic Pokemon RPG interior projection of the supplied casino room. We look DOWN onto the furniture from the south at about 45 degrees. These are NOT flat side elevations and NOT diamond isometric objects. Show generous top surfaces and depth. Ground axes remain horizontal/vertical. For side sofas, the THREE seats extend from near foreground to far background in a vertical row, with a continuous tall back along the left edge for east-facing and right edge for west-facing, visible top cushion surfaces, near arm lower in image than far arm, four short feet. Sofa is long vertically, NOT a compact L-shaped armchair. Maintain very simple crisp chunky pixel art, dark outlines, restrained shading, identical blue/red/brown palette from reference, readable at 24-32 pixels wide and 30-52 pixels tall. Tall furniture remains upright, top and side depth visible. No front or back views, no beds, no floor tiles, no scenery, no shadows outside sprite. Each furniture completely separate with generous empty margins. Output 1024 by 1536 sheet.",
+      "refs": [
+        "/home/ubuntu/dev/riftmon-safari-work/vue-explorakit/src/assets/housing/furniture-rotations-v2.png",
+        "/home/ubuntu/dev/riftmon-safari-work/vue-explorakit/src/assets/whitepeak_casino.png"
+      ],
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-9a91378c-d1d0-444d-924b-d447237e9ea2.png"
+    },
+    {
+      "key": "housingB",
+      "prompt": "Create a NEW transparent pixel-art furniture sprite sheet from the furniture atlas style reference. Exactly 2 columns and 7 rows, uniform equal-sized cells, no labels. Left column furniture facing EAST (right), right column facing WEST (left). Row 1 wooden writing desk with drawers; row 2 glass aquarium on wooden cupboard; row 3 wooden treasure chest with metal rim; row 4 long green THREE-SEAT sofa; row 5 small wooden cream-top side table; row 6 small blue Pokemon computer terminal with tilted screen and keyboard; row 7 red-and-white Pokemon healing station. Crucial correct camera: slightly overhead ORTHOGRAPHIC Pokemon RPG interiors, looking down from south at about45degrees. Top planes and deep side planes visible, ground edges aligned to horizontal/vertical room axes, not a diamond-isometric projection or flat elevation. For green sofa, THREE seats recede from bottom to top in a long vertical row; generous visible seat top surfaces, continuous back along left edge for east-facing/right edge for west-facing; front arm lower than back arm, short feet. NOT a tiny L-shaped armchair. Desk and aquarium clearly show depth of top surface and front edge low in picture, all tall furniture stays upright. Match simple chunky pixel art, dark outlines, sparse shading, brown wood, green sofa, blue PC and red/white healing station from references. Readable at 20-32 pixels wide and28-52pixels tall. Generous transparent padding around every sprite, no labels, no floor or scenery, no extra furniture. Output1024by1792sheet.",
+      "refs": [
+        "/home/ubuntu/dev/riftmon-safari-work/vue-explorakit/src/assets/housing/furniture-rotations-v2.png",
+        "/home/ubuntu/dev/riftmon-safari-work/vue-explorakit/src/assets/whitepeak_casino.png"
+      ],
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-05758b11-1c5b-4cbc-bc1d-e9592d9d8b41.png"
+    },
+    {
+      "key": "casino",
+      "prompt": "Edit target reference1: the navy and gold pixel-art slot machine. Redraw ONE isolated slot machine with transparent background, for placing against the LEFT wall of reference2 casino room. Match that room's slightly overhead Pokemon RPG orthographic perspective. Face screen and controls towards the room to the right, but camera sees the top surface, right front display and substantial left side. Top/front/side should be consistent with the room's counter and sofas. Reduce the very steep angular isometric perspective of reference1: base grounded horizontally with only small vertical depth, upright cabinet sides vertical, screen/reel opening readable, top and control ledge visible from above. Compact cabinet, broad stable low base, gold trim dark navy sides, three colorful slot reels, small lever, tiny gold lamp. Preserve existing ornate palette and simple chunky sharp pixel art, dark outlines, no realistic rendering, no lettering, no background, no floor tile, no broad glow or cast shadow. Should read naturally at48pixelswide72pixelstall, not overly tall/thin, no attached countertop. Entire cabinet contained with transparent margins.",
+      "refs": [
+        "/home/ubuntu/dev/riftmon-safari-work/vue-explorakit/src/assets/casino/slot-cabinet-v2.png",
+        "/home/ubuntu/dev/riftmon-safari-work/vue-explorakit/src/assets/whitepeak_casino.png"
+      ],
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-87efe0d7-4284-45ca-a786-875c08e9ee64.png"
+    },
+    {
+      "key": "profilesC",
+      "prompt": "Production RPG sprite EDIT. The supplied atlas has correct FRONT views, but we need genuinely RIGHT and LEFT profiles with an overhead camera. Generate a transparent sprite atlas EXACTLY TWO columns SIX rows, evenly spaced cells, no text. Column1 EAST-facing (opening faces right, side panel faces viewer); column2 WEST-facing. Row1 writing desk; row2 wardrobe; row3 bookcase; row4 aquarium on cupboard; row5 closed treasure chest; row6 red white healing terminal. Do NOT draw front-facing furniture. The cupboard DOORS and bookcase BOOKS must be seen only as a NARROW strip on the RIGHT edge in col1 and LEFT edge in col2, dominant surface is the plain wood SIDE PANEL. Wardrobe and bookcase profile width about 2/3 front width. Desk long tabletop recedes vertically from bottom to top, with drawers/seat opening only at right edge in col1 / left edge in col2; show much more of top surface than a flat side elevation. Chest latch only as narrow sliver on right/left edge, dominant side end is visible. Healing terminal has domed red top, white side panel, display/button ledge on right/left narrow edge, NOT front. Aquarium must show glass TOP water surface, transparent side and narrow right/left front. Camera as Pokemon GBA RPG overhead45degrees, keep upright verticals, floor axes aligned square, not tilted diamond isometric. Match reference chunky dark-outlined pixel style, small restrained color palette; native about21-32px wide30-38px tall per sprite. No floor, no background, isolated sprites generous margins. Strictly profile views, NOT front duplicates.",
+      "refs": [
+        "/home/ubuntu/dev/riftmon-safari-work/vue-explorakit/src/assets/housing/furniture-rotations-v2.png"
+      ],
+      "source": "/home/ubuntu/.codex/generated_images/01a12b53-6548-7a53-b36a-05641c599196/exec-e1151ac1-ab0a-4976-9bdd-f44e311c431a.png"
+    }
+  ]
+}
