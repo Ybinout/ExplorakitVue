@@ -29,7 +29,10 @@ function drawDevice(context,device,now,motion){
     if(device.kind==='corruption'){context.save();const x=device.screen.x*32+8,y=device.screen.y*32+10,tick=motion?Math.floor(now/120):0;context.fillStyle='#352845';context.fillRect(x,y,24,17);context.fillStyle='#a980c4';context.globalAlpha=.25;context.fillRect(x,y+tick%17,24,1);context.globalAlpha=1;context.fillStyle='#e1cef1';context.font='bold 9px monospace';context.textAlign='center';context.fillText({move:'CS',ability:'T',type:'Ty',combat:'±'}[device.family],x+12,y+10);context.fillStyle='#a5e4c6';for(let n=0;n<5;n++)context.fillRect(x+3+n*4,y+15-((tick+n*3)%3),2,1+((tick+n*3)%3));context.restore();return;}
     if(device.kind!=='pc')return;
     // Seat the screen inside the counter opening without moving its interaction tile.
-    context.save();context.translate(device.x*32+8,device.y*32-16);
+    drawPokemonTerminal(context,device.x*32+8,device.y*32-16);
+}
+export function drawPokemonTerminal(context,x,y){
+    context.save();context.translate(x,y);
     const rect=(color,x,y,w,h)=>{context.fillStyle=color;context.fillRect(x,y,w,h);};
     rect('#343e58',2,2,28,44);rect('#687c96',4,4,24,40);rect('#b9d3df',4,4,24,3);
     rect('#26384f',6,8,20,20);rect('#83cee0',8,10,16,14);rect('#c8f0e5',10,12,12,2);

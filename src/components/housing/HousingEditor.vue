@@ -91,6 +91,7 @@
           aria-label="Grille d’aménagement"
           @pointerdown="sceneDown"
           @pointermove="sceneHover"
+          @keydown.r.prevent="rotateTool"
           @keydown.esc.prevent="
             tool = null;
             preview = null;
@@ -115,6 +116,13 @@
           @click="remove"
         >
           Ranger</button
+        ><button
+          v-if="tool?.kind === 'furniture'"
+          :disabled="locked"
+          data-housing-rotate
+          @click="rotateTool"
+        >
+          ↻ Tourner · {{ tool.rotation || 0 }}°</button
         ><button
           v-if="tool"
           @click="
@@ -153,6 +161,7 @@ import {
   drawStair,
   housingRenderPlan,
   furnitureBounds,
+  furnitureSize,
 } from '@/services/housingArt';
 import { inside, layoutError, projected } from '@/services/housingPlacement';
 import { resolveMapAsset } from '@/services/mapAssets';
@@ -305,7 +314,12 @@ export default {
     stockClick(item) {
       if (performance.now() < (this._ignoreClick || 0) || item.available <= 0)
         return;
-      this.tool = { kind: 'furniture', key: item.key, id: crypto.randomUUID() };
+      this.tool = {
+        kind: 'furniture',
+        key: item.key,
+        id: crypto.randomUUID(),
+        rotation: 0,
+      };
       this.pan = false;
       this.preview = null;
       this.draw();
@@ -316,6 +330,7 @@ export default {
         this.tool = {
           kind: 'furniture',
           key: item.key,
+          rotation: 0,
           id: crypto.randomUUID(),
         };
         this.pan = false;
@@ -414,7 +429,7 @@ export default {
       const point = this.location(e);
       if (!point) return;
       const p = [...this.draft.placements].reverse().find((p) => {
-        const i = artItem(p.key);
+        const i = furnitureSize(p);
         return (
           point.x >= p.x &&
           point.x < p.x + i.w &&
@@ -423,7 +438,12 @@ export default {
         );
       });
       if (!this.tool && p)
-        this.tool = { kind: 'furniture', key: p.key, id: p.id };
+        this.tool = {
+          kind: 'furniture',
+          key: p.key,
+          id: p.id,
+          rotation: p.rotation ?? 0,
+        };
       if (!this.tool) return;
       this.armDrag(e, () => {}, true);
       this.setPreview(e);
@@ -453,6 +473,25 @@ export default {
         return;
       }
       this.change(next);
+    },
+    rotateTool() {
+      if (this.locked || this.tool?.kind !== 'furniture') return;
+      this.tool = {
+        ...this.tool,
+        rotation: ((this.tool.rotation || 0) + 90) % 360,
+      };
+      const placed = this.draft.placements.find((p) => p.id === this.tool.id);
+      if (placed) {
+        const next = projected(this.draft, this.tool, placed.x, placed.y),
+          error = layoutError(next);
+        if (error) this.previewError = error;
+        else this.change(next);
+      }
+      if (this.preview)
+        this.previewError = layoutError(
+          projected(this.draft, this.tool, this.preview.x, this.preview.y)
+        );
+      this.draw();
     },
     remove() {
       if (!this.tool) return;
@@ -500,7 +539,7 @@ export default {
           item =
             this.tool.kind === 'stair'
               ? { w: 2, h: 2 }
-              : artItem(this.tool.key);
+              : furnitureSize(this.tool);
         c.fillStyle = this.previewError ? '#d2535050' : '#69aa8250';
         c.strokeStyle = this.previewError ? '#e6867f' : '#70b594';
         c.lineWidth = 2;

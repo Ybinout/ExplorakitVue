@@ -1,5 +1,5 @@
 import config from '@/data/casinoSlots.json';
-const source = require('@/assets/casino/slot-cabinet-v1.png');
+const source = require('@/assets/casino/slot-cabinet-v2.png');
 let art;
 function image() {
   if (!art) {
@@ -10,11 +10,11 @@ function image() {
 }
 export const slotMachines = config.machines;
 export const isCasino = (map) => map === config.map;
-export const machineBottom = (m) => (m.y + m.h) * 32;
+export const machineBottom = (m) => (m.y + m.h) * 32 + (config.visualOffset?.y||0);
 export function drawSlotMachine(c, m, now, motion = true) {
   const im = image();
   if (!im.complete || !im.naturalWidth) return;
-  const x = m.x * 32,
+  const x = m.x * 32 + (config.visualOffset?.x||0),
     y = machineBottom(m) - 96;
   c.save();
   c.imageSmoothingEnabled = false;

@@ -27,11 +27,12 @@
               <g v-for="node in displayNodes" :key="node.id" :data-map-node="node.id" class="map-node" role="button" tabindex="0" :aria-label="label(node.id)" :aria-pressed="selected === node.id" @click="selected = node.id" @keydown.enter.prevent="selected = node.id" @keydown.space.prevent="selected = node.id">
                 <title>{{ label(node.id) }}</title>
                 <rect :x="node.x-12" :y="node.y-12" width="24" height="24" fill="transparent"/>
+                <path v-if="node.kind==='house'" :d="`M${node.x-8} ${node.y-1}l8-7 8 7h-2v9h-12v-9Z`" fill="#fff1cb" stroke="#885f46" stroke-width="2" data-house-marker/>
                 <rect v-if="node.kind === 'town'" :x="node.x-7" :y="node.y-6" width="14" height="12" fill="#f7f0c5" stroke="#94745b" stroke-width="1"/>
                 <path v-if="node.kind === 'town'" :d="`M${node.x-5} ${node.y-4}h10v8h-10Z`" fill="#d87765"/>
-                <rect v-else :x="node.x-3" :y="node.y-3" width="6" height="6" :fill="node.kind==='cave' ? '#6b7967' : '#f7edb4'"/>
+                <rect v-else-if="node.kind!=='house'" :x="node.x-3" :y="node.y-3" width="6" height="6" :fill="node.kind==='cave' ? '#6b7967' : '#f7edb4'"/>
                 <text v-if="node.kind==='route' && !isSafari(node.id)" :x="node.x+10" :y="node.y+3" class="route-label">{{ routeLabel(node.id) }}</text>
-                <text v-if="node.kind === 'town' || node.kind === 'event'" :x="node.x" :y="node.y - (currentNode?.id === node.id ? 28 : 14)" text-anchor="middle" class="town-label">{{ shortLabel(node.id) }}</text>
+                <text v-if="node.kind === 'town' || node.kind === 'event' || node.kind === 'house'" :x="node.x" :y="node.y - (currentNode?.id === node.id ? 28 : 14)" text-anchor="middle" class="town-label">{{ shortLabel(node.id) }}</text>
               </g>
             </g>
             <g v-for="node in habitatNodes" :key="`habitat-${node.id}`" class="habitat-ping" :data-habitat-ping="node.id" @click="selected = node.id">
@@ -63,7 +64,7 @@
         <div class="region-detail">
           <div v-if="flightAllowed && !pokemon" class="flight-module" data-flight-module>
             <strong>{{ en ? 'Flight Module' : 'Module Vol' }}</strong>
-            <p>{{ flight?.unlocked ? (en ? 'Choose a visited town, then take flight.' : 'Choisis une ville visitée, puis prends ton envol.') : (en ? 'Raphael will give you this module after your victory.' : 'Raphael te remettra ce module après ta victoire.') }}</p>
+            <p>{{ flight?.unlocked ? (en ? 'Choose a visited town or your house, then take flight.' : 'Choisis une ville visitée ou ta maison, puis prends ton envol.') : (en ? 'Raphael will give you this module after your victory.' : 'Raphael te remettra ce module après ta victoire.') }}</p>
           </div>
           <template v-if="pokemon">
             <label for="region-place">{{ en ? 'Habitats' : 'Localisations' }}</label>
@@ -74,7 +75,7 @@
         </div>
         <footer class="region-footer">{{ pokemon ? (en ? 'Presence areas, not guaranteed encounters.' : 'Zones de présence, rencontres non garanties.') : (en ? 'Select a town or route to find your way.' : 'Sélectionne une ville ou une route pour te repérer.') }}</footer>
       </div>
-      <div v-if="flightAllowed && !pokemon && selectedNode?.kind === 'town' && flight?.unlocked" class="flight-actionbar">
+      <div v-if="flightAllowed && !pokemon && ['town','house'].includes(selectedNode?.kind) && flight?.unlocked" class="flight-actionbar">
         <div><small>{{ en ? 'Flight destination' : 'Destination du vol' }}</small><strong>{{ label(selected) }}</strong></div>
         <button class="flight-button" data-fly :disabled="!canFlySelected" @click="$emit('fly',selected)">{{ canFlySelected ? (en ? 'Fly here ↗' : 'Voler ici ↗') : (en ? 'Not visited' : 'Non visitée') }}</button>
       </div>
@@ -93,7 +94,7 @@ export default {
   computed:{
     friendMarkers(){if(!this.atlas)return [];const colors=['#9b5e9d','#35798e','#a27432','#407e54','#a95463','#5d64a0'],offsets=[[12,0],[-12,0],[0,12],[0,-12],[12,12],[-12,12]],counts={};return this.friendMembers.filter(p=>p.online&&p.location).map(p=>{const node=this.atlas.nodes.find(n=>n.id===p.location.nodeId);if(!node)return null;const k=counts[node.id]||0;counts[node.id]=k+1;const offset=offsets[k%offsets.length];return {...p,nodeId:node.id,mode:p.location.mode,x:node.x+offset[0],y:node.y+offset[1],color:p.afk?'#db942e':colors[p.id%colors.length]};}).filter(Boolean);},
 
-    canFlySelected(){return this.flightAllowed&&this.flight?.unlocked&&this.selectedNode?.kind==='town'&&this.flight.visited.includes(this.selected);},
+    canFlySelected(){return this.flightAllowed&&this.flight?.unlocked&&this.flight.owned!==false&&(this.selectedNode?.kind==='house'||this.selectedNode?.kind==='town'&&this.flight.visited.includes(this.selected));},
     layout(){return mapLayout(this.atlas || {width:512,height:448},this.viewport,this.zoom);},
     artStyle(){return {width:this.layout.mapWidth+'px',height:this.layout.mapHeight+'px'};},
     surfaceStyle(){return {width:Math.max(this.viewport.width,this.layout.mapWidth)+'px',height:Math.max(this.viewport.height,this.layout.mapHeight)+'px'};},
@@ -103,7 +104,8 @@ export default {
     locations(){return this.habitat.kind==='evolution' ? (this.habitat.ancestors || []).flatMap(a=>a.locations.map(l=>({...l,speciesId:a.speciesId}))) : this.habitat.locations || [];},
     currentNode(){return this.atlas?.nodes.find(n=>n.id===(this.currentRegion || this.atlas.aliases[this.currentMap]));},
     currentLabel(){return this.isDark(this.currentNode?.id)?'Dark Continent':this.currentNode ? this.label(this.currentNode.id) : this.label(this.currentMap);},
-    displayNodes(){return (this.atlas?.nodes||[]).filter(n=>!this.isDark(n.id));},
+    houseNode(){if(this.pokemon||!this.flight?.house)return null;const n=this.atlas?.nodes.find(n=>n.id===this.flight.house.nodeId);return n?{id:'owned-house',kind:'house',x:n.x+17,y:n.y+12}:null;},
+    displayNodes(){return [...(this.atlas?.nodes||[]).filter(n=>!this.isDark(n.id)),...(this.houseNode?[this.houseNode]:[])];},
     selectedNode(){return this.displayNodes.find(n=>n.id===this.selected);},
     selectedHabitats(){return this.locations.filter(l=>l.map===this.selected);},
     habitatNodes(){const ids=new Set(this.locations.map(l=>l.map));return (this.atlas?.nodes || []).filter(n=>ids.has(n.id));},
@@ -118,7 +120,7 @@ export default {
 
     isSafari(id){return /^safari(?:[1-9]|1[0-5])$/.test(id||'');},
     isDark(id){return /^jungle[1-9]$/.test(id||'');},
-    label(id){return this.isDark(id)?'Dark Continent':getMapLocationLabel(id,this.language);},
+    label(id){if(id==='owned-house')return this.en?'My house':'Ma maison';return this.isDark(id)?'Dark Continent':getMapLocationLabel(id,this.language);},
     routeLabel(id){return /^jungle[1-9]$/.test(id)?'Jungle '+id.slice(6):this.label(id).replace('Route ','');},
     shortLabel(id){return id==='start' ? (this.en?'Home village':'Village de départ') : this.label(id);},
     speciesName(id){return this.entries.find(p=>p.id===id)?.name || `#${id}`;},

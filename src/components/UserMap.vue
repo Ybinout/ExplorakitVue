@@ -1965,7 +1965,7 @@ export default {
         const classicCustomSprite = playerBasedSprite || ['aspha-pixel-v2.png', 'gwenn-pixel-v2.png', 'gwenn-pixel-v3.png', 'matthieu-pixel-v1.png', 'nrv-noz-pixel-v1.png', 'nrv-tom-pixel-v1.png', 'nrv-cry-pixel-v1.png'].includes(pnj.sprite);
         if (pnj.spriteFrame || usesClassicNpcAtlas(spriteSheet) || classicCustomSprite) {
           // Original pixels at 2x, cropped to one person; preserve the feet anchor.
-          const size = classicCustomSprite ? spriteSheet.naturalWidth * 2 : npcWorldSize(spriteSheet);
+          const size = classicCustomSprite ? spriteSheet.naturalWidth * 2 : npcWorldSize(spriteSheet,pnj);
           let frame = pnj.spriteFrame || { columns: 1, rows: 1, index: 0 };
           if(/^clement-walk-v[34]\.png$/.test(pnj.sprite)){const dx=pnj.x-(pnj.fromX??pnj.x),dy=pnj.y-(pnj.fromY??pnj.y);const row=Math.abs(dx)>Math.abs(dy)?dx>0?2:1:dy<0?3:0;frame={columns:3,rows:4,index:row*3+(moving&&motion?(Math.floor(progress*4)%2===0?0:2):1)};}
           // Player-based cells preserve the player's transparent padding and feet.
@@ -2458,6 +2458,8 @@ export default {
     departSafari(){const offer=this.safariOffer;if(!offer)return;this.safariOffer=null;return this.flyToTown(offer.destination.map,{event:'safari:travel'});},
     returnFromDark(){if(this.darkBusy)return;this.darkPanel=null;return this.flyToTown('start',{kind:'void',event:'dark:return'});},
     async flyToTown(map,{kind='flight',event='flyToTown',departureReady=null,data={},onError=null}={}) {
+      const houseFlight=map==='owned-house' && event==='flyToTown';
+      if(houseFlight){event='flyToHouse';map=this.progressionState.flight?.house?.map||map;}
       if(this.flight||this.isDrift||this.battle||this.battleResult||!this.socket?.connected)return;
       if(this.onDarkContinent&&event!=='dark:return'){this.showInteractionNotice('Parle au guide de la plage pour rentrer chez toi.',3800);return;}
       this.releaseAllMovementKeys();this.closeInfoPanel();this.isMenuOpen=false;if(kind==='void')this.isBagOpen=false;
@@ -2466,7 +2468,7 @@ export default {
       const socket=this.socket,epoch=this._flightEpoch=(this._flightEpoch||0)+1;
       const alive=()=>!this._isDestroyed&&!this._isBeingDestroyed&&this.flight?.epoch===epoch&&this.socket===socket&&socket.connected;
       const origin=()=>{const p=this.players[this.socket?.id],camera=getWorldCamera(this.worldFrame.width,this.worldFrame.height,p,this.showMobileControls);return{x:((p?.x||448)-camera.x)*camera.scale/this.worldFrame.width*100,y:((p?.y||320)-camera.y)*camera.scale/this.worldFrame.height*100};};
-      this.flight={epoch,kind,origin:origin(),phase:'departure',startedAt:performance.now(),label:kind==='void'?'':getMapLocationLabel(map,this.preferences.language)};
+      this.flight={epoch,kind,origin:origin(),phase:'departure',startedAt:performance.now(),label:kind==='void'?'':houseFlight?(this.preferences.language==='en'?'My house':'Ma maison'):getMapLocationLabel(map,this.preferences.language)};
       try {
         if(!reduced)await wait(650);
         if(!alive())return;
@@ -3103,7 +3105,7 @@ export default {
         const player = this.players[playerId];
         const position=this.visualPlayer(playerId,player,now);
         while(casinoObject<casinoObjects.length && machineBottom(casinoObjects[casinoObject])<=position.y+10)drawSlotMachine(c,casinoObjects[casinoObject++],now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
-        if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length && (housePlan.objects[houseObject].y + this.housingItemHeight(housePlan.objects[houseObject].key))*32 <= position.y+10)drawFurniture(c,this.housingArt,housePlan.objects[houseObject++]);
+        if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length && this.housingItemBottom(housePlan.objects[houseObject]) <= position.y+10)drawFurniture(c,this.housingArt,housePlan.objects[houseObject++]);
 
         // DÃ©finit une direction par dÃ©faut si la direction actuelle est indÃ©finie
         if (!player.direction) {

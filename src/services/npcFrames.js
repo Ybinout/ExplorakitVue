@@ -9,7 +9,7 @@ const worldSprites = Object.freeze({
 // Appearance stays client-side: legacy servers and clients keep their valid atlas frames.
 export function npcAppearance(actor) {
   if(actor.name==='town_bastien')return {...actor,sprite:'clement-walk-v4.png',spriteFrame:{columns:3,rows:4,index:1}};
-  if(actor.name==='town_lina')return {...actor,sprite:'maria-blue-v1.png',spriteFrame:{columns:1,rows:1,index:0}};
+  if(/^town_lina(?:_after)?$/.test(actor.name))return {...actor,sprite:'maria-blue-v1.png',spriteFrame:{columns:1,rows:1,index:0}};
   return Object.hasOwn(worldSprites, actor.name)
     ? { ...actor, sprite: worldSprites[actor.name], spriteFrame: { columns: 1, rows: 1, index: 0 } }
     : actor;
@@ -31,7 +31,7 @@ export function classicNpcIndex(frame, actor = {}) {
   return frame?.columns === 8 && frame.rows === 4 && Number.isInteger(frame.index)
     && frame.index >= 0 && frame.index < 32 ? frame.index : 20;
 }
-export function npcWorldSize(image) { if(String(image.src).includes('maria-blue-v1'))return 70; return /(?:clement-walk-v[34]|maria-blue-v1)/.test(String(image.src)) ? 64 : usesClassicNpcAtlas(image) || String(image.src).includes('gwenn-pixel-v1') ? 64 : 48; }
+export function npcWorldSize(image,actor={}) { if(/^town_lina(?:_after)?$/.test(actor.name)||String(actor.sprite||image.src).includes('maria-blue-v1'))return 64; return /(?:clement-walk-v[34]|maria-blue-v1)/.test(String(image.src)) ? 64 : usesClassicNpcAtlas(image) || String(image.src).includes('gwenn-pixel-v1') ? 64 : 48; }
 // The generated atlas has unequal row gutters. Grid division included neighbours'
 // feet. These source rectangles are for world pixel sprites only.
 export function npcFrame(image, frame, actor) {

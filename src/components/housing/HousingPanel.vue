@@ -201,6 +201,60 @@
             </div></template
           >
         </template>
+        <template v-else-if="tab === 'settings'">
+          <section class="house-sale" data-housing-sale>
+            <small>PARAMÈTRES · PROPRIÉTÉ</small>
+            <h3>Un nouveau départ.</h3>
+            <p>
+              Revendre cette maison te rend 80 % du total payé pour la maison
+              et ses étages. La maison et ses étages sont retirés ; tous tes
+              meubles, PC et équipements restent dans ton stockage Housing pour
+              ta prochaine maison.
+            </p>
+            <div class="house-sale-amount">
+              <span>Montant reversé</span
+              ><strong>{{ money(salePrice) }} ₽</strong>
+            </div>
+            <p>
+              Les visiteurs repartent à leur point d’origine. L’adresse
+              disparaît de ta minimap.
+            </p>
+            <button
+              v-if="!saleConfirm"
+              :disabled="busy || !!pending"
+              @click="saleConfirm = true"
+            >
+              Revendre ma maison
+            </button>
+            <div
+              v-else
+              class="house-sale-confirm"
+              role="alertdialog"
+              aria-labelledby="house-sale-title"
+              data-housing-sale-confirm
+            >
+              <h3 id="house-sale-title">Confirmer la revente ?</h3>
+              <p>
+                Tu recevras <b>{{ money(salePrice) }} ₽</b>. Tous tes meubles et
+                équipements sont conservés, même ceux actuellement posés.
+              </p>
+              <div>
+                <button
+                  :disabled="busy || !!pending"
+                  @click="saleConfirm = false"
+                >
+                  Garder ma maison</button
+                ><button
+                  class="house-primary"
+                  :disabled="busy || !!pending"
+                  @click="paid('sell', { refund: salePrice })"
+                >
+                  Confirmer · {{ money(salePrice) }} ₽
+                </button>
+              </div>
+            </div>
+          </section>
+        </template>
         <template v-else>
           <div class="house-invite-intro">
             <h3>La porte est ouverte à tes amis.</h3>
@@ -308,6 +362,7 @@ const categories = {
   decoration: 'Décoration',
   tapis: 'Tapis',
   lumieres: 'Lumières',
+  equipements: 'Équipements Pokémon',
   plantes: 'Plantes',
 };
 export default {
@@ -323,6 +378,7 @@ export default {
   },
   data: () => ({
     tab: 'editor',
+    saleConfirm: false,
     model: 'nid',
     query: '',
     category: '',
@@ -343,7 +399,17 @@ export default {
       { key: 'editor', name: 'Aménager', icon: '▦' },
       { key: 'floors', name: 'Étages', icon: '↗' },
       { key: 'friends', name: 'Inviter', icon: '♧' },
+      { key: 'settings', name: 'Paramètres', icon: '⚙' },
     ],
+    salePrice() {
+      const total = this.home.floors.reduce(
+        (sum, f) =>
+          sum +
+          (f.purchasePrice ?? this.models.find((m) => m.key === f.model).price),
+        0
+      );
+      return Math.floor(total * 0.8);
+    },
     floorLabel() {
       return (this.payload.floor || 0) === 0
         ? 'REZ-DE-CHAUSSÉE'
@@ -546,6 +612,57 @@ header > button {
 button:disabled {
   opacity: 0.45;
   cursor: default;
+}
+.house-sale {
+  max-width: 650px;
+  margin: auto;
+}
+.house-sale > small {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--journal-muted);
+}
+.house-sale h3 {
+  font-size: 23px;
+  margin: 10px 0;
+}
+.house-sale p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--journal-muted);
+}
+.house-sale-amount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--journal-border);
+  border-radius: 10px;
+  background: var(--journal-selected);
+}
+.house-sale-amount strong {
+  font-size: 26px;
+  color: var(--journal-heading);
+}
+.house-sale-amount span {
+  font-size: 12px;
+}
+.house-sale-confirm {
+  border: 1px solid var(--journal-accent);
+  padding: 18px;
+  border-radius: 12px;
+  margin-top: 18px;
+  background: var(--journal-card);
+}
+.house-sale-confirm > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.house-primary {
+  background: var(--journal-accent);
+  color: var(--journal-on-accent);
 }
 .housing-tabs {
   display: flex;
@@ -875,6 +992,8 @@ footer .house-primary {
     height: 33px;
   }
   .housing-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     padding: 9px 12px;
     gap: 5px;
   }

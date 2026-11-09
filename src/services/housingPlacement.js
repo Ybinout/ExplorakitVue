@@ -1,4 +1,4 @@
-import { housingModel, artItem } from './housingArt';
+import { housingModel, artItem, furnitureSize } from './housingArt';
 export const tileKey = (x, y) => x + ',' + y;
 export function inside(m, x, y) {
   const c = m.cutout;
@@ -50,7 +50,7 @@ export function layoutError(f) {
   for (const p of f.placements) {
     const i = artItem(p.key);
     if (!i) return 'Meuble inconnu.';
-    const e = claim(p, i.w, i.h, i.solid);
+    const e = claim(p, furnitureSize(p).w, furnitureSize(p).h, i.solid);
     if (e) return e;
   }
   for (const p of targets)
@@ -85,7 +85,13 @@ export function projected(f, tool, x, y) {
   if (tool.kind === 'stair') copy.stairs[tool.key] = { x, y };
   else {
     copy.placements = copy.placements.filter((p) => p.id !== tool.id);
-    copy.placements.push({ id: tool.id, key: tool.key, x, y });
+    copy.placements.push({
+      id: tool.id,
+      key: tool.key,
+      x,
+      y,
+      rotation: tool.rotation ?? 0,
+    });
   }
   return copy;
 }

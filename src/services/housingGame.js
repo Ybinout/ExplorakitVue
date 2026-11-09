@@ -3,7 +3,7 @@ import {
   loadHousingArt,
   housingRenderPlan,
   housingModel,
-  artItem,
+  furnitureBounds,
 } from './housingArt';
 export default {
   data: () => ({
@@ -30,8 +30,8 @@ export default {
     this._unbindHousing?.();
   },
   methods: {
-    housingItemHeight(key) {
-      return artItem(key)?.h || 1;
+    housingItemBottom(p) {
+      return furnitureBounds(p).bottom;
     },
     bindHousingSocket() {
       this._unbindHousing?.();
@@ -103,7 +103,10 @@ export default {
           throw Error(r?.message || 'Cette action n’est pas disponible.');
         if (r.money !== undefined)
           this.$set(this.progressionState, 'money', r.money);
-        if (r.kind) {
+        if (r.kind === 'sold') {
+          this.closeHousingPanel();
+          this.showInteractionNotice(r.message, 6500);
+        } else if (r.kind) {
           this.housingPanel = { ...this.housingPanel, ...r };
           if (name === 'purchase' || name === 'save' || name === 'floor')
             this.housingNotice =
