@@ -1,153 +1,42 @@
 <template>
   <div class="housing-editor" data-housing-editor>
-    <aside class="house-library">
-      <div class="library-title">
-        <h3>Mes meubles</h3>
-        <b>{{ draft.placements.length }} / 10</b>
-      </div>
-      <label
-        ><span class="sr-only">Chercher un meuble</span
-        ><input
-          v-model="query"
-          type="search"
-          placeholder="Trouver un meuble…"
-          :disabled="locked"
-      /></label>
+    <div class="editor-heading">
+      <nav aria-label="Aménagement" class="editor-tabs">
+        <button :aria-pressed="view==='room'" @click="view='room'">⌂ Pièce</button>
+        <button :aria-pressed="view==='furniture'" @click="view='furniture'">▤ Meubles <small>{{draft.placements.length}} / 10</small></button>
+      </nav>
+      <button class="editor-undo" :disabled="!history.length||locked" @click="undo">↶ Annuler</button>
+    </div>
+    <aside v-show="view==='furniture'" class="house-library">
+      <label><span class="sr-only">Chercher un meuble</span><input v-model="query" type="search" placeholder="Trouver un meuble…" :disabled="locked"/></label>
+      <p class="house-library-help">Choisis un meuble, puis touche une case de la pièce pour le poser.</p>
       <div class="house-stock">
-        <button
-          v-for="item in stock"
-          :key="item.key"
-          :disabled="locked || item.available <= 0"
-          :aria-pressed="tool?.key === item.key"
-          @pointerdown="stockDown($event, item)"
-          @click="stockClick(item)"
-        >
-          <housing-item-icon :item-key="item.key" /><span
-            ><b>{{ item.name }}</b
-            ><small
-              >{{ item.available }} disponible{{
-                item.available > 1 ? 's' : ''
-              }}</small
-            ></span
-          >
+        <button v-for="item in stock" :key="item.key" :disabled="locked||item.available<=0" :aria-pressed="tool?.key===item.key" @pointerdown="stockDown($event,item)" @click="stockClick(item)">
+          <housing-item-icon :item-key="item.key"/><span><b>{{item.name}}</b><small>{{item.available}} disponible{{item.available>1?'s':''}}</small></span><span aria-hidden="true">＋</span>
         </button>
-        <p v-if="!stock.length" class="house-empty">
-          Les meubles s’achètent au Grand Comptoir.
-        </p>
+        <p v-if="!stock.length" class="house-empty">Les meubles s’achètent au Grand Comptoir.</p>
       </div>
     </aside>
-    <div class="house-workspace">
-      <div class="house-editor-tools">
-        <button
-          type="button"
-          :aria-pressed="pan"
-          @click="
-            pan = !pan;
-            tool = null;
-          "
-        >
-          ✥ Déplacer la vue</button
-        ><button
-          type="button"
-          @click="zoom = Math.max(0.75, zoom - 0.25)"
-          aria-label="Dézoomer"
-        >
-          −</button
-        ><span>{{ Math.round(zoom * 100) }} %</span
-        ><button
-          type="button"
-          @click="zoom = Math.min(2, zoom + 0.25)"
-          aria-label="Zoomer"
-        >
-          +</button
-        ><button
-          type="button"
-          :disabled="!history.length || locked"
-          @click="undo"
-        >
-          ↶ Annuler
-        </button>
+    <div v-show="view==='room'" class="house-workspace">
+      <p class="house-placement-help" :class="{'is-invalid':previewError}" role="status">{{previewError || (tool?.kind==='stair'?'Touche une case pour déplacer l’escalier.':tool ? installed?'Glisse ce meuble pour le déplacer. Touche une zone vide pour le désélectionner.':'Touche une case libre pour poser '+selectedName+'.':'Touche un meuble pour le sélectionner, ou ouvre la liste Meubles.')}}</p>
+      <div class="house-scene-area">
+        <div ref="viewport" class="house-grid-viewport">
+          <div class="house-scene-content" :style="{width:Math.max(viewportWidth,canvasWidth)+'px',height:Math.max(viewportHeight,canvasHeight)+'px'}">
+            <canvas ref="scene" :style="{width:canvasWidth+'px',height:canvasHeight+'px'}" :width="Math.ceil(bounds.w*32*2)" :height="Math.ceil(bounds.h*32*2)" tabindex="0" aria-label="Grille d’aménagement" @pointerdown="sceneDown" @pointermove="sceneHover" @keydown.r.prevent="rotateTool" @keydown.esc.prevent="deselect"/>
+          </div>
+        </div>
+        <label class="house-zoom"><span aria-hidden="true">＋</span><span class="zoom-track"><input v-model.number="zoom" type="range" min="0.6" max="3" step="0.02" aria-label="Zoom de la pièce" @keydown.up.prevent="adjustZoom(.1)" @keydown.down.prevent="adjustZoom(-.1)"/></span><span aria-hidden="true">−</span></label>
       </div>
-      <p class="house-placement-help" :class="{ 'is-invalid': previewError }">
-        {{
-          previewError ||
-          (pan
-            ? 'Fais glisser la pièce pour déplacer la vue.'
-            : tool?.kind === 'stair'
-            ? 'Choisis une case pour cet escalier.'
-            : tool
-            ? 'Glisse ou touche une case pour poser ' + selectedName + '.'
-            : 'Choisis un meuble, puis une case. Tu peux aussi glisser un meuble déjà posé.')
-        }}
-      </p>
-      <div ref="viewport" class="house-grid-viewport">
-        <canvas
-          ref="scene"
-          :class="{ pan }"
-          :style="{ width: canvasWidth + 'px', height: canvasHeight + 'px' }"
-          :width="Math.ceil(bounds.w * 32 * 2)"
-          :height="Math.ceil(bounds.h * 32 * 2)"
-          tabindex="0"
-          aria-label="Grille d’aménagement"
-          @pointerdown="sceneDown"
-          @pointermove="sceneHover"
-          @keydown.r.prevent="rotateTool"
-          @keydown.esc.prevent="
-            tool = null;
-            preview = null;
-            draw();
-          "
-        />
+      <div class="house-selection-slot"><div v-if="tool" class="house-selected">
+        <span><b>{{selectedName}}</b><small>{{tool.kind==='stair'?'L’escalier reste relié à l’autre étage.':installed?'Position retenue · enregistre pour la conserver.':'Choisis un emplacement libre.'}}</small></span>
+        <div class="selected-actions">
+          <button v-if="tool.kind==='furniture'" :disabled="locked" data-housing-rotate @click="rotateTool">↻ Tourner <small>{{tool.rotation||0}}°</small></button>
+          <button v-if="tool.kind==='furniture'&&installed" :disabled="locked" @click="remove">▤ Ranger</button>
+          <button @click="deselect">× Désélectionner</button>
+        </div>
       </div>
-      <div class="house-selected">
-        <span
-          ><b>{{ selectedName || 'Aucun élément sélectionné' }}</b
-          ><small v-if="tool">{{
-            tool.kind === 'stair'
-              ? 'L’escalier reste relié à l’autre étage.'
-              : 'Un déplacement ne consomme aucun meuble.'
-          }}</small></span
-        ><button
-          v-if="
-            tool?.kind === 'furniture' &&
-            draft.placements.some((p) => p.id === tool.id)
-          "
-          :disabled="locked"
-          @click="remove"
-        >
-          Ranger</button
-        ><button
-          v-if="tool?.kind === 'furniture'"
-          :disabled="locked"
-          data-housing-rotate
-          @click="rotateTool"
-        >
-          ↻ Tourner · {{ tool.rotation || 0 }}°</button
-        ><button
-          v-if="tool"
-          @click="
-            tool = null;
-            preview = null;
-            draw();
-          "
-        >
-          Désélectionner
-        </button>
       </div>
-      <div class="house-stairs-tools">
-        <span>Escaliers</span
-        ><button v-if="draft.stairs.up" :disabled="locked" @click="stair('up')">
-          ↗ Vers l’étage supérieur</button
-        ><button
-          v-if="draft.stairs.down"
-          :disabled="locked"
-          @click="stair('down')"
-        >
-          ↙ Vers l’étage inférieur</button
-        ><small v-if="!draft.stairs.up && !draft.stairs.down"
-          >Ils apparaissent lors de l’achat d’un étage.</small
-        >
-      </div>
+      <details v-if="draft.stairs.up||draft.stairs.down" class="house-stairs-tools"><summary>Déplacer les escaliers</summary><button v-if="draft.stairs.up" :disabled="locked" @click="stair('up')">↗ Vers l’étage supérieur</button><button v-if="draft.stairs.down" :disabled="locked" @click="stair('down')">↙ Vers l’étage inférieur</button></details>
     </div>
   </div>
 </template>
@@ -177,7 +66,9 @@ export default {
       tool: null,
       preview: null,
       previewError: '',
-      pan: false,
+      view: 'room',
+      viewportWidth: 1,
+      viewportHeight: 1,
       zoom: 1,
       history: [],
       ready: false,
@@ -192,7 +83,7 @@ export default {
       return { x: m.x - 1, y: m.y - 3, w: m.w + 2, h: m.h + 5 };
     },
     canvasWidth() {
-      return Math.max(300, (this.model.w + 2) * 23) * this.zoom;
+      return Math.max(1,Math.min(this.viewportWidth-12,(this.viewportHeight-12)*this.bounds.w/this.bounds.h))*this.zoom;
     },
     canvasHeight() {
       return (this.canvasWidth * this.bounds.h) / this.bounds.w;
@@ -214,6 +105,9 @@ export default {
           ...i,
           available: (this.home.inventory[i.key] || 0) - (counts[i.key] || 0),
         }));
+    },
+    installed() {
+      return this.tool?.kind==='furniture' && this.draft.placements.some(p=>p.id===this.tool.id);
     },
     selectedName() {
       return this.tool?.kind === 'stair'
@@ -239,14 +133,22 @@ export default {
     floor() {
       this.reset();
     },
-    zoom() {
-      this.$nextTick(this.draw);
+    zoom(value,old) {
+      const el=this.$refs.viewport;if(!el)return;
+      const ratio=value/old;
+      const x=(el.scrollLeft+el.clientWidth/2)/Math.max(el.clientWidth,this.canvasWidth/ratio);
+      const y=(el.scrollTop+el.clientHeight/2)/Math.max(el.clientHeight,this.canvasHeight/ratio);
+      this.$nextTick(()=>{el.scrollLeft=x*Math.max(el.clientWidth,this.canvasWidth)-el.clientWidth/2;el.scrollTop=y*Math.max(el.clientHeight,this.canvasHeight)-el.clientHeight/2;});
     },
+    view() { this.$nextTick(()=>{this.measure();this.draw();}); },
     query() {
       this.$nextTick(this.draw);
     },
   },
   async mounted() {
+    this._resize=new ResizeObserver(()=>this.measure());
+    this._resize.observe(this.$refs.viewport);
+    this.measure();
     try {
       this._art = await loadHousingArt();
       await this.loadBackground();
@@ -261,8 +163,15 @@ export default {
   beforeDestroy() {
     this.clearDrag();
     cancelAnimationFrame(this._frame);
+    this._resize?.disconnect();
   },
   methods: {
+    measure() {
+      const el=this.$refs.viewport;
+      if(el?.clientWidth&&el?.clientHeight){this.viewportWidth=el.clientWidth;this.viewportHeight=el.clientHeight;}
+    },
+    adjustZoom(step){this.zoom=Math.max(.6,Math.min(3,this.zoom+step));},
+    deselect(){this.clearDrag();this.tool=null;this.preview=null;this.previewError='';this.draw();},
     async loadBackground() {
       const image = new Image();
       await new Promise((resolve, reject) => {
@@ -278,6 +187,8 @@ export default {
       this.clearDrag();
       this.draft = clone(this.home.floors[this.floor]);
       this.history = [];
+      this.zoom = 1;
+      this.view = 'room';
       this.tool = null;
       this.preview = null;
       this.previewError = '';
@@ -306,7 +217,7 @@ export default {
       }
     },
     stair(key) {
-      this.pan = false;
+      this.view = 'room';
       this.tool = { kind: 'stair', key };
       this.preview = null;
       this.draw();
@@ -320,66 +231,42 @@ export default {
         id: crypto.randomUUID(),
         rotation: 0,
       };
-      this.pan = false;
+      this.view = 'room';
       this.preview = null;
       this.draw();
     },
     stockDown(e, item) {
-      if (this.locked || item.available <= 0) return;
-      this.armDrag(e, () => {
-        this.tool = {
-          kind: 'furniture',
-          key: item.key,
-          rotation: 0,
-          id: crypto.randomUUID(),
-        };
-        this.pan = false;
-      });
+      if(this.locked||item.available<=0||e.isPrimary===false||(e.pointerType==='mouse'&&e.button!==0))return;
+      this.armDrag(e,()=>{
+        this.tool={kind:'furniture',key:item.key,rotation:0,id:crypto.randomUUID()};
+        this.view='room';
+      },{fromStock:true});
     },
-    armDrag(e, activate, immediate = false) {
+    armDrag(e, activate, options={}) {
       this.clearDrag();
-      const origin = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      let started = false;
-      const start = () => {
-        started = true;
-        activate();
+      const origin={x:e.clientX,y:e.clientY,id:e.pointerId};
+      let started=false,moved=false;
+      const start=()=>{if(started)return;started=true;activate();this._dragOffset=options.offset||null;};
+      if(e.pointerType==='touch')this._hold=setTimeout(start,180);
+      const move=ev=>{
+        if(ev.pointerId!==origin.id)return;
+        if(Math.hypot(ev.clientX-origin.x,ev.clientY-origin.y)<7&&!moved)return;
+        if(options.fromStock&&e.pointerType==='touch'&&!started){this.clearDrag();return;}
+        moved=true;start();ev.preventDefault();this.setPreview(ev);
       };
-      if (e.pointerType === 'touch' && !immediate)
-        this._hold = setTimeout(start, 180);
-      else start();
-      const move = (ev) => {
-        if (ev.pointerId !== origin.id) return;
-        if (!started) {
-          if (Math.hypot(ev.clientX - origin.x, ev.clientY - origin.y) > 8)
-            this.clearDrag();
-          return;
-        }
-        ev.preventDefault();
-        this.setPreview(ev);
-      };
-      const end = (ev) => {
-        if (ev.pointerId !== origin.id) return;
-        const was = started;
+      const end=ev=>{
+        if(ev.pointerId!==origin.id)return;
+        if(started&&moved){this._ignoreClick=performance.now()+350;this.commitAt(ev);}
+        else options.tap?.(ev);
         this.clearDrag();
-        if (was) {
-          this._ignoreClick = performance.now() + 250;
-          this.commitAt(ev);
-        }
       };
-      const cancel = () => this.clearDrag();
-      window.addEventListener('pointermove', move, { passive: false });
-      window.addEventListener('pointerup', end);
-      window.addEventListener('pointercancel', cancel);
-      this._stop = () => {
-        window.removeEventListener('pointermove', move);
-        window.removeEventListener('pointerup', end);
-        window.removeEventListener('pointercancel', cancel);
-      };
+      const cancel=()=>{this.clearDrag();this.preview=null;this.draw();};
+      window.addEventListener('pointermove',move,{passive:false});
+      window.addEventListener('pointerup',end);window.addEventListener('pointercancel',cancel);
+      this._stop=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',cancel);};
     },
     clearDrag() {
-      clearTimeout(this._hold);
-      this._stop?.();
-      this._stop = null;
+      clearTimeout(this._hold);this._stop?.();this._stop=null;this._dragOffset=null;
     },
     location(e) {
       const r = this.$refs.scene?.getBoundingClientRect();
@@ -401,58 +288,32 @@ export default {
       };
     },
     sceneDown(e) {
-      if (this.locked || !this.ready) return;
-      e.preventDefault();
-      if (this.pan) {
-        const v = this.$refs.viewport,
-          base = {
-            x: e.clientX,
-            y: e.clientY,
-            left: v.scrollLeft,
-            top: v.scrollTop,
-          };
-        const move = (ev) => {
-          v.scrollLeft = base.left - (ev.clientX - base.x);
-          v.scrollTop = base.top - (ev.clientY - base.y);
-        };
-        const end = () => {
-          window.removeEventListener('pointermove', move);
-          window.removeEventListener('pointerup', end);
-          window.removeEventListener('pointercancel', end);
-        };
-        window.addEventListener('pointermove', move);
-        window.addEventListener('pointerup', end);
-        window.addEventListener('pointercancel', end);
-        this._stop = end;
-        return;
+      if(this.locked||!this.ready||e.isPrimary===false||(e.pointerType==='mouse'&&e.button!==0))return;
+      e.preventDefault();this.$refs.scene.focus({preventScroll:true});
+      const point=this.location(e);if(!point)return;
+      const rect=this.$refs.scene.getBoundingClientRect();
+      const world={x:(this.bounds.x+(e.clientX-rect.left)/rect.width*this.bounds.w)*32,y:(this.bounds.y+(e.clientY-rect.top)/rect.height*this.bounds.h)*32};
+      const hit=[...this.draft.placements].reverse().find(p=>{const b=furnitureBounds(p);return world.x>=b.x&&world.x<b.x+b.w&&world.y>=b.y&&world.y<b.y+b.h;});
+      if(this.tool&&(this.tool.kind==='stair'||!this.installed)){
+        this.armDrag(e,()=>{},{tap:ev=>this.commitAt(ev)});return;
       }
-      const point = this.location(e);
-      if (!point) return;
-      const p = [...this.draft.placements].reverse().find((p) => {
-        const i = furnitureSize(p);
-        return (
-          point.x >= p.x &&
-          point.x < p.x + i.w &&
-          point.y >= p.y &&
-          point.y < p.y + i.h
-        );
-      });
-      if (!this.tool && p)
-        this.tool = {
-          kind: 'furniture',
-          key: p.key,
-          id: p.id,
-          rotation: p.rotation ?? 0,
-        };
-      if (!this.tool) return;
-      this.armDrag(e, () => {}, true);
-      this.setPreview(e);
+      if(hit){
+        this.tool={kind:'furniture',key:hit.key,id:hit.id,rotation:hit.rotation||0};this.preview=null;this.previewError='';this.draw();
+        this.armDrag(e,()=>{},{offset:{x:point.x-hit.x,y:point.y-hit.y}});return;
+      }
+      // Empty drag scrolls a zoomed room; an empty tap only deselects.
+      this.clearDrag();const v=this.$refs.viewport,base={x:e.clientX,y:e.clientY,left:v.scrollLeft,top:v.scrollTop};let moved=false;
+      const move=ev=>{if(ev.pointerId!==e.pointerId)return;if(Math.hypot(ev.clientX-base.x,ev.clientY-base.y)>7)moved=true;if(moved){ev.preventDefault();v.scrollLeft=base.left-(ev.clientX-base.x);v.scrollTop=base.top-(ev.clientY-base.y);}};
+      const end=ev=>{if(ev.pointerId!==e.pointerId)return;this.clearDrag();if(!moved)this.deselect();};
+      const cancel=()=>this.clearDrag();window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',end);window.addEventListener('pointercancel',cancel);
+      this._stop=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',cancel);};
     },
     sceneHover(e) {
-      if (this.tool && !this.pan && !this._stop) this.setPreview(e);
+      if(this.tool&&!this.installed&&!this._stop&&e.pointerType!=='touch')this.setPreview(e);
     },
+    dropLocation(e){const p=this.location(e);return p?{x:p.x-(this._dragOffset?.x||0),y:p.y-(this._dragOffset?.y||0)}:null;},
     setPreview(e) {
-      const p = this.location(e);
+      const p = this.dropLocation(e);
       if (!p || !this.tool) return;
       if (this.preview?.x === p.x && this.preview?.y === p.y) return;
       this.preview = p;
@@ -462,7 +323,7 @@ export default {
       this.scheduleDraw();
     },
     commitAt(e) {
-      const p = this.location(e);
+      const p = this.dropLocation(e);
       if (!p || !this.tool) return;
       const next = projected(this.draft, this.tool, p.x, p.y),
         error = layoutError(next);
@@ -476,6 +337,7 @@ export default {
     },
     rotateTool() {
       if (this.locked || this.tool?.kind !== 'furniture') return;
+      const previous=this.tool;
       this.tool = {
         ...this.tool,
         rotation: ((this.tool.rotation || 0) + 90) % 360,
@@ -484,7 +346,7 @@ export default {
       if (placed) {
         const next = projected(this.draft, this.tool, placed.x, placed.y),
           error = layoutError(next);
-        if (error) this.previewError = error;
+        if (error) {this.previewError=error;this.tool=previous;}
         else this.change(next);
       }
       if (this.preview)
@@ -560,229 +422,9 @@ export default {
 };
 </script>
 <style scoped>
-.housing-editor {
-  display: grid;
-  grid-template-columns: 210px minmax(0, 1fr);
-  gap: 18px;
-  min-height: 0;
-}
-.house-library {
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.library-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-.library-title h3 {
-  font-size: 15px;
-  margin: 0;
-}
-.library-title > b {
-  font-size: 11px;
-  color: var(--journal-muted);
-}
-input {
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid var(--journal-border);
-  background: var(--journal-paper);
-  color: var(--journal-ink);
-  font: inherit;
-  border-radius: 7px;
-  padding: 10px;
-  font-size: 12px;
-}
-.house-stock {
-  overflow: auto;
-  max-height: 510px;
-  overscroll-behavior: contain;
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.house-stock button {
-  flex: none;
-  min-height: 65px;
-  display: flex;
-  gap: 7px;
-  align-items: center;
-  padding: 7px;
-  text-align: left;
-  touch-action: pan-y;
-}
-.house-stock b {
-  display: block;
-  font-size: 11px;
-}
-.house-stock small {
-  display: block;
-  font-size: 10px;
-  color: var(--journal-muted);
-  margin-top: 3px;
-}
-.house-stock button:disabled {
-  opacity: 0.4;
-}
-.house-stock button[aria-pressed='true'] {
-  background: var(--journal-selected);
-  border-color: var(--journal-accent);
-}
-button {
-  background: var(--journal-card);
-  color: var(--journal-ink);
-  border: 1px solid var(--journal-border);
-  border-radius: 8px;
-  cursor: pointer;
-  min-height: 35px;
-}
-button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-.house-workspace {
-  min-width: 0;
-}
-.house-editor-tools {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.house-editor-tools button {
-  font: inherit;
-  font-size: 10px;
-  padding: 6px 9px;
-}
-.house-editor-tools span {
-  font-size: 10px;
-}
-.house-editor-tools [aria-pressed='true'] {
-  background: var(--journal-selected);
-  border-color: var(--journal-accent);
-}
-.house-grid-viewport {
-  overflow: auto;
-  max-height: 460px;
-  border: 1px solid var(--journal-border);
-  border-radius: 10px;
-  background: #0a111a;
-  overscroll-behavior: contain;
-}
-.house-grid-viewport canvas {
-  display: block;
-  touch-action: none;
-  image-rendering: pixelated;
-  cursor: crosshair;
-  max-width: none;
-}
-.house-grid-viewport canvas.pan {
-  cursor: grab;
-}
-.house-placement-help {
-  font-size: 11px;
-  color: var(--journal-muted);
-  line-height: 1.5;
-  min-height: 32px;
-  margin: 10px 0;
-}
-.house-placement-help.is-invalid {
-  color: #c75553;
-}
-.house-selected {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 11px;
-  flex-wrap: wrap;
-}
-.house-selected > span {
-  flex: 1;
-  min-width: 130px;
-}
-.house-selected b {
-  font-size: 12px;
-}
-.house-selected small {
-  display: block;
-  font-size: 10px;
-  color: var(--journal-muted);
-  margin-top: 4px;
-}
-.house-selected button {
-  font: inherit;
-  font-size: 10px;
-  padding: 8px;
-}
-.house-stairs-tools {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-.house-stairs-tools > span {
-  font-size: 11px;
-  font-weight: bold;
-}
-.house-stairs-tools button {
-  font: inherit;
-  font-size: 10px;
-  padding: 8px;
-}
-.house-stairs-tools small,
-.house-empty {
-  font-size: 11px;
-  color: var(--journal-muted);
-  line-height: 1.6;
-}
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-}
-@media (max-width: 700px) {
-  .housing-editor {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
-  .house-stock {
-    flex-direction: row;
-    max-height: 105px;
-    padding-bottom: 5px;
-    overflow-x: auto;
-    margin-top: 6px;
-  }
-  .house-stock button {
-    flex: 0 0 150px;
-    gap: 4px;
-    touch-action: pan-x;
-  }
-  .house-stock canvas {
-    width: 44px;
-    height: 44px;
-  }
-  .house-library input {
-    padding: 8px;
-  }
-  .library-title {
-    margin-bottom: 5px;
-  }
-  .house-grid-viewport {
-    max-height: 340px;
-  }
-  .house-editor-tools button {
-    min-height: 38px;
-  }
-  .house-placement-help {
-    margin: 6px 0;
-    min-height: 32px;
-  }
-}
+.housing-editor{height:100%;min-height:0;min-width:0;display:flex;flex-direction:column;gap:8px;color:var(--journal-ink)}
+button{font:inherit;color:inherit;background:var(--journal-card);border:1px solid var(--journal-border);border-radius:9px;cursor:pointer;min-height:44px;padding:8px 12px;font-size:12px}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--journal-accent);outline-offset:2px}.editor-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:none}.editor-tabs{display:flex;gap:6px}.editor-tabs button[aria-pressed=true]{background:var(--journal-selected);border-color:var(--journal-accent);font-weight:700}.editor-tabs small{font-weight:400;opacity:.7;margin-left:7px}.editor-undo{background:transparent;font-size:11px}.house-library{min-height:0;display:flex;flex:1;flex-direction:column}.house-library input{width:100%;box-sizing:border-box;border:1px solid var(--journal-border);background:var(--journal-paper);color:inherit;font:inherit;padding:12px;border-radius:9px;font-size:13px}.house-library-help,.house-empty{font-size:12px;color:var(--journal-muted);line-height:1.5}.house-stock{overflow:auto;overscroll-behavior:contain;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-content:start;gap:10px;padding:3px}.house-stock button{min-width:0;display:flex;align-items:center;gap:8px;text-align:left;min-height:88px;touch-action:pan-y}.house-stock button>span:nth-child(2){flex:1;min-width:0}.house-stock b,.house-stock small{display:block;font-size:12px}.house-stock small{font-size:10px;color:var(--journal-muted);margin-top:6px}.house-stock button[aria-pressed=true]{background:var(--journal-selected);border-color:var(--journal-accent)}.house-workspace{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;gap:7px}.house-placement-help{flex:none;min-height:29px;font-size:11px;color:var(--journal-muted);line-height:1.4;margin:0}.house-placement-help.is-invalid{color:#c75553}.house-scene-area{display:flex;gap:5px;flex:1;min-height:0;min-width:0}.house-grid-viewport{min-height:0;min-width:0;flex:1;overflow:auto;border:1px solid var(--journal-border);border-radius:12px;background:#0a111a;overscroll-behavior:contain;scrollbar-width:thin}.house-scene-content{display:grid;place-items:center;box-sizing:border-box}.house-grid-viewport canvas{display:block;touch-action:none;image-rendering:pixelated;max-width:none;flex:none;cursor:crosshair;outline-offset:-3px}.house-zoom{width:42px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:18px;background:var(--journal-soft);border-radius:12px}.zoom-track{position:relative;height:min(160px,calc(100% - 55px));width:40px;display:grid;place-items:center}.zoom-track input{width:clamp(60px,20vh,160px);height:36px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg);margin:0;max-width:none;accent-color:var(--journal-accent);cursor:ns-resize;touch-action:none}.house-selection-slot{flex:none;height:62px}.house-selected{box-sizing:border-box;height:62px;flex:none;display:flex;align-items:center;gap:12px;border:1px solid var(--journal-border);border-radius:10px;padding:9px;background:var(--journal-card)}.house-selected>span{flex:1;min-width:0}.house-selected b{font-size:12px}.house-selected small{display:block;font-size:10px;line-height:1.4;color:var(--journal-muted);margin-top:3px}.selected-actions{display:flex;gap:5px;flex-wrap:wrap}.selected-actions button{font-size:11px;min-height:44px}.selected-actions button[data-housing-rotate]{background:var(--journal-selected);border-color:var(--journal-accent)}.selected-actions button small{display:inline;margin-left:4px}.house-stairs-tools{flex:none;font-size:11px;color:var(--journal-muted)}.house-stairs-tools summary{cursor:pointer;padding:5px 0}.house-stairs-tools button{font-size:10px;margin-right:6px}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+@media(max-width:700px){.house-selection-slot{height:62px}.house-stock{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.house-stock button{padding:7px;min-height:90px;gap:5px}.house-stock button>span:last-child{display:none}.house-stock b{font-size:11px}.house-selected{flex-direction:column;align-items:stretch;gap:3px;padding:0;border:0;background:transparent}.house-selected>span{display:flex;align-items:center;gap:8px}.house-selected>span small{display:none}.selected-actions{flex-wrap:nowrap}.selected-actions button{padding:5px 4px;flex:1;font-size:10px;min-height:40px}.house-zoom{width:36px}.zoom-track{position:relative;height:min(120px,calc(100% - 55px));width:36px}.zoom-track input{width:clamp(50px,16vh,120px)}.house-placement-help{font-size:10px;min-height:28px}.editor-tabs button{font-size:11px;padding:7px 10px}.editor-tabs small{margin-left:3px}.editor-undo{font-size:10px;padding:7px}.house-workspace{gap:5px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+@media(max-height:550px){.house-selection-slot{height:44px}.house-selected{height:44px;padding:0;border:0;background:transparent;flex-direction:row}.house-selected>span{display:none}.selected-actions{width:100%;flex-wrap:nowrap}.selected-actions button{flex:1;min-height:40px}.house-placement-help{min-height:0;font-size:10px}.editor-heading button{min-height:36px;padding:6px 8px}.housing-editor{gap:5px}}
 </style>

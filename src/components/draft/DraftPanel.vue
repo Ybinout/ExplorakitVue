@@ -40,7 +40,7 @@
             <small>CHOISIR. CONSTRUIRE. COMBATTRE.</small>
             <h3>Ta prochaine équipe est dans ces cartes.</h3>
             <p>
-              Quatre dresseurs, quatre boosters et un Rift. Chaque carte compte
+              Quatre dresseurs, cinq boosters et un Rift. Chaque carte compte
               ; seuls les Pokédollars gagnés repartent avec toi.
             </p>
             <div class="draft-features">

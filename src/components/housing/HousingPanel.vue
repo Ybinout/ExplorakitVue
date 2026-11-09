@@ -5,6 +5,7 @@
       ref="dialog"
       tabindex="-1"
       class="housing-panel"
+      :class="{'is-editor':tab==='editor'&&payload.kind==='manage'}"
       role="dialog"
       aria-modal="true"
       aria-labelledby="housing-title"
@@ -50,7 +51,7 @@
           >{{ t.name }}
         </button>
       </nav>
-      <div class="housing-body">
+      <div class="housing-body" :class="{'is-editor':tab==='editor'&&payload.kind==='manage'}">
         <template v-if="payload.kind === 'purchase'">
           <div v-if="home.entryKey" class="house-already-owned">
             <h3>Tu as déjà un chez-toi.</h3>
@@ -1086,4 +1087,7 @@ footer .house-primary {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+.housing-panel.is-editor{height:min(900px,calc(100dvh - 28px))}.housing-body.is-editor{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:14px 20px}.housing-body.is-editor>.housing-editor{flex:1}
+@media(max-width:700px){.housing-panel.is-editor{height:calc(100dvh - 12px)}.housing-body.is-editor{padding:9px}.housing-panel.is-editor>header{padding:10px 12px}.housing-panel.is-editor .housing-tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;padding:6px 9px}.housing-panel.is-editor .housing-tabs button{flex:none;min-height:37px}.housing-panel.is-editor footer{padding:8px 10px}.housing-panel.is-editor footer>span{display:none}}
+@media(max-height:550px){.housing-panel.is-editor>header{padding:7px 12px;gap:8px;flex-wrap:nowrap}.housing-panel.is-editor>header small,.housing-panel.is-editor .house-emblem{display:none}.housing-panel.is-editor h2{font-size:17px;line-height:1.2}.housing-panel.is-editor .house-wallet{font-size:10px;flex-basis:auto;order:0;margin-left:auto;white-space:nowrap}.housing-panel.is-editor>header>button{width:30px;height:30px}.housing-panel.is-editor .housing-tabs{display:flex;gap:5px;padding:4px 12px;overflow-x:auto;flex:none}.housing-panel.is-editor .housing-tabs button{flex:none;min-height:30px;font-size:10px;padding:5px 8px}.housing-panel.is-editor .housing-body{padding:6px 12px}.housing-panel.is-editor footer{padding:6px 12px;flex-wrap:nowrap}.housing-panel.is-editor footer>span{display:none}.housing-panel.is-editor footer button{min-height:32px;font-size:10px;padding:6px 8px}.housing-panel.is-editor .house-notice,.housing-panel.is-editor .house-error{font-size:10px;padding:5px 12px}}
 </style>
