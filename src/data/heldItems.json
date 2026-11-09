@@ -569,7 +569,7 @@
   },
   "mutant_offense_normal_legendary_berry": {
     "name": "Baie Ivoire souveraine",
-    "description": "+30 % de dégâts Normal, +1 niveau de Défense, −25 % de Attaque. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
+    "description": "+30 % de dégâts Normal, +1 niveau de Défense, −25 % de Défense. Activée et consommée définitivement à l’entrée en combat. Effets perdus au retrait. Pour tous les Pokémon."
   },
   "mutant_offense_fire_common_berry": {
     "name": "Baie Braise",
