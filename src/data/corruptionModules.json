@@ -8267,6 +8267,19 @@
       "type": "Fire"
     }
   },
+  "cmod_move_676": {
+    "key": "cmod_move_676",
+    "name": "CS corrompue · Boule Pollen",
+    "description": "Une attaque universelle. Son apprentissage corrompt définitivement le Pokémon et occupe une de ses quatre capacités.",
+    "category": "corruption",
+    "sell_price": 0,
+    "buy_price": 0,
+    "corruptionModule": {
+      "family": "move",
+      "move": "Pollen Puff",
+      "type": "Bug"
+    }
+  },
   "cmod_ability_adaptability": {
     "key": "cmod_ability_adaptability",
     "name": "Pilule corrompue · Adaptabilité",

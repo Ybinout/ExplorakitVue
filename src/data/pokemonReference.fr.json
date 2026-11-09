@@ -5745,6 +5745,15 @@
       "accuracy": 100,
       "pp": 15,
       "description": "Frappe la cible avec un fouet incandescent et baisse sa Défense."
+    },
+    "Pollen Puff": {
+      "type": "Bug",
+      "category": "special",
+      "power": 90,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 15,
+      "description": "Projette une boule de pollen sur la cible. Inflige des dégâts Insecte à un ennemi ; rend 50 % des PV max à un allié, sans lui infliger de dégâts."
     }
   },
   "abilities": {

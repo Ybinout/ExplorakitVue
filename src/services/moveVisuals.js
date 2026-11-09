@@ -46,7 +46,7 @@ const signatures = {
  'Ice Spinner':'ice-spin','Petal Dance':'petal-dance','Petal Blizzard':'petal-dance','Leaf Storm':'leaf-storm',
  'Razor Leaf':'razor-leaves','Bullet Seed':'seed-volley','Pin Missile':'pin-volley','Rock Blast':'rock-volley','Icicle Spear':'ice-volley',
  'Psyshock':'psy-shock','Psystrike':'psy-shock','Psychic':'psychic-orb','Moonblast':'moon-orb','Mist Ball':'mist-orb','Luster Purge':'prism-orb',
- 'Shadow Ball':'shadow-orb','Aura Sphere':'aura-orb','Energy Ball':'seed-orb','Electro Ball':'electric-orb',
+ 'Shadow Ball':'shadow-orb','Aura Sphere':'aura-orb','Energy Ball':'seed-orb','Pollen Puff':'seed-orb','Electro Ball':'electric-orb',
  'Sludge Bomb':'toxic-bomb','Ember':'embers','Flame Burst':'fire-burst','Ice Shard':'ice-shards','Swift':'star-volley',
  'Swords Dance':'sword-dance','Calm Mind':'calm-mind','Dragon Dance':'dragon-dance','Quiver Dance':'butterfly-dance',
  'Toxic':'toxic-drops','Poison Powder':'spores','Sleep Powder':'spores','Stun Spore':'spores','Will-O-Wisp':'spirit-flames',
@@ -63,7 +63,7 @@ const styleByName=new Map(Object.entries(signatures).map(([name,style])=>[normal
 export const SIGNATURE_MOVES = Object.freeze(Object.keys(signatures));
 export function moveVisual(payload = {}) {
   const name=normalize(payload.moveName), meta=metaByName.get(name)||[], phase=payload.phase;
-  const damageClass=normalize(payload.damageClass||meta[2]||'status');
+  const damageClass=payload.healing?'status':normalize(payload.damageClass||meta[2]||'status');
   const family=phase==='prepare'?'status':families.get(name)
     || (damageClass==='physical'?'charge':damageClass==='special'?'projectile':'status');
   const moveType=Object.keys(ELEMENTS).find(type=>normalize(type)===normalize(payload.moveType||meta[0]))||'Normal';
@@ -74,6 +74,7 @@ export function moveVisual(payload = {}) {
     const effects=meta[4]||'';
     style=effects.includes('heal')?'recovery':effects.includes('stat_stage')?'stat-weave':effects.includes('status')?'status-motes':'status';
   }
+  if(payload.healing)style='recovery';
   if(phase==='prepare')style='gather';
   // The existing presentation queue remains authoritative. Bounded phases never
   // wait for the renderer or add an asynchronous network dependency.

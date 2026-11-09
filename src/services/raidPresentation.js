@@ -13,7 +13,7 @@ export function raidMovePlan(events, index, frame) {
   }else add(move.target??move.slot);
   const prepared=outcomes.some(e=>e.kind==='-prepare'&&e.slot===move.slot),failed=outcomes.some(e=>e.kind==='-fail'&&e.slot===move.slot);
   for(const e of outcomes){
-    if(e.kind==='-damage'&&e.direct!==false||e.kind==='shieldHit'||e.kind==='-heal'&&move.damageClass==='status')add(e.slot);
+    if(e.kind==='-damage'&&e.direct!==false||e.kind==='shieldHit'||e.kind==='-heal'&&(move.damageClass==='status'||move.healing))add(e.slot);
     const target=results.get(e.kind==='-miss'?e.target:e.slot);if(!target)continue;
     if(['-immune','-miss'].includes(e.kind)||e.kind==='-activate'&&/Protect|Wide Guard|Mat Block|Quick Guard/.test(e.effect||''))target.connected=false;
     if(e.kind==='-crit')target.critical=true;
