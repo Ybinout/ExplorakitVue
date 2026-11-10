@@ -134,7 +134,7 @@ export default {
       } catch (e) {
         this.housingError = e.message;
         if (!this.housingPanel) this.showInteractionNotice(e.message, 6500);
-        if(['garden','plant','harvest','mutate'].includes(name))return{success:false,retryable:!e.confirmationRejected||e.retryable};
+        if(['garden','plant','plantMany','plantFavorite','harvest','harvestAll','mutate','favorite'].includes(name))return{success:false,retryable:!e.confirmationRejected||e.retryable};
       } finally {
         this.housingBusy = false;
       }
