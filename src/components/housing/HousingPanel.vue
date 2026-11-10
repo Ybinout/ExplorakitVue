@@ -177,7 +177,7 @@
                         ? 'Premier étage'
                         : 'Deuxième étage'
                     }}
-                    · {{ f.placements.length }} / 10 meubles</small
+                    · {{ f.placements.length }} / 20 meubles</small
                   >
                 </div>
                 <i v-if="i === (payload.floor || 0)">Tu es ici</i>

@@ -92,6 +92,14 @@ export class TallGrassRenderer{
     for(const p of this.visible)if(grassInFront(p.cell,actor.x,actor.y))this.paintPlant(target,p);
     target.restore();
   }
+  clipActor(target,actor){
+    if(!this.cells||!Number.isFinite(actor?.x)||!Number.isFinite(actor?.y))return false;
+    const x=Math.floor(actor.x/32),y=Math.floor(actor.y/32);
+    if(x<0||x>=28||y<0||y>=20||!this.cells.has(y*28+x))return false;
+    // The character's shoes extend 22 px below its tile centre. Hide that
+    // lower part inside the plant, including the transparent gaps at its roots.
+    target.beginPath();target.rect(actor.x-48,actor.y-100,96,104);target.clip();return true;
+  }
   suspend(){
     if(this.foreground)this.foreground.width=this.foreground.height=0;
     this.foreground=null;this.background=null;this.originalForeground=null;this.map=null;this.cells=null;this.plants=null;this.visible.length=0;this.actors.clear();this.events.clear();this.lastFrame=-Infinity;

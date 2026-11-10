@@ -75,7 +75,7 @@
         </div>
         <footer class="region-footer">{{ pokemon ? (en ? 'Presence areas, not guaranteed encounters.' : 'Zones de présence, rencontres non garanties.') : (en ? 'Select a town or route to find your way.' : 'Sélectionne une ville ou une route pour te repérer.') }}</footer>
       </div>
-      <div v-if="flightAllowed && !pokemon && ['town','house'].includes(selectedNode?.kind) && flight?.unlocked" class="flight-actionbar">
+      <div v-if="flightAllowed && !pokemon && (['town','house'].includes(selectedNode?.kind) || flight?.darkDestinations?.includes(selected)) && flight?.unlocked" class="flight-actionbar">
         <div><small>{{ en ? 'Flight destination' : 'Destination du vol' }}</small><strong>{{ label(selected) }}</strong></div>
         <button class="flight-button" data-fly :disabled="!canFlySelected" @click="$emit('fly',selected)">{{ canFlySelected ? (en ? 'Fly here ↗' : 'Voler ici ↗') : (en ? 'Not visited' : 'Non visitée') }}</button>
       </div>
@@ -94,7 +94,7 @@ export default {
   computed:{
     friendMarkers(){if(!this.atlas)return [];const colors=['#9b5e9d','#35798e','#a27432','#407e54','#a95463','#5d64a0'],offsets=[[12,0],[-12,0],[0,12],[0,-12],[12,12],[-12,12]],counts={};return this.friendMembers.filter(p=>p.online&&p.location).map(p=>{const node=this.atlas.nodes.find(n=>n.id===p.location.nodeId);if(!node)return null;const k=counts[node.id]||0;counts[node.id]=k+1;const offset=offsets[k%offsets.length];return {...p,nodeId:node.id,mode:p.location.mode,x:node.x+offset[0],y:node.y+offset[1],color:p.afk?'#db942e':colors[p.id%colors.length]};}).filter(Boolean);},
 
-    canFlySelected(){return this.flightAllowed&&this.flight?.unlocked&&this.flight.owned!==false&&(this.selectedNode?.kind==='house'||this.selectedNode?.kind==='town'&&this.flight.visited.includes(this.selected));},
+    canFlySelected(){return this.flightAllowed&&this.flight?.unlocked&&this.flight.owned!==false&&(this.selectedNode?.kind==='house'||this.selectedNode?.kind==='town'&&this.flight.visited.includes(this.selected)||this.flight.darkDestinations?.includes(this.selected));},
     layout(){return mapLayout(this.atlas || {width:512,height:448},this.viewport,this.zoom);},
     artStyle(){return {width:this.layout.mapWidth+'px',height:this.layout.mapHeight+'px'};},
     surfaceStyle(){return {width:Math.max(this.viewport.width,this.layout.mapWidth)+'px',height:Math.max(this.viewport.height,this.layout.mapHeight)+'px'};},

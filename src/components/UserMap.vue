@@ -12,6 +12,8 @@
         <svg viewBox="0 0 32 32" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 28V4" stroke="currentColor"/><path d="M8 6c6-4 11 4 17 0v13c-6 4-11-4-17 0Z" fill="#fff" stroke="#415565"/></svg>
       </button>
       <casino-slots-panel v-back="()=>slotsOpen=false" v-if="slotsOpen && !battle" :state="slotsState" :machine="slotsMachine" :balance="Number(progressionState.money)||0" :busy="slotsBusy" :error="slotsError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled&&!worldWeatherReducedMotion" @command="slotsCommand" @asset-error="slotsError=$event" @close="slotsOpen=false"/>
+      <aside v-if="marketNotices.length && !battle && !patchNoticeOpen" class="market-sale-toast" role="status"><div><strong>{{marketNotices.length===1?'Vente réussie !':marketNotices.length+' ventes réalisées !'}}</strong><p>{{marketNotices.length===1?marketNotices[0].message:'Les Pokédollars ont été versés sur ton compte. Retrouve le détail au comptoir, dans Mes ventes.'}}</p></div><button :disabled="marketNoticeBusy" @click="acknowledgeMarketNotices">Compris</button></aside>
+      <market-panel v-back="()=>marketPanel=null" v-if="marketPanel && !battle" :initial="marketPanel" :socket="socket" :user-id="Number(players[socket?.id]?.userId)||0" @close="marketPanel=null"/>
       <housing-panel v-back="()=> $refs.housingPanel?.close()" ref="housingPanel" v-if="housingPanel && !battle" :payload="housingPanel" :room="housingState" :friends="socialState.accepted" :busy="housingBusy" :error="housingError" :notice="housingNotice" :command="housingCommand" @close="closeHousingPanel"/>
       <button v-if="housingState?.isOwner && !housingPanel && !worldInteractionBlocked" class="housing-manage-button" data-housing-manage aria-label="Aménager ma maison" @pointerdown.stop @click.stop="openHousingManage"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="m3 15 11-10 11 10M6 13v14h9V17H11v10M22 20l1-2 3 1 2-1 2 3-1 2 1 2-2 3-2-1-3 1-1-2-2-1v-3Z"/><circle cx="25" cy="24" r="2"/></svg><span>Ma maison</span></button>
       <aside v-if="housingInvitation && !battle" class="housing-invitation" role="status"><small>UNE PORTE OUVERTE</small><b>{{ housingInvitation.name }} t’invite chez lui.</b><span>{{ housingInvitation.entryName }}</span><div><button :disabled="housingBusy" @click="housingCommand('invitation',{id:housingInvitation.id,accept:true})">Visiter →</button><button :disabled="housingBusy" @click="housingCommand('invitation',{id:housingInvitation.id,accept:false})">Plus tard</button></div></aside>
@@ -115,6 +117,7 @@
         </div>
         <bag-panel v-back="()=>isBagOpen=false" v-if="isBagOpen" :inert="trainingFeedback || automaticTrainingOpen || heldPickerUuid || corruptionInstall?'':null" :aria-hidden="trainingFeedback || automaticTrainingOpen || heldPickerUuid || corruptionInstall?'true':null" ref="bagPanel" :favorite-keys="bagFavorites" :favorite-busy="bagFavoriteBusy" @favorite="setBagFavorite" :module-shortcut="isDrift?null:moduleShortcut" :shortcut-busy="moduleShortcutBusy || medicineBusy" @shortcut="assignModuleShortcut" :view-state="bagViewState" @remember="bagViewState=$event" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
+              <button v-if="item.darkAerialModule && !isDrift" class="bag-use-button" :disabled="!!battle || medicineBusy || mapLoading" @click="useModule(item)">{{item.active?'Désactiver':'Activer'}} le module</button>
               <button v-if="item.key==='fly_module' && !isDrift" class="bag-use-button" data-use-fly-module :disabled="!!battle || mapLoading || !!flight" @click="useModule(item)">{{ preferences.language==='en'?'Use':'Utiliser' }}</button>
               <template v-else-if="item.experienceModule && !isDrift">
                 <p class="bag-use-hint" data-experience-module-state><strong>{{ item.active ? (preferences.language==='en'?'Active':'Actif') : (preferences.language==='en'?'Inactive':'Inactif') }}</strong> · {{ item.active ? `+${item.levelBonus} ${preferences.language==='en'?'levels for wild encounters':'niveaux pour les rencontres sauvages'}` : (preferences.language==='en'?'Usual encounter levels':'Niveaux habituels des rencontres') }}</p>
@@ -245,7 +248,7 @@
         </div>
         <game-info-panels :inert="patchHistoryOpen?'':null" :aria-hidden="patchHistoryOpen?'true':null" v-back="{active:!!activeInfoPanel,close:closeInfoPanel}"
           :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @patch-history="patchHistoryOpen=true" @toggle-fullscreen="toggleGameFullscreen" @appearance="handleMenuAction('appearance')"
-          :flight-allowed="!isDrift && !superTournament.active && !onDarkContinent" @fly="flyToTown"
+          :flight-allowed="!isDrift && !superTournament.active && (!onDarkContinent || progressionState.flight?.darkAerial?.active)" @fly="flyToTown"
           :active="activeInfoPanel"
           :friend-members="socialState.accepted"
           :current-map="housingState?.entry?.map || map" :current-region="players[socket?.id]?.regionLocation"
@@ -599,7 +602,7 @@ import { WorldMusic } from '@/services/worldMusic';
 export default {
   props: { patchNoticeOpen: Boolean },
   mixins:[socialGame,tradeGame,raidsGame,questJournalGame,comfortGame,draftGame,housingGame,casinoSlotsGame],
-  components: { CasinoSlotsPanel:()=>import('./whitepeak/CasinoSlotsPanel.vue'), HousingPanel:()=>import('./housing/HousingPanel.vue'), DraftPanel:()=>import('./draft/DraftPanel.vue'),AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
+  components: { MarketPanel:()=>import('./market/MarketPanel.vue'), CasinoSlotsPanel:()=>import('./whitepeak/CasinoSlotsPanel.vue'), HousingPanel:()=>import('./housing/HousingPanel.vue'), DraftPanel:()=>import('./draft/DraftPanel.vue'),AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
     SuperTournamentPanel, TournamentRewardPanel, AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
@@ -766,7 +769,7 @@ export default {
       trainerPaletteRevision: 0,
       availableSprites: [],
       selectedSprite: 'sprite.png',
-      moduleShortcut: null, moduleShortcutBusy: false,
+      marketPanel:null, marketNotices:[], marketNoticeBusy:false, moduleShortcut: null, moduleShortcutBusy: false,
       appearanceBusy: false,
       appearanceError: '',
       quitting: false,
@@ -900,7 +903,7 @@ export default {
     worldInteractionBlocked() { return this.patchNoticeOpen || this.otherInteractionBlocked; },
     otherInteractionBlocked() { return this.nonDialogueInteractionBlocked || this.textImageSequence.length > 0; },
     nonDialogueInteractionBlocked() {
-      return this.slotsOpen || !!this.housingPanel || !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.marketPanel || this.slotsOpen || !!this.housingPanel || !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.experienceLab || this.corruptedHeldWorkshop || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.coverageOpen || this.damageCalculatorOpen || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.interactionChoice.visible || this.incomingRequest.visible
@@ -908,7 +911,7 @@ export default {
     },
     doubleTapAllowed() { return this.showMobileControls && !this.patchNoticeOpen && !this.nonDialogueInteractionBlocked && !this.worldChatOpen && !this.mapLoading && !this.mapLoadError && !this.worldContextLost; },
     canUseModuleShortcut(){return !!this.socket?.connected && !this.isDrift && !this.superTournament.active && !this.movementBlocked && !this.moduleShortcutBusy && !this.medicineBusy && !this.fishing;},
-    moduleShortcutLabel(){const names={experience_module:'Module d’expérience',fly_module:'Module Vol',professional_trainer_card:'Carte du Dresseur Professionnel',super_tournament_pass:'PASS Super Tournoi',void_teleporter:'Téléporteur chargé'};return `Y · ${names[this.moduleShortcut]||'Module'}`;},
+    moduleShortcutLabel(){const names={experience_module:'Module d’expérience',fly_module:'Module Vol',professional_trainer_card:'Carte du Dresseur Professionnel',super_tournament_pass:'PASS Super Tournoi',void_teleporter:'Téléporteur chargé',dark_aerial_module:'Module Vol obscur'};return `Y · ${names[this.moduleShortcut]||'Module'}`;},
     canUseBagConsumables() {
       return !this.battle && (!this.isDrift || (this.driftState?.alive && this.driftState?.phase === 'exploration' && !this.driftState?.storagePaused && !this.driftState?.recoveryWaiting));
     }
@@ -1151,10 +1154,12 @@ export default {
         await this.useModule(item);
       }finally{this.moduleShortcutBusy=false;}
     },
+    async acknowledgeMarketNotices(){if(this.marketNoticeBusy||!this.socket?.connected)return;const ids=this.marketNotices.map(n=>n.id);this.marketNoticeBusy=true;try{const r=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit('market:read',{ids},(e,r)=>e?reject(e):resolve(r)));if(r?.success)this.marketNotices=this.marketNotices.filter(n=>!ids.includes(n.id));}catch(e){this.showInteractionNotice('La notification sera conservée jusqu’à la prochaine connexion.');}finally{this.marketNoticeBusy=false;}},
     async useModule(item){
       if(!item||this.isDrift||this.battle||this.battleResult||this.superTournament.active||this.mapLoading||this.flight||this.medicineBusy)return;
       this.isBagOpen=false;this.releaseAllMovementKeys();
       if(item.key==='fly_module'){await this.handleMenuAction('minimap');return;}
+      if(item.darkAerialModule){this.medicineBusy=true;try{const r=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit('darkAerial:set',{active:!item.active},(e,r)=>e?reject(Error('Réponse interrompue. Vérifie l’état du module avant de réessayer.')):resolve(r)));if(!r?.success)throw Error(r?.message||'Module indisponible.');if(r.items)this.applyBagItems(r.items);this.showInteractionNotice(r.state.active?'Module Vol obscur activé.':'Module Vol obscur désactivé.');}catch(e){this.showInteractionNotice(e.message,6000);}finally{this.medicineBusy=false;}return;}
       if(item.experienceModule){await this.toggleExperienceModule(item);this.showInteractionNotice(this.bagError||this.medicineNotice);return;}
       if(item.darkContinentTravel){await this.flyToTown('jungle1',{kind:'void',event:'dark:travel'});return;}
       if(item.superTournamentTravel){await this.flyToTown('super_tournament_lobby',{kind:'void',event:'superTournament:travel'});return;}
@@ -1958,7 +1963,7 @@ export default {
         let { x, y, progress, moving } = this.pnjWorldPosition(pnj, now);
         const phase=teleport?.name===pnj.name?npcTeleportPose(teleport,now,motion):null;
         if(phase){x=phase.x*32+16;y=phase.y*32+16-phase.lift;moving=false;}
-        context.save();clipWhitepeakHost(context,this.map,pnj.name);if(phase)context.globalAlpha=phase.alpha;
+        context.save();if(this._tallGrass?.map===this.map)this._tallGrass.clipActor(context,{x,y});clipWhitepeakHost(context,this.map,pnj.name);if(phase)context.globalAlpha=phase.alpha;
         if(departure && pnj.name===(departure.actor||'lucie_route2')) {
           const pose=departurePose(departure,now,motion),cx=departure.x*32+16,cy=departure.y*32+34;
           context.globalAlpha=pose.alpha;context.translate(cx,cy+pose.drop);context.rotate(pose.rotation);context.scale(pose.scale,pose.scale);context.translate(-cx,-cy);
@@ -2473,7 +2478,7 @@ export default {
       const houseFlight=map==='owned-house' && event==='flyToTown';
       if(houseFlight){event='flyToHouse';map=this.progressionState.flight?.house?.map||map;}
       if(this.flight||this.isDrift||this.battle||this.battleResult||!this.socket?.connected)return;
-      if(this.onDarkContinent&&!['dark:return','dark:explore'].includes(event)){this.showInteractionNotice('Parle au guide de la plage pour rentrer chez toi.',3800);return;}
+      if(this.onDarkContinent&&!['dark:return','dark:explore'].includes(event)&&!(event==='flyToTown'&&this.progressionState.flight?.darkAerial?.active)){this.showInteractionNotice('Parle au guide de la plage pour rentrer chez toi.',3800);return;}
       this.releaseAllMovementKeys();this.closeInfoPanel();this.isMenuOpen=false;if(kind==='void')this.isBagOpen=false;
       const reduced=!this.preferences.animationsEnabled||this.worldWeatherReducedMotion;
       const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -3157,6 +3162,7 @@ export default {
           if (sprite && playerSpriteSheet?.complete && playerSpriteSheet.naturalWidth && playerSpriteSheet.naturalHeight) {
             const pose=flightPose(playerId===this.socket?.id?this.flight:null,now,!this.preferences.animationsEnabled||this.worldWeatherReducedMotion);
             c.save();c.globalAlpha=pose.alpha;
+            if(this._tallGrass?.map===this.map&&!pose.lift)this._tallGrass.clipActor(c,position);
             c.translate(strike.x,strike.y);
             c.translate(position.x,position.y+10-pose.lift);c.scale(pose.scale,pose.scale);c.translate(-position.x,-position.y-10);
             c.drawImage(
@@ -3374,6 +3380,8 @@ export default {
     });
 
     this.socket.on('arenaCollapseState',state=>{this.arenaCollapse=state?.map==='ville_safe1_arene'&&Array.isArray(state.holes)?{...state,receivedAt:performance.now()}:null;this.drawPlayers();});
+    this.socket.on('market:open',payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.isMenuOpen=false;this.marketPanel=payload;});
+    this.socket.on('market:notices',notices=>{if(!Array.isArray(notices))return;const unseen=notices.filter(n=>!this.marketNotices.some(old=>old.id===n.id));if(unseen.length){this.marketNotices.push(...unseen);this._feedbackAudio?.play('notification');}});
     this.socket.on('moduleShortcutState',state=>{this.moduleShortcut=state?.itemKey||null;});
     this.socket.on('experienceModuleState',state=>this.applyExperienceModuleState(state));
     this.socket.on('fieldEffectState', (payload={})=>{this.repelSteps=Number(payload.repelSteps)||0;});
@@ -3992,6 +4000,8 @@ export default {
 
 
 <style>
+.market-sale-toast{position:fixed;z-index:1750;top:12px;right:12px;width:min(380px,calc(100vw - 24px));box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--journal-border);border-left:4px solid #7eac91;border-radius:12px;background:var(--journal-paper);color:var(--journal-ink);box-shadow:0 10px 40px #061b3540}.market-sale-toast strong{font-size:13px}.market-sale-toast p{font-size:11px;line-height:1.5;margin:5px 0 0}.market-sale-toast button{padding:10px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-soft);color:inherit;flex:none;cursor:pointer}
+
 .reduced-game-motion *,
 .reduced-game-motion *::before,
 .reduced-game-motion *::after {

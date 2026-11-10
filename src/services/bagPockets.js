@@ -24,7 +24,7 @@ export function trainingGroup(item) {
   return item.fieldUse?.potentialIncrease?'potential':item.fieldUse?.levelUp?'levels':item.fieldUse?.ivReroll?'iv':item.fieldUse?.effortReset?'ev':item.fieldUse?.abilityReroll?'abilities':item.fieldUse?.natureReroll?'natures':'vitamins';
 }
 export function bagPocket(item) {
-  if(['experience_module','fly_module','professional_trainer_card','super_tournament_pass'].includes(item.key)||item.key==='void_teleporter'&&item.usable)return 'modules';
+  if(['experience_module','fly_module','professional_trainer_card','super_tournament_pass','dark_aerial_module'].includes(item.key)||item.key==='void_teleporter'&&item.usable)return 'modules';
   if(item.berryKind)return 'corrupted_berries';
   if(item.category==='corruption')return 'corruption';
   if(item.category==='treasure')return 'treasures';

@@ -1,6 +1,7 @@
 <template>
- <g data-atlas-terrain pointer-events="none" aria-hidden="true" shape-rendering="geometricPrecision">
+ <g data-atlas-terrain clip-path="url(#atlas-bounds)" pointer-events="none" aria-hidden="true" shape-rendering="geometricPrecision">
   <defs>
+   <clipPath id="atlas-bounds"><rect :width="width" :height="height"/></clipPath>
    <linearGradient id="atlas-ocean" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#5ba9b7"/><stop offset=".5" stop-color="#337e98"/><stop offset="1" stop-color="#244e70"/></linearGradient>
    <radialGradient id="atlas-open-water"><stop stop-color="#87c5c1" stop-opacity=".27"/><stop offset="1" stop-color="#87c5c1" stop-opacity="0"/></radialGradient>
    <linearGradient id="atlas-mainland" x1="0" y1="0" x2=".6" y2="1"><stop stop-color="#b9cba6"/><stop offset=".5" stop-color="#abc781"/><stop offset="1" stop-color="#c5cc8c"/></linearGradient>
@@ -13,7 +14,7 @@
    <pattern id="atlas-canopy" width="19" height="19" patternUnits="userSpaceOnUse"><path d="M2 10C0 5 4 3 7 5C10 1 16 5 14 9C19 12 13 17 9 14C4 17 1 14 2 10Z" fill="#497d55" fill-opacity=".2"/><path d="M4 8q3-3 6-1" fill="none" stroke="#d3dfab" stroke-opacity=".26" stroke-width="1"/></pattern>
    <clipPath id="atlas-mainland-clip"><path :d="coasts.mainland"/></clipPath>
    <clipPath id="atlas-dark-clip"><path :d="coasts.dark"/></clipPath>
-   <clipPath id="atlas-dc2-clip"><path :d="dc2Art.coast"/></clipPath>
+   <clipPath id="atlas-dc2-clip"><path :d="extendedDarkCoast"/></clipPath>
    <clipPath id="atlas-safari-clip"><path :d="coasts.safari"/></clipPath>
   </defs>
   <rect :width="width" :height="height" fill="url(#atlas-ocean)"/>
@@ -69,9 +70,9 @@
   </g>
   <g v-if="dark2" data-true-dark-continent :transform="`translate(${dark2.x},${dark2.y})`">
    <g :transform="`scale(${dark2.width/168},${dark2.height/160})`">
-    <path :d="dc2Art.coast" fill="#579a9c" stroke="#579a9c" stroke-width="7" stroke-linejoin="round" opacity=".5"/>
-    <path :d="dc2Art.coast" fill="url(#atlas-dark-land)" stroke="#cfbd9d" stroke-width="1.6" stroke-linejoin="round"/>
-    <g clip-path="url(#atlas-dc2-clip)"><path :d="dc2Art.coast" fill="url(#atlas-canopy)"/><path :d="dc2Art.water" fill="url(#atlas-lake)" stroke="#adc5a5" stroke-width=".55"/>
+    <path :d="extendedDarkCoast" fill="#579a9c" stroke="#579a9c" stroke-width="7" stroke-linejoin="round" opacity=".5"/>
+    <path :d="extendedDarkCoast" fill="url(#atlas-dark-land)" stroke="#cfbd9d" stroke-width="1.6" stroke-linejoin="round"/>
+    <g clip-path="url(#atlas-dc2-clip)"><path :d="extendedDarkCoast" fill="url(#atlas-canopy)"/><path :d="dc2Art.water" fill="url(#atlas-lake)" stroke="#adc5a5" stroke-width=".55"/>
      <path d="m93 18 5-9 5 9-5 3Z" fill="#b6ad91" stroke="#594d76" stroke-width=".7"/><path d="m98 9 0 12 5-3Z" fill="#7b7790"/>
     </g>
    </g>
@@ -86,10 +87,11 @@
 </template>
 <script>
 import dc2Art from '@/data/dark2Atlas';
+const extendedDarkCoast='M9 -300H500V500H11L11 157'+dc2Art.coast.split('L11 157')[1];
 import {atlasCoasts,mainlandForests,mainlandRidges,seaCurrents} from '@/services/regionMapTerrain';
 export default{
  name:'RegionMapTerrain',props:{width:Number,height:Number,darkOffset:{type:Number,default:0},safari:Object,dark2:Object,darkLabel:String,en:Boolean},
- data:()=>({dc2Art,coasts:atlasCoasts,forests:mainlandForests,ridges:mainlandRidges,currents:seaCurrents})
+ data:()=>({dc2Art,extendedDarkCoast,coasts:atlasCoasts,forests:mainlandForests,ridges:mainlandRidges,currents:seaCurrents})
 };
 </script>
 <style scoped>

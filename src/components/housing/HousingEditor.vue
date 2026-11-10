@@ -3,7 +3,7 @@
     <div class="editor-heading">
       <nav aria-label="Aménagement" class="editor-tabs">
         <button :aria-pressed="view==='room'" @click="view='room'">⌂ Pièce</button>
-        <button :aria-pressed="view==='furniture'" @click="view='furniture'">▤ Meubles <small>{{draft.placements.length}} / 10</small></button>
+        <button :aria-pressed="view==='furniture'" @click="view='furniture'">▤ Meubles <small>{{draft.placements.length}} / 20</small></button>
       </nav>
       <button class="editor-undo" :disabled="!history.length||locked" @click="undo">↶ Annuler</button>
     </div>
