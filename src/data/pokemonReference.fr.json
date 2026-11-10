@@ -5754,6 +5754,15 @@
       "accuracy": 100,
       "pp": 15,
       "description": "Projette une boule de pollen sur la cible. Inflige des dégâts Insecte à un ennemi ; rend 50 % des PV max à un allié, sans lui infliger de dégâts."
+    },
+    "Spirit Break": {
+      "type": "Fairy",
+      "category": "physical",
+      "power": 75,
+      "powerKind": "standard",
+      "accuracy": 100,
+      "pp": 15,
+      "description": "Inflige des dégâts et baisse l’Attaque Spéciale de la cible d’un niveau."
     }
   },
   "abilities": {
