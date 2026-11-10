@@ -51,15 +51,8 @@
                 type="search"
                 placeholder="Pokémon, objet, talent…"
                 aria-label="Rechercher"
-              /><select
-                v-model="filters.sort"
-                aria-label="Trier"
-                @change="load(0)"
-              >
-                <option value="new">Plus récents</option>
-                <option value="price">Prix croissant</option>
-                <option value="price_desc">Prix décroissant</option></select
-              ><button :disabled="busy">Rechercher</button>
+              /><button :disabled="busy">Rechercher</button>
+              <small class="market-order">Éléments identiques regroupés · Prix par unité croissant</small>
               <details>
                 <summary>Filtres Pokémon</summary>
                 <div class="pokemon-filters">
@@ -445,7 +438,6 @@ export default {
       filters: {
         category: "",
         search: "",
-        sort: "new",
         minLevel: "",
         maxLevel: "",
         k: "",
@@ -811,8 +803,10 @@ aside button {
   flex: 1;
   min-width: 130px;
 }
-.market-filters > select {
-  max-width: 170px;
+.market-order {
+  width: 100%;
+  font-size: 11px;
+  color: var(--journal-muted);
 }
 .market-filters details {
   width: 100%;
@@ -1160,10 +1154,6 @@ h3 {
   }
   .market-layout main {
     padding: 12px;
-  }
-  .market-filters > select {
-    max-width: 135px;
-    font-size: 11px;
   }
   .market-filters > button {
     font-size: 11px;

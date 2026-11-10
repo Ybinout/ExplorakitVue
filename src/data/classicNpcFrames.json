@@ -13,7 +13,8 @@
     "nrv_noz": 37,
     "nrv_tom": 10,
     "nrv_cry": 38,
-    "professor_fan": 39
+    "professor_fan": 39,
+    "market_clerk": 40
   },
   "frames": [
     {
@@ -335,6 +336,14 @@
       "w": 18,
       "h": 25,
       "pixels": 339
+    },
+    {
+      "name": "market_clerk",
+      "x": 174,
+      "y": 930,
+      "w": 19,
+      "h": 24,
+      "pixels": 315
     }
   ]
 }

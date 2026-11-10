@@ -25,6 +25,7 @@ export function classicNpcIndex(frame, actor = {}) {
   if (Object.hasOwn(classic.roles, name) && name.startsWith('nrv_')) return classic.roles[name];
   if (name === 'mathilde_pikapika') return classic.roles.mathilde;
   if (name === 'village_professor_fan') return classic.roles.professor_fan;
+  if (name.startsWith('market_clerk')) return classic.roles.market_clerk;
   if (/infirm|nurse/.test(name)) return classic.roles.infirmiere;
   if (/vendeuse/.test(name)) return 0;
   if (/vendeur|shop/.test(name)) return classic.roles.vendeur;
