@@ -563,6 +563,7 @@ import { outdoorMap } from '@/data/nightLights';
 import { PlaceAmbienceRenderer, placeAmbienceProfile } from '@/services/placeAmbience';
 import { ForegroundWindRenderer, hasWindTrees } from '@/services/foregroundWind';
 import { GrassRustleRenderer, hasRustlingGrass } from '@/services/grassRustle';
+import { TallGrassRenderer, hasTallGrass } from '@/services/tallGrass';
 import { SnowFootprintsRenderer, hasSnowGround } from '@/services/snowFootprints';
 import { DirtFootprintsRenderer, hasDirtGround } from '@/services/dirtFootprints';
 import { WorldWeatherRenderer, worldWeatherEnabled, mapWorldWeather } from '@/services/worldWeather';
@@ -939,7 +940,7 @@ export default {
     villageWaterActive(active) { if (!active) this._villageWater?.suspend(); },
     worldNightActive(active) { if (!active) this._worldNight?.suspend(); },
     worldWeatherActive(active) { if (!active) { this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); } },
-    map() { this._touchAction?.reset(); this.experienceLab=null; this.closeWorldChat(); this.clearWorldSpeech(); this._worldRenderBudget?.reset(performance.now());this._worldMovement?.clear(); this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  },
+    map() { this._touchAction?.reset(); this.experienceLab=null; this.closeWorldChat(); this.clearWorldSpeech(); this._worldRenderBudget?.reset(performance.now());this._worldMovement?.clear(); this.cancelFishing(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._tallGrass?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  },
     dirtFootprintsActive(active) { if (!active) this._dirtFootprints?.suspend(); },
     snowFootprintsActive(active) { if (!active) this._snowFootprints?.suspend(); },
     grassRustleActive(active) { if (!active) this._grassRustle?.suspend(); },
@@ -1761,7 +1762,7 @@ export default {
       if (event.detail || this.movementBlocked) return;
       this.keysPressed[direction] = true; this.updatePlayerPosition(); this.releaseAllMovementKeys();
     },
-    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { this._touchAction?.reset(); releaseMirrorEffects(); this._mirrorAudio?.stop(); this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  } },
+    onWorldVisibility() { if (!document.hidden) { this.restoreWorldView(); return; } if (document.hidden) { this._touchAction?.reset(); releaseMirrorEffects(); this._mirrorAudio?.stop(); this.cancelFishing(); this.releaseAllMovementKeys(); this._worldWeather?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend(); this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._grassRustle?.suspend(); this._tallGrass?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();  } },
     activateMobileActionA(event) { if (!event.detail) this.triggerMobileActionA(); },
     triggerMobileActionA() {
       if (this.patchNoticeOpen) return;
@@ -3021,7 +3022,7 @@ export default {
       if (this.mapLoading || this.mapLoadError || this.renderedMap !== this.map
         || !me || me.currentmap !== this.map || !this.mapImage?.complete || !this.mapImage.naturalWidth) {
         this._placeAmbience?.suspend(); this._worldNight?.suspend(); this._villageWater?.suspend(); this._foregroundWind?.suspend(); this._backgroundWind?.suspend();
-        this._grassRustle?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();
+        this._grassRustle?.suspend(); this._tallGrass?.suspend(); this._snowFootprints?.suspend(); this._dirtFootprints?.suspend(); this._pokemonComputers?.suspend();
         this.drawHeldWorldFrame(c, canvas);
         return;
       }
@@ -3040,7 +3041,7 @@ export default {
       c.imageSmoothingEnabled = false;
       const shake=mirrorScenePose(this.mirrorScene?.map===this.map?this.mirrorScene:null,now,mirrorMotion);
       c.setTransform(scale, 0, 0, scale, (-camera.x+shake.shakeX)*scale, (-camera.y+shake.shakeY)*scale);
-      const actors=this.grassRustleActive||this.dirtFootprintsActive||this.snowFootprintsActive?this.grassActors(now):[];
+      const actors=this.grassRustleActive||hasTallGrass(this.map)||this.dirtFootprintsActive||this.snowFootprintsActive?this.grassActors(now):[];
 
       // Fill the canvas with the map image
       if (this.mapImage) {
@@ -3062,10 +3063,17 @@ export default {
         this._backgroundWind.draw(c,this.mapImage,now,this.effectiveWorldWeather.wind,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion,this.map,'background');
       } else this._backgroundWind?.suspend();
 
-      if (this.grassRustleActive && !document.hidden) {
-        if (!this._grassRustle) this._grassRustle = new GrassRustleRenderer();
-        this._grassRustle.draw(c, this.mapImage, this.map, actors, now);
-      } else this._grassRustle?.suspend();
+      if (hasTallGrass(this.map) && !document.hidden) {
+        if (!this._tallGrass) this._tallGrass = new TallGrassRenderer();
+        this._grassRustle?.suspend();
+        this._tallGrass.draw(c,this.mapImage,this.foregroundImage,this.map,actors,now,this.grassRustleActive&&mirrorMotion,camera);
+      } else {
+        this._tallGrass?.suspend();
+        if (this.grassRustleActive && !document.hidden) {
+          if (!this._grassRustle) this._grassRustle = new GrassRustleRenderer();
+          this._grassRustle.draw(c, this.mapImage, this.map, actors, now);
+        } else this._grassRustle?.suspend();
+      }
 
       if (this.dirtFootprintsActive && !document.hidden) {
         if (!this._dirtFootprints) this._dirtFootprints = new DirtFootprintsRenderer();
@@ -3099,6 +3107,7 @@ export default {
       if(!this._pokemonComputers)this._pokemonComputers=new PokemonComputerRenderer();
       this._pokemonComputers.draw(c,this.worldDevices,this.map,now,mirrorMotion,scale,camera);
       this.drawPnjs(c, now);
+      if(this._tallGrass?.map===this.map)for(const actor of actors)if(actor.id.startsWith('pnj:'))this._tallGrass.drawActor(c,actor);
       drawMirrorClone(c,this.map,this.mirrorRift,this.mirrorScene,now,this.mirrorRift?.appearance?.sprite?this.ensureSpriteSheet(this.mirrorRift.appearance.sprite):null,mirrorMotion);
 
       const housePlan=this.housingPlan;
@@ -3110,7 +3119,7 @@ export default {
       }
       const playerOrder=Object.keys(this.players);
       const casinoObjects=isCasino(this.map)?slotMachines:[];let casinoObject=0;
-      if(this.housingActive||casinoObjects.length)playerOrder.sort((a,b)=>this.visualPlayer(a,this.players[a],now).y-this.visualPlayer(b,this.players[b],now).y);
+      if(this.housingActive||casinoObjects.length||hasTallGrass(this.map))playerOrder.sort((a,b)=>this.visualPlayer(a,this.players[a],now).y-this.visualPlayer(b,this.players[b],now).y);
       // Housing furniture joins the same depth order as the characters' feet.
       for (const playerId of playerOrder) {
         const player = this.players[playerId];
@@ -3156,6 +3165,7 @@ export default {
               position.x - 32, position.y - 42, this.spriteWidth, this.spriteHeight  // DÃ©cale la position Y de 32 pixels
             );
             c.restore();
+            if(this._tallGrass?.map===this.map)this._tallGrass.drawActor(c,position);
           } else {
             console.error(`Invalid sprite frame: ${currentFrame}`);
           }
@@ -3171,10 +3181,11 @@ export default {
       if(this.arenaCollapse?.map===this.map&&!this.battle&&!document.hidden)drawHozeCeiling(c,this.arenaCollapse,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
       // Dessiner les Ã©lÃ©ments de premier plan si nÃ©cessaire
       if (this.foregroundImage?.complete && this.foregroundImage.naturalWidth) {
+        const foreground=this._tallGrass?.map===this.map&&this._tallGrass.foreground||this.foregroundImage;
         if (hasWindTrees(this.map) && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
           if (!this._foregroundWind) this._foregroundWind = new ForegroundWindRenderer();
-          this._foregroundWind.draw(c, this.foregroundImage, now, this.effectiveWorldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
-        } else { this._foregroundWind?.suspend(); c.drawImage(this.foregroundImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
+          this._foregroundWind.draw(c, foreground, now, this.effectiveWorldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
+        } else { this._foregroundWind?.suspend(); c.drawImage(foreground, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
       if(this.map==='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
       if (this.worldWeatherActive && !document.hidden) {
@@ -3937,6 +3948,7 @@ export default {
     this._worldWeather?.destroy();
     this._foregroundWind?.destroy(); this._backgroundWind?.destroy();
     this._grassRustle?.destroy();
+    this._tallGrass?.destroy();
     this._snowFootprints?.destroy();
     this._dirtFootprints?.destroy();
     clearTimeout(this._roomObstacleTimer);
