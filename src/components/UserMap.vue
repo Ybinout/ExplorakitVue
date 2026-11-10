@@ -67,7 +67,7 @@
       <div class="game-shell" :inert="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? '' : null" :aria-hidden="trainerOffer || driftState?.phase==='selection' || battleResult || driftSpectator || learningVisible || evolutionVisible ? 'true' : null">
         <div class="world-toolbar">
         <div class="game-header" ref="gameHeader">
-          <div class="header-actions">
+          <div class="header-actions" @dragover="shortcutDragOver" @drop="dropNavbarShortcut($event)">
           <button ref="menuToggle" class="menu-toggle-btn" :class="{ 'has-contract-reward': readyContractCount > 0, 'has-social-notification':globalAlertCount>0 }" :aria-expanded="isMenuOpen" aria-controls="adventure-menu" @click="toggleMenu">
             <journal-icon name="menu" />
             {{ tr('menu') }}
@@ -77,13 +77,20 @@
           <button ref="teamToggle" class="team-toggle-btn" data-menu-action="pokemon" :aria-expanded="isTeamPanelOpen" aria-controls="pokemon-team-panel" @click="handleMenuAction('pokemon')">
             <journal-icon name="pokemon" /><span>{{ tr('pokemon') }}</span>
           </button>
+          <div v-if="!showMobileControls" class="navbar-shortcuts" aria-label="Raccourcis du menu">
+            <span v-for="key in visibleNavbarShortcuts" :key="key" class="navbar-shortcut" :data-navbar-shortcut="key" draggable="true" @dragstart="startNavbarDrag($event,key)" @dragend="navbarDragging=''" @dragover.prevent @drop.stop="dropNavbarShortcut($event,key)">
+              <button type="button" class="navbar-shortcut-action" :title="shortcutLabel(key)" @click="openNavbarShortcut(key)"><journal-icon :name="key==='contracts'?'progress':key==='tournament-powers'?'drifts':key==='learning'?'pokemon':key"/><span>{{ shortcutLabel(key) }}</span><notification-badge v-if="key==='friends'" :count="socialAlertCount"/><notification-badge v-if="key==='progress'" :count="questAlertCount"/></button>
+              <button type="button" class="navbar-shortcut-remove" :aria-label="`Retirer ${shortcutLabel(key)} des raccourcis`" title="Retirer le raccourci" @click.stop="removeNavbarShortcut(key)">×</button>
+            </span>
+            <span v-if="navbarDragging" class="navbar-drop-hint">Déposer ici</span>
+          </div>
           </div>
           <div v-if="isDrift" class="drift-hud">
             <div class="drift-clock"><drift-glyph name="clock" /><span><small>{{ driftPhaseLabel }}</small><strong>{{ driftCountdown || 'Rift' }}</strong></span></div>
             <button class="drift-hud-toggle" :aria-expanded="isDriftPanelOpen" aria-label="Ouvrir le carnet Drift" @click="toggleDriftPanel"><drift-glyph /><span>Drifts <small>{{ driftState?.equipped?.length || 0 }}/5</small></span></button>
           </div>
           <nav v-back="()=>isMenuOpen=false" v-if="isMenuOpen" id="adventure-menu" class="menu-dropdown" :aria-label="tr('menu')">
-            <button v-if="learningPokemon" class="menu-dropdown-item" data-menu-action="learning" @click="openMoveLearning"><journal-icon name="pokemon" /><span>Attaques à apprendre</span></button>
+            <button v-if="learningPokemon" class="menu-dropdown-item" data-menu-action="learning" :draggable="!showMobileControls" @dragstart="startNavbarDrag($event,'learning')" @dragend="navbarDragging=''" @click="openMoveLearning"><journal-icon name="pokemon" /><span>Attaques à apprendre</span></button>
             <div class="menu-caption"><span>RiftMon</span><small>{{ isDrift ? (isColosseum ? 'Colosseum' : 'RiftMon') : (preferences.language === 'en' ? 'Adventure' : 'Aventure') }}</small></div>
             <button
               v-for="item in visibleMenuItems"
@@ -91,17 +98,18 @@
               class="menu-dropdown-item"
               :data-menu-action="item.key"
               :class="{'has-journal-alert':item.key==='progress'&&questAlertCount>0}"
+              :draggable="!showMobileControls" @dragstart="startNavbarDrag($event,item.key)" @dragend="navbarDragging=''"
               @click="handleMenuAction(item.key)"
             >
               <journal-icon :name="item.key==='contracts'?'progress':item.key" /><span>{{ menuItemLabel(item) }}</span>
               <notification-badge v-if="item.key==='progress'" :count="questAlertCount" data-quest-alert/>
               <small v-if="item.key==='contracts' && readyContractCount" class="contract-reward-label">{{ readyContractCount }} à récupérer</small>
             </button>
-            <button v-if="superTournament.active && !battle" class="menu-dropdown-item" data-menu-action="tournament-powers" @click="isMenuOpen=false;releaseAllMovementKeys();tournamentPanel={tab:'powers'}"><journal-icon name="drifts"/><span>Augmentations</span><small>{{ superTournament.passives?.length || 0 }} actives</small></button>
-            <button class="menu-dropdown-item" :class="{'has-social-notification':socialAlertCount>0}" data-menu-action="friends" @click="openFriends()"><journal-icon name="friends"/><span>Amis</span><notification-badge :count="socialAlertCount" data-social-alert/></button>
-            <button v-if="!isDrift" class="menu-dropdown-item" data-menu-action="calculator" @click="openDamageCalculator"><journal-icon name="calculator"/><span>Calculateur de dégâts</span></button>
-            <button class="menu-dropdown-item" data-menu-action="minimap" @click="handleMenuAction('minimap')"><journal-icon name="minimap" /><span>Minimap</span></button>
-            <button class="menu-dropdown-item" data-menu-action="quit" :disabled="quitting" @click="quitGame"><journal-icon name="quit" /><span>{{ quitting ? tr('saving') : tr('saveAndQuit') }}</span><small>Accueil</small></button>
+            <button v-if="superTournament.active && !battle" class="menu-dropdown-item" data-menu-action="tournament-powers" :draggable="!showMobileControls" @dragstart="startNavbarDrag($event,'tournament-powers')" @dragend="navbarDragging=''" @click="openNavbarShortcut('tournament-powers')"><journal-icon name="drifts"/><span>Augmentations</span><small>{{ superTournament.passives?.length || 0 }} actives</small></button>
+            <button class="menu-dropdown-item" :class="{'has-social-notification':socialAlertCount>0}" data-menu-action="friends" :draggable="!showMobileControls" @dragstart="startNavbarDrag($event,'friends')" @dragend="navbarDragging=''" @click="openFriends()"><journal-icon name="friends"/><span>Amis</span><notification-badge :count="socialAlertCount" data-social-alert/></button>
+            <button v-if="!isDrift" class="menu-dropdown-item" data-menu-action="calculator" :draggable="!showMobileControls" @dragstart="startNavbarDrag($event,'calculator')" @dragend="navbarDragging=''" @click="openDamageCalculator"><journal-icon name="calculator"/><span>Calculateur de dégâts</span></button>
+            <button class="menu-dropdown-item" data-menu-action="minimap" :draggable="!showMobileControls" @dragstart="startNavbarDrag($event,'minimap')" @dragend="navbarDragging=''" @click="handleMenuAction('minimap')"><journal-icon name="minimap" /><span>Minimap</span></button>
+            <button class="menu-dropdown-item" data-menu-action="quit" :disabled="quitting" :draggable="!showMobileControls" @dragstart="startNavbarDrag($event,'quit')" @dragend="navbarDragging=''" @click="quitGame"><journal-icon name="quit" /><span>{{ quitting ? tr('saving') : tr('saveAndQuit') }}</span><small>Accueil</small></button>
             <small v-if="isDrift" class="menu-quit-hint">Le temps continue hors du jeu. Une déconnexion prolongée compte comme un abandon.</small>
             <leave-expedition v-if="isDrift" :phase="driftState?.phase" :busy="starterBusy" :disabled="!socket?.connected" @confirm="cancelStarter" />
           </nav>
@@ -457,6 +465,8 @@
 </template>
 
 <script>
+import {handleBattleKeyboard} from '@/services/battleKeyboard';
+import {loadNavbarShortcuts,saveNavbarShortcuts} from '@/services/navbarShortcuts';
 import FishingPrompt from './world/FishingPrompt.vue';
 import { drawFishing } from '@/services/fishingRenderer';
 import RoomObstacleAction from './world/RoomObstacleAction.vue';
@@ -761,6 +771,7 @@ export default {
         { key: 'bag' },
         { key: 'options' }
       ],
+      navbarShortcuts: [], navbarDragging: '',
 
 
       spriteSheet: null,
@@ -844,6 +855,7 @@ export default {
       return this.tr('emptyBag');
     },
     visibleMenuItems() { return this.isDrift ? [...this.menuItems.filter(i => !['pokedex', 'progress', 'badges', 'save'].includes(i.key)), { key: 'drifts' }, ...(this.driftState?.contracts?.length?[{key:'contracts'}]:[])] : this.menuItems; },
+    visibleNavbarShortcuts() { const available=new Set([...this.visibleMenuItems.map(i=>i.key),'friends','minimap','quit',...(!this.isDrift?['calculator']:[]),...(this.learningPokemon?['learning']:[]),...(this.superTournament.active?['tournament-powers']:[])]);return this.navbarShortcuts.filter(k=>available.has(k)); },
     caughtSpeciesIds(){return (this.pokedexState?.entries || []).filter(p=>p.caught).map(p=>Number(p.id));},
     readyContractCount() { return this.isDrift && this.driftState?.alive && this.driftState.phase === 'exploration' ? (this.driftState.contracts || []).filter(c => c.complete && !c.claimed).length : 0; },
     driftPhaseLabel() { return { selection:'Choix du compagnon', exploration: 'Exploration', transition: 'Rassemblement', preparation: 'Préparation du tournoi', tournament: 'Tournoi', colosseum_ready: 'Colosseum · prêt ?', colosseum_battle: 'Colosseum', results: 'Expédition terminée' }[this.driftState?.phase] || 'Connexion Drift'; },
@@ -2344,6 +2356,23 @@ export default {
       if (this.saveState.status === 'error') return `${this.tr('save')} !`;
       return this.tr('save');
     },
+    shortcutLabel(key) { return ({friends:'Amis',calculator:'Calculateur',minimap:'Minimap',quit:this.tr('saveAndQuit'),learning:'Attaques à apprendre','tournament-powers':'Augmentations'})[key] || this.menuItemLabel({key}); },
+    startNavbarDrag(event,key) { if(this.showMobileControls){event.preventDefault();return;} this.navbarDragging=key;event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/x-riftmon-shortcut',key); },
+    shortcutDragOver(event) { if(!this.showMobileControls && this.navbarDragging){event.preventDefault();event.dataTransfer.dropEffect='move';} },
+    dropNavbarShortcut(event,before=null) { if(this.showMobileControls || !this.navbarDragging)return;event.preventDefault();const key=this.navbarDragging;if(key===before){this.navbarDragging='';return;}const next=this.navbarShortcuts.filter(k=>k!==key),at=before?next.indexOf(before):-1;next.splice(at<0?next.length:at,0,key);this.navbarShortcuts=saveNavbarShortcuts(this.currentUserId,next);this.navbarDragging='';this.isMenuOpen=false; },
+    removeNavbarShortcut(key) { this.navbarShortcuts=saveNavbarShortcuts(this.currentUserId,this.navbarShortcuts.filter(k=>k!==key)); },
+    openNavbarShortcut(key) { if(key==='friends')return this.openFriends();if(key==='calculator')return this.openDamageCalculator();if(key==='quit')return this.quitGame();if(key==='learning')return this.openMoveLearning();if(key==='tournament-powers'){this.isMenuOpen=false;this.releaseAllMovementKeys();this.tournamentPanel={tab:'powers'};return;}return this.handleMenuAction(key); },
+    handleBattleKeys(event) {
+      if(!this.battle || this.battleChatOpen || this.tradeModalVisible || this.incomingRequest.visible || this.battleResult || this.pendingBattleResult || this.learningVisible || this.evolutionVisible || this.patchNoticeOpen)return;
+      const simple=!this.raidCombatActive&&!this.doublesFrame,overlay=this.$refs.battleOverlay;
+      if(simple&&overlay?.experienceBusy)return;
+      const tutorial=simple&&overlay?.tutorialEnabled?overlay.tutorialPhase:null;
+      if(tutorial&&(!overlay.tutorialVisible||!['attack','capture'].includes(tutorial)))return;
+      const root=this.raidCombatActive?this.$el.querySelector('.raid-battle'):this.doublesFrame?this.$el.querySelector('.double-battle'):overlay?.$el;
+      if(handleBattleKeyboard(event,root,tutorial)&&event.isTrusted&&!document.hidden&&this.socket?.connected&&Date.now()-(this._battleKeyboardActivity||0)>=1000){
+        this._battleKeyboardActivity=Date.now();this.socket.emit('presence:activity');
+      }
+    },
     async openDamageCalculator(){this.releaseAllMovementKeys();this.isMenuOpen=false;this.closeLegacyPanels();this.closeInfoPanel();await this.loadTeamPokemons();this.damageCalculatorOpen=true;},
     calculateStrategy(payload){return new Promise((resolve,reject)=>{if(!this.socket?.connected){reject(Error('Connexion interrompue.'));return;}this.socket.timeout(10000).emit('strategy:calculate',payload,(error,response)=>{if(error)reject(Error('Le serveur ne répond pas. Réessaie.'));else if(!response?.success)reject(Error(response?.message||'Simulation indisponible.'));else resolve(response.result);});});},
     closeLegacyPanels() {
@@ -3258,6 +3287,7 @@ export default {
     const username = this.getStoredUsername();
     const token = this.getStoredToken();
     this.currentUserId = userId;
+    this.navbarShortcuts = loadNavbarShortcuts(userId);
     this.currentUsername = username;
 
     if (!userId || !token) {
@@ -3889,6 +3919,7 @@ export default {
     // autoConnect disabled. Both worlds connect after registering listeners.
     this.socket.connect();
     window.addEventListener('keydown', this.handleKeydown);
+    window.addEventListener('keydown', this.handleBattleKeys, true);
     window.addEventListener(GAMEPAD_EVENT, this.handleGamepad);
     window.addEventListener('keyup', this.handleKeyup);
     window.addEventListener('mousedown', this.handleOutsideMenuClick);
@@ -3972,6 +4003,7 @@ export default {
     this.stopMovementLoop();
     this.stopGameLoop();
     window.removeEventListener('keydown', this.handleKeydown);
+    window.removeEventListener('keydown', this.handleBattleKeys, true);
     window.removeEventListener(GAMEPAD_EVENT, this.handleGamepad);
     window.removeEventListener('keyup', this.handleKeyup);
     window.removeEventListener('mousedown', this.handleOutsideMenuClick);

@@ -59,6 +59,16 @@ html[data-game-theme-mode="dark"] .game-root .game-stage .team-toggle-btn .journ
 /* Team access stays beside Menu, including narrow expedition headers. */
 .game-root .game-stage .header-actions { display:flex; align-items:center; flex:none; gap:6px; }
 .game-root .game-stage .header-actions button { white-space:nowrap; }
+.game-root .game-stage .game-header { min-width:0; }
+.game-root .game-stage .header-actions { flex:0 1 auto; min-width:0; }
+.game-root .navbar-shortcuts { display:flex; align-items:center; gap:5px; min-width:0; max-width:min(40vw,450px); overflow-x:auto; scrollbar-width:thin; }
+.game-root .navbar-shortcut { display:flex; align-items:center; flex:none; position:relative; border:1px solid var(--journal-border); border-radius:10px; background:var(--journal-soft); }
+.game-root .navbar-shortcut-action { display:flex; align-items:center; gap:6px; min-height:42px; padding:7px 5px 7px 10px; color:var(--journal-heading); border:0; background:transparent; font:600 12px var(--journal-font); }
+.game-root .navbar-shortcut-action .journal-icon { width:17px; height:17px; color:var(--journal-accent); }
+.game-root .navbar-shortcut-remove { align-self:stretch; padding:0 8px 0 4px; border:0; background:transparent; color:var(--journal-muted); font-size:16px; }
+.game-root .navbar-shortcut-remove:hover { color:var(--journal-heading); }
+.game-root .navbar-drop-hint { flex:none; padding:9px; border:1px dashed var(--journal-accent); border-radius:8px; color:var(--journal-accent); font-size:11px; white-space:nowrap; }
+.game-root .menu-dropdown-item[draggable=true] { cursor:grab; }
 .game-root .location-meta { display:flex;align-items:center;gap:8px; }
 .game-root .location-meta .location-eyebrow { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .online-player-count { display:inline-flex;align-items:center;gap:3px;flex:none;color:var(--journal-muted);font:600 10px/1 var(--journal-font);font-variant-numeric:tabular-nums;white-space:nowrap; }

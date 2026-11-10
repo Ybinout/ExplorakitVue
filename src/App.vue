@@ -38,6 +38,16 @@ export default {
 </script>
 
 <style>
+@media (hover: hover) and (pointer: fine) {
+  #app :is(.battle,.raid-battle,.double-battle) [data-keyboard-number] { position:relative; }
+  #app :is(.battle,.raid-battle,.double-battle) [data-keyboard-number]::after {
+    content:attr(data-keyboard-number); position:absolute; top:3px; right:5px;
+    display:grid; place-items:center; min-width:16px; height:16px; padding:0 3px;
+    border-radius:5px; background:rgba(10,29,42,.67); color:#fff; font:700 10px/1 sans-serif;
+    pointer-events:none;
+  }
+  #app .keyboard-battle-focus:focus { outline:3px solid #a6e2ff !important; outline-offset:2px; }
+}
 * {
   box-sizing: border-box;
 }

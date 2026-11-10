@@ -244,6 +244,7 @@
             class="battle-choice-btn battle-move-choice"
             :style="moveButtonStyle(index - 1)"
             :data-move-type="moveButtonType(index - 1)"
+            :data-keyboard-number="index"
             :disabled="isMoveUnavailable(index - 1)"
             @click="submitAction({ action: 'attack', number: index - 1 }, tr('attackRunning'))"
           >
@@ -291,11 +292,11 @@
       </div>
 
       <div v-if="!readOnly" class="battle-main-actions">
-        <button data-tutorial-attack class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
-        <button v-if="houseControl?.cooperative" class="battle-main-btn action-bag house-pass-button" data-house-pass :disabled="houseControl.busy || !houseControl.canPass || !canChooseAction" @click="$emit('house-pass')">Passer la main</button>
-        <button v-else-if="!opponent?.storyActor" data-tutorial-bag class="battle-main-btn action-bag" :disabled="tournament || ['whitepeak-club','draft-house'].includes(environment) || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
-        <button class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
-        <button class="battle-main-btn action-flee" :disabled="capturePolicy?.darkContinent || ['dark-jungle','dark-continent2'].includes(environment) || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
+        <button data-tutorial-attack data-keyboard-number="1" class="battle-main-btn action-attack" :disabled="!canChooseAction || replacementChoice" @click="setPanel('attack')">{{ tr('attack') }}</button>
+        <button v-if="houseControl?.cooperative" class="battle-main-btn action-bag house-pass-button" data-keyboard-number="2" data-house-pass :disabled="houseControl.busy || !houseControl.canPass || !canChooseAction" @click="$emit('house-pass')">Passer la main</button>
+        <button v-else-if="!opponent?.storyActor" data-tutorial-bag data-keyboard-number="2" class="battle-main-btn action-bag" :disabled="tournament || ['whitepeak-club','draft-house'].includes(environment) || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
+        <button data-keyboard-number="3" class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
+        <button data-keyboard-number="4" class="battle-main-btn action-flee" :disabled="capturePolicy?.darkContinent || ['dark-jungle','dark-continent2'].includes(environment) || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
       </div>
     </div>
     <tutorial-coach v-if="tutorialEnabled" :paused="!tutorialVisible" :blocked="presentationBusy || (['attack','capture'].includes(tutorialPhase) && !canChooseAction)" :target-loading="bagLoading" :step="tutorial.phase" :selector="tutorialSelector" :busy="tutorialBusy" :error="tutorialError" @next="$emit('tutorial-next')" @retry="openBag"/>
