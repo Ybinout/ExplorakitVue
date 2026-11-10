@@ -78,7 +78,7 @@ import {localizeTypeName,typeBadgeStyle} from '@/services/pokemonTypes';
 export default {
   name:'BagPanel',components:{BagItemIcon},
   props:{favoriteKeys:{type:Array,default:()=>[]},favoriteBusy:Boolean,moduleShortcut:{type:String,default:null},shortcutBusy:Boolean,viewState:{type:Object,default:null},money:{type:Number,default:0},items:{type:Array,default:()=>[]},loading:Boolean,error:String,notice:String,repelSteps:{type:Number,default:0},emptyLabel:String,expedition:Boolean,language:String},
-  data(){const saved=this.viewState||{};return {activePocket:saved.activePocket||'medicine',selectedKey:saved.selectedKey||null,previousFocus:null,trainingFilter:saved.trainingFilter||'all',corruptionFilter:saved.corruptionFilter||'all',machineSort:saved.machineSort||'name',pocketPositions:{...saved.pocketPositions}};},
+  data(){const saved=this.viewState||{};return {activePocket:BAG_POCKETS.some(p=>p.key===saved.activePocket)?saved.activePocket:'medicine',selectedKey:saved.selectedKey||null,previousFocus:null,trainingFilter:saved.trainingFilter||'all',corruptionFilter:saved.corruptionFilter||'all',machineSort:saved.machineSort||'name',pocketPositions:{...saved.pocketPositions}};},
   computed:{
     favorites(){return new Set(this.favoriteKeys);},
     english(){return this.language==='en';},

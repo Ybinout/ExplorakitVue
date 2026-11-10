@@ -18,6 +18,7 @@
       "weight": 24
     },
     "natural_gift_type": "Poison",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -39,6 +40,7 @@
       "weight": 12
     },
     "natural_gift_type": "Psychic",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -65,6 +67,7 @@
       "weight": 4
     },
     "natural_gift_type": "Flying",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -89,6 +92,7 @@
     },
     "description": "Tenue ou utilisée depuis le sac, soigne la paralysie. Consommée après utilisation.",
     "natural_gift_type": "Fire",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -113,6 +117,7 @@
     },
     "description": "Tenue ou utilisée depuis le sac, soigne le sommeil. Consommée après utilisation.",
     "natural_gift_type": "Water",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -139,6 +144,7 @@
     },
     "description": "Tenue ou utilisée depuis le sac, soigne le poison. Consommée après utilisation.",
     "natural_gift_type": "Electric",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -163,6 +169,7 @@
     },
     "description": "Tenue ou utilisée depuis le sac, soigne la brûlure. Consommée après utilisation.",
     "natural_gift_type": "Grass",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -187,6 +194,7 @@
     },
     "description": "Tenue ou utilisée depuis le sac, soigne le gel. Consommée après utilisation.",
     "natural_gift_type": "Ice",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -203,6 +211,7 @@
     "natural_gift_power": 80,
     "description": "Tenue, soigne la confusion. Consommée après utilisation.",
     "natural_gift_type": "Ground",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -223,6 +232,7 @@
     },
     "description": "Restaure 10 PP à la première capacité épuisée, sinon à la première capacité incomplète depuis le sac. Tenue, s’active quand une capacité arrive à 0 PP.",
     "natural_gift_type": "Fighting",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -241,6 +251,7 @@
     "trigger_hp_ratio": 0.25,
     "description": "Tenue, augmente l’Attaque d’un cran à 25 % des PV ou moins. Consommée après utilisation.",
     "natural_gift_type": "Grass",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -259,6 +270,7 @@
     "trigger_hp_ratio": 0.25,
     "description": "Tenue, augmente la Défense d’un cran à 25 % des PV ou moins. Consommée après utilisation.",
     "natural_gift_type": "Ice",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -277,6 +289,7 @@
     "trigger_hp_ratio": 0.25,
     "description": "Tenue, augmente la Vitesse d’un cran à 25 % des PV ou moins. Consommée après utilisation.",
     "natural_gift_type": "Fighting",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -295,6 +308,7 @@
     "trigger_hp_ratio": 0.25,
     "description": "Tenue, augmente l’Attaque Spéciale d’un cran à 25 % des PV ou moins. Consommée après utilisation.",
     "natural_gift_type": "Poison",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -313,6 +327,7 @@
     "trigger_hp_ratio": 0.25,
     "description": "Tenue, augmente la Défense Spéciale d’un cran à 25 % des PV ou moins. Consommée après utilisation.",
     "natural_gift_type": "Ground",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -330,6 +345,7 @@
     "resist_type": "Fire",
     "description": "Tenue, divise par deux les dégâts de la première attaque Feu super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Fire",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -347,6 +363,7 @@
     "resist_type": "Water",
     "description": "Tenue, divise par deux les dégâts de la première attaque Eau super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Water",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -364,6 +381,7 @@
     "resist_type": "Electric",
     "description": "Tenue, divise par deux les dégâts de la première attaque Électrik super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Electric",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -381,6 +399,7 @@
     "resist_type": "Grass",
     "description": "Tenue, divise par deux les dégâts de la première attaque Plante super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Grass",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -398,6 +417,7 @@
     "resist_type": "Ice",
     "description": "Tenue, divise par deux les dégâts de la première attaque Glace super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Ice",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -415,6 +435,7 @@
     "resist_type": "Fighting",
     "description": "Tenue, divise par deux les dégâts de la première attaque Combat super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Fighting",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -432,6 +453,7 @@
     "resist_type": "Poison",
     "description": "Tenue, divise par deux les dégâts de la première attaque Poison super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Poison",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -449,6 +471,7 @@
     "resist_type": "Ground",
     "description": "Tenue, divise par deux les dégâts de la première attaque Sol super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Ground",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -466,6 +489,7 @@
     "resist_type": "Flying",
     "description": "Tenue, divise par deux les dégâts de la première attaque Vol super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Flying",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -483,6 +507,7 @@
     "resist_type": "Psychic",
     "description": "Tenue, divise par deux les dégâts de la première attaque Psy super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Psychic",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -500,6 +525,7 @@
     "resist_type": "Bug",
     "description": "Tenue, divise par deux les dégâts de la première attaque Insecte super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Bug",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -517,6 +543,7 @@
     "resist_type": "Rock",
     "description": "Tenue, divise par deux les dégâts de la première attaque Roche super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Rock",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -534,6 +561,7 @@
     "resist_type": "Ghost",
     "description": "Tenue, divise par deux les dégâts de la première attaque Spectre super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Ghost",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -551,6 +579,7 @@
     "resist_type": "Dragon",
     "description": "Tenue, divise par deux les dégâts de la première attaque Dragon super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Dragon",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -568,6 +597,7 @@
     "resist_type": "Dark",
     "description": "Tenue, divise par deux les dégâts de la première attaque Ténèbres super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Dark",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -585,6 +615,7 @@
     "resist_type": "Steel",
     "description": "Tenue, divise par deux les dégâts de la première attaque Acier super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Steel",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -602,6 +633,7 @@
     "resist_type": "Fairy",
     "description": "Tenue, divise par deux les dégâts de la première attaque Fée super efficace qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Fairy",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -619,6 +651,7 @@
     "resist_type": "Normal",
     "description": "Tenue, divise par deux les dégâts de la première attaque Normal qui touche le porteur. Consommée après utilisation.",
     "natural_gift_type": "Normal",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -641,6 +674,7 @@
     },
     "description": "Depuis le sac, retire jusqu’à 10 EV en PV pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation.",
     "natural_gift_type": "Ice",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -663,6 +697,7 @@
     },
     "description": "Depuis le sac, retire jusqu’à 10 EV en Attaque pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation.",
     "natural_gift_type": "Fighting",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -685,6 +720,7 @@
     },
     "description": "Depuis le sac, retire jusqu’à 10 EV en Défense pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation.",
     "natural_gift_type": "Poison",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -707,6 +743,7 @@
     },
     "description": "Depuis le sac, retire jusqu’à 10 EV en Attaque Spéciale pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation.",
     "natural_gift_type": "Ground",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -729,6 +766,7 @@
     },
     "description": "Depuis le sac, retire jusqu’à 10 EV en Défense Spéciale pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation.",
     "natural_gift_type": "Flying",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
@@ -751,6 +789,7 @@
     },
     "description": "Depuis le sac, retire jusqu’à 10 EV en Vitesse pour réorienter l’entraînement. Aucun effet si cette statistique n’a pas d’EV. Consommée après utilisation.",
     "natural_gift_type": "Psychic",
+    "restoreAfterBattle": true,
     "classic": true
   },
   {
