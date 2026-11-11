@@ -1685,7 +1685,7 @@ export default {
 </script>
 
 <style scoped>
-.battle-reserve-entry{display:flex;align-items:center;gap:6px;min-width:0}.battle-reserve-entry>.battle-pokemon-choice{flex:1;min-width:0}
+.battle-reserve-entry{position:relative;min-width:0}.battle-reserve-entry>.battle-pokemon-choice{width:100%;min-width:0;padding-right:48px}.battle-reserve-entry>.battle-companion-info{position:absolute;top:2px;right:2px}
 .battle .battle-status.battle-status-corrupted{background:linear-gradient(130deg,#f0e2fa,#d7bee9)!important;border-color:#9b70b2!important;color:#382746}.battle-status-corrupted .battle-status-name{color:#4d2e65}[data-game-theme-mode=dark] .battle .battle-status.battle-status-corrupted{background:linear-gradient(130deg,#34243f,#50335f)!important;border-color:#b38acc!important;color:#f4e7fc}[data-game-theme-mode=dark] .battle-status-corrupted .battle-status-name{color:#f3dfff}
 
 .battle-caught-marker{display:inline-flex;align-items:center;flex:none;width:14px;height:14px}

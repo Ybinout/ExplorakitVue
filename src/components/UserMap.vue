@@ -2403,6 +2403,7 @@ export default {
     handleMenuKeys(event) {
       if(event.defaultPrevented||event.isComposing||event.ctrlKey||event.metaKey||event.altKey)return;
       const overlay=topGameOverlay(this.$el);
+      if(event.key==='Escape')this._menuEscapeHandled=true;
       const computer=this.$refs.pokemonComputer;
       if(overlay===computer?.$el && computer.handleStorageKey(event)){consumeGameKey(event);this.releaseAllMovementKeys();return;}
       if(event.key==='Escape'){
@@ -2419,6 +2420,15 @@ export default {
       if(!this.battle&&!overlay&&!typingIn(event)&&String(event.key).toLowerCase()==='m'){
         consumeGameKey(event);if(!event.repeat)this.toggleMenu();
       }
+    },
+    handleMenuEscapeRelease(event) {
+      if(event.key!=='Escape')return;
+      const handled=this._menuEscapeHandled;
+      this._menuEscapeHandled=false;
+      // Some native controls/fullscreen implementations consume keydown.
+      // Recover on release, but never close a second window after a handled press.
+      if(!handled&&this.isBagOpen)this.handleMenuKeys(event);
+      this._menuEscapeHandled=false;
     },
     async openDamageCalculator(){this.releaseAllMovementKeys();this.isMenuOpen=false;this.closeLegacyPanels();this.closeInfoPanel();await this.loadTeamPokemons();this.damageCalculatorOpen=true;},
     calculateStrategy(payload){return new Promise((resolve,reject)=>{if(!this.socket?.connected){reject(Error('Connexion interrompue.'));return;}this.socket.timeout(10000).emit('strategy:calculate',payload,(error,response)=>{if(error)reject(Error('Le serveur ne répond pas. Réessaie.'));else if(!response?.success)reject(Error(response?.message||'Simulation indisponible.'));else resolve(response.result);});});},
@@ -3974,6 +3984,7 @@ export default {
     this.socket.connect();
     window.addEventListener('keydown', this.handleKeydown);
     window.addEventListener('keydown', this.handleMenuKeys, true);
+    window.addEventListener('keyup', this.handleMenuEscapeRelease, true);
     window.addEventListener('keydown', this.handleBattleKeys, true);
     window.addEventListener('keypress', this.handleBattleBrowserKey, true);
     window.addEventListener(GAMEPAD_EVENT, this.handleGamepad);
@@ -4060,6 +4071,7 @@ export default {
     this.stopGameLoop();
     window.removeEventListener('keydown', this.handleKeydown);
     window.removeEventListener('keydown', this.handleMenuKeys, true);
+    window.removeEventListener('keyup', this.handleMenuEscapeRelease, true);
     window.removeEventListener('keydown', this.handleBattleKeys, true);
     window.removeEventListener('keypress', this.handleBattleBrowserKey, true);
     window.removeEventListener(GAMEPAD_EVENT, this.handleGamepad);
