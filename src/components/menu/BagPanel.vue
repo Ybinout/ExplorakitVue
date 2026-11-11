@@ -4,6 +4,7 @@
       <header class="pack-header">
         <div><small>RIFTMON / {{ expedition ? (english ? 'EXPEDITION' : 'EXPÉDITION') : (english ? 'ADVENTURE' : 'AVENTURE') }}</small><h2 id="bag-heading">{{ english ? 'Your bag' : 'Ton sac' }}</h2></div>
         <div class="pack-wallet" data-bag-money :aria-label="`${money.toLocaleString(english?'en':'fr')} Pokédollars`"><span>Pokédollars</span><strong>{{ money.toLocaleString(english?'en':'fr') }} ₽</strong></div>
+        <button ref="help" class="menu-help-button" data-bag-help :aria-label="english?'Bag tutorial':'Aide du sac'" @click="helpOpen=true">?</button>
         <button ref="close" class="panel-close" :aria-label="english?'Close bag':'Fermer le sac'" @click="$emit('close')">×</button>
       </header>
       <div class="pack-layout">
@@ -66,9 +67,11 @@
       </div>
       <footer class="pack-footer"><span>{{ expedition ? (english?'Items for this expedition only.':'Le contenu de ce sac appartient à cette expédition.') : (english?'Your bag travels with your Adventure save.':'Ton sac t’accompagne tout au long de l’aventure.') }}</span><span>{{ total }} {{ english?'items':'objets' }}</span></footer>
     </section>
+    <menu-help v-if="helpOpen" :steps="helpSteps" scope=".bag-backdrop" :title="english?'YOUR BAG':'TON SAC'" @close="helpOpen=false"/>
   </div>
 </template>
 <script>
+import MenuHelp from '../tutorial/MenuHelp.vue';
 import BagItemIcon from './BagItemIcon.vue';
 import {BAG_POCKETS,bagPocket,TRAINING_GROUPS,trainingGroup} from '@/services/bagPockets';
 import {bagItemName} from '@/services/bagItemPresentation';
@@ -76,10 +79,21 @@ import machines from '@/data/machines.json';
 import reference from '@/data/pokemonReference.fr.json';
 import {localizeTypeName,typeBadgeStyle} from '@/services/pokemonTypes';
 export default {
-  name:'BagPanel',components:{BagItemIcon},
+  name:'BagPanel',components:{BagItemIcon,MenuHelp},
   props:{favoriteKeys:{type:Array,default:()=>[]},favoriteBusy:Boolean,moduleShortcut:{type:String,default:null},shortcutBusy:Boolean,viewState:{type:Object,default:null},money:{type:Number,default:0},items:{type:Array,default:()=>[]},loading:Boolean,error:String,notice:String,repelSteps:{type:Number,default:0},emptyLabel:String,expedition:Boolean,language:String},
-  data(){const saved=this.viewState||{};return {activePocket:BAG_POCKETS.some(p=>p.key===saved.activePocket)?saved.activePocket:'medicine',selectedKey:saved.selectedKey||null,previousFocus:null,trainingFilter:saved.trainingFilter||'all',corruptionFilter:saved.corruptionFilter||'all',machineSort:saved.machineSort||'name',pocketPositions:{...saved.pocketPositions}};},
+  data(){const saved=this.viewState||{};return {helpOpen:false,activePocket:BAG_POCKETS.some(p=>p.key===saved.activePocket)?saved.activePocket:'medicine',selectedKey:saved.selectedKey||null,previousFocus:null,trainingFilter:saved.trainingFilter||'all',corruptionFilter:saved.corruptionFilter||'all',machineSort:saved.machineSort||'name',pocketPositions:{...saved.pocketPositions}};},
   computed:{
+    helpSteps(){return this.english?[
+      {target:'.pack-wallet',title:'Your Pokédollars',text:'Your available money is always shown here.'},
+      {target:'.pack-pockets',title:'Everything in its pocket',text:'Choose a pocket to find healing items, Balls, training items, CS or modules. You return to your last position when reopening the bag.'},
+      {target:this.visibleItems.length?'.bag-item-row':'.pack-scroll',title:'Details and favorites',text:'Open an item to read its effects and see its available actions. The star saves it as a favorite and brings it to the top of its pocket.'},
+      {target:'.pack-scroll',title:'Using your items',text:'Choose an item, then its action and the Pokémon concerned. A held item works while equipped. Modules can be assigned to Y from their pocket.'}
+    ]:[
+      {target:'.pack-wallet',title:'Tes Pokédollars',text:'Ton argent disponible reste indiqué ici.'},
+      {target:'.pack-pockets',title:'Chaque objet dans sa poche',text:'Choisis une poche pour retrouver soins, Balls, entraînement, CS ou modules. Le sac retrouve ta dernière position à sa réouverture.'},
+      {target:this.visibleItems.length?'.bag-item-row':'.pack-scroll',title:'Détails et favoris',text:'Déplie un objet pour lire ses effets et voir les actions disponibles. L’étoile le garde en favori et le fait remonter dans sa poche.'},
+      {target:'.pack-scroll',title:'Utiliser tes objets',text:'Choisis un objet, puis son action et le Pokémon concerné. Un objet tenu agit lorsqu’il est équipé. Dans la poche Modules, le petit bouton de raccourci permet d’en associer un à Y.'}
+    ];},
     favorites(){return new Set(this.favoriteKeys);},
     english(){return this.language==='en';},
     owned(){return this.items.filter(i=>Number(i.quantity)>0);},
@@ -111,11 +125,12 @@ export default {
     restoreScroll(){this._lastScrollTop=this.pocketPositions[this.activePocket]?.top||0;if(!this.loading&&this.$refs.scroll)this.$refs.scroll.scrollTop=this._lastScrollTop;},
     choosePocket(key){this.rememberPocket();this.activePocket=key;this._lastScrollTop=this.pocketPositions[key]?.top||0;this.selectedKey=this.pocketPositions[key]?.selectedKey||null;this.$nextTick(()=>{if(!this.loading)this.reconcile();this.restoreScroll();});},
     movePocket(e,key){if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const i=this.pockets.findIndex(p=>p.key===key),n=this.pockets.length;const next=e.key==='Home'?0:e.key==='End'?n-1:(i+(e.key==='ArrowRight'?1:-1)+n)%n;this.choosePocket(this.pockets[next].key);this.$nextTick(()=>this.$refs[`pocket-${this.activePocket}`][0].focus());},
-    handleKeydown(e){if(e.key==='Escape'){e.preventDefault();e.stopPropagation();this.$emit('close');}if(e.key!=='Tab')return;const nodes=[...this.$refs.dialog.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]')].filter(n=>n.getClientRects().length),first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}
+    handleKeydown(e){if(this.helpOpen)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();this.$emit('close');}if(e.key!=='Tab')return;const nodes=[...this.$refs.dialog.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]')].filter(n=>n.getClientRects().length),first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}
   }
 };
 </script>
 <style scoped>
+.pack-header .menu-help-button{width:40px;height:40px;cursor:pointer;border:1px solid var(--journal-border);border-radius:50%;background:var(--journal-soft);color:var(--journal-ink);flex:none;margin-left:auto;font-size:19px;font-weight:700}.pack-header .menu-help-button + .panel-close{margin-left:0}.pack-header{gap:8px}
 .pack-pockets [data-bag-pocket="corrupted_berries"]>span{white-space:normal;line-height:1.15}
 .bag-item-heading{position:relative}.bag-favorite{flex:none;align-self:center;display:grid;place-items:center;width:34px;min-height:44px;padding:6px;border:0;background:transparent;color:var(--journal-muted);cursor:pointer}.bag-favorite svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6}.bag-favorite.is-favorite{color:#bd8c24}.bag-favorite.is-favorite svg{fill:#e6c66b}.bag-favorite:focus-visible{outline:2px solid var(--journal-accent);outline-offset:-3px;border-radius:6px}.bag-favorite:disabled{opacity:.5}
 
@@ -144,4 +159,7 @@ export default {
 .bag-backdrop .pack-header{flex:none;min-width:0}.bag-backdrop .pack-wallet{position:static;display:flex;visibility:visible;opacity:1;min-width:max-content;max-width:none;justify-self:end;margin:0}
 @media(min-width:601px){.bag-backdrop .pack-header>div:first-child{grid-column:1}.bag-backdrop .pack-wallet{grid-column:2;grid-row:1}.bag-backdrop .pack-header .panel-close{grid-column:3;grid-row:1}}
 @media(max-width:600px){.bag-backdrop .pack-wallet{justify-self:start;grid-column:1;grid-row:2}}
+
+.bag-backdrop .pack-header{grid-template-columns:minmax(0,1fr) auto 40px 40px}.bag-backdrop .pack-header .menu-help-button{grid-column:3;grid-row:1;width:40px;height:40px}.bag-backdrop .pack-header .menu-help-button + .panel-close{grid-column:4;grid-row:1;width:40px;height:40px}
+@media(max-width:600px){.bag-backdrop .pack-header{grid-template-columns:minmax(0,1fr) 36px 36px;column-gap:5px}.bag-backdrop .pack-header .menu-help-button{grid-column:2;grid-row:1/3;width:36px;height:40px}.bag-backdrop .pack-header .menu-help-button + .panel-close{grid-column:3;grid-row:1/3;width:36px;height:40px}}
 </style>

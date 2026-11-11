@@ -3,6 +3,7 @@
     <section ref="dialog" class="companion-sheet" :data-companion-page="page" :class="{'is-corrupted':pokemon.corruption?.permanent}" role="dialog" aria-modal="true" :aria-label="`Fiche de ${pokemon.name}`">
       <header class="companion-heading">
         <div><span class="companion-kicker">{{ contextLabel }} · {{ position }} / {{ total }}</span><h2>{{ pokemon.name }}</h2></div>
+        <button ref="help" class="companion-help" data-companion-help aria-label="Aide de la fiche Pokémon" @click="showPage('profile');helpOpen=true">?</button>
         <button ref="close" class="companion-close" aria-label="Fermer la fiche" @click="$emit('close')">×</button>
       </header>
       <nav class="companion-pagination" aria-label="Parcourir les Pokémon"><button data-companion-previous :disabled="position <= 1" @click="$emit('navigate', -1)">‹ Précédent</button><span>{{ position }} / {{ total }}</span><button data-companion-next :disabled="position >= total" @click="$emit('navigate', 1)">Suivant ›</button></nav>
@@ -76,9 +77,11 @@
       </div>
       <footer class="companion-footer"><span>{{ footerLabel }}</span></footer>
     </section>
+    <menu-help v-if="helpOpen" :steps="helpSteps" scope=".companion-backdrop" title="TON POKÉMON" @stage="showPage($event.page || 'profile')" @close="helpOpen=false"/>
   </div>
 </template>
 <script>
+import MenuHelp from '../tutorial/MenuHelp.vue';
 import CoverageGrid from '../strategy/CoverageGrid.vue';
 import {analyzeTeam} from '@/services/teamCoverage';
 import PotentialStar from '../PotentialStar.vue';
@@ -102,11 +105,18 @@ const stats = [
 ];
 
 export default {
-  components: { CoverageGrid,ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender, OwnedNameEditor, BagItemIcon },
+  components: { MenuHelp,CoverageGrid,ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender, OwnedNameEditor, BagItemIcon },
   props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, corruptionAllowed:Boolean, renameAllowed:Boolean,renameBusy:Boolean,renameError:String,renameNotice:String, movesOrderAllowed:Boolean,movesOrderBusy:Boolean,movesOrderError:String,movesOrderNotice:String,contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
-  data: () => ({ page: 'profile', mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
+  data: () => ({ helpOpen:false,page: 'profile', mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
     typeNames: { Grass: 'Plante', Fire: 'Feu', Water: 'Eau', Bug: 'Insecte', Flying: 'Vol', Electric: 'Électrik', Ground: 'Sol', Rock: 'Roche', Ice: 'Glace', Fighting: 'Combat', Psychic: 'Psy', Ghost: 'Spectre', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' } }),
   computed: {
+    helpSteps(){return [
+      {target:'.companion-pagination',title:'Parcourir tes compagnons',text:'Précédent et Suivant passent d’un Pokémon à l’autre. Les rubriques en dessous donnent accès aux capacités, aux couvertures de types et aux autres détails.'},
+      {target:'.companion-traits',title:'Son identité et son potentiel',text:'Retrouve sa nature et son talent, dont l’effet est expliqué juste en dessous. Les quatre niveaux d’étoile reflètent son potentiel : plus l’étoile est élevée, plus ce potentiel est grand.'},
+      {target:'.companion-training',title:'Comprendre ses statistiques',text:'Le graphique et les valeurs affichent ses forces. Les onglets permettent de consulter ses statistiques, son potentiel et son entraînement.'},
+      {page:'moves',target:'.companion-pc-moves',title:'Bien choisir ses capacités',text:'Chaque capacité indique son type, sa catégorie physique ou spéciale, sa puissance, sa précision, ses PP et son effet. Si les flèches sont disponibles, elles changent son ordre automatiquement.'},
+      {page:'defense',target:'.companion-coverage',title:'Préparer tes combats',text:'Les couvertures offensive et défensive aident à repérer les types efficaces et les faiblesses de ce compagnon. Reviens au profil pour retrouver ses informations.'}
+    ];},
     coverage(){return analyzeTeam([this.pokemon]);},
     pages(){return [{key:'profile',label:'Profil et statistiques'},{key:'moves',label:'Capacités'},{key:'offense',label:'Couverture offensive'},{key:'defense',label:'Couverture défensive'},{key:'corruption',label:'Corruption'},...(!this.readOnly?[{key:'evolution',label:'Évolution'}]:[])];},
     mutationFamilies(){return CORRUPTION_FAMILIES;},
@@ -175,6 +185,7 @@ export default {
 };
 </script>
 <style scoped>
+.companion-heading .companion-help{width:40px;height:40px;flex:none;cursor:pointer;border:1px solid var(--journal-border);border-radius:50%;background:var(--journal-soft);color:var(--journal-ink);margin-left:auto;font-size:19px;font-weight:700}.companion-heading .companion-help + .companion-close{margin-left:0}.companion-heading{gap:8px}
 .companion-corruption .corruption-stat-penalty{padding:12px 14px;border:1px solid #a98cbb;border-radius:8px;background:var(--journal-selected)}.corruption-stat-penalty strong{display:block;color:var(--journal-heading);font-size:14px}.corruption-stat-penalty span{display:block;margin-top:5px}.companion-corruption-grid .corruption-family-penalty{color:var(--journal-danger);font-weight:600}
 
 .companion-content>.companion-corruption{display:none}.companion-sheet[data-companion-page=corruption] .companion-content>.companion-corruption{display:block}.companion-sheet[data-companion-page=corruption] .companion-content>:not(.companion-corruption){display:none}.companion-corruption{padding:20px 22px}.companion-corruption h3{font:24px Georgia,serif;color:var(--journal-heading);margin:0 0 12px}.companion-corruption>p{font-size:12px;line-height:1.65;color:var(--journal-muted)}.companion-corruption-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.companion-corruption-grid article{display:flex;gap:12px;padding:13px;border:1px solid #a98cbb;background:var(--journal-card);border-radius:10px;align-items:center;flex-wrap:wrap}.companion-corruption-grid article>div{flex:1;min-width:110px}.companion-corruption-grid small{font-size:10px;color:var(--journal-muted)}.companion-corruption-grid strong{display:block;font-size:12px;color:var(--journal-heading)}.companion-corruption-grid p{font-size:11px;color:var(--journal-muted);margin:6px 0}.companion-corruption-grid button{min-height:44px;width:100%;border:1px solid #a98cbb;border-radius:7px;background:var(--journal-selected);color:var(--journal-ink);cursor:pointer}.is-corrupted .companion-art{background:#e9ddf3;border-color:#a184b6}[data-game-theme-mode=dark] .is-corrupted .companion-art{background:#372846;border-color:#a184b6}@media(max-width:540px){.companion-corruption{padding:16px}.companion-corruption-grid{grid-template-columns:1fr}.companion-corruption-grid button{width:auto;flex:none;padding:8px}}

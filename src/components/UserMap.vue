@@ -1142,7 +1142,7 @@ export default {
         this.pc.state=result.state;
         if(result.equipe)this.applyTeamPokemons(result.equipe.pokemons);
         if(result.items)this.applyBagItems(result.items);
-        this.pc.notice={renameBox:'Nom de la boîte enregistré.',renamePokemon:'Surnom enregistré.',takeItem:'L’objet tenu a été remis dans ton sac.',reorderMoves:'Ordre des capacités enregistré.',move:'Nouvel emplacement sauvegardé.',deposit:'Compagnon déposé dans le PC.',withdraw:'Compagnon ajouté à ton équipe.',swap:'Les deux Pokémon ont échangé leur place.',release:'Pokémon relâché. Son éventuel objet tenu est dans ton sac.'}[payload.action];
+        this.pc.notice={renameBox:'Nom de la boîte enregistré.',renamePokemon:'Surnom enregistré.',takeItem:'L’objet tenu a été remis dans ton sac.',reorderMoves:'Ordre des capacités enregistré.',moveMany:`${payload.moves?.length || 1} Pokémon déplacé(s).`,move:'Nouvel emplacement sauvegardé.',deposit:'Compagnon déposé dans le PC.',withdraw:'Compagnon ajouté à ton équipe.',swap:'Les deux Pokémon ont échangé leur place.',release:'Pokémon relâché. Son éventuel objet tenu est dans ton sac.'}[payload.action];
       }catch(error){this.pc.error=error.message;}
       finally{this.pc.busy=false;}
     },
@@ -2858,6 +2858,8 @@ export default {
       if (this.patchNoticeOpen) { this.releaseAllMovementKeys(); return; }
       if(this.worldChatOpen){event.preventDefault();this.releaseAllMovementKeys();if(event.detail?.action==='back')this.closeWorldChat();return;}
       const { action, direction } = event.detail;
+      const computer=this.$refs.pokemonComputer;
+      if(computer && topGameOverlay(this.$el)===computer.$el && ['previous','next'].includes(action)){event.preventDefault();this.releaseAllMovementKeys();computer.stepBox(action==='previous'?-1:1);return;}
       const consume = () => event.preventDefault();
       if (action === 'direction' && !direction) {
         this._gamepadDirection = null; this.syncPlayerIdleState(); consume(); return;

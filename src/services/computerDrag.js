@@ -1,7 +1,8 @@
 // Pointer Events give mouse, pen and touch the same owner-confirmed drop path.
-export function createComputerDrag({root, changed, drop, navigateBox, ended}) {
-  let gesture=null, frame=null, navTimer=null, navStep=null;
+export function createComputerDrag({root, changed, drop, navigateBox, openBoxPicker, ended}) {
+  let gesture=null, frame=null, navTimer=null, navStep=null, pickerTimer=null;
   function boxStepAt(x,y) {
+    if(root.querySelector('.pc-box-picker'))return null;
     const button=document.elementFromPoint(x,y)?.closest('[data-pc-box-step]');
     if(button && root.contains(button) && !button.disabled)return Number(button.dataset.pcBoxStep);
     const r=root.getBoundingClientRect();
@@ -14,12 +15,16 @@ export function createComputerDrag({root, changed, drop, navigateBox, ended}) {
   function targetAt(x,y) {
     const node=document.elementFromPoint(x,y)?.closest('[data-pc-drop]');
     if(!node || !root.contains(node) || node.disabled)return null;
+    if(node.dataset.pcDrop==='boxPicker')return {kind:'boxPicker',box:Number(node.dataset.pcBox)};
     return node.dataset.pcDrop==='team'
       ? {kind:'team',index:Number(node.dataset.pcIndex),uuid:node.dataset.pcTargetUuid || null}
       : {kind:'box',box:Number(node.dataset.pcBox),slot:Number(node.dataset.pcSlot),uuid:node.dataset.pcTargetUuid || null};
   }
   function update() {
     if(!gesture?.active)return;
+    const trigger=document.elementFromPoint(gesture.x,gesture.y)?.closest('[data-pc-box-picker-trigger]');
+    if(trigger && root.contains(trigger) && !pickerTimer && !root.querySelector('.pc-box-picker'))pickerTimer=setTimeout(()=>{pickerTimer=null;if(gesture?.active)openBoxPicker?.();},450);
+    else if(!trigger){clearTimeout(pickerTimer);pickerTimer=null;}
     const step=boxStepAt(gesture.x,gesture.y);
     gesture.edgeStep=step;
     gesture.to=step===null?targetAt(gesture.x,gesture.y):null;
@@ -29,7 +34,7 @@ export function createComputerDrag({root, changed, drop, navigateBox, ended}) {
   }
   function scrollLoop() {
     if(!gesture?.active || !root.isConnected)return;
-    for(const [selector,axis]of [['.pc-body','y'],['.pc-team-slots','x']]){
+    for(const [selector,axis]of [[root.querySelector('.pc-box-picker')?'.pc-picker-grid':'.pc-body','y'],['.pc-team-slots','x']]){
       const el=root.querySelector(selector),r=el?.getBoundingClientRect();if(!r)continue;
       if(gesture.x<r.left || gesture.x>r.right || gesture.y<r.top || gesture.y>r.bottom)continue;
       const n=axis==='y'?gesture.y:gesture.x,lo=axis==='y'?r.top:r.left,hi=axis==='y'?r.bottom:r.right;
@@ -39,7 +44,7 @@ export function createComputerDrag({root, changed, drop, navigateBox, ended}) {
     update();frame=requestAnimationFrame(scrollLoop);
   }
   function cancel() {
-    const old=gesture;gesture=null;cancelAnimationFrame(frame);clearTimeout(navTimer);navTimer=null;navStep=null;
+    const old=gesture;gesture=null;clearTimeout(pickerTimer);pickerTimer=null;cancelAnimationFrame(frame);clearTimeout(navTimer);navTimer=null;navStep=null;
     if(old?.active){ended?.();try{root.releasePointerCapture(old.pointerId);}catch{ /* Already released by the browser. */ }}
     changed(null);
   }

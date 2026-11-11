@@ -20,12 +20,12 @@
           <svg class="region-art" :style="artStyle" :viewBox="`0 0 ${atlas.width} ${atlas.height}`" role="group" :aria-label="en ? 'Towns, routes and your position' : 'Villes, routes et ta position'">
             <region-map-terrain :width="atlas.width" :height="atlas.height" :dark-offset="atlas.darkContinent?.offsetX || 0" :safari="atlas.safari" :dark2="atlas.darkContinent2" :dark-label="en?atlas.darkContinent?.enLabel:atlas.darkContinent?.label" :en="en"/>
             <g shape-rendering="geometricPrecision" stroke-linejoin="round" stroke-linecap="round">
-              <g v-for="edge in edges" :key="edge.id">
+              <g v-for="edge in edges" :key="edge.id" :class="{'map-unvisited':!edge.visited}" :data-map-visited="String(edge.visited)">
                 <path :d="edge.path" fill="none" :stroke="edge.cave ? '#7e8765' : '#d1aa65'" stroke-width="8"/>
                 <path :d="edge.path" fill="none" :stroke="edge.cave ? '#d0c2a1' : '#f4db8b'" stroke-width="4" :stroke-dasharray="edge.cave ? '5 3' : null"/>
               </g>
-              <g v-for="node in displayNodes" :key="node.id" :data-map-node="node.id" class="map-node" role="button" tabindex="0" :aria-label="label(node.id)" :aria-pressed="selected === node.id" @click="selected = node.id" @keydown.enter.prevent="selected = node.id" @keydown.space.prevent="selected = node.id">
-                <title>{{ label(node.id) }}</title>
+              <g v-for="node in displayNodes" :key="node.id" :data-map-node="node.id" class="map-node" :class="{'map-unvisited':!isVisited(node.id)}" :data-map-visited="String(isVisited(node.id))" role="button" tabindex="0" :aria-label="label(node.id)" :aria-pressed="selected === node.id" @click="selected = node.id" @keydown.enter.prevent="selected = node.id" @keydown.space.prevent="selected = node.id">
+                <title>{{ label(node.id) }}{{ isVisited(node.id)?'':(en?' · Not visited':' · Non visité') }}</title>
                 <rect :x="node.x-12" :y="node.y-12" width="24" height="24" fill="transparent"/>
                 <path v-if="node.kind==='house'" :d="`M${node.x-8} ${node.y-1}l8-7 8 7h-2v9h-12v-9Z`" fill="#fff1cb" stroke="#885f46" stroke-width="2" data-house-marker/>
                 <rect v-if="node.kind === 'town'" :x="node.x-7" :y="node.y-6" width="14" height="12" fill="#f7f0c5" stroke="#94745b" stroke-width="1"/>
@@ -51,7 +51,7 @@
           </div>
         </div>
         <div class="map-tools">
-          <div class="map-legend"><span><i class="legend-town"></i>{{ en ? 'Town' : 'Ville' }}</span><span><i class="legend-route"></i>Route</span><span v-if="pokemon"><i class="legend-habitat"></i>Habitat</span></div>
+          <div class="map-legend"><span><i class="legend-town"></i>{{ en ? 'Town' : 'Ville' }}</span><span><i class="legend-route"></i>Route</span><span><i class="legend-unvisited"></i>{{ en?'Not visited':'Non visité' }}</span><span v-if="pokemon"><i class="legend-habitat"></i>Habitat</span></div>
           <div class="map-zoom-controls" role="group" :aria-label="en ? 'Map zoom' : 'Zoom de la carte'">
             <button data-map-zoom="out" :disabled="zoom<=1" :aria-label="en ? 'Zoom out' : 'Dézoomer'" @click="changeZoom(zoom/1.25)">−</button>
             <span class="map-zoom-level">{{ Math.round(zoom*100) }} %</span>
@@ -110,11 +110,12 @@ export default {
     selectedHabitats(){return this.locations.filter(l=>l.map===this.selected);},
     habitatNodes(){const ids=new Set(this.locations.map(l=>l.map));return (this.atlas?.nodes || []).filter(n=>ids.has(n.id));},
     selectableNodes(){return this.pokemon ? this.habitatNodes : [...this.displayNodes,...(this.isDark(this.currentNode?.id)?[this.currentNode]:[])];},
-    edges(){return (this.atlas?.edges || []).filter(([a,b])=>!this.isDark(a)&&!this.isDark(b)&&!this.isSafari(a)&&!this.isSafari(b)).map(([a,b])=>{const from=this.atlas.nodes.find(n=>n.id===a),to=this.atlas.nodes.find(n=>n.id===b);return {id:a+':'+b,path:`M${from.x} ${from.y}H${to.x}V${to.y}`,cave:from.kind==='cave'||to.kind==='cave'};});}
+    edges(){return (this.atlas?.edges || []).filter(([a,b])=>!this.isDark(a)&&!this.isDark(b)&&!this.isSafari(a)&&!this.isSafari(b)).map(([a,b])=>{const from=this.atlas.nodes.find(n=>n.id===a),to=this.atlas.nodes.find(n=>n.id===b);return {id:a+':'+b,visited:this.isVisited(a)&&this.isVisited(b),path:`M${from.x} ${from.y}H${to.x}V${to.y}`,cave:from.kind==='cave'||to.kind==='cave'};});}
   },
   mounted(){this.previousFocus=document.activeElement;this.$refs.close.focus({preventScroll:true});this.load();},
   beforeDestroy(){this.disposed=true;this._resizeObserver?.disconnect();window.removeEventListener('resize',this.measureViewport);this._pointers?.clear();if(this.previousFocus?.isConnected)this.previousFocus.focus({preventScroll:true});},
   methods:{
+    isVisited(id){return id==='owned-house'||id===this.currentNode?.id||(this.flight?.visitedRegions||[]).includes(id)||(this.flight?.visited||[]).includes(id);},
     modeLabel(mode){return {adventure:'Aventure',rift:'Rift',colosseum:'Colosseum'}[mode]||'';},
     selectFriendMember(member){this.selected=member.nodeId;this.centerOn(this.atlas.nodes.find(n=>n.id===member.nodeId));},
 
@@ -187,6 +188,7 @@ export default {
 };
 </script>
 <style scoped>
+.legend-unvisited{background:#a5aca8!important;border:1px solid #747f7c}.map-unvisited{filter:grayscale(.9);opacity:.53}.map-node.map-unvisited:focus,.map-node.map-unvisited:hover{opacity:.85}
 .friend-map-marker{cursor:pointer}.friend-map-marker:focus{outline:none}.friend-map-marker:focus circle{stroke:#f6ca5d;stroke-width:3}.map-friend-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}.map-friend-list button{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px;padding:7px 10px;border:1px solid var(--journal-border);border-radius:7px;background:var(--journal-card);color:var(--journal-ink);font:11px var(--journal-font);cursor:pointer}.map-friend-list i{width:8px;height:8px;border-radius:50%;flex:none}.map-friend-list span{font-size:10px;color:var(--journal-muted)}
 
 .map-node:focus-visible{outline:none}.map-node:focus-visible>rect:first-of-type{stroke:#fff7cf;stroke-width:2}

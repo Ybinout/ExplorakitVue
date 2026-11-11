@@ -3,13 +3,19 @@
   <div :inert="detailOpen?'':null" :aria-hidden="detailOpen?'true':null" class="pc-backdrop" @click.self="close" @keydown="keydown">
     <section ref="dialog" class="pc-terminal" @pointermove="dragMove" @pointerup="dragFinish" @pointercancel="cancelDrag" @lostpointercapture="dragCaptureLost" @pointerleave="dragLeave" @dragstart.prevent role="dialog" aria-modal="true" aria-labelledby="pc-title" :aria-busy="busy || opening">
       <header class="pc-header"><div class="pc-mark" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="32" height="23" rx="3"/><path d="M15 28v6m10-6v6M10 35h20M20 10v13m-6-6h12"/></svg></div><div><small>CENTRE POKÉMON / {{ state.expedition?'EXPÉDITION':'AVENTURE' }}</small><h2 id="pc-title">Le PC de {{ username || 'ton équipe' }}</h2></div><button ref="close" class="pc-close" aria-label="Fermer le PC" :disabled="busy" @click="close">×</button></header>
-      <p :aria-hidden="opening?'true':null" class="pc-feedback" :class="{'pc-feedback-error':error}" :role="error?'alert':'status'" aria-live="polite">{{ error || (keyboardCarry ? `Déplacement de ${keyboardCarry.pokemon.name} · A / E : changer de boîte · Entrée : déposer · Échap : annuler.` : drag ? 'Dépose sur une case. Maintiens au bord gauche / droit pour changer de boîte.' : keyboardNotice || notice) || 'Glisse un Pokémon, ou utilise Entrée pour le prendre et le déplacer.' }}</p>
+      <p :aria-hidden="opening?'true':null" class="pc-feedback" :class="{'pc-feedback-error':error}" :role="error?'alert':'status'" aria-live="polite">{{ error || (selectionMode ? `${groupIds.length} Pokémon sélectionné(s) · Choisis une destination ou glisse la sélection.` : keyboardCarry ? `Déplacement de ${keyboardCarry.pokemon.name} · A / E : changer de boîte · Entrée : déposer · Échap : annuler.` : drag ? 'Dépose sur une case. Maintiens au bord gauche / droit pour changer de boîte.' : keyboardNotice || notice) || 'Glisse un Pokémon, ou utilise Entrée pour le prendre et le déplacer.' }}</p>
       <div class="pc-body" :class="{'is-pc-loading':opening}" :inert="opening?'':null" :aria-hidden="opening?'true':null">
         <aside class="pc-party" aria-labelledby="pc-team-title"><div class="pc-section-title"><h3 id="pc-team-title">Ton équipe</h3><span>{{ state.team.length }} / 6</span></div><div class="pc-team-slots"><button v-for="(p,index) in state.team" :key="p.uuid" class="pc-team-member" :class="{'is-corrupted':!!p.corruption?.permanent,selected:selected?.uuid===p.uuid,'pc-drag-source':drag?.pokemon.uuid===p.uuid || keyboardCarry?.pokemon.uuid===p.uuid,'pc-drop-target':dropTarget('team',index)}" :data-pc-team="p.uuid" data-pc-drop="team" :data-pc-index="index" :data-pc-target-uuid="p.uuid" :aria-describedby="keyboardCarry?'pc-keyboard-help':null" @pointerdown="startDrag($event,p,{kind:'team',index})" :aria-pressed="selected?.uuid===p.uuid" :disabled="busy" @click="clickTeam(p,index)"><span class="pc-party-number">{{ index+1 }}</span><computer-pokemon-portrait :pokemon="p" :src="sprite(p)"/><span class="pc-party-name"><strong>{{ p.name }}</strong><small>Niv. {{ p.level }}<span class="pc-party-health"> · {{ p.currentHp>0?`${p.currentHp}/${p.maxHp} PV`:'K.O.' }}</span></small></span></button><button v-if="state.team.length<6" class="pc-team-empty" data-pc-drop="team" :data-pc-index="state.team.length" :class="{'pc-drop-target':dropTarget('team',state.team.length)}" :disabled="busy" aria-label="Place libre dans l’équipe" @click="keyboardCarry && keyboardDrop({kind:'team',index:state.team.length,uuid:null})"><span aria-hidden="true">＋</span><small>Ajouter à l’équipe</small></button></div></aside>
-        <main class="pc-box"><div class="pc-box-toolbar"><button aria-label="Boîte précédente" data-pc-box-step="-1" :disabled="busy" @click="changeBox((box+state.boxCount-1)%state.boxCount)">‹<kbd class="pc-shortcut-key">A</kbd></button><label class="pc-box-label"><span>STOCKAGE</span><select aria-label="Choisir une boîte" :value="box" :disabled="busy" @change="changeBox(Number($event.target.value))"><option v-for="n in state.boxCount" :key="n" :value="n-1">{{ boxName(n-1) }} · {{ boxCount(n-1) }} / {{ state.boxSize }}</option></select></label><button aria-label="Boîte suivante" data-pc-box-step="1" :disabled="busy" @click="changeBox((box+1)%state.boxCount)">›<kbd class="pc-shortcut-key">E</kbd></button></div>
+        <main class="pc-box"><div class="pc-box-toolbar"><button aria-label="Boîte précédente" data-pc-box-step="-1" :disabled="busy" @click="changeBox((box+state.boxCount-1)%state.boxCount)">‹<kbd class="pc-shortcut-key">A</kbd></button><label class="pc-box-label" data-pc-box-picker-trigger><span>STOCKAGE</span><select ref="boxSelect" aria-label="Choisir une boîte" :value="box" :disabled="busy" @change="changeBox(Number($event.target.value))"><option v-for="n in state.boxCount" :key="n" :value="n-1">{{ boxName(n-1) }} · {{ boxCount(n-1) }} / {{ state.boxSize }}</option></select></label><button aria-label="Boîte suivante" data-pc-box-step="1" :disabled="busy" @click="changeBox((box+1)%state.boxCount)">›<kbd class="pc-shortcut-key">E</kbd></button></div>
+          <div class="pc-selection-tools" role="group" aria-label="Sélection groupée">
+            <button data-pc-selection :aria-pressed="selectionMode" :disabled="busy" @click="toggleSelection">{{ selectionMode?'Terminer la sélection':'Sélection multiple' }}</button>
+            <template v-if="selectionMode"><button data-pc-select-box :disabled="busy" @click="selectBoxGroup">Toute la boîte</button><button v-if="groupIds.length" data-pc-group-destination :disabled="busy" @click="openBoxPicker('move')">Déplacer {{ groupIds.length }} vers…</button><span aria-live="polite">{{ groupIds.length }} / 30</span></template>
+            <button v-else-if="keyboardCarry" @click="openBoxPicker('move')">Choisir une boîte…</button>
+          </div>
+          <p v-if="selectionMode" class="pc-group-hint">Touche les Pokémon à sélectionner, puis « Déplacer vers… ». Tu peux aussi glisser la sélection sur le nom de la boîte pour choisir sa destination.</p>
           <owned-name-editor :key="box" class="pc-box-rename" kind="box" label="Nom de la boîte" :value="boxName(box)" :default-name="`Boîte ${box+1}`" :busy="busy" :error="error" @save="$emit('command',{action:'renameBox',box,expectedName:boxName(box),name:$event})"/>
-          <div class="pc-grid" role="group" :aria-label="`Pokémon de ${boxName(box)}`"><button v-for="(entry,index) in slots" :key="index" class="pc-box-slot" :class="{'is-corrupted':!!entry?.pokemon.corruption?.permanent,occupied:entry,selected:entry && selected?.uuid===entry.pokemon.uuid,'pc-drag-source':entry && (drag?.pokemon.uuid===entry.pokemon.uuid || keyboardCarry?.pokemon.uuid===entry.pokemon.uuid),'pc-drop-target':dropTarget('box',index),'pc-keyboard-target':keyboardCarry && keyboardSlot===index}" :disabled="busy" :tabindex="keyboardSlot===index?0:-1" @focus="keyboardSlot=index" :data-pc-slot="index" data-pc-drop="box" :data-pc-box="box" :data-pc-target-uuid="entry?.pokemon.uuid" @pointerdown="entry && startDrag($event,entry.pokemon,{kind:'box',box,slot:index})" :data-pc-pokemon="entry?.pokemon.uuid" :aria-pressed="Boolean(entry && selected?.uuid===entry.pokemon.uuid)" :aria-label="entry?`${entry.pokemon.name}, niveau ${entry.pokemon.level}, potentiel K${entry.pokemon.potential}${entry.pokemon.heldItem?`, objet ${entry.pokemon.heldItemName || entry.pokemon.heldItem}`:''}`:`Emplacement ${index+1} vide`" @click="clickSlot(entry,index)"><computer-pokemon-portrait v-if="entry" :pokemon="entry.pokemon" :src="sprite(entry.pokemon)"/><small v-if="entry">{{ entry.pokemon.level }}</small><span v-else aria-hidden="true">·</span></button></div>
-          <p id="pc-keyboard-help" class="pc-grid-help">Une case libre déplace le Pokémon ; une case occupée échange les deux Pokémon.<span class="pc-keyboard-help"><kbd>A</kbd> / <kbd>E</kbd> boîtes · <kbd>Entrée</kbd> prendre / déposer · <kbd>ZQSD</kbd> ou flèches déplacer le curseur · <kbd>F</kbd> fiche · <kbd>Échap</kbd> annuler</span></p>
+          <div class="pc-grid" role="group" :aria-label="`Pokémon de ${boxName(box)}`"><button v-for="(entry,index) in slots" :key="index" class="pc-box-slot" :class="{'is-corrupted':!!entry?.pokemon.corruption?.permanent,occupied:entry,'pc-group-selected':entry && groupSet.has(entry.pokemon.uuid),selected:entry && selected?.uuid===entry.pokemon.uuid,'pc-drag-source':entry && (drag?.pokemon.uuid===entry.pokemon.uuid || keyboardCarry?.pokemon.uuid===entry.pokemon.uuid),'pc-drop-target':dropTarget('box',index),'pc-keyboard-target':keyboardCarry && keyboardSlot===index}" :disabled="busy" :tabindex="keyboardSlot===index?0:-1" @focus="keyboardSlot=index" :data-pc-slot="index" data-pc-drop="box" :data-pc-box="box" :data-pc-target-uuid="entry?.pokemon.uuid" @pointerdown="entry && startDrag($event,entry.pokemon,{kind:'box',box,slot:index})" :data-pc-pokemon="entry?.pokemon.uuid" :aria-pressed="Boolean(entry && (selectionMode?groupSet.has(entry.pokemon.uuid):selected?.uuid===entry.pokemon.uuid))" :aria-label="entry?`${entry.pokemon.name}, niveau ${entry.pokemon.level}, potentiel K${entry.pokemon.potential}${entry.pokemon.heldItem?`, objet ${entry.pokemon.heldItemName || entry.pokemon.heldItem}`:''}`:`Emplacement ${index+1} vide`" @click="clickSlot(entry,index,$event)"><computer-pokemon-portrait v-if="entry" :pokemon="entry.pokemon" :src="sprite(entry.pokemon)"/><i v-if="entry && groupSet.has(entry.pokemon.uuid)" class="pc-selection-check" aria-label="Sélectionné">✓</i><small v-if="entry">{{ entry.pokemon.level }}</small><span v-else aria-hidden="true">·</span></button></div>
+          <p id="pc-keyboard-help" class="pc-grid-help">Une case libre déplace le Pokémon ; une case occupée échange les deux Pokémon. Pendant un glisser, survole le nom de la boîte pour choisir une destination.<span class="pc-keyboard-help"><kbd>A</kbd> / <kbd>E</kbd> boîtes (LB / RB) · <kbd>Espace</kbd> sélection multiple · <kbd>Entrée</kbd> prendre / déposer · <kbd>ZQSD</kbd> ou flèches déplacer le curseur · <kbd>F</kbd> fiche · <kbd>Échap</kbd> annuler</span></p>
         </main>
         <aside ref="details" class="pc-details" aria-label="Pokémon sélectionné">
           <template v-if="selected"><div class="pc-selected-heading"><pokemon-portrait :src="sprite(selected)"/><div><small>{{ source==='team'?'DANS TON ÉQUIPE':boxName(selectedBox) }}</small><h3>{{ selected.name }}</h3><span>Niv. {{ selected.level }}</span> <potential-star :value="selected.potential"/></div></div><div class="pc-types"><span v-for="type in selected.types" :key="type">{{ typeName(type) }}</span></div><p class="pc-hp">{{ selected.currentHp>0?`${selected.currentHp} / ${selected.maxHp} PV`:'K.O.' }} <small v-if="selected.status && selected.status!=='normal'">· {{ selected.status }}</small></p><dl class="pc-traits"><div><dt>Talent</dt><dd>{{ abilityName(selected.passiveAbility) || 'Aucun' }}</dd></div><div><dt>Objet tenu</dt><dd>{{ selected.heldItemName || itemName(selected.heldItem) }}</dd></div></dl><p class="pc-moves">{{ selected.moves.map(m=>moveName(m)).join(' · ') }}</p>
@@ -23,11 +29,18 @@
       </div></transition>
       <div v-if="drag" class="pc-drag-edge pc-drag-edge-left" :class="{'is-active':drag.edgeStep===-1}" aria-hidden="true">‹<small>Boîte précédente</small></div>
       <div v-if="drag" class="pc-drag-edge pc-drag-edge-right" :class="{'is-active':drag.edgeStep===1}" aria-hidden="true">›<small>Boîte suivante</small></div>
+      <div v-if="boxPicker" v-back="closeBoxPicker" class="pc-picker-backdrop" @click.self="!drag && closeBoxPicker()">
+        <section ref="boxPicker" class="pc-box-picker" role="dialog" aria-modal="true" aria-labelledby="pc-picker-title">
+          <header><div><small>STOCKAGE</small><h3 id="pc-picker-title">{{ pickerMode==='move'?'Déplacer vers une boîte':'Choisir une boîte' }}</h3></div><button aria-label="Fermer les boîtes" :disabled="!!drag" @click="closeBoxPicker">×</button></header>
+          <p>{{ pickerMode==='move'?'Les Pokémon occupés sont conservés. Le dépôt utilise uniquement les places libres.':'Choisis la boîte à consulter.' }}{{ drag?' Relâche sur une boîte.':'' }}</p>
+          <div class="pc-picker-grid"><button v-for="n in state.boxCount" :key="n" :data-pc-box-destination="n-1" data-pc-drop="boxPicker" :data-pc-box="n-1" :class="{'pc-picker-current':box===n-1,'pc-picker-target':drag?.to?.kind==='boxPicker'&&drag.to.box===n-1}" :disabled="busy || (pickerMode==='move' && freeForGroup(n-1)<pickerCount)" @click="chooseBox(n-1)"><strong>{{ boxName(n-1) }}</strong><span>{{ boxCount(n-1) }} / {{ state.boxSize }}</span></button></div>
+        </section>
+      </div>
       <footer class="pc-footer"><span>{{ state.count }} / {{ state.capacity }} places occupées</span><span>{{ state.expedition?'Boîtes réservées à cette expédition.':'Stockage sauvegardé avec ton aventure.' }}</span></footer>
       <div v-back="()=>confirmRelease=false" v-if="confirmRelease && selected" class="pc-confirm-backdrop"><section ref="confirm" class="pc-confirm" role="alertdialog" aria-modal="true" aria-labelledby="pc-release-title"><pokemon-portrait :src="sprite(selected)"/><h3 id="pc-release-title">Relâcher {{ selected.name }} ?</h3><p>Ce Pokémon quittera définitivement ton aventure{{ state.expedition?' dans cette expédition':'' }}.</p><p v-if="selected.heldItem">Son objet tenu sera rendu au sac.</p><div><button ref="cancelRelease" :disabled="busy" @click="cancelRelease">Garder {{ selected.name }}</button><button class="pc-danger" data-pc-confirm-release :disabled="busy" @click="send('release')">Relâcher définitivement</button></div></section></div>
     </section>
   </div>
-  <div v-if="drag" class="pc-drag-ghost" :style="{left:drag.x+'px',top:drag.y+'px'}" aria-hidden="true" data-pc-drag-ghost><pokemon-portrait :src="sprite(drag.pokemon)"/><span>{{ drag.pokemon.name }}</span></div>
+  <div v-if="drag" class="pc-drag-ghost" :style="{left:drag.x+'px',top:drag.y+'px'}" aria-hidden="true" data-pc-drag-ghost><pokemon-portrait :src="sprite(drag.pokemon)"/><span>{{ groupSet.has(drag.pokemon.uuid)&&groupIds.length>1?`${groupIds.length} Pokémon`:drag.pokemon.name }}</span></div>
   <pokemon-details v-back="closeDetail" v-if="detailOpen && detailPokemon" :pokemon="detailPokemon" :position="detailIndex+1" :total="detailList.length" :read-only="true" :corruption-allowed="corruptionAllowed" @corruption="$emit('corruption',{...$event,source})" :rename-allowed="!opening && !detailPokemon.isEgg" :rename-busy="busy" :rename-error="error" :rename-notice="notice==='Surnom enregistré.'?notice:''" @rename="$emit('command',{action:'renamePokemon',...$event})" :moves-order-allowed="!opening && !detailPokemon.isEgg" :moves-order-busy="busy" :moves-order-error="error" :moves-order-notice="notice" :context-label="detailContext" :footer-label="detailContext" @reorder-moves="$emit('command',{action:'reorderMoves',...$event})" @close="closeDetail" @navigate="navigateDetail"/>
   </div>
 </template>
@@ -45,8 +58,11 @@ import {localizeMoveName,localizeAbilityName} from '@/services/i18n';
 export default {
   name:'PokemonComputer',components:{OwnedNameEditor,PokemonPortrait,PotentialStar,PokemonDetails,ComputerPokemonPortrait},
   props:{corruptionAllowed:Boolean,state:{type:Object,required:true},busy:Boolean,animationsEnabled:{type:Boolean,default:true},error:String,notice:String,username:String,itemNames:{type:Object,default:()=>({})}},
-  data(){return {opening:true,drag:null,keyboardCarry:null,keyboardSlot:0,keyboardNotice:'',detailOpen:false,box:0,uuid:null,source:null,swapUuid:'',confirmRelease:false,previousFocus:null};},
+  data(){return {opening:true,drag:null,keyboardCarry:null,keyboardSlot:0,keyboardNotice:'',selectionMode:false,groupIds:[],boxPicker:false,pickerMode:'browse',detailOpen:false,box:0,uuid:null,source:null,swapUuid:'',confirmRelease:false,previousFocus:null};},
   computed:{
+    groupEntries(){return this.groupIds.map(id=>this.state.entries.find(e=>e.pokemon.uuid===id)).filter(Boolean);},
+    groupSet(){return new Set(this.groupIds);},
+    pickerCount(){return (this.drag?.active && this._dragGroup?.length) || this.groupEntries.length || 1;},
     detailList(){return this.source==='team'?this.state.team:this.state.entries.filter(e=>e.box===this.selectedBox).sort((a,b)=>a.slot-b.slot).map(e=>e.pokemon);},
     detailIndex(){return this.detailList.findIndex(p=>p.uuid===this.uuid);},
     detailPokemon(){return computerPokemonDetails(this.selected);},
@@ -56,8 +72,8 @@ export default {
     selectedBox(){return this.state.entries.find(e=>e.pokemon.uuid===this.uuid)?.box ?? this.box;},
     canRemove(){return this.state.team.length>1 && this.state.team.some(p=>p.uuid!==this.uuid && p.currentHp>0);}
   },
-  watch:{busy(value){if(value){this.cancelDrag();this.cancelKeyboardMove(false);}else if(this._keyboardPending){const uuid=this._keyboardPending;this._keyboardPending=null;this.focusPokemon(uuid);}},state(){this.cancelDrag();this.cancelKeyboardMove(false);if(!this.selected){const stored=this.state.entries.find(e=>e.pokemon.uuid===this.uuid);if(stored){this.source='box';this.box=stored.box;}else if(this.state.team.some(p=>p.uuid===this.uuid))this.source='team';else{this.uuid=null;this.source=null;this.detailOpen=false;}this.confirmRelease=false;}if(!this.state.team.some(p=>p.uuid===this.swapUuid))this.swapUuid='';}},
-  mounted(){this._dragController=createComputerDrag({root:this.$refs.dialog,changed:drag=>{this.drag=drag;},drop:this.dropPokemon,navigateBox:step=>this.changeBox((this.box+step+this.state.boxCount)%this.state.boxCount),ended:()=>{this._suppressClickUntil=performance.now()+500;}});window.addEventListener('blur',this.cancelDrag);document.addEventListener('visibilitychange',this.dragVisibility);this.previousFocus=document.activeElement;this.$refs.close.focus({preventScroll:true});this.prepareOpening();},
+  watch:{busy(value){if(value){this.cancelDrag();this.cancelKeyboardMove(false);}else if(this._groupPending){this._groupPending=false;if(!this.error){this.groupIds=[];this.selectionMode=false;this.keyboardNotice='';}this.focusSlot(this.keyboardSlot);}else if(this._keyboardPending){const uuid=this._keyboardPending;this._keyboardPending=null;this.focusPokemon(uuid);}},state(){this.groupIds=this.groupIds.filter(id=>this.state.entries.some(e=>e.pokemon.uuid===id));this.cancelDrag();this.cancelKeyboardMove(false);if(!this.selected){const stored=this.state.entries.find(e=>e.pokemon.uuid===this.uuid);if(stored){this.source='box';this.box=stored.box;}else if(this.state.team.some(p=>p.uuid===this.uuid))this.source='team';else{this.uuid=null;this.source=null;this.detailOpen=false;}this.confirmRelease=false;}if(!this.state.team.some(p=>p.uuid===this.swapUuid))this.swapUuid='';}},
+  mounted(){this._dragController=createComputerDrag({root:this.$refs.dialog,changed:drag=>{this.drag=drag;},drop:this.dropPokemon,openBoxPicker:()=>this.openBoxPicker(this.drag?.from.kind==='box'||this.drag?.from.kind==='team'?'move':'browse',true),navigateBox:step=>this.changeBox((this.box+step+this.state.boxCount)%this.state.boxCount),ended:()=>{this._suppressClickUntil=performance.now()+500;}});window.addEventListener('blur',this.cancelDrag);document.addEventListener('visibilitychange',this.dragVisibility);this.previousFocus=document.activeElement;this.$refs.close.focus({preventScroll:true});this.prepareOpening();},
   beforeDestroy(){this._openingController?.abort();this._openingController=null;this.cancelDrag();this.keyboardCarry=null;window.removeEventListener('blur',this.cancelDrag);document.removeEventListener('visibilitychange',this.dragVisibility);const previous=this.previousFocus;this.$nextTick(()=>{const target=previous?.isConnected && previous!==document.body?previous:document.querySelector('.mobile-action-a, .menu-toggle-btn');target?.focus({preventScroll:true});});},
   methods:{
     async prepareOpening(){
@@ -75,12 +91,52 @@ export default {
       this.opening=false;
       this._openingController=null;
     },
-    startDrag(e,p,from){if(this.keyboardCarry)return;if(!this.opening && !this.busy && !this.confirmRelease && !this.detailOpen)this._dragController.start(e,p,from);},
+    stepBox(step){if(this.busy||this.opening||this.detailOpen||this.confirmRelease)return;this.boxPicker=false;this.changeBox((this.box+step+this.state.boxCount)%this.state.boxCount);},
+    toggleGroup(p){
+      if(!p || this.busy)return;
+      this.selectionMode=true;this.cancelKeyboardMove(false);
+      if(this.groupSet.has(p.uuid))this.groupIds=this.groupIds.filter(id=>id!==p.uuid);
+      else if(this.groupIds.length<30)this.groupIds=[...this.groupIds,p.uuid];
+      else this.keyboardNotice='Une sélection peut contenir 30 Pokémon au maximum.';
+    },
+    toggleSelection(){this.cancelDrag();this.cancelKeyboardMove(false);this.selectionMode=!this.selectionMode;if(!this.selectionMode)this.groupIds=[];},
+    selectBoxGroup(){this.selectionMode=true;this.groupIds=[...new Set([...this.groupIds,...this.slots.filter(Boolean).map(e=>e.pokemon.uuid)])].slice(0,30);},
+    openBoxPicker(mode='browse',dragging=false){
+      if(this.busy||this.opening)return;
+      this.pickerMode=mode;this.boxPicker=true;
+      if(!dragging)this.$nextTick(()=>this.$refs.boxPicker?.querySelector('button:not(:disabled)')?.focus({preventScroll:true}));
+    },
+    closeBoxPicker(){this.cancelDrag();this.boxPicker=false;this.$nextTick(()=>this.$refs.boxSelect?.focus({preventScroll:true}));},
+    freeForGroup(box){return this.state.boxSize-this.state.entries.filter(e=>e.box===box&&!this.groupSet.has(e.pokemon.uuid)).length;},
+    chooseBox(box){
+      if(this.pickerMode==='browse'){this.changeBox(box);this.closeBoxPicker();return;}
+      if(this.keyboardCarry){const carry=this.keyboardCarry;this.keyboardCarry=null;this.dropPokemon({action:'move',pokemonUuid:carry.pokemon.uuid,from:carry.from,to:{kind:'boxPicker',box}});}
+      else this.moveGroup(box);
+    },
+    moveGroup(box,slot=null,moves=null){
+      const entries=moves||this.groupEntries.map(e=>({pokemonUuid:e.pokemon.uuid,from:{kind:'box',box:e.box,slot:e.slot}}));
+      if(!entries.length||this.busy)return;
+      this.boxPicker=false;this.cancelDrag();this._groupPending=true;this.box=box;
+      this.$emit('command',{action:'moveMany',moves:entries,to:{box,slot,expected:Array.from({length:this.state.boxSize},(_,i)=>this.state.entries.find(e=>e.box===box&&e.slot===i)?.pokemon.uuid||null)}});
+    },
+    startDrag(e,p,from){if(this.keyboardCarry || e.ctrlKey || e.metaKey || e.shiftKey || (this.selectionMode && from.kind==='team'))return;
+      this._dragGroup=from.kind==='box'&&this.groupSet.has(p.uuid)?this.groupEntries.map(e=>({pokemonUuid:e.pokemon.uuid,from:{kind:'box',box:e.box,slot:e.slot}})):null;
+      if(this.selectionMode&&from.kind==='box'&&!this.groupSet.has(p.uuid))return;if(!this.opening && !this.busy && !this.confirmRelease && !this.detailOpen)this._dragController.start(e,p,from);},
     dragMove(e){this._dragController?.move(e);},dragFinish(e){this._dragController?.finish(e);},dragLeave(){this._dragController?.leave();},
     dragCaptureLost(e){if(e.target===this.$refs.dialog)this.cancelDrag();},
     cancelDrag(){this._dragController?.cancel();},dragVisibility(){if(document.hidden){this.cancelDrag();this.cancelKeyboardMove(false);this._openingController?.abort();}else if(this.opening)this.prepareOpening();},
     dropTarget(kind,index){return this.drag?.to?.kind===kind && (kind==='team'?this.drag.to.index===index:this.drag.to.box===this.box && this.drag.to.slot===index);},
-    dropPokemon(payload){if(this.busy || payload.to.uuid===payload.pokemonUuid)return;this.uuid=payload.pokemonUuid;this.source=payload.from.kind;this.$emit('command',payload);},
+    dropPokemon(payload){
+      if(this.busy)return;
+      if(this._dragGroup?.length){const moves=this._dragGroup;this._dragGroup=null;if(['box','boxPicker'].includes(payload.to.kind))this.moveGroup(payload.to.box,payload.to.slot??null,moves);else this.keyboardNotice='Dépose la sélection dans une boîte du PC.';return;}
+      if(payload.to.kind==='boxPicker'){
+        this.boxPicker=false;
+        if(payload.from.kind==='box'){this.moveGroup(payload.to.box,null,[{pokemonUuid:payload.pokemonUuid,from:payload.from}]);return;}
+        const slot=Array.from({length:this.state.boxSize},(_,i)=>i).find(i=>!this.state.entries.some(e=>e.box===payload.to.box&&e.slot===i));
+        if(slot===undefined){this.keyboardNotice='Cette boîte est pleine.';return;}
+        payload.to={kind:'box',box:payload.to.box,slot,uuid:null};this.box=payload.to.box;
+      }
+      if(payload.to.uuid===payload.pokemonUuid)return;this.uuid=payload.pokemonUuid;this.source=payload.from.kind;this.$emit('command',payload);},
     focusSlot(slot){this.keyboardSlot=slot;this.$nextTick(()=>{const el=this.$refs.dialog?.querySelector(`[data-pc-slot="${slot}"]`);el?.focus({preventScroll:true});el?.scrollIntoView({block:'nearest',inline:'nearest'});});},
     focusPokemon(uuid){
       const team=this.state.team.findIndex(p=>p.uuid===uuid),entry=this.state.entries.find(e=>e.pokemon.uuid===uuid);
@@ -90,6 +146,7 @@ export default {
       else this.$nextTick(()=>{const el=this.$refs.dialog?.querySelector(`[data-pc-team="${uuid}"]`);el?.focus({preventScroll:true});el?.scrollIntoView({block:'nearest'});});
     },
     startKeyboardMove(p,from){
+      this._dragGroup=null;this.groupIds=[];this.selectionMode=false;
       if(!p || this.busy || this.opening || this.confirmRelease || this.detailOpen)return;
       this.cancelDrag();this.uuid=p.uuid;this.source=from.kind;this.swapUuid='';this.keyboardNotice='';
       this.keyboardCarry={pokemon:p,from:{...from}};
@@ -103,8 +160,9 @@ export default {
       this.dropPokemon({action:'move',pokemonUuid:carried.pokemon.uuid,from:carried.from,to});
     },
     clickTeam(p,index){if(this.keyboardCarry)this.keyboardDrop({kind:'team',index,uuid:p.uuid});else this.select(p,'team');},
-    clickSlot(entry,index){
+    clickSlot(entry,index,event){
       if(performance.now()<(this._suppressClickUntil||0))return;
+      if(this.selectionMode||event?.ctrlKey||event?.metaKey||event?.shiftKey){if(entry)this.toggleGroup(entry.pokemon);return;}
       if(this.keyboardCarry)this.keyboardDrop({kind:'box',box:this.box,slot:index,uuid:entry?.pokemon.uuid || null});
       else if(entry)this.select(entry.pokemon,'box');
     },
@@ -112,14 +170,17 @@ export default {
       if(this.detailOpen || this.confirmRelease || event.isComposing || event.ctrlKey || event.metaKey || event.altKey)return false;
       const target=event.target,key=String(event.key).toLowerCase();
       if(target?.closest?.('input,textarea,[contenteditable="true"]'))return false;
-      if(key==='escape' && (this.drag || this.keyboardCarry)){if(!event.repeat)this.closeOrBack();return true;}
+      if(key==='escape' && (this.boxPicker || this.groupIds.length || this.selectionMode || this.drag || this.keyboardCarry)){if(!event.repeat)this.closeOrBack();return true;}
       const cell=target?.closest?.('[data-pc-drop]'),grid=cell?.dataset.pcDrop==='box';
+      if(this.boxPicker)return false;
       if(['a','e'].includes(key)){
         if(!this.busy && !this.opening && !event.repeat){this.changeBox((this.box+(key==='a'?-1:1)+this.state.boxCount)%this.state.boxCount);if(grid || this.keyboardCarry)this.focusSlot(this.keyboardSlot);}
         return true;
       }
       if(target?.closest?.('select'))return false;
       if(this.busy || this.opening)return false;
+      if(key===' ' && grid){if(!event.repeat)this.toggleGroup(this.slots[Number(cell.dataset.pcSlot)]?.pokemon);return true;}
+      if(key==='enter' && grid && this.selectionMode){if(!event.repeat){if(this.groupIds.length)this.openBoxPicker('move');else this.toggleGroup(this.slots[Number(cell.dataset.pcSlot)]?.pokemon);}return true;}
       if(key==='f'){
         const p=cell?(grid?this.slots[Number(cell.dataset.pcSlot)]?.pokemon:this.state.team[Number(cell.dataset.pcIndex)]):this.selected;
         if(p && !event.repeat){this.uuid=p.uuid;this.source=cell?(grid?'box':'team'):this.source;this.openDetail();}
@@ -156,12 +217,14 @@ export default {
     askRelease(){this.cancelDrag();this.confirmRelease=true;this.$nextTick(()=>this.$refs.cancelRelease.focus());},
     cancelRelease(){this.confirmRelease=false;this.$nextTick(()=>this.$refs.dialog.querySelector('[data-pc-release]')?.focus());},
     close(){this.cancelDrag();this.cancelKeyboardMove(false);if(!this.busy)this.$emit('close');},
-    closeOrBack(){if(this.drag)this.cancelDrag();else if(this.keyboardCarry)this.cancelKeyboardMove();else if(this.confirmRelease)this.cancelRelease();else if(this.detailOpen)this.closeDetail();else this.close();},
-    keydown(e){if(this.handleStorageKey(e)){e.preventDefault();e.stopPropagation();return;}if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(this.drag)this.cancelDrag();else if(this.confirmRelease)this.cancelRelease();else this.close();return;}if(e.key!=='Tab')return;const root=this.$refs.confirm || this.$refs.dialog,nodes=[...root.querySelectorAll('button:not(:disabled),select:not(:disabled),input:not(:disabled),[tabindex="0"]')].filter(n=>n.getClientRects().length && !n.closest('[inert]') && getComputedStyle(n).visibility!=='hidden'),first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus();}}
+    closeOrBack(){if(this.boxPicker){this.cancelDrag();this.closeBoxPicker();}else if(this.drag)this.cancelDrag();else if(this.keyboardCarry)this.cancelKeyboardMove();else if(this.groupIds.length||this.selectionMode){this.groupIds=[];this.selectionMode=false;}else if(this.confirmRelease)this.cancelRelease();else if(this.detailOpen)this.closeDetail();else this.close();},
+    keydown(e){if(this.handleStorageKey(e)){e.preventDefault();e.stopPropagation();return;}if(e.key==='Escape'){e.preventDefault();e.stopPropagation();this.closeOrBack();return;}if(e.key!=='Tab')return;const root=this.$refs.confirm || this.$refs.dialog,nodes=[...root.querySelectorAll('button:not(:disabled),select:not(:disabled),input:not(:disabled),[tabindex="0"]')].filter(n=>n.getClientRects().length && !n.closest('[inert]') && getComputedStyle(n).visibility!=='hidden'),first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus();}}
   }
 };
 </script>
 <style scoped>
+.pc-selection-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 9px}.pc-selection-tools button{min-height:38px;padding:7px 9px;border:1px solid var(--journal-border);border-radius:7px;background:var(--journal-card);font-size:11px}.pc-selection-tools button[aria-pressed="true"],.pc-selection-tools [data-pc-group-destination]{background:var(--journal-accent);color:var(--journal-on-accent)}.pc-selection-tools span,.pc-group-hint{font-size:10px;color:var(--journal-muted)}.pc-group-hint{margin:0 0 10px}.pc-terminal .pc-group-selected{border:2px solid var(--journal-accent);background:var(--journal-selected)}.pc-selection-check{position:absolute;left:2px;bottom:2px;width:17px;height:17px;border-radius:50%;font:700 12px/17px var(--journal-font);background:var(--journal-accent);color:var(--journal-on-accent);z-index:1}.pc-picker-backdrop{position:absolute;inset:0;z-index:5;background:var(--journal-backdrop);padding:16px;display:grid;place-items:center}.pc-box-picker{width:min(650px,100%);max-height:100%;display:flex;flex-direction:column;min-height:0;border:2px solid var(--journal-border);border-radius:16px;background:var(--journal-paper);padding:16px;box-shadow:var(--journal-shadow)}.pc-box-picker header{display:flex;align-items:center;justify-content:space-between;gap:8px}.pc-box-picker h3{font:500 23px Georgia,serif;margin:4px 0;color:var(--journal-heading)}.pc-box-picker header small{font-size:9px;letter-spacing:.1em;color:var(--journal-muted)}.pc-box-picker header button{min-width:44px;min-height:44px;border:1px solid var(--journal-border);border-radius:50%;font-size:23px;background:var(--journal-card)}.pc-box-picker p{font-size:11px;color:var(--journal-muted);margin:10px 0}.pc-picker-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;overflow:auto;overscroll-behavior:contain;min-height:0;padding:4px}.pc-picker-grid button{min-height:60px;border:1px solid var(--journal-border);background:var(--journal-soft);border-radius:8px;padding:8px;text-align:left;display:flex;flex-direction:column;justify-content:center;gap:4px;overflow-wrap:anywhere}.pc-picker-grid strong{font-size:12px}.pc-picker-grid span{font-size:10px;color:var(--journal-muted)}.pc-picker-grid .pc-picker-current{border-color:var(--journal-accent)}.pc-picker-grid .pc-picker-target{outline:3px solid var(--journal-accent);background:var(--journal-selected)}@media(max-width:750px){.pc-picker-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pc-picker-backdrop{padding:10px}.pc-box-picker{padding:12px}.pc-selection-tools button{min-height:44px}}
+
 .pc-terminal kbd{font:600 10px var(--journal-font);border:1px solid var(--journal-border);border-radius:4px;background:var(--journal-paper);padding:1px 4px;color:var(--journal-accent)}
 .pc-box-toolbar>button{position:relative;padding-bottom:7px}
 .pc-box-toolbar .pc-shortcut-key{position:absolute;bottom:2px;right:3px;font-size:9px;line-height:1.1;padding:0 2px}
