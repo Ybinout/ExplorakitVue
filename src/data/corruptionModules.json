@@ -10193,7 +10193,7 @@
   "cmod_defense_normal": {
     "key": "cmod_defense_normal",
     "name": "Module Défensif · Normal",
-    "description": "Dégâts reçus des attaques Normal −20 %.",
+    "description": "Dégâts reçus des attaques Normal −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10231,7 +10231,7 @@
   "cmod_defense_fire": {
     "key": "cmod_defense_fire",
     "name": "Module Défensif · Feu",
-    "description": "Dégâts reçus des attaques Feu −20 %.",
+    "description": "Dégâts reçus des attaques Feu −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10269,7 +10269,7 @@
   "cmod_defense_water": {
     "key": "cmod_defense_water",
     "name": "Module Défensif · Eau",
-    "description": "Dégâts reçus des attaques Eau −20 %.",
+    "description": "Dégâts reçus des attaques Eau −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10307,7 +10307,7 @@
   "cmod_defense_electric": {
     "key": "cmod_defense_electric",
     "name": "Module Défensif · Électrik",
-    "description": "Dégâts reçus des attaques Électrik −20 %.",
+    "description": "Dégâts reçus des attaques Électrik −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10345,7 +10345,7 @@
   "cmod_defense_grass": {
     "key": "cmod_defense_grass",
     "name": "Module Défensif · Plante",
-    "description": "Dégâts reçus des attaques Plante −20 %.",
+    "description": "Dégâts reçus des attaques Plante −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10383,7 +10383,7 @@
   "cmod_defense_ice": {
     "key": "cmod_defense_ice",
     "name": "Module Défensif · Glace",
-    "description": "Dégâts reçus des attaques Glace −20 %.",
+    "description": "Dégâts reçus des attaques Glace −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10421,7 +10421,7 @@
   "cmod_defense_fighting": {
     "key": "cmod_defense_fighting",
     "name": "Module Défensif · Combat",
-    "description": "Dégâts reçus des attaques Combat −20 %.",
+    "description": "Dégâts reçus des attaques Combat −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10459,7 +10459,7 @@
   "cmod_defense_poison": {
     "key": "cmod_defense_poison",
     "name": "Module Défensif · Poison",
-    "description": "Dégâts reçus des attaques Poison −20 %.",
+    "description": "Dégâts reçus des attaques Poison −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10497,7 +10497,7 @@
   "cmod_defense_ground": {
     "key": "cmod_defense_ground",
     "name": "Module Défensif · Sol",
-    "description": "Dégâts reçus des attaques Sol −20 %.",
+    "description": "Dégâts reçus des attaques Sol −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10535,7 +10535,7 @@
   "cmod_defense_flying": {
     "key": "cmod_defense_flying",
     "name": "Module Défensif · Vol",
-    "description": "Dégâts reçus des attaques Vol −20 %.",
+    "description": "Dégâts reçus des attaques Vol −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10573,7 +10573,7 @@
   "cmod_defense_psychic": {
     "key": "cmod_defense_psychic",
     "name": "Module Défensif · Psy",
-    "description": "Dégâts reçus des attaques Psy −20 %.",
+    "description": "Dégâts reçus des attaques Psy −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10611,7 +10611,7 @@
   "cmod_defense_bug": {
     "key": "cmod_defense_bug",
     "name": "Module Défensif · Insecte",
-    "description": "Dégâts reçus des attaques Insecte −20 %.",
+    "description": "Dégâts reçus des attaques Insecte −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10649,7 +10649,7 @@
   "cmod_defense_rock": {
     "key": "cmod_defense_rock",
     "name": "Module Défensif · Roche",
-    "description": "Dégâts reçus des attaques Roche −20 %.",
+    "description": "Dégâts reçus des attaques Roche −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10687,7 +10687,7 @@
   "cmod_defense_ghost": {
     "key": "cmod_defense_ghost",
     "name": "Module Défensif · Spectre",
-    "description": "Dégâts reçus des attaques Spectre −20 %.",
+    "description": "Dégâts reçus des attaques Spectre −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10725,7 +10725,7 @@
   "cmod_defense_dragon": {
     "key": "cmod_defense_dragon",
     "name": "Module Défensif · Dragon",
-    "description": "Dégâts reçus des attaques Dragon −20 %.",
+    "description": "Dégâts reçus des attaques Dragon −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10763,7 +10763,7 @@
   "cmod_defense_dark": {
     "key": "cmod_defense_dark",
     "name": "Module Défensif · Ténèbres",
-    "description": "Dégâts reçus des attaques Ténèbres −20 %.",
+    "description": "Dégâts reçus des attaques Ténèbres −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10801,7 +10801,7 @@
   "cmod_defense_steel": {
     "key": "cmod_defense_steel",
     "name": "Module Défensif · Acier",
-    "description": "Dégâts reçus des attaques Acier −20 %.",
+    "description": "Dégâts reçus des attaques Acier −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
@@ -10839,7 +10839,7 @@
   "cmod_defense_fairy": {
     "key": "cmod_defense_fairy",
     "name": "Module Défensif · Fée",
-    "description": "Dégâts reçus des attaques Fée −20 %.",
+    "description": "Dégâts reçus des attaques Fée −30 %.",
     "category": "corruption",
     "sell_price": 0,
     "buy_price": 0,
