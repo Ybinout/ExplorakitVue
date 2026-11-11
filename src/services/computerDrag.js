@@ -1,6 +1,16 @@
 // Pointer Events give mouse, pen and touch the same owner-confirmed drop path.
 export function createComputerDrag({root, changed, drop, navigateBox, ended}) {
   let gesture=null, frame=null, navTimer=null, navStep=null;
+  function boxStepAt(x,y) {
+    const button=document.elementFromPoint(x,y)?.closest('[data-pc-box-step]');
+    if(button && root.contains(button) && !button.disabled)return Number(button.dataset.pcBoxStep);
+    const r=root.getBoundingClientRect();
+    // Pointer capture keeps the same gesture alive outside the centered PC.
+    if(y<r.top+65 || y>r.bottom-25)return null;
+    if(x<=r.left+26)return -1;
+    if(x>=r.right-26)return 1;
+    return null;
+  }
   function targetAt(x,y) {
     const node=document.elementFromPoint(x,y)?.closest('[data-pc-drop]');
     if(!node || !root.contains(node) || node.disabled)return null;
@@ -10,10 +20,10 @@ export function createComputerDrag({root, changed, drop, navigateBox, ended}) {
   }
   function update() {
     if(!gesture?.active)return;
-    gesture.to=targetAt(gesture.x,gesture.y);
+    const step=boxStepAt(gesture.x,gesture.y);
+    gesture.edgeStep=step;
+    gesture.to=step===null?targetAt(gesture.x,gesture.y):null;
     changed({...gesture});
-    const button=document.elementFromPoint(gesture.x,gesture.y)?.closest('[data-pc-box-step]');
-    const step=button && root.contains(button) ? Number(button.dataset.pcBoxStep) : null;
     if(step!==navStep){clearTimeout(navTimer);navTimer=null;navStep=step;}
     if(step!==null && !navTimer)navTimer=setTimeout(()=>{navTimer=null;if(gesture?.active && navStep===step){navigateBox(step);update();}},650);
   }
@@ -50,7 +60,7 @@ export function createComputerDrag({root, changed, drop, navigateBox, ended}) {
     finish(event) {
       if(!gesture || event.pointerId!==gesture.pointerId)return;
       const current=gesture;
-      if(current.active){event.preventDefault();current.to=targetAt(event.clientX,event.clientY);}
+      if(current.active){event.preventDefault();current.to=boxStepAt(event.clientX,event.clientY)===null?targetAt(event.clientX,event.clientY):null;}
       cancel();
       if(current.active && current.to)drop({action:'move',pokemonUuid:current.pokemon.uuid,from:current.from,to:current.to});
     },

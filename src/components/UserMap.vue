@@ -166,7 +166,7 @@
         <automatic-training v-back="closeAutomaticTraining" v-if="automaticTrainingOpen" :key="automaticTrainingOpen.kind" :initial="automaticTrainingOpen" :team="teamPokemons" :items="bagItems" :job="automaticTrainingState" :busy="automaticTrainingBusy" :error="automaticTrainingError" @start="startAutomaticTraining" @stop="stopAutomaticTraining" @close="closeAutomaticTraining"/>
         <patch-history v-back="()=>patchHistoryOpen=false" v-if="patchHistoryOpen" :language="preferences.language" @close="patchHistoryOpen=false"/>
         <training-feedback v-back="()=>trainingFeedback=null" v-if="trainingFeedback" :entry="trainingFeedback" :busy="medicineBusy" @close="trainingFeedback=null" @confirm="confirmIvReroll"/>
-        <pokemon-computer v-back="()=>pc.visible=false" v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :corruption-allowed="!isDrift && !superTournament.active && !battle" @corruption="openCorruptionSheet" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
+        <pokemon-computer ref="pokemonComputer" v-back="()=>$refs.pokemonComputer?.closeOrBack()" v-if="pc.visible && pc.state" :state="pc.state" :busy="pc.busy" :error="pc.error" :notice="pc.notice" :username="currentUsername" :corruption-allowed="!isDrift && !superTournament.active && !battle" @corruption="openCorruptionSheet" :animations-enabled="preferences.animationsEnabled" @close="pc.visible=false" @command="useComputer"/>
         <div v-back="()=>isAppearancePanelOpen=false" v-if="isAppearancePanelOpen" class="appearance-panel" ref="appearancePanel">
           <div class="appearance-title"><span><small>RiftMon</small>{{ tr('appearance') }}</span><button class="panel-close" :aria-label="tr('close')" @click="isAppearancePanelOpen = false">×</button></div>
           <div class="appearance-grid">
@@ -2381,6 +2381,8 @@ export default {
     handleMenuKeys(event) {
       if(event.defaultPrevented||event.isComposing||event.ctrlKey||event.metaKey||event.altKey)return;
       const overlay=topGameOverlay(this.$el);
+      const computer=this.$refs.pokemonComputer;
+      if(overlay===computer?.$el && computer.handleStorageKey(event)){consumeGameKey(event);this.releaseAllMovementKeys();return;}
       if(event.key==='Escape'){
         if(overlay){consumeGameKey(event);this.releaseAllMovementKeys();if(!event.repeat)overlay._riftmonBackValue.close();return;}
         const raid=this.$el.querySelector('.raid-battle')?.__vue__;
