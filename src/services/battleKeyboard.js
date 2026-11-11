@@ -11,30 +11,32 @@ function controls(root, tutorial) {
       const choices=grid?collect(grid,tutorial==='attack'?'button':'button[data-tutorial-ball]'):[];
       const button=root.querySelector(tutorial==='attack'?'.action-attack':'.action-bag');
       const slots=[];if(button)slots[tutorial==='attack'?0:1]=button;
-      return {numbered:choices.length?choices:slots,navigation:choices.length?choices:(button?[button]:[])};
+      return {numbered:choices.length?choices.filter(b=>!b.hasAttribute('data-move-info')):slots,navigation:choices.length?choices:(button?[button]:[])};
     }
     const grid = root.querySelector('.battle-grid');
     const choices = grid ? collect(grid, 'button') : [];
     const main = collect(root, '.battle-main-actions button');
     const slots=[];for(const button of main)slots[Number(button.dataset.keyboardNumber)-1]=button;
-    return { numbered: choices.length ? choices : slots, navigation: [...choices, ...main] };
+    return { numbered: choices.length ? choices.filter(b=>!b.hasAttribute('data-move-info')) : slots, navigation: [...choices, ...main] };
   }
   if (root.matches('.raid-battle')) {
     if (root.querySelector('.raid-confirm')) return { numbered: [], navigation: [] };
+    const area=root.querySelector('.raid-area-review');if(area){const buttons=collect(area,'button');return {numbered:buttons,navigation:buttons};}
     const targeting = root.querySelector('.raid-targeting');
     if (targeting) {
       const targets=[...collect(root,'.raid-boss-choice'),...collect(root,'.raid-card-pick')].filter(enabled);
       return {numbered:targets,navigation:[...targets,...collect(root,'.raid-target-prompt button')]};
     }
     const choices=collect(root, '.raid-moves button, .raid-main-actions button');
-    return { numbered: choices, navigation: [...choices, ...collect(root, '.raid-back')] };
+    return { numbered: choices.filter(b=>!b.hasAttribute('data-move-info')), navigation: [...choices, ...collect(root, '.raid-back')] };
   }
   if (root.matches('.double-battle')) {
     if (root.querySelector('.double-confirm')) return { numbered: [], navigation: [] };
+    const area=root.querySelector('.double-area-review');if(area){const buttons=collect(area,'button');return {numbered:buttons,navigation:buttons};}
     const targeting = root.querySelector('.double-target-hint');
     const choices = targeting ? collect(targeting, 'button:not(:first-of-type)')
       : collect(root, '.double-moves button, .double-reserves button');
-    return { numbered: choices, navigation: [...choices, ...collect(root, '.double-switch, .double-slots button')] };
+    return { numbered: choices.filter(b=>!b.hasAttribute('data-move-info')), navigation: [...choices, ...collect(root, '.double-switch, .double-slots button')] };
   }
   return { numbered: [], navigation: [] };
 }

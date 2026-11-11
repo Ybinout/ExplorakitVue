@@ -31,18 +31,18 @@
       <aside v-if="draftInvitation && !draftState && !battle" class="draft-invitation" role="status"><b>{{ draftInvitation.host }} t’invite à une draft.</b><small>Rejoins la Maison des Drafts, à la Ville du Lac.</small><span><button @click="acceptDraftInvitation" :disabled="draftBusy">Prendre place</button><button @click="draftInvitation=null">Plus tard</button></span></aside>
       <whitepeak-club-panel :raid-bosses="raidBosses" :raid-busy="raidBusy" :raid-error="raidError" @raid-catalog="raidCommand('training-catalog')" @training="raidCommand('training',$event)" v-back="()=>clubPanel=null" v-if="clubPanel && !battle && !battleResult && !clubWatch" :tab="clubPanel.tab" :roulette="clubRoulette" :duel="clubDuel" :rosters="clubRosters" :trainers="clubTrainers" :balance="Number(progressionState.money)||0" :user-id="Number(currentUserId)" :busy="clubBusy" :error="clubError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled && !worldWeatherReducedMotion" :rows="clubRows" :ranking="clubRanking" @close="clubPanel=null" @tab="clubPanel={tab:$event}" @command="clubCommand" />
       <button v-if="!clubPanel&&!battle&&clubDuel?.you>=0&&['review','preparation'].includes(clubDuel.phase)" class="house-resume-preparation" @click="clubPanel={tab:'duel'}">Reprendre la préparation →</button>
-      <club-spectator v-back="closeClubWatch" v-if="clubWatch" :key="clubWatch.id" :start="clubWatch" :events="clubWatchEvents" :result="clubWatchResult" :mobile="showMobileControls" :preferences="preferences" @close="closeClubWatch" />
+      <club-spectator v-back="closeClubWatch" v-if="clubWatch" :key="clubWatch.id" :start="clubWatch" :events="clubWatchEvents" :result="clubWatchResult" :mobile="showMobileControls" :preferences="battlePreferences" @close="closeClubWatch" />
       <button v-if="map==='ville5_maison1' && !battle && !battleResult && !clubWatch && !clubPanel" class="club-room-access" data-club-room-access @pointerdown.stop @click="openClubPanel">{{ clubDuel&&clubDuel.phase!=='finished' ? clubDuel.phase==='review'?'Vérifier les mises':clubDuel.phase==='battle'?'Duel en cours · Tribunes':'Combat préparé':'Organiser' }}</button>
       <super-tournament-panel v-back="closeTournamentPanel" v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :passives="superTournament.passives" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @pause="pauseSuperTournament" @resume="resumeSuperTournament" @abandon="abandonSuperTournament" />
       <tournament-reward-panel v-if="tournamentRewardVisible" :offer="superTournament.reward" :rerolls="superTournament.rerolls" :cash="superTournament.cash" :team="superTournament.team" :passives="superTournament.passives" :victory-recovery="superTournament.victoryRecovery" :busy="tournamentBusy" :error="tournamentRewardError" @choose="chooseTournamentReward" @reroll="rerollTournamentRewards" @leave="openTournamentAbandon" />
-      <doubles-battle v-if="doublesFrame && battle" :frame="doublesFrame" :control="clubControl" :busy="clubBusy" :error="clubError" :settled="clubDuel?.phase==='finished'" :reduced="!preferences.animationsEnabled" @action="doubleAction" @pass="doublePass" @forfeit="clubCommand('forfeit',{id:clubControl?.id})" @close="closeDoublesBattle">
+      <doubles-battle v-if="doublesFrame && battle" :frame="doublesFrame" :control="clubControl" :busy="clubBusy" :error="clubError" :settled="clubDuel?.phase==='finished'" :reduced="!battleMotionEnabled" @action="doubleAction" @pass="doublePass" @forfeit="clubCommand('forfeit',{id:clubControl?.id})" @close="closeDoublesBattle">
        <template #social-toggle><button class="battle-social-button" @click="battleChatOpen=!battleChatOpen" aria-label="Amis et messages"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
        <template #social-chat><combat-social-panel v-back="()=>battleChatOpen=false" v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
       </doubles-battle>
       <raid-panel v-back="closeRaidPreview" v-if="raidPanelVisible && (raidPreview || raidState) && !raidCombatActive && !battle" :preview="raidPreview" :state="raidState" :inventory="raidInventory" :friends="socialState.accepted" :user-id="Number(currentUserId)" :busy="raidBusy" :error="raidError" :notice="raidNotice" :show-tutorial="raidTutorial" @command="raidCommand" @close="closeRaidPreview" @minimize="raidPanelVisible=false"/>
       <button v-if="raidState && !raidPanelVisible && !battle" class="raid-resume" @click="raidPanelVisible=true">{{ raidState.phase==='lobby'?'Reprendre la préparation du raid':'Bilan du raid' }} →</button>
       <aside v-if="raidInvitation" class="raid-invitation" :class="{'is-compact':battle&&!raidInviteExpanded}" role="status" aria-live="polite"><button v-if="battle&&!raidInviteExpanded" class="raid-invite-expand" @click="raidInviteExpanded=true">✧ Invitation raid · {{ raidInvitationSeconds }} s</button><template v-else><b>{{ raidInvitation.senderName }} t’invite à un raid</b><small>{{ raidInvitation.rift.name }} · N. {{ raidInvitation.rift.level }} · {{ raidInvitationSeconds }} s</small><span><button :disabled="raidBusy" @click="raidCommand('invitation',{id:raidInvitation.id,accept:true})">{{ battle?'Réserver ma place':'Rejoindre' }}</button><button :disabled="raidBusy" @click="raidCommand('invitation',{id:raidInvitation.id,accept:false})">Refuser</button><button v-if="battle" @click="raidInviteExpanded=false" aria-label="Réduire l’invitation">−</button></span></template></aside>
-      <raid-battle v-if="raidCombatActive" :key="raidState.id" :frame="raidState.combat" :difficulty="raidState.rift.name" :map-name="raidState.rift.map" :final-rift="raidState.rift.difficulty?.id==='dc2-final'" :permanent-deaths="raidState.rift.permanentDeaths!==false" :training="!!raidState.rift.training" :busy="raidBusy" :error="raidError" :reduced="!preferences.animationsEnabled || worldWeatherReducedMotion" @action="raidCommand('action',$event)" @results="showRaidResults" @sound="_feedbackAudio && _feedbackAudio.play($event)" @impact="raidImpact">
+      <raid-battle v-if="raidCombatActive" :key="raidState.id" :frame="raidState.combat" :difficulty="raidState.rift.name" :map-name="raidState.rift.map" :final-rift="raidState.rift.difficulty?.id==='dc2-final'" :permanent-deaths="raidState.rift.permanentDeaths!==false" :training="!!raidState.rift.training" :busy="raidBusy" :error="raidError" :reduced="!battleMotionEnabled || worldWeatherReducedMotion" @action="raidCommand('action',$event)" @results="showRaidResults" @sound="_feedbackAudio && _feedbackAudio.play($event)" @impact="raidImpact">
        <template #social-toggle><button class="battle-social-button" @click="battleChatOpen=!battleChatOpen" aria-label="Amis et messages"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
        <template #social-chat><combat-social-panel v-back="()=>battleChatOpen=false" v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
       </raid-battle>
@@ -53,7 +53,7 @@
         :bag-items="bagItems" :tournament="!!superTournament.active" @tournament-abandon="openTournamentAbandon"
         :bag-loading="bagLoading"
         :caught-species-ids="isDrift ? [] : caughtSpeciesIds"
-        :preferences="preferences"
+        :preferences="battlePreferences"
         :house-control="clubControl ? {...clubControl,busy:clubBusy} : null" @house-pass="passHouseControl"
         :notice="interactionNotice"
         :colosseum-challenge="isColosseum && driftState?.phase !== 'exploration' ? driftState?.colosseum?.next : null"
@@ -257,7 +257,7 @@
         <game-info-panels :inert="patchHistoryOpen?'':null" :aria-hidden="patchHistoryOpen?'true':null" v-back="{active:!!activeInfoPanel,close:closeInfoPanel}"
           :desktop="fullscreenState.desktop" :fullscreen="fullscreenState" @patch-history="patchHistoryOpen=true" @toggle-fullscreen="toggleGameFullscreen" @appearance="handleMenuAction('appearance')"
           :flight-allowed="!isDrift && !superTournament.active && (!onDarkContinent || progressionState.flight?.darkAerial?.active)" @fly="flyToTown"
-          :active="activeInfoPanel"
+          :active="activeInfoPanel" :quest-map-target="questMapTarget" @locate-quest="locateQuest"
           :friend-members="socialState.accepted"
           :current-map="housingState?.entry?.map || map" :current-region="players[socket?.id]?.regionLocation"
           :recovery-busy="positionRecoveryBusy" :recovery-allowed="!battle && !battleResult && (!isDrift || (driftState?.alive && driftState?.phase === 'exploration' && !driftState?.storagePaused && !driftState?.recoveryWaiting))" :recovery-notice="positionRecoveryNotice"
@@ -696,7 +696,7 @@ export default {
       isAppearancePanelOpen: false,
       isTeamPanelOpen: false,
       selectedPokemonUuid: null,
-      activeInfoPanel: '',
+      activeInfoPanel: '',questMapTarget:'',
       menuDataLoading: false,
       pokedexState: { total: 649, seen: 0, caught: 0, entries: [] },
       progressionState: { flags: {}, quests: [], badges: [], completedNpcBattles: [], money: 0 },
@@ -823,6 +823,9 @@ export default {
     };
   },
   computed: {
+    decorMotionEnabled(){return this.preferences.decorAnimationsEnabled!==false;},
+    battleMotionEnabled(){return this.preferences.battleAnimationsEnabled!==false;},
+    battlePreferences(){return {...this.preferences,animationsEnabled:this.battleMotionEnabled};},
     mobileControlsVisible() { return this.showMobileControls && this.preferences.touchControlsEnabled !== false; },
     worldMusicState() {
       return {
@@ -840,9 +843,9 @@ export default {
     worldNightActive() { return outdoorMap(this.map) && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
     effectiveWorldWeather() { return mapWorldWeather(this.map, this.mapWeather); },
     worldWeatherActive() { return Boolean(this.effectiveWorldWeather.wind || this.effectiveWorldWeather.rain || this.effectiveWorldWeather.sand || this.effectiveWorldWeather.snow) && worldWeatherEnabled(this.map, { battle: this.battle || this.battleResult || this.pendingBattleResult || this.driftSpectator || this.evolutionVisible || this.learningVisible, loading: this.mapLoading || this.mapLoadError || this.renderedMap !== this.map }); },
-    snowFootprintsActive() { return hasSnowGround(this.map) && this.preferences.animationsEnabled && !this.worldWeatherReducedMotion && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
-    dirtFootprintsActive() { return hasDirtGround(this.map) && this.preferences.animationsEnabled && !this.worldWeatherReducedMotion && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
-    grassRustleActive() { return hasRustlingGrass(this.map) && this.preferences.animationsEnabled && !this.worldWeatherReducedMotion && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
+    snowFootprintsActive() { return hasSnowGround(this.map) && this.decorMotionEnabled && !this.worldWeatherReducedMotion && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
+    dirtFootprintsActive() { return hasDirtGround(this.map) && this.decorMotionEnabled && !this.worldWeatherReducedMotion && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
+    grassRustleActive() { return hasRustlingGrass(this.map) && this.decorMotionEnabled && !this.worldWeatherReducedMotion && !this.mapLoading && !this.mapLoadError && this.renderedMap === this.map && !this.battle && !this.battleResult && !this.pendingBattleResult && !this.driftSpectator && !this.evolutionVisible && !this.learningVisible; },
     learningPokemon() {
       if (this.isDrift && (!this.driftState?.alive || this.driftState.phase === 'results')) return null;
       return this.teamPokemons.find(p => p.currentHp > 0 && p.pendingMoves?.length);
@@ -1965,7 +1968,7 @@ export default {
 
       const idleFrame = this.spriteAnimations?.down?.[0] || { x: 0, y: 0 };
       const teleport=this._npcTeleport?.map===this.map?this._npcTeleport:null;
-      const motion=this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion;
+      const motion=this.decorMotionEnabled&&!this.worldWeatherReducedMotion;
       const departure=this.lucieDeparture?.map===this.map?this.lucieDeparture:null;
       if(departure)drawDeparture(context,departure,now,motion);
       if(teleport)drawNpcTeleport(context,teleport,now,motion);
@@ -2365,6 +2368,7 @@ export default {
     removeNavbarShortcut(key) { this.navbarShortcuts=saveNavbarShortcuts(this.currentUserId,this.navbarShortcuts.filter(k=>k!==key)); },
     openNavbarShortcut(key) { if(key==='friends')return this.openFriends();if(key==='calculator')return this.openDamageCalculator();if(key==='quit')return this.quitGame();if(key==='learning')return this.openMoveLearning();if(key==='tournament-powers'){this.isMenuOpen=false;this.releaseAllMovementKeys();this.tournamentPanel={tab:'powers'};return;}return this.handleMenuAction(key); },
     handleBattleKeys(event) {
+      if(topGameOverlay(this.$el)?.hasAttribute('data-move-inspection'))return;
       if(!this.battle || this.battleChatOpen || this.tradeModalVisible || this.incomingRequest.visible || this.battleResult || this.pendingBattleResult || this.learningVisible || this.evolutionVisible || this.patchNoticeOpen)return;
       const simple=!this.raidCombatActive&&!this.doublesFrame,overlay=this.$refs.battleOverlay;
       if(simple&&overlay?.experienceBusy)return;
@@ -2408,7 +2412,9 @@ export default {
       this.isAppearancePanelOpen = false;
       this.isTeamPanelOpen = false;
     },
+    locateQuest(map){this.questMapTarget=map;this.activeInfoPanel='minimap';this.releaseAllMovementKeys();},
     closeInfoPanel() {
+      this.questMapTarget='';
       const restoreFocus = ['badges', 'minimap'].includes(this.activeInfoPanel);
       this.activeInfoPanel = '';
       if (restoreFocus) this.$nextTick(() => this.$refs.menuToggle?.focus());
@@ -2431,6 +2437,7 @@ export default {
       this.progressionState = progress || this.progressionState;
     },
     updatePreferences(nextPreferences) {
+      if(nextPreferences.animationsEnabled!==this.preferences.animationsEnabled && nextPreferences.decorAnimationsEnabled===this.preferences.decorAnimationsEnabled && nextPreferences.battleAnimationsEnabled===this.preferences.battleAnimationsEnabled)nextPreferences={...nextPreferences,decorAnimationsEnabled:nextPreferences.animationsEnabled,battleAnimationsEnabled:nextPreferences.animationsEnabled};
       const previous=trainerPaletteKey(this.preferences);
       this.preferences = saveGamePreferences(nextPreferences);
       this._worldSpeech?.setColors(speechColors(this.$el));
@@ -2534,7 +2541,7 @@ export default {
       if(this.flight||this.isDrift||this.battle||this.battleResult||!this.socket?.connected)return;
       if(this.onDarkContinent&&!['dark:return','dark:explore'].includes(event)&&!(event==='flyToTown'&&this.progressionState.flight?.darkAerial?.active)){this.showInteractionNotice('Parle au guide de la plage pour rentrer chez toi.',3800);return;}
       this.releaseAllMovementKeys();this.closeInfoPanel();this.isMenuOpen=false;if(kind==='void')this.isBagOpen=false;
-      const reduced=!this.preferences.animationsEnabled||this.worldWeatherReducedMotion;
+      const reduced=!this.decorMotionEnabled||this.worldWeatherReducedMotion;
       const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       const socket=this.socket,epoch=this._flightEpoch=(this._flightEpoch||0)+1;
       const alive=()=>!this._isDestroyed&&!this._isBeingDestroyed&&this.flight?.epoch===epoch&&this.socket===socket&&socket.connected;
@@ -2857,6 +2864,7 @@ export default {
     handleGamepad(event) {
       if (this.patchNoticeOpen) { this.releaseAllMovementKeys(); return; }
       if(this.worldChatOpen){event.preventDefault();this.releaseAllMovementKeys();if(event.detail?.action==='back')this.closeWorldChat();return;}
+      const moveInfo=topGameOverlay(this.$el);if(moveInfo?.hasAttribute('data-move-inspection')){event.preventDefault();this.releaseAllMovementKeys();if(event.detail?.action==='back')moveInfo._riftmonBackValue.close();else navigateGamepad(moveInfo,event.detail);return;}
       const { action, direction } = event.detail;
       const computer=this.$refs.pokemonComputer;
       if(computer && topGameOverlay(this.$el)===computer.$el && ['previous','next'].includes(action)){event.preventDefault();this.releaseAllMovementKeys();computer.stepBox(action==='previous'?-1:1);return;}
@@ -3092,7 +3100,7 @@ export default {
       c.setTransform(1, 0, 0, 1, 0, 0);
       c.clearRect(0, 0, canvas.width, canvas.height);
       const now = performance.now();
-      const mirrorMotion=this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion;
+      const mirrorMotion=this.decorMotionEnabled&&!this.worldWeatherReducedMotion;
       const cameraTarget=mirrorCameraTarget(this.mirrorScene,now,this.visualPlayer(this.socket.id,me,now),this.mirrorRift,mirrorMotion);
       const camera = getWorldCamera(this.worldFrame.width, this.worldFrame.height, cameraTarget, this.showMobileControls);
       const scale = camera.scale * this.worldFrame.pixelRatio;
@@ -3109,19 +3117,19 @@ export default {
         if(drawDepartment(c,this.mapImage,this.map)) { /* Compact, tile-aligned department floor. */ }
         else if (this.villageWaterActive && !document.hidden) {
           if (!this._villageWater) this._villageWater = new VillageWaterRenderer();
-          this._villageWater.draw(c, this.mapImage, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map, camera);
+          this._villageWater.draw(c, this.mapImage, now, this.decorMotionEnabled && !this.worldWeatherReducedMotion, this.map, camera);
         } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
 
       if(this.map==='void_arena'){c.fillStyle='rgba(4,2,10,.18)';c.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);}
       if (this.placeAmbienceActive && !document.hidden) {
         if (!this._placeAmbience) this._placeAmbience = new PlaceAmbienceRenderer();
-        this._placeAmbience.drawGround(c, this.mapImage, this.map, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.arenaCollapse?.map===this.map?this.arenaCollapse:null, this.wandaArenaSpeaking);
+        this._placeAmbience.drawGround(c, this.mapImage, this.map, now, this.decorMotionEnabled && !this.worldWeatherReducedMotion, this.arenaCollapse?.map===this.map?this.arenaCollapse:null, this.wandaArenaSpeaking);
       }
 
       if (hasWindTrees(this.map,'background') && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
         if(!this._backgroundWind)this._backgroundWind=new ForegroundWindRenderer();
-        this._backgroundWind.draw(c,this.mapImage,now,this.effectiveWorldWeather.wind,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion,this.map,'background');
+        this._backgroundWind.draw(c,this.mapImage,now,this.effectiveWorldWeather.wind,this.decorMotionEnabled&&!this.worldWeatherReducedMotion,this.map,'background');
       } else this._backgroundWind?.suspend();
 
       if (hasTallGrass(this.map) && !document.hidden) {
@@ -3148,23 +3156,23 @@ export default {
 
       if (this.worldWeatherActive && !document.hidden) {
         if (!this._worldWeather) this._worldWeather = new WorldWeatherRenderer();
-        this._worldWeather.drawGround(c, now, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
+        this._worldWeather.drawGround(c, now, this.effectiveWorldWeather, this.decorMotionEnabled && !this.worldWeatherReducedMotion, this.map);
       } else this._worldWeather?.suspend();
 
-      if (!this.isDrift && !this.battle && !this.battleResult && !document.hidden) this._storyGateRenderer?.draw(c,this.map,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+      if (!this.isDrift && !this.battle && !this.battleResult && !document.hidden) this._storyGateRenderer?.draw(c,this.map,now,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
       if (this.worldNightActive && !document.hidden) {
         if (!this._worldNight) this._worldNight = new WorldNightRenderer();
-        this._worldNight.drawGround(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.mapImage);
+        this._worldNight.drawGround(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.decorMotionEnabled && !this.worldWeatherReducedMotion, this.mapImage);
       } else this._worldNight?.suspend();
       if(!this.battle&&!this.battleResult)drawEarlyGrassGuide(c,this.earlyTutorial,this.map,now,mirrorMotion);
       drawVoidTeleporter(c, this.map, this.voidEnding, now, mirrorMotion);
       drawVoidJournals(c, this.map, this.voidEnding);
       if(this.map!=='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
       if(!document.hidden)drawWhitepeakSnow(c,this.map,now,mirrorMotion,camera);
-      if(!document.hidden)drawWhitepeakPodiums(c,this.map,this.players,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+      if(!document.hidden)drawWhitepeakPodiums(c,this.map,this.players,now,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
       drawHonorRoll(c,this.map,this.clubHonor);
-      if(this.raidWorld?.map===this.map)drawRaidRifts(c,this.raidWorld,Date.now(),this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
-      drawWhitepeakRoom(c,this.map,this.clubRoulette,Date.now()+(this.clubRoulette?.serverOffset||0),this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+      if(this.raidWorld?.map===this.map)drawRaidRifts(c,this.raidWorld,Date.now(),this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
+      drawWhitepeakRoom(c,this.map,this.clubRoulette,Date.now()+(this.clubRoulette?.serverOffset||0),this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
       if(!this._pokemonComputers)this._pokemonComputers=new PokemonComputerRenderer();
       this._pokemonComputers.draw(c,this.worldDevices,this.map,now,mirrorMotion,scale,camera);
       this.drawPnjs(c, now);
@@ -3185,7 +3193,7 @@ export default {
       for (const playerId of playerOrder) {
         const player = this.players[playerId];
         const position=this.visualPlayer(playerId,player,now);
-        while(casinoObject<casinoObjects.length && machineBottom(casinoObjects[casinoObject])<=position.y+10)drawSlotMachine(c,casinoObjects[casinoObject++],now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+        while(casinoObject<casinoObjects.length && machineBottom(casinoObjects[casinoObject])<=position.y+10)drawSlotMachine(c,casinoObjects[casinoObject++],now,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
         if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length && this.housingItemBottom(housePlan.objects[houseObject]) <= position.y+10)drawFurniture(c,this.housingArt,housePlan.objects[houseObject++]);
 
         // DÃ©finit une direction par dÃ©faut si la direction actuelle est indÃ©finie
@@ -3193,7 +3201,7 @@ export default {
           player.direction = 'down';  // DÃ©finit la direction par dÃ©faut
         }
 
-        const strike=roomStrikePose(playerId===this.socket?.id&&this.roomObstacleAction?.map===this.map?this.roomObstacleAction:null,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+        const strike=roomStrikePose(playerId===this.socket?.id&&this.roomObstacleAction?.map===this.map?this.roomObstacleAction:null,now,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
         const animation = this.spriteAnimations[strike.direction || position.direction];
 
         // VÃ©rifie si l'animation est valide
@@ -3216,7 +3224,7 @@ export default {
 
           // Assure-toi que le sprite existe avant d'essayer de dessiner
           if (sprite && playerSpriteSheet?.complete && playerSpriteSheet.naturalWidth && playerSpriteSheet.naturalHeight) {
-            const pose=flightPose(playerId===this.socket?.id?this.flight:null,now,!this.preferences.animationsEnabled||this.worldWeatherReducedMotion);
+            const pose=flightPose(playerId===this.socket?.id?this.flight:null,now,!this.decorMotionEnabled||this.worldWeatherReducedMotion);
             c.save();c.globalAlpha=pose.alpha;
             if(this._tallGrass?.map===this.map&&!pose.lift)this._tallGrass.clipActor(c,position);
             c.translate(strike.x,strike.y);
@@ -3236,31 +3244,31 @@ export default {
         }
       }
 
-      while(casinoObject<casinoObjects.length)drawSlotMachine(c,casinoObjects[casinoObject++],now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+      while(casinoObject<casinoObjects.length)drawSlotMachine(c,casinoObjects[casinoObject++],now,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
       if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length)drawFurniture(c,this.housingArt,housePlan.objects[houseObject++]);
       if(!this.battle && !document.hidden && this.roomObstacleAction?.map===this.map)
-        drawRoomStrike(c,this.roomObstacleAction,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
-      if(this.arenaCollapse?.map===this.map&&!this.battle&&!document.hidden)drawHozeCeiling(c,this.arenaCollapse,now,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+        drawRoomStrike(c,this.roomObstacleAction,now,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
+      if(this.arenaCollapse?.map===this.map&&!this.battle&&!document.hidden)drawHozeCeiling(c,this.arenaCollapse,now,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
       // Dessiner les Ã©lÃ©ments de premier plan si nÃ©cessaire
       if (this.foregroundImage?.complete && this.foregroundImage.naturalWidth) {
         const foreground=this._tallGrass?.map===this.map&&this._tallGrass.foreground||this.foregroundImage;
         if (hasWindTrees(this.map) && this.worldWeatherActive && this.effectiveWorldWeather.wind && !document.hidden) {
           if (!this._foregroundWind) this._foregroundWind = new ForegroundWindRenderer();
-          this._foregroundWind.draw(c, foreground, now, this.effectiveWorldWeather.wind, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
+          this._foregroundWind.draw(c, foreground, now, this.effectiveWorldWeather.wind, this.decorMotionEnabled && !this.worldWeatherReducedMotion, this.map);
         } else { this._foregroundWind?.suspend(); c.drawImage(foreground, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
       if(this.map==='route2')drawMirrorGround(c,this.map,this.mirrorRift,this.mirrorScene,now,mirrorMotion,this.mapImage);
       if (this.worldWeatherActive && !document.hidden) {
         if (!this._worldWeather) this._worldWeather = new WorldWeatherRenderer();
-        this._worldWeather.draw(c, now, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.map);
+        this._worldWeather.draw(c, now, this.effectiveWorldWeather, this.decorMotionEnabled && !this.worldWeatherReducedMotion, this.map);
       } else this._worldWeather?.suspend();
       if (this.placeAmbienceActive && !document.hidden) {
         if (!this._placeAmbience) this._placeAmbience = new PlaceAmbienceRenderer();
-        this._placeAmbience.draw(c, this.mapImage, this.map, now, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.effectiveWorldWeather.wind, this.worldDaylight);
+        this._placeAmbience.draw(c, this.mapImage, this.map, now, this.decorMotionEnabled && !this.worldWeatherReducedMotion, this.effectiveWorldWeather.wind, this.worldDaylight);
       } else this._placeAmbience?.suspend();
       if (this.worldNightActive && !document.hidden) {
         if (!this._worldNight) this._worldNight = new WorldNightRenderer();
-        this._worldNight.draw(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.preferences.animationsEnabled && !this.worldWeatherReducedMotion, this.mapImage);
+        this._worldNight.draw(c, this.map, this._worldClock.now(), this.worldDaylight, this.effectiveWorldWeather, this.decorMotionEnabled && !this.worldWeatherReducedMotion, this.mapImage);
       } else this._worldNight?.suspend();
       if(!this.battle&&!document.hidden){
         this._friendTags ||= new FriendTagRenderer();
@@ -3276,7 +3284,7 @@ export default {
       }
       if(!this.battle&&!document.hidden)this._worldSpeech?.draw(c,{players:this.players,map:this.map,camera,scale,position:(id,p)=>this.visualPlayer(id,p,now)},now);
       if(this.fishing && this.fishing.map===this.map && !document.hidden && !this.mapLoading && !this.battle)
-        drawFishing(c,this.fishing,performance.now()-this.fishingReceivedAt,this.preferences.animationsEnabled&&!this.worldWeatherReducedMotion);
+        drawFishing(c,this.fishing,performance.now()-this.fishingReceivedAt,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
       } finally {
         c.restore();
       }

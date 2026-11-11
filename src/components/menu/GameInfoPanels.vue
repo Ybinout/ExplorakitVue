@@ -1,7 +1,7 @@
 <template>
-  <pokedex-panel v-if="active === 'pokedex'" :pokedex="pokedex" :loading="loading" :language="preferences.language" :current-map="currentMap" :current-region="currentRegion" :animations-enabled="preferences.animationsEnabled" @close="$emit('close')" />
-  <quest-journal v-else-if="active==='progress'" :journal="progress.journal" :loading="loading" :language="preferences.language" :read-busy="journalReadBusy" :read-error="journalReadError" @read="$emit('read-journal',$event)" @close="$emit('close')"/>
-  <region-map-panel :friend-members="friendMembers" v-else-if="active === 'minimap'" :flight="progress.flight" :flight-allowed="flightAllowed" @fly="$emit('fly',$event)" :current-map="currentMap" :current-region="currentRegion" :language="preferences.language" :animations-enabled="preferences.animationsEnabled" @close="$emit('close')" />
+  <pokedex-panel v-if="active === 'pokedex'" :pokedex="pokedex" :loading="loading" :language="preferences.language" :current-map="currentMap" :current-region="currentRegion" :animations-enabled="preferences.decorAnimationsEnabled!==false" @close="$emit('close')" />
+  <quest-journal v-else-if="active==='progress'" :journal="progress.journal" :loading="loading" :language="preferences.language" :read-busy="journalReadBusy" :read-error="journalReadError" @locate="$emit('locate-quest',$event)" @read="$emit('read-journal',$event)" @close="$emit('close')"/>
+  <region-map-panel :initial-selection="questMapTarget" :friend-members="friendMembers" v-else-if="active === 'minimap'" :flight="progress.flight" :flight-allowed="flightAllowed" @fly="$emit('fly',$event)" :current-map="currentMap" :current-region="currentRegion" :language="preferences.language" :animations-enabled="preferences.decorAnimationsEnabled!==false" @close="$emit('close')" />
   <badges-panel v-else-if="active === 'badges'" :badges="progress.badges || []" :capture="progress.capture" :loading="loading" :language="preferences.language" @close="$emit('close')" />
   <div v-else-if="active" class="info-backdrop" @mousedown.self="$emit('close')">
     <section class="info-panel" role="dialog" aria-modal="true" :aria-label="panelTitle">
@@ -71,8 +71,8 @@
           </label>
           <label class="option-row">
             <span><strong>{{ tr('animations') }}</strong><small>{{ tr('animationsHelp') }}</small></span>
-            <input class="switch" :checked="preferences.animationsEnabled" type="checkbox" @change="updatePreference('animationsEnabled', $event.target.checked)">
-          </label>
+            <input class="switch" :checked="preferences.decorAnimationsEnabled!==false" type="checkbox" @change="updatePreference('decorAnimationsEnabled', $event.target.checked)">
+          </label><label class="option-row"><span>{{ preferences.language==='en'?'Battle animations':'Animations de combat' }}</span><input class="switch" :checked="preferences.battleAnimationsEnabled!==false" type="checkbox" @change="updatePreference('battleAnimationsEnabled',$event.target.checked)"></label>
           <label class="option-row">
             <span><strong>{{ tr('language') }}</strong><small>{{ tr('languageHelp') }}</small></span>
             <select :value="preferences.language" @change="updatePreference('language', $event.target.value)">
@@ -116,7 +116,7 @@ import FullscreenOptions from './FullscreenOptions.vue';
 export default {
   name: 'GameInfoPanels',
   components: { RegionMapPanel, PokedexPanel, QuestJournal, BadgesPanel, ControllerOptions, FullscreenOptions },
-  props: {
+  props: {questMapTarget:String,
     journalReadBusy:Boolean,journalReadError:String,
     friendMembers:{type:Array,default:()=>[]},
     desktop: Boolean,

@@ -3,14 +3,20 @@
     <section ref="dialog" class="companion-sheet" :data-companion-page="page" :class="{'is-corrupted':pokemon.corruption?.permanent}" role="dialog" aria-modal="true" :aria-label="`Fiche de ${pokemon.name}`">
       <header class="companion-heading">
         <div><span class="companion-kicker">{{ contextLabel }} · {{ position }} / {{ total }}</span><h2>{{ pokemon.name }}</h2></div>
-        <button ref="help" class="companion-help" data-companion-help aria-label="Aide de la fiche Pokémon" @click="showPage('profile');helpOpen=true">?</button>
+        <button ref="help" class="companion-help" data-companion-help aria-label="Aide de la fiche Pokémon" @click="showPage('profile');profileExpanded=true;helpOpen=true">?</button>
         <button ref="close" class="companion-close" aria-label="Fermer la fiche" @click="$emit('close')">×</button>
       </header>
       <nav class="companion-pagination" aria-label="Parcourir les Pokémon"><button data-companion-previous :disabled="position <= 1" @click="$emit('navigate', -1)">‹ Précédent</button><span>{{ position }} / {{ total }}</span><button data-companion-next :disabled="position >= total" @click="$emit('navigate', 1)">Suivant ›</button></nav>
       <nav class="companion-pages" aria-label="Rubriques de la fiche"><button v-for="item in pages" :key="item.key" :data-companion-page-button="item.key" :aria-pressed="page===item.key" @click="showPage(item.key)">{{ item.label }}</button></nav>
       <div ref="content" class="companion-content">
       <section class="companion-coverage"><coverage-grid v-if="page==='offense'||page==='defense'" :key="page" :analysis="coverage" :team="[pokemon]" :defensive="page==='defense'"/></section>
-      <div class="companion-body">
+      <section v-if="page==='profile'" class="companion-overview" data-companion-overview>
+       <div class="overview-identity"><pokemon-portrait :src="$pokemonSprite(pokemon,{animated:true})" :alt="pokemon.name"/><div><strong>Niv. {{ pokemon.level }} <potential-star :value="pokemon.k"/></strong><div class="overview-types"><span v-for="type in pokemon.data.type" :key="type" :style="typeStyle(type)">{{ typeName(type) }}</span></div><p>Talent : <b>{{ abilityName }}</b></p><p>Objet : <b>{{ heldItemName || 'Aucun' }}</b></p></div></div>
+       <dl class="overview-stats"><div v-for="stat in stats" :key="stat.key"><dt>{{ stat.label }}</dt><dd>{{ stat.key==='hp' ? pokemon.currentHp+' / '+pokemon.maxHp : pokemon[stat.key] }}</dd></div></dl>
+       <p class="overview-ability">{{ abilityDescription }}</p>
+       <button class="overview-details" :aria-expanded="profileExpanded" aria-controls="companion-detailed-profile" @click="profileExpanded=!profileExpanded">{{ profileExpanded?'Replier les détails':'Nature, expérience, IV et EV' }} <span aria-hidden="true">{{ profileExpanded?'⌃':'⌄' }}</span></button>
+      </section>
+      <div id="companion-detailed-profile" v-show="page!=='profile'||profileExpanded" class="companion-body">
         <div class="companion-identity">
           <div class="companion-art"><span class="companion-number">N° {{ String(pokemon.spriteId).padStart(3, '0') }}</span><pokemon-portrait :src="$pokemonSprite(pokemon, {animated: true})" :alt="pokemon.truename || pokemon.name" /><span class="companion-level">Niv. {{ pokemon.level }}</span></div>
           <div class="companion-types"><span v-for="type in pokemon.data.type" :key="type">{{ typeNames[type] || type }}</span></div>
@@ -56,7 +62,7 @@
           <dl><div><dt>{{ move.fixedDamage ? 'Dégâts fixes' : 'Puissance' }}</dt><dd>{{ move.powerLabel }}</dd></div><div><dt>Précision</dt><dd>{{ move.accuracy>0?`${move.accuracy} %`:'—' }}</dd></div><div><dt>PP</dt><dd>{{ move.pp ?? '—' }} / {{ move.maxPp ?? '—' }}</dd></div></dl>
           <p class="companion-move-description" data-move-description>{{ move.description }}</p>
         </article>
-        <p v-if="pokemon.heldItemName" class="evolution-help">Objet tenu : <strong>{{ pokemon.heldItemName }}</strong></p>
+        <p v-if="heldItemName" class="evolution-help">Objet tenu : <strong>{{ heldItemName }}</strong></p>
       </section>
       <section class="companion-corruption" aria-labelledby="companion-corruption-title"><h3 id="companion-corruption-title">{{ pokemon.corruption?'Pokémon corrompu':'Aucune corruption' }}</h3><p>{{ mutationRestricted?'Les Pokémon légendaires et fabuleux ne peuvent pas être corrompus.':pokemon.corruption?'Cette mutation est définitive. Les quatre familles de modules sont remplaçables, une par famille.':'Un module corrompt définitivement son porteur. Un seul Pokémon corrompu peut rejoindre ton équipe à la fois.' }}</p><p v-if="pokemon.corruption">{{ Object.keys(pokemon.corruption.modules).length }} / 4 modules · Types actuels : {{ pokemon.data.type.map(t=>typeNames[t]||t).join(' / ') }}</p><p v-if="mutationPenalty" class="corruption-stat-penalty" data-corruption-penalty><strong>−{{ mutationPenalty }} % sur toutes les statistiques</strong><span>PV, Attaque, Défense, Attaque Spéciale, Défense Spéciale et Vitesse. Les valeurs de ta fiche incluent déjà ce malus.</span></p><div class="companion-corruption-grid"><article v-for="family in mutationFamilies" :key="family.key" :data-corruption-equipped="family.key"><bag-item-icon :item-key="corruptionSlot(family.key)?.key || 'cmod_'+({move:'move_53',ability:'ability_levitate',type:'type_fire',combat:'offense_fire'}[family.key])" pocket="corruption"/><div><small>{{ family.label }}</small><strong>{{ corruptionSlot(family.key)?.name || 'Emplacement libre' }}</strong><p v-if="corruptionSlot(family.key)">{{ corruptionEffect(corruptionSlot(family.key)) }}</p><p v-if="corruptionSlot(family.key)" class="corruption-family-penalty">−{{ modulePenalty(family.key) }} % sur toutes les statistiques</p></div><button v-if="corruptionAllowed && !mutationRestricted" :data-corruption-open="family.key" @click="$emit('corruption',{pokemon,family:family.key})">{{ corruptionSlot(family.key)?'Remplacer':'Installer' }}</button></article></div><p v-if="!corruptionAllowed" class="evolution-help">Consultation des modules. Pour modifier un compagnon, ouvre sa fiche hors combat.</p><p class="evolution-help">Les changements de type modifient résistances, faiblesses et bonus offensifs. Le movepool classique dépend toujours de l’espèce.</p></section>
       <section v-if="!readOnly" class="companion-evolutions" aria-labelledby="companion-evolution-title">
@@ -77,7 +83,7 @@
       </div>
       <footer class="companion-footer"><span>{{ footerLabel }}</span></footer>
     </section>
-    <menu-help v-if="helpOpen" :steps="helpSteps" scope=".companion-backdrop" title="TON POKÉMON" @stage="showPage($event.page || 'profile')" @close="helpOpen=false"/>
+    <menu-help v-if="helpOpen" :steps="helpSteps" scope=".companion-backdrop" title="TON POKÉMON" @stage="showPage($event.page || 'profile');profileExpanded=true" @close="helpOpen=false"/>
   </div>
 </template>
 <script>
@@ -92,6 +98,7 @@ import { experienceProgress } from '@/services/pokemonProgress';
 import { localizeTypeName, typeBadgeStyle } from '@/services/pokemonTypes';
 import { localizeAbilityName, localizeMoveName } from '@/services/i18n';
 import { createPokemonReference } from '@/services/pokemonReference';
+import heldItems from '@/data/heldItems.json';
 import referenceData from '@/data/pokemonReference.fr.json';
 import {natures} from '@/services/pokemonNatures';
 import BagItemIcon from './BagItemIcon.vue';
@@ -107,9 +114,10 @@ const stats = [
 export default {
   components: { MenuHelp,CoverageGrid,ExperienceBar, PokemonPortrait, PotentialStar, PokemonGender, OwnedNameEditor, BagItemIcon },
   props: { pokemon: { type: Object, required: true }, position: Number, total: Number, readOnly:Boolean, corruptionAllowed:Boolean, renameAllowed:Boolean,renameBusy:Boolean,renameError:String,renameNotice:String, movesOrderAllowed:Boolean,movesOrderBusy:Boolean,movesOrderError:String,movesOrderNotice:String,contextLabel:{type:String,default:'CARNET DE VOYAGE'}, footerLabel:{type:String,default:'TON ÉQUIPE · TON AVENTURE'}, evolutionOptions: { type: Array, default: () => [] }, evolutionLoading: Boolean, evolutionBusy: Boolean, evolutionError: String, evolutionNotice: String, evolutionAllowed: Boolean },
-  data: () => ({ helpOpen:false,page: 'profile', mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
+  data: () => ({ helpOpen:false,profileExpanded:false,page: 'profile', mode: 'stats', stats, modes: [{ key: 'stats', label: 'Stats' }, { key: 'iv', label: 'Potentiel' }, { key: 'ev', label: 'Entraînement' }], previousFocus: null,
     typeNames: { Grass: 'Plante', Fire: 'Feu', Water: 'Eau', Bug: 'Insecte', Flying: 'Vol', Electric: 'Électrik', Ground: 'Sol', Rock: 'Roche', Ice: 'Glace', Fighting: 'Combat', Psychic: 'Psy', Ghost: 'Spectre', Dark: 'Ténèbres', Steel: 'Acier', Fairy: 'Fée' } }),
   computed: {
+    heldItemName(){const key=this.pokemon.heldItem||this.pokemon.held_item;return heldItems[key]?.name||this.pokemon.heldItemName||key||'';},
     helpSteps(){return [
       {target:'.companion-pagination',title:'Parcourir tes compagnons',text:'Précédent et Suivant passent d’un Pokémon à l’autre. Les rubriques en dessous donnent accès aux capacités, aux couvertures de types et aux autres détails.'},
       {target:'.companion-traits',title:'Son identité et son potentiel',text:'Retrouve sa nature et son talent, dont l’effet est expliqué juste en dessous. Les quatre niveaux d’étoile reflètent son potentiel : plus l’étoile est élevée, plus ce potentiel est grand.'},
@@ -185,6 +193,8 @@ export default {
 };
 </script>
 <style scoped>
+.companion-overview{padding:18px 24px}.overview-identity{display:flex;align-items:center;gap:16px}.overview-identity>.pokemon-portrait{width:96px;height:96px;flex:none}.overview-identity>div{flex:1;min-width:0}.overview-identity strong{display:flex;gap:12px;align-items:center}.overview-identity p{font-size:12px;margin:6px 0;overflow-wrap:anywhere}.overview-types{display:flex;gap:5px;margin-top:8px}.overview-types>span{padding:3px 8px;border-radius:5px;font-size:11px;background:var(--pokemon-type-color);color:var(--pokemon-type-ink)}.overview-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:15px 0}.overview-stats>div{padding:8px 10px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-card)}.overview-stats dt{font-size:10px;color:var(--journal-muted)}.overview-stats dd{font-size:15px;font-weight:700;margin:4px 0 0;font-variant-numeric:tabular-nums}.overview-ability{font-size:12px;line-height:1.5;color:var(--journal-muted)}.overview-details{display:flex;justify-content:space-between;gap:8px;width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--journal-border);border-radius:8px;background:var(--journal-soft);color:var(--journal-ink);font:inherit;cursor:pointer}@media(max-width:600px){.companion-overview{padding:14px 16px}.overview-identity>.pokemon-portrait{width:80px;height:80px}.overview-identity{gap:12px}.overview-stats{gap:6px}.overview-stats dd{font-size:13px}}
+
 .companion-heading .companion-help{width:40px;height:40px;flex:none;cursor:pointer;border:1px solid var(--journal-border);border-radius:50%;background:var(--journal-soft);color:var(--journal-ink);margin-left:auto;font-size:19px;font-weight:700}.companion-heading .companion-help + .companion-close{margin-left:0}.companion-heading{gap:8px}
 .companion-corruption .corruption-stat-penalty{padding:12px 14px;border:1px solid #a98cbb;border-radius:8px;background:var(--journal-selected)}.corruption-stat-penalty strong{display:block;color:var(--journal-heading);font-size:14px}.corruption-stat-penalty span{display:block;margin-top:5px}.companion-corruption-grid .corruption-family-penalty{color:var(--journal-danger);font-weight:600}
 
@@ -228,7 +238,7 @@ export default {
 @media(max-width:600px){.companion-backdrop{padding:10px}.companion-sheet{max-height:calc(100dvh - 20px);border-radius:16px}.companion-heading{padding:14px 16px}.companion-heading h2{font-size:24px}.companion-kicker{font-size:8px;letter-spacing:1px}.companion-body{grid-template-columns:1fr;padding:16px;gap:20px}.companion-identity{display:grid;grid-template-columns:115px 1fr;gap:5px 14px}.companion-art{grid-row:1 / 6;min-height:140px}.companion-art .pokemon-portrait{width:110px;height:110px}.companion-number{font-size:9px;left:8px;top:6px}.companion-level{font-size:10px;bottom:6px;right:8px}.companion-types{margin:0;align-self:end;justify-content:flex-start}.companion-types span{font-size:10px;padding:2px 8px}.companion-species{text-align:left;margin:0;font-size:11px}.companion-next{margin:0}.companion-traits{grid-column:1 / -1;margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}.companion-traits>small{grid-column:1 / -1;grid-row:2}.companion-traits>span:last-child{grid-column:1 / -1}.companion-footer{padding:10px 12px}.companion-footer span{display:none}.companion-radar{max-height:260px}.companion-stat-lines{gap:5px 12px}}
 
 .companion-sheet{display:flex;flex-direction:column;overflow:hidden}.companion-heading,.companion-pagination,.companion-pages,.companion-footer{flex:none}.companion-content{min-height:0;overflow:auto;overscroll-behavior:contain}.companion-pages{display:flex;flex-wrap:wrap;gap:5px;padding:8px 14px;border-bottom:1px solid var(--journal-border);background:var(--journal-soft)}.companion-pages button{flex:1;min-height:44px;min-width:80px;padding:8px;border:1px solid transparent;border-radius:8px;background:none;color:var(--journal-muted);font:600 11px var(--journal-font);cursor:pointer}.companion-pages [aria-pressed=true]{background:var(--journal-card);color:var(--journal-heading);border-color:var(--journal-border)}
-[data-companion-page=profile] .companion-content>:not(.companion-body),[data-companion-page=moves] .companion-content>:not(.companion-pc-moves),[data-companion-page=evolution] .companion-content>:not(.companion-evolutions){display:none}
+[data-companion-page=profile] .companion-content>:not(.companion-body):not(.companion-overview),[data-companion-page=moves] .companion-content>:not(.companion-pc-moves),[data-companion-page=evolution] .companion-content>:not(.companion-evolutions){display:none}
 @media(min-width:921px){
  .companion-sheet{width:min(980px,100%);display:flex;flex-direction:column;overflow:hidden}
  .companion-heading,.companion-pagination,.companion-pages,.companion-footer{flex:none;position:static}
@@ -238,7 +248,7 @@ export default {
  .companion-pages button{flex:1;min-height:38px;padding:8px;border:1px solid transparent;border-radius:8px;background:none;color:var(--journal-muted);font:600 12px var(--journal-font);cursor:pointer}
  .companion-pages [aria-pressed=true]{border-color:var(--journal-progress);background:var(--journal-card);color:var(--journal-heading)}
  .companion-content{min-height:0;overflow:auto;overscroll-behavior:contain}
- [data-companion-page=profile] .companion-content>:not(.companion-body),[data-companion-page=moves] .companion-content>:not(.companion-pc-moves),[data-companion-page=corruption] .companion-content>:not(.companion-corruption),[data-companion-page=evolution] .companion-content>:not(.companion-evolutions){display:none}
+ [data-companion-page=profile] .companion-content>:not(.companion-body):not(.companion-overview),[data-companion-page=moves] .companion-content>:not(.companion-pc-moves),[data-companion-page=corruption] .companion-content>:not(.companion-corruption),[data-companion-page=evolution] .companion-content>:not(.companion-evolutions){display:none}
  .companion-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:18px 22px;gap:24px}
  .companion-identity{display:grid;grid-template-columns:140px minmax(0,1fr);gap:6px 14px;align-content:start}
  .companion-art{grid-row:1 / 6;min-height:160px}.companion-art .pokemon-portrait{width:125px;height:125px}

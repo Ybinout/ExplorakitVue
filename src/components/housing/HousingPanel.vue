@@ -160,7 +160,7 @@
           <section class="house-levels">
             <h3>Une maison, trois niveaux au maximum.</h3>
             <p>
-              Chaque étage possède son modèle et ses dix emplacements de
+              Chaque étage possède son modèle et ses vingt emplacements de
               meubles. Les escaliers sont inclus, et peuvent être déplacés dans
               l’éditeur.
             </p>

@@ -6,6 +6,8 @@ export const DEFAULT_GAME_PREFERENCES = Object.freeze({
   masterVolume: 35,
   textSpeed: 120,
   animationsEnabled: true,
+  decorAnimationsEnabled: true,
+  battleAnimationsEnabled: true,
   language: 'fr',
   themeColor: 'blue',
   themeMode: 'light',
@@ -20,10 +22,15 @@ export function normalizeGamePreferences(value = {}) {
   const textSpeed = [45, 120, 10000].includes(Number(value.textSpeed))
     ? Number(value.textSpeed)
     : DEFAULT_GAME_PREFERENCES.textSpeed;
+  const legacy=value.animationsEnabled!==false;
+  const decor=value.decorAnimationsEnabled===undefined?legacy:value.decorAnimationsEnabled!==false;
+  const battle=value.battleAnimationsEnabled===undefined?legacy:value.battleAnimationsEnabled!==false;
   return {
     masterVolume: Number.isFinite(volume) ? volume : DEFAULT_GAME_PREFERENCES.masterVolume,
     textSpeed,
-    animationsEnabled: value.animationsEnabled !== false,
+    animationsEnabled: decor || battle,
+    decorAnimationsEnabled: decor,
+    battleAnimationsEnabled: battle,
     language: ['fr', 'en'].includes(value.language) ? value.language : DEFAULT_GAME_PREFERENCES.language,
     themeColor: GAME_THEME_COLORS.includes(value.themeColor) ? value.themeColor : 'blue',
     themeMode: GAME_THEME_MODES.includes(value.themeMode) ? value.themeMode : 'light',

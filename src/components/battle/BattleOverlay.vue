@@ -237,20 +237,7 @@
         </div>
 
         <div v-else-if="actionState.attackPanel" data-tutorial-moves class="battle-grid battle-grid-attacks">
-          <button
-            v-for="index in 4"
-            :key="index"
-            type="button"
-            class="battle-choice-btn battle-move-choice"
-            :style="moveButtonStyle(index - 1)"
-            :data-move-type="moveButtonType(index - 1)"
-            :data-keyboard-number="index"
-            :disabled="isMoveUnavailable(index - 1)"
-            @click="submitAction({ action: 'attack', number: index - 1 }, tr('attackRunning'))"
-          >
-            <span>{{ moveButtonLabel(index - 1) }}</span>
-            <small v-if="moveButtonType(index - 1)" class="move-type-label">{{ preferences.language === 'en' ? moveButtonType(index - 1) : typeLabel(moveButtonType(index - 1)) }}</small>
-          </button>
+          <battle-move-button v-for="index in 4" :key="index" :move="moveInspectionName(index-1)" :resolved-type="moveButtonType(index-1)" :reason="moveDisabledReason(index-1)" :data-move-type="moveButtonType(index-1)" :data-keyboard-number="index" button-class="battle-choice-btn battle-move-choice" :style="moveButtonStyle(index-1)" :disabled="isMoveUnavailable(index-1)" @choose="submitAction({action:'attack',number:index-1},tr('attackRunning'))"><span>{{ moveButtonLabel(index-1) }}</span><small v-if="moveButtonType(index-1)" class="move-type-label">{{ typeLabel(moveButtonType(index-1)) }}</small></battle-move-button>
         </div>
 
         <div v-else-if="actionState.pokemonPanel" class="battle-grid battle-grid-pokemon" :data-replacement-choice="replacementChoice ? 'true' : null" aria-label="Pokémon disponibles">
@@ -304,6 +291,7 @@
 </template>
 
 <script>
+import BattleMoveButton from './BattleMoveButton.vue';
 import BattleEntrance from './BattleEntrance.vue';
 import TutorialCoach from '../tutorial/TutorialCoach.vue';
 import BattleSendOut from './BattleSendOut.vue';
@@ -424,7 +412,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: { TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
+  components: {BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
     tutorial:{type:Object,default:null},
     tutorialBusy:Boolean,
@@ -473,7 +461,7 @@ export default {
       visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionNonce:0, conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
       sendOuts: [], trainerSpeech: null,
       phaseReturning: { player:false, wild:false },
-      usableMoveIndexes: null,
+      usableMoveIndexes: null,moveDisabledReasons:[],
       resolvedMoveTypes: null,
       actionState: {
         patient: false,
@@ -1001,6 +989,8 @@ export default {
     moveButtonStyle(index) {
       return {'--move-choice-color':MOVE_COLORS[this.moveButtonType(index).toLowerCase()] || MOVE_COLORS.normal};
     },
+    moveInspectionName(index){return Array.isArray(this.usableMoveIndexes)&&!this.usableMoveIndexes.length&&index===0?'Struggle':this.currentPokemon?.abilities?.[index]||'';},
+    moveDisabledReason(index){if(!this.currentPokemon?.abilities?.[index]||Array.isArray(this.usableMoveIndexes)&&!this.usableMoveIndexes.length&&index===0)return '';return this.moveDisabledReasons?.[index] || (Number(this.currentPokemon?.movePp?.[index])<=0?'Aucun PP.':Array.isArray(this.usableMoveIndexes)&&!this.usableMoveIndexes.includes(index)?'Capacité indisponible.':'');},
     moveButtonLabel(index) {
       if (Array.isArray(this.usableMoveIndexes) && !this.usableMoveIndexes.length && index === 0) return 'Lutte';
       const moveName = this.currentPokemon?.abilities?.[index];
@@ -1237,6 +1227,7 @@ export default {
       this.phaseReturning = { player:false, wild:false };
       this.opponentEffortYield = payload.effortYield || null;
       if(payload.musicKind)this.startMusic(payload.musicKind);
+      this.moveDisabledReasons=payload.moveDisabledReasons||[];
       this.usableMoveIndexes = Array.isArray(payload.usableMoveIndexes) ? payload.usableMoveIndexes : null;
       this.resolvedMoveTypes = Array.isArray(payload.moveTypes) ? payload.moveTypes : null;
       if (!this.player) this.challenge = this.colosseumChallenge;
@@ -1652,7 +1643,7 @@ export default {
       this._pendingBattleField=null;
       this.encounterEnvironment=null;
       this._presentation?.cancel();
-      this.usableMoveIndexes = null;
+      this.usableMoveIndexes = null;this.moveDisabledReasons=[];
       this.resolvedMoveTypes = null;
       this.challenge = null;
       this.capturePolicy = null;
@@ -2100,7 +2091,7 @@ export default {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.battle-choice-btn {
+::v-deep .battle-choice-btn {
   border: 1px solid #3f4e7e;
   border-radius: 10px;
   min-height: 58px;
@@ -2112,13 +2103,13 @@ export default {
   transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
 
-.battle-choice-btn:hover {
+::v-deep .battle-choice-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 12px rgba(9, 16, 38, 0.25);
   filter: brightness(1.04);
 }
 
-.battle-choice-btn:disabled,
+::v-deep .battle-choice-btn:disabled,
 .battle-main-btn:disabled {
   cursor: not-allowed;
   opacity: 0.42;
@@ -2127,7 +2118,7 @@ export default {
   box-shadow: none;
 }
 
-.battle-choice-btn:focus-visible,
+::v-deep .battle-choice-btn:focus-visible,
 .battle-main-btn:focus-visible {
   outline: 3px solid #fff2a8;
   outline-offset: 2px;
@@ -2734,7 +2725,7 @@ export default {
   }
 
   .battle-main-btn,
-  .battle-choice-btn {
+  ::v-deep .battle-choice-btn {
     min-height: 46px;
   }
 

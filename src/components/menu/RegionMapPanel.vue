@@ -89,7 +89,7 @@ import { getMapLocationLabel } from '@/services/mapLocations';
 import { mapLayout, anchoredMapScroll, clampMapZoom } from '@/services/regionMapViewport';
 export default {
   name:'RegionMapPanel',components:{RegionMapTerrain},
-  props:{friendMembers:{type:Array,default:()=>[]},currentMap:String,currentRegion:String,pokemon:Object,entries:{type:Array,default:()=>[]},language:{type:String,default:'fr'},animationsEnabled:{type:Boolean,default:true},flight:{type:Object,default:null},flightAllowed:Boolean},
+  props:{initialSelection:String,friendMembers:{type:Array,default:()=>[]},currentMap:String,currentRegion:String,pokemon:Object,entries:{type:Array,default:()=>[]},language:{type:String,default:'fr'},animationsEnabled:{type:Boolean,default:true},flight:{type:Object,default:null},flightAllowed:Boolean},
   data:()=>({atlas:null,loading:true,error:'',selected:'',zoom:1,dragging:false,viewport:{width:512,height:448}}),
   computed:{
     friendMarkers(){if(!this.atlas)return [];const colors=['#9b5e9d','#35798e','#a27432','#407e54','#a95463','#5d64a0'],offsets=[[12,0],[-12,0],[0,12],[0,-12],[12,12],[-12,12]],counts={};return this.friendMembers.filter(p=>p.online&&p.location).map(p=>{const node=this.atlas.nodes.find(n=>n.id===p.location.nodeId);if(!node)return null;const k=counts[node.id]||0;counts[node.id]=k+1;const offset=offsets[k%offsets.length];return {...p,nodeId:node.id,mode:p.location.mode,x:node.x+offset[0],y:node.y+offset[1],color:p.afk?'#db942e':colors[p.id%colors.length]};}).filter(Boolean);},
@@ -126,11 +126,11 @@ export default {
     shortLabel(id){return id==='start' ? (this.en?'Home village':'Village de départ') : this.label(id);},
     speciesName(id){return this.entries.find(p=>p.id===id)?.name || `#${id}`;},
     methodLabel(method){return ({grass:this.en?'Tall grass':'Hautes herbes',fishing:this.en?'Fishing · Fishing Rod required':'Pêche · Canne nécessaire',cave:this.en?'Cave encounters':'Rencontres en grotte'})[method];},
-    async load(){this.loading=true;this.error='';try{const {data}=await api.get('/world-map');if(this.disposed)return;this.atlas=data;this.selected=this.pokemon ? this.habitatNodes[0]?.id || '' : this.currentNode?.id || '';}catch{if(!this.disposed)this.error=this.en?'The map could not be loaded.':'Impossible de charger la carte.';}finally{if(!this.disposed){this.loading=false;this.$nextTick(this.observeViewport);}}},
+    async load(){this.loading=true;this.error='';try{const {data}=await api.get('/world-map');if(this.disposed)return;this.atlas=data;this.selected=(this.initialSelection&&(this.atlas.nodes.find(n=>n.id===this.initialSelection)?.id||this.atlas.aliases?.[this.initialSelection])) || (this.pokemon ? this.habitatNodes[0]?.id || '' : this.currentNode?.id || '');}catch{if(!this.disposed)this.error=this.en?'The map could not be loaded.':'Impossible de charger la carte.';}finally{if(!this.disposed){this.loading=false;this.$nextTick(this.observeViewport);}}},
     showCurrent(){if(this.currentNode){this.selected=this.currentNode.id;this.centerOn(this.currentNode);}},
     observeViewport(){
       this._resizeObserver?.disconnect();window.removeEventListener('resize',this.measureViewport);
-      if(!this.$refs.mapScroll)return;this.measureViewport();
+      if(!this.$refs.mapScroll)return;this.measureViewport();if(this.initialSelection)this.centerOn(this.selectedNode);
       if(window.ResizeObserver){this._resizeObserver=new ResizeObserver(this.measureViewport);this._resizeObserver.observe(this.$refs.mapScroll);}
       else window.addEventListener('resize',this.measureViewport);
     },

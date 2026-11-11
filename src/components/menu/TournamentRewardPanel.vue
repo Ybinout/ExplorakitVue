@@ -53,7 +53,7 @@
         </section>
         <p v-if="error" class="reward-error" role="alert">{{ error }}</p>
       </div>
-      <footer><span>Un choix parmi {{ offer.choices.length }} · aucun gain d’XP</span><button v-if="offer.canSkip || offer.canDecline" data-reward-skip class="reward-decline" :disabled="busy" @click="$emit('choose',{offerId:offer.id,skip:true})">Passer · +1 relance</button><button v-if="!offer.canSkip" class="reward-confirm" data-reward-confirm :disabled="busy || !canConfirm" @click="confirm">{{ busy?'Confirmation…':selected?.kind==='pact'?'Accepter le pacte':['run','nextBattle'].includes(selected?.target)?'Activer la carte':selected?.target==='account'?'Récupérer la récompense':'Appliquer le soin' }}</button></footer>
+      <footer><span>Un choix parmi {{ offer.choices.length }} · cette carte ne donne pas d’XP</span><button v-if="offer.canSkip || offer.canDecline" data-reward-skip class="reward-decline" :disabled="busy" @click="$emit('choose',{offerId:offer.id,skip:true})">Passer · +1 relance</button><button v-if="!offer.canSkip" class="reward-confirm" data-reward-confirm :disabled="busy || !canConfirm" @click="confirm">{{ busy?'Confirmation…':selected?.kind==='pact'?'Accepter le pacte':['run','nextBattle'].includes(selected?.target)?'Activer la carte':selected?.target==='account'?'Récupérer la récompense':'Appliquer le soin' }}</button></footer>
     </section>
   </div>
 </template>
