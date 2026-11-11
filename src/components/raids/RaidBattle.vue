@@ -136,7 +136,7 @@ export default {
     },
     hasRelayTarget() {return this.frame.relayTargets?this.frame.relayTargets.length>0:this.frame.allies.some((p,i)=>i!==this.slot&&!p.ready&&p.currentHp>0&&!p.withdrawn);},
     canAct() {
-      return !this.loading && !this.playing && !this.focusPhase && !this.busy && this.current?.canControl && !this.current.ready && this.current.currentHp > 0 && !this.current.withdrawn && (this.frame.currentSlot===undefined||this.frame.currentSlot===this.slot) && (!this.frame.soloClock || this.frame.soloClock.slot===this.slot);
+      return !this.frame.finished && !this.loading && !this.playing && !this.focusPhase && !this.busy && this.current?.canControl && !this.current.ready && this.current.currentHp > 0 && !this.current.withdrawn && (this.frame.currentSlot===undefined||this.frame.currentSlot===this.slot) && (!this.frame.soloClock || this.frame.soloClock.slot===this.slot);
     },
     needsChoice() {
       return this.frame.allies.some(p => p.canControl && !p.ready && p.currentHp > 0 && !p.withdrawn);

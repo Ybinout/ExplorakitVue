@@ -287,7 +287,7 @@
           </button>
         </div>
 
-        <div v-else class="battle-text-box battle-text-box-muted">{{ tr('chooseAction') }}</div>
+        <div v-else class="battle-text-box battle-text-box-muted">{{ finishing ? (preferences.language==='en'?'Battle ended.':'Combat terminé.') : canChooseAction ? tr('chooseAction') : tr('resolvingTurn') }}</div>
         </template>
       </div>
 
@@ -960,6 +960,7 @@ export default {
     async finishPresentation() {
       this.finishing = true;
       this.canAct = false;
+      this.actionState.text = this.preferences.language==='en'?'Battle ended.':'Combat terminé.';
       await this._presentation?.drain();
       await this._experiencePlayback;
     },
@@ -1054,6 +1055,7 @@ export default {
       this.showMessage(message, true);
     },
     requestAction(request) {
+      if(this.finishing)return;
       const data = typeof request === 'string' ? { message:request } : request || {};
       if(this.tutorialSubmittedPhase===this.tutorialPhase)this.tutorialSubmittedPhase=null;
       this.replacementChoice = Boolean(data.replacement);

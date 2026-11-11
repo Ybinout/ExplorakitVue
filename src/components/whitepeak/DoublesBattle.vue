@@ -34,7 +34,7 @@
    </template>
    <div v-if="frame.finished&&!playing" class="double-finish"><h2>{{ frame.winner===null?'Match terminé':frame.winner===frame.side?'Victoire !':'Défaite' }}</h2><p>L’équipe d’Aventure et ses objets sont conservés. Ce duel ne rapporte pas d’XP.</p><button :disabled="!settled&&!spectator" @click="$emit('close')">{{ settled||spectator?'Retour dans la salle':'Sauvegarde du résultat…' }}</button></div>
   </div>
-  <div v-if="askForfeit" class="double-confirm"><section><h3>Abandonner ce duel ?</h3><p>Le camp adverse remportera le combat et les mises prévues.</p><button @click="askForfeit=false">Continuer</button><button @click="askForfeit=false;$emit('forfeit')">Abandonner</button></section></div>
+  <div v-back="()=>askForfeit=false" v-if="askForfeit" class="double-confirm"><section><h3>Abandonner ce duel ?</h3><p>Le camp adverse remportera le combat et les mises prévues.</p><button @click="askForfeit=false">Continuer</button><button @click="askForfeit=false;$emit('forfeit')">Abandonner</button></section></div>
   <slot name="social-chat"/>
  </section>
 </template>

@@ -26,13 +26,26 @@ export class OverlayBackStack {
  }
  destroy(){this.host.removeEventListener('popstate',this.onPop);this.entries=[];}
 }
+let overlayOrder = 0;
+export function topGameOverlay(root) {
+ let best=null,score=-Infinity;
+ for(const el of root.querySelectorAll('[data-game-overlay]')){
+  const value=el._riftmonBackValue;
+  if(!value||value.active===false||!el.getClientRects().length||el.closest('[inert],[hidden],[aria-hidden="true"]')||getComputedStyle(el).visibility==='hidden')continue;
+  let z=0,depth=0;for(let p=el;p&&p!==root;p=p.parentElement){z=Math.max(z,parseInt(getComputedStyle(p).zIndex,10)||0);depth++;}
+  const rank=z*100000+depth*100+(el._riftmonBackOrder||0)/100000;
+  if(rank>score){best=el;score=rank;}
+ }
+ return best;
+}
 export function backDirective(stack){
  const update=(el,binding)=>{
   const value=typeof binding.value==='function'?{close:binding.value,active:true}:binding.value||{};
   el._riftmonBackValue=value;
+  el.setAttribute('data-game-overlay','');
   if(value.active!==false&&typeof value.close==='function'){
-   if(!el._riftmonBackRelease)el._riftmonBackRelease=stack.add(()=>el._riftmonBackValue.close(),()=>el.isConnected&&el._riftmonBackValue.active!==false&&(el.tagName!=='DIALOG'||el.open));
+   if(!el._riftmonBackRelease){el._riftmonBackOrder=++overlayOrder;el._riftmonBackRelease=stack.add(()=>el._riftmonBackValue.close(),()=>el.isConnected&&el._riftmonBackValue.active!==false&&(el.tagName!=='DIALOG'||el.open));}
   }else{el._riftmonBackRelease?.();el._riftmonBackRelease=null;}
  };
- return{inserted:update,update,unbind(el){el._riftmonBackRelease?.();delete el._riftmonBackRelease;delete el._riftmonBackValue;}};
+ return{inserted:update,update,unbind(el){el._riftmonBackRelease?.();delete el._riftmonBackRelease;delete el._riftmonBackValue;el.removeAttribute('data-game-overlay');}};
 }

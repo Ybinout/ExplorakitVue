@@ -9,7 +9,7 @@
       </button>
     </div>
     <p v-if="!state.supported">{{ english ? 'Fullscreen is unavailable in this browser.' : 'Le plein écran est indisponible dans ce navigateur.' }}</p>
-    <p v-else>{{ english ? 'Press P to switch fullscreen on or off. Esc also returns to windowed mode.' : 'Appuie sur P pour activer ou quitter le plein écran. Échap permet aussi de revenir en fenêtre.' }}</p>
+    <p v-else>{{ english ? 'P toggles fullscreen. Esc closes the open menu first, then returns to windowed mode. M opens the menu; ZQSD or arrow keys navigate and Enter confirms.' : 'P active ou quitte le plein écran. Échap ferme d’abord le menu ouvert, puis revient en fenêtre. M ouvre le menu ; ZQSD ou les flèches naviguent et Entrée valide.' }}</p>
     <p v-if="state.error" class="fullscreen-error" role="alert">{{ state.error }}</p>
   </fieldset>
 </template>

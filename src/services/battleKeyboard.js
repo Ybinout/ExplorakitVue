@@ -47,15 +47,21 @@ function focus(root, node) {
   node.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'});
 }
 
+export function battleNumber(event) {
+  return /^Digit[1-4]$/.test(event.code) || /^Numpad[1-4]$/.test(event.code) ? Number(event.code.slice(-1)) : /^[1-4]$/.test(event.key) ? Number(event.key) : 0;
+}
 export function handleBattleKeyboard(event, root, tutorial = null) {
   if (!root || !visible(root) || event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey
     || event.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[data-social-surface]')) return false;
   const { numbered, navigation } = controls(root, tutorial);
-  const digit = /^Digit[1-4]$/.test(event.code) || /^Numpad[1-4]$/.test(event.code) ? Number(event.code.slice(-1)) : /^[1-4]$/.test(event.key) ? Number(event.key) : 0;
-  if (digit && !event.repeat) {
+  const digit = battleNumber(event);
+  if (digit) {
+    // AZERTY Digit4 emits an apostrophe: never leak it to Firefox Quick Find,
+    // including while resolving, after a KO, or when the fourth action is disabled.
+    event.preventDefault();event.stopPropagation();
     const button = numbered[digit - 1];
-    if (!enabled(button)) return false;
-    event.preventDefault();event.stopPropagation();focus(root,button);button.click();return true;
+    if (event.repeat || !enabled(button)) return true;
+    focus(root,button);button.click();return true;
   }
   const direction = ({z:'up',q:'left',s:'down',d:'right',arrowup:'up',arrowleft:'left',arrowdown:'down',arrowright:'right'})[String(event.key||'').toLowerCase()];
   if (direction) {

@@ -19,6 +19,7 @@ export function attachGameFullscreen(root, toolbar, onChange) {
     (nav.platform === 'MacIntel' && nav.maxTouchPoints > 1) || nav.userAgentData?.mobile === true);
   let destroyed = false;
   let resizeFrame = 0;
+  const unlock = () => {try {nav.keyboard?.unlock?.();}catch{/* Optional API. */}};
   const setSize = (key, value) => {
     if (root.style.getPropertyValue(key) !== value) root.style.setProperty(key, value);
   };
@@ -35,6 +36,9 @@ export function attachGameFullscreen(root, toolbar, onChange) {
     setSize(fullscreen ? '--game-fullscreen-width' : '--game-window-width', `${width}px`);
     setSize('--game-toolbar-height', `${toolbarHeight}px`);
     setSize('--game-fullscreen-toolbar-height', `${toolbarHeight}px`);
+    // Sprite anchors follow the same scale as the world instead of staying at
+    // their windowed pixel size on large fullscreen displays.
+    setSize('--game-scene-scale', `${Math.max(1,width/WORLD_WIDTH)}`);
   };
   // Defer geometry writes out of ResizeObserver delivery (notably WebKit).
   // Only actual notifications queue a frame; this is not an animation loop.
@@ -47,6 +51,7 @@ export function attachGameFullscreen(root, toolbar, onChange) {
   };
   const sync = () => {
     if (destroyed) return;
+    if(current()!==root)unlock();
     onChange({ active: current() === root, supported, desktop });
     scheduleResize();
   };
@@ -63,11 +68,23 @@ export function attachGameFullscreen(root, toolbar, onChange) {
     toggle() {
       if (destroyed || !supported) return Promise.reject(new Error('Fullscreen unavailable'));
       try {
-        return Promise.resolve(current() === root ? exit.call(doc) : request.call(root)).finally(sync);
+        if(current()===root){unlock();return Promise.resolve(exit.call(doc)).finally(sync);}
+        // Current Firefox/Safari use FullscreenOptions; Chromium also exposes
+        // navigator.keyboard. Older browsers ignore the optional dictionary.
+        const enter=root.requestFullscreen ? request.call(root,{keyboardLock:'browser',navigationUI:'hide'}) : request.call(root);
+        return Promise.resolve(enter).catch(error=>{
+          if(error?.name==='NotSupportedError'&&root.requestFullscreen)return request.call(root,{navigationUI:'hide'});
+          throw error;
+        }).then(async()=>{
+          if(destroyed||current()!==root)return;
+          try {await nav.keyboard?.lock?.(['Escape']);} catch {/* Fullscreen remains usable without keyboard lock. */}
+        }).finally(sync);
       } catch (error) { sync(); return Promise.reject(error); }
     },
+    exit() {unlock();return current()===root?Promise.resolve(exit.call(doc)).finally(sync):Promise.resolve();},
     destroy() {
       destroyed = true;
+      unlock();
       if (resizeFrame) doc.defaultView.cancelAnimationFrame(resizeFrame);
       observer.disconnect();
       doc.removeEventListener('fullscreenchange', sync);
@@ -77,6 +94,7 @@ export function attachGameFullscreen(root, toolbar, onChange) {
       root.style.removeProperty('--game-fullscreen-toolbar-height');
       root.style.removeProperty('--game-window-width');
       root.style.removeProperty('--game-toolbar-height');
+      root.style.removeProperty('--game-scene-scale');
       if (current() === root && exit) {
         try { Promise.resolve(exit.call(doc)).catch(() => {}); } catch (_) { /* Browser exits when the root is removed. */ }
       }

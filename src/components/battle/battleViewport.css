@@ -185,6 +185,19 @@
   margin-left:max(-25px,calc(var(--sprite-visible-size) * 1.8 * 1.27 / 2 - 20% + 4px));
 }
 
+/* Keep opaque sprite proportions relative to the expanded fullscreen field. */
+.game-root.is-fullscreen:not(.is-mobile) .game-stage .battle-position-player {
+  --sprite-visible-size:calc(118px * var(--game-scene-scale,1));
+}
+.game-root.is-fullscreen:not(.is-mobile) .game-stage .battle-position-wild {
+  --sprite-visible-size:calc(120px * var(--game-scene-scale,1));
+}
+.game-root.is-fullscreen:not(.is-mobile) .raid-battle { max-width:100%; }
+.game-root.is-fullscreen:not(.is-mobile) .raid-boss { max-width:calc(360px * var(--game-scene-scale,1)); max-height:calc(360px * var(--game-scene-scale,1)); }
+.game-root.is-fullscreen:not(.is-mobile) .raid-ally { max-width:calc(470px * var(--game-scene-scale,1)); max-height:calc(390px * var(--game-scene-scale,1)); }
+.game-root.is-fullscreen:not(.is-mobile) .double-battle { max-width:100%; }
+.game-root.is-fullscreen:not(.is-mobile) .double-combatant { width:clamp(120px,22%,calc(230px * var(--game-scene-scale,1))); --sprite-height:clamp(70px,15vh,calc(180px * var(--game-scene-scale,1))); }
+
 /* Short desktop viewports need more field space for the larger back sprites. */
 @media (min-width:921px) and (max-height:700px) {
   .game-root:not(.is-mobile) .battle-social-available>.battle-action-shell { grid-template-rows:32px auto;gap:4px 10px;padding:6px 10px; }

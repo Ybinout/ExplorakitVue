@@ -56,7 +56,7 @@ export class GamepadReader {
 }
 
 const CONTROL_SELECTOR = 'button, a[href], input:not([type="hidden"]), select, textarea, summary, [role="button"][tabindex], [role="tab"][tabindex]';
-const SCOPE_SELECTOR = '[role="dialog"], [role="alertdialog"], [data-gamepad-scope], .battle-action-shell, .battle-grid, .menu-dropdown, .team-panel, .appearance-panel, .interaction-card, .chat-popup';
+const SCOPE_SELECTOR = '[role="dialog"], [role="alertdialog"], [data-game-overlay], [data-gamepad-scope], .battle-action-shell, .battle-grid, .menu-dropdown, .team-panel, .appearance-panel, .interaction-card, .chat-popup';
 export function gamepadVisible(element) {
   if (!element || element.closest('[inert], [aria-hidden="true"], [hidden]') || element.matches(':disabled, [aria-disabled="true"]')) return false;
   const rect = element.getBoundingClientRect(), style = getComputedStyle(element);
@@ -75,11 +75,12 @@ export function gamepadScope(root) {
   }
   return best;
 }
-const isBackControl = node => node.matches('.close-button, .panel-close, .team-close, [data-gamepad-back], button[aria-label="Fermer"], button[aria-label="Close"]');
+const isBackControl = node => node.matches('.close-button, .panel-close, .team-close, .region-close, [data-gamepad-back], button[aria-label^="Fermer"], button[aria-label^="Close"]');
 export function gamepadControls(scope) {
   const nodes = [...scope.querySelectorAll(CONTROL_SELECTOR)].filter(n => gamepadVisible(n) && !n.matches('.battle-sound-toggle'));
   // Start on an action, not an icon to close the panel or mute the battle.
-  return nodes.filter(n => !isBackControl(n)).concat(nodes.filter(isBackControl));
+  const text=n=>n.matches('textarea,input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"])');
+  return nodes.filter(n=>!isBackControl(n)&&!text(n)).concat(nodes.filter(n=>!isBackControl(n)&&text(n)),nodes.filter(isBackControl));
 }
 function focusControl(node, root) {
   root.querySelectorAll('.gamepad-focus').forEach(n => n.classList.remove('gamepad-focus'));
@@ -89,7 +90,7 @@ function focusControl(node, root) {
 }
 export function moveGamepadFocus(root, direction) {
   const scope = gamepadScope(root), nodes = gamepadControls(scope), active = document.activeElement;
-  if (!nodes.includes(active)) { focusControl(nodes[0], root); return; }
+  if (!nodes.includes(active)||(isBackControl(active)&&!active.classList.contains('gamepad-focus'))) { focusControl(nodes[0], root); return; }
   // Native selects/sliders remain usable without opening a platform popup.
   const delta = ['left', 'up'].includes(direction) ? -1 : 1;
   if (active.matches('select') && ['left', 'right'].includes(direction)) {

@@ -465,7 +465,9 @@
 </template>
 
 <script>
-import {handleBattleKeyboard} from '@/services/battleKeyboard';
+import {handleBattleKeyboard,battleNumber} from '@/services/battleKeyboard';
+import {handleMenuKeyboard,typingIn,consumeGameKey} from '@/services/menuKeyboard';
+import {topGameOverlay} from '@/services/overlayBackStack';
 import {loadNavbarShortcuts,saveNavbarShortcuts} from '@/services/navbarShortcuts';
 import FishingPrompt from './world/FishingPrompt.vue';
 import { drawFishing } from '@/services/fishingRenderer';
@@ -2373,6 +2375,27 @@ export default {
         this._battleKeyboardActivity=Date.now();this.socket.emit('presence:activity');
       }
     },
+    handleBattleBrowserKey(event) {
+      if(this.battle&&battleNumber(event)&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&!event.isComposing&&!typingIn(event))consumeGameKey(event);
+    },
+    handleMenuKeys(event) {
+      if(event.defaultPrevented||event.isComposing||event.ctrlKey||event.metaKey||event.altKey)return;
+      const overlay=topGameOverlay(this.$el);
+      if(event.key==='Escape'){
+        if(overlay){consumeGameKey(event);this.releaseAllMovementKeys();if(!event.repeat)overlay._riftmonBackValue.close();return;}
+        const raid=this.$el.querySelector('.raid-battle')?.__vue__;
+        if(raid&&(raid.targeting||raid.panel==='moves')){consumeGameKey(event);if(!event.repeat){raid.cancelTarget();raid.panel='home';}return;}
+        const double=this.$el.querySelector('.double-battle')?.__vue__;
+        if(double&&(double.selectedMove||double.reserves)){consumeGameKey(event);if(!event.repeat){double.selectedMove=null;double.reserves=false;}return;}
+        const battle=this.$refs.battleOverlay;
+        if(this.battle&&battle&&['attackPanel','bagPanel','pokemonPanel'].some(k=>battle.actionState[k])){consumeGameKey(event);if(!event.repeat)battle.closePanels();return;}
+        if(this.fullscreenState.active){consumeGameKey(event);if(!event.repeat)this._fullscreen?.exit().catch(()=>{});return;}
+      }
+      if(overlay&&handleMenuKeyboard(event,overlay)){this.releaseAllMovementKeys();return;}
+      if(!this.battle&&!overlay&&!typingIn(event)&&String(event.key).toLowerCase()==='m'){
+        consumeGameKey(event);if(!event.repeat)this.toggleMenu();
+      }
+    },
     async openDamageCalculator(){this.releaseAllMovementKeys();this.isMenuOpen=false;this.closeLegacyPanels();this.closeInfoPanel();await this.loadTeamPokemons();this.damageCalculatorOpen=true;},
     calculateStrategy(payload){return new Promise((resolve,reject)=>{if(!this.socket?.connected){reject(Error('Connexion interrompue.'));return;}this.socket.timeout(10000).emit('strategy:calculate',payload,(error,response)=>{if(error)reject(Error('Le serveur ne répond pas. Réessaie.'));else if(!response?.success)reject(Error(response?.message||'Simulation indisponible.'));else resolve(response.result);});});},
     closeLegacyPanels() {
@@ -3870,6 +3893,7 @@ export default {
 
 
     this.socket.on('requestAction', (data) => {
+      if(!this.battle||this.pendingBattleResult||this.battleResult)return;
       if (this.isDrift) this.driftTurnId = data?.turnId;
       this.$refs.battleOverlay?.presentEvent('requestAction', data || { message:'Choisis une action.' });
     });
@@ -3919,7 +3943,9 @@ export default {
     // autoConnect disabled. Both worlds connect after registering listeners.
     this.socket.connect();
     window.addEventListener('keydown', this.handleKeydown);
+    window.addEventListener('keydown', this.handleMenuKeys, true);
     window.addEventListener('keydown', this.handleBattleKeys, true);
+    window.addEventListener('keypress', this.handleBattleBrowserKey, true);
     window.addEventListener(GAMEPAD_EVENT, this.handleGamepad);
     window.addEventListener('keyup', this.handleKeyup);
     window.addEventListener('mousedown', this.handleOutsideMenuClick);
@@ -4003,7 +4029,9 @@ export default {
     this.stopMovementLoop();
     this.stopGameLoop();
     window.removeEventListener('keydown', this.handleKeydown);
+    window.removeEventListener('keydown', this.handleMenuKeys, true);
     window.removeEventListener('keydown', this.handleBattleKeys, true);
+    window.removeEventListener('keypress', this.handleBattleBrowserKey, true);
     window.removeEventListener(GAMEPAD_EVENT, this.handleGamepad);
     window.removeEventListener('keyup', this.handleKeyup);
     window.removeEventListener('mousedown', this.handleOutsideMenuClick);
