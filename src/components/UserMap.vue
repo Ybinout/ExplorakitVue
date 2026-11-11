@@ -137,14 +137,18 @@
               <template v-else-if="item.category==='corruption'"><button class="bag-use-button" data-use-corruption-module :disabled="isDrift || !!battle || superTournament.active || mapLoading" @click="openCorruptionItem(item)">Installer sur un Pokémon</button><small class="bag-use-hint">Usage unique · le module est consommé à l’installation. Un seul porteur corrompu dans l’équipe.</small></template>
               <machine-item-use v-else-if="item.category==='machine'" :key="item.key" :item="item" :team="teamPokemons" :busy="medicineBusy || teamLoading" :allowed="canUseBagItem(item)" @use="useBagMachine" />
               <template v-else-if="isBagConsumable(item)">
-                <select data-medicine-target :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="$set(medicineTargets, item.key, $event.target.value)">
+                <select data-medicine-target :disabled="medicineBusy || teamLoading || !canUseBagItem(item)" :value="medicineTargets[item.key] || ''" :aria-label="`Utiliser ${item.name} sur un Pokémon`" @change="setMedicineTarget(item, $event.target.value)">
                   <option value="">Choisir un Pokémon…</option>
                   <option v-for="p in teamPokemons" :key="p.uuid" :value="p.uuid" :disabled="!canReceiveMedicine(item, p)">{{ medicineTargetLabel(item,p) }}</option>
+                </select>
+                <select v-if="item.fieldUse?.selectMove" data-medicine-move :disabled="medicineBusy || teamLoading || !canUseBagItem(item) || !medicineTargets[item.key]" :value="medicineMoveSlots[item.key] ?? ''" :aria-label="preferences.language==='en'?'Move to restore PP to':'Capacité à restaurer'" @change="$set(medicineMoveSlots,item.key,$event.target.value===''?null:Number($event.target.value))">
+                  <option value="">{{ preferences.language==='en'?'Choose a move…':'Choisir une capacité…' }}</option>
+                  <option v-for="move in medicineMoves(item)" :key="move.slot" :value="move.slot" :disabled="move.current>=move.max">{{ move.name }} · {{ move.current }}/{{ move.max }} PP</option>
                 </select>
                 <small v-if="(item.fieldUse?.effort||item.fieldUse?.ivReroll||item.fieldUse?.effortReset||item.fieldUse?.abilityReroll||item.fieldUse?.natureReroll) && medicineTargets[item.key]" class="bag-use-hint" data-effort-preview>{{ effortPreview(item) }}</small>
                 <label v-if="item.fieldUse?.effort?.amount>0&&item.quantity>=5" class="bag-use-hint">Quantité <select data-medicine-quantity :value="medicineQuantities[item.key]||1" :disabled="medicineBusy" @change="$set(medicineQuantities,item.key,Number($event.target.value))"><option v-for="n in [1,5,10,25].filter(n=>n<=item.quantity)" :key="n" :value="n">×{{ n }}</option></select><small>Seules les vitamines utiles seront consommées.</small></label>
                 <label v-if="item.fieldUse?.levelUp" class="bag-use-hint bag-candy-quantity">Quantité <input data-candy-quantity type="number" min="1" :max="candyLimit(item)" :value="medicineQuantities[item.key]||1" :disabled="medicineBusy||!medicineTargets[item.key]" @input="$set(medicineQuantities,item.key,Math.max(1,Math.min(candyLimit(item),Number($event.target.value)||1)))"><small>Maximum niveau {{ item.fieldUse.maxLevel }}. Seuls les bonbons utiles seront consommés.</small></label>
-                <div class="bag-medicine-buttons"><button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagItem(item) || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key]))" @click="useBagMedicine(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button><button v-if="item.fieldUse?.ivReroll || item.fieldUse?.natureReroll" class="bag-use-button bag-auto-button" data-open-automatic-training :disabled="medicineBusy||teamLoading||!canUseBagItem(item)" @click="openAutomaticTraining(item)">↻ Utiliser automatiquement</button></div>
+                <div class="bag-medicine-buttons"><button class="bag-use-button" :disabled="medicineBusy || teamLoading || !canUseBagItem(item) || !canReceiveMedicine(item, teamPokemons.find(p => p.uuid === medicineTargets[item.key])) || !canUseMedicineMove(item)" @click="useBagMedicine(item)">{{ medicineBusy ? 'Utilisation…' : 'Utiliser' }}</button><button v-if="item.fieldUse?.ivReroll || item.fieldUse?.natureReroll" class="bag-use-button bag-auto-button" data-open-automatic-training :disabled="medicineBusy||teamLoading||!canUseBagItem(item)" @click="openAutomaticTraining(item)">↻ Utiliser automatiquement</button></div>
                 <small v-if="!canUseBagItem(item)" class="bag-use-hint">{{ isDrift && driftState?.phase !== 'exploration' ? 'Soins automatiques entre les combats du tournoi.' : 'Disponible hors combat.' }}</small>
                 <small v-else-if="!teamPokemons.some(p => canReceiveMedicine(item, p))" class="bag-use-hint">{{ item.category === 'evolution' ? 'Aucun Pokémon compatible et apte dans ton équipe. Soigne les Pokémon K.O. avant de les faire évoluer.' : 'Aucun Pokémon n’a besoin de cet objet.' }}</small>
               </template>
@@ -604,7 +608,7 @@ import {drawEarlyGrassGuide} from '@/services/earlyGrassGuide';
 import { trainerPaletteKey, normalizeTrainerPalette, themedTrainerSheet, trainerPalettePreview, supportsTrainerPalette } from '@/services/trainerPalette';
 import { GAMEPAD_EVENT } from '@/services/gamepad';
 import { attachGameFullscreen } from '@/services/gameFullscreen';
-import { localizeAbilityName, translate } from '@/services/i18n';
+import { localizeAbilityName, localizeMoveName, translate } from '@/services/i18n';
 import {natureLabel} from '@/services/pokemonNatures';
 import { getMapLocationLabel } from '@/services/mapLocations';
 import { WorldMusic } from '@/services/worldMusic';
@@ -647,7 +651,7 @@ export default {
       clubControl:null,clubRosters:null,clubTrainers:[],
       doublesFrame:null,superTournament:{active:false},tournamentPanel:null,tournamentBusy:false,tournamentError:'',tournamentRewardError:'',
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
-      repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineQuantities:{}, trainingFeedback:null, heldTargets:{}, heldPickerUuid:null,
+      repelSteps:0, medicineBusy:false, medicineNotice:'', medicineTargets: {}, medicineMoveSlots:{}, medicineQuantities:{}, trainingFeedback:null, heldTargets:{}, heldPickerUuid:null,
       endSentences: null,
       flight: null, voidEnding:null, mirrorRift:null, mirrorScene:null, openingScene:null,
       experienceLab:null,corruptedHeldWorkshop:null,corruptionWorkshop:null,corruptionInstall:null,
@@ -1109,6 +1113,20 @@ export default {
       const statuses = { poison: 'empoisonné', badly_poison: 'empoisonné', burn: 'brûlé', paralyze: 'paralysé', sleep: 'endormi', freeze: 'gelé' };
       return pokemon.currentHp <= 0 ? pokemon.riftFainted ? ' · K.O. protégé' : ' · K.O.' : statuses[pokemon.status] ? ` · ${statuses[pokemon.status]}` : '';
     },
+    setMedicineTarget(item, uuid) {
+      this.$set(this.medicineTargets,item.key,uuid);
+      this.$set(this.medicineMoveSlots,item.key,null);
+    },
+    medicineMoves(item) {
+      const pokemon=this.teamPokemons.find(p=>p.uuid===this.medicineTargets[item.key]);
+      return (pokemon?.abilities||[]).map((name,slot)=>{
+        const max=moveLearningData[name]?.pp||1;
+        return {slot,name:localizeMoveName(name,this.preferences.language),current:pokemon.movePp?.[slot]??max,max};
+      });
+    },
+    canUseMedicineMove(item) {
+      return !item.fieldUse?.selectMove || this.medicineMoves(item).some(move=>move.slot===this.medicineMoveSlots[item.key]&&move.current<move.max);
+    },
     effortPreview(item) {
       const p=this.teamPokemons.find(p=>p.uuid===this.medicineTargets[item.key]),ev=p?.ev || {};
       const names={hp:'PV',attack:'Attaque',defense:'Défense',specialAttack:'Attaque Spéciale',specialDefense:'Défense Spéciale',speed:'Vitesse'};
@@ -1233,7 +1251,7 @@ export default {
     async useBagMedicine(item, ivConfirmation=null, targetUuid=null) {
       const pokemonUuid = targetUuid || this.medicineTargets[item.key];
       const pokemon = this.teamPokemons.find(p => p.uuid === pokemonUuid);
-      if (this.trainingFeedback || this.medicineBusy || !this.canUseBagItem(item) || !this.canReceiveMedicine(item, pokemon)) return;
+      if (this.trainingFeedback || this.medicineBusy || !this.canUseBagItem(item) || !this.canReceiveMedicine(item, pokemon) || !this.canUseMedicineMove(item)) return;
       if(item.fieldUse?.potentialIncrease&&!ivConfirmation){this.trainingFeedback={kind:'confirm',pokemonUuid,itemKey:item.key,pokemonName:pokemon.name,stat:'potential',before:pokemon.k};return;}
       const stat=item.fieldUse?.ivReroll;
       if(stat && pokemon.iv?.[stat]>=26 && !ivConfirmation){
@@ -1246,7 +1264,7 @@ export default {
       this.medicineBusy = true;
       try {
         const event = item.category === 'evolution' ? (this.isDrift ? 'drift:evolve' : 'useEvolutionStone') : (this.isDrift ? 'drift:heal' : 'useMedicine');
-        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(event, { itemKey: item.key, pokemonUuid,ivConfirmation,quantity:(item.fieldUse?.effort?.amount>0||item.fieldUse?.levelUp)?Math.min(Number(this.medicineQuantities[item.key])||1,item.quantity):1 }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
+        const response = await new Promise((resolve, reject) => this.socket.timeout(8000).emit(event, { itemKey: item.key, pokemonUuid,ivConfirmation,...(item.fieldUse?.selectMove?{moveSlot:this.medicineMoveSlots[item.key]}:{}),quantity:(item.fieldUse?.effort?.amount>0||item.fieldUse?.levelUp)?Math.min(Number(this.medicineQuantities[item.key])||1,item.quantity):1 }, (error, result) => error ? reject(new Error('Le serveur ne répond pas. Vérifie ton sac avant de réessayer.')) : resolve(result)));
         if(response?.ivConfirmationRequired){
           this.trainingFeedback={kind:'confirm',itemKey:item.key,pokemonName:pokemon.name,...response.ivConfirmationRequired};
           return;

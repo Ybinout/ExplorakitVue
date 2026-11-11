@@ -47,9 +47,9 @@ export default {
   }
  },
  watch:{
-  step(){this.$nextTick(()=>{this.queueMeasure();this.focusStep();});},
+  step(){this.$nextTick(()=>{this.queueMeasure();this.queueFocusStep();});},
   selector(){this.$nextTick(this.queueMeasure);},
-  paused(value){if(value){this.measured=false;this._mutations?.disconnect();}else this.reveal();}
+  paused(value){if(value){this.measured=false;this.cancelFocusStep();this._mutations?.disconnect();}else this.reveal();}
  },
  mounted(){
   this._tutorialTargetRoot=(this.scope&&this.$el.closest(this.scope))||this.$el.closest('.battle')||this.$el.closest('.game-root')||document.body;
@@ -61,15 +61,40 @@ export default {
   if(!this.paused)this.reveal();
  },
  beforeDestroy(){
-  cancelAnimationFrame(this._measureFrame);this._resize?.disconnect();this._mutations?.disconnect();
+  this.cancelFocusStep();cancelAnimationFrame(this._measureFrame);this._resize?.disconnect();this._mutations?.disconnect();
   window.removeEventListener('resize',this.queueMeasure);window.removeEventListener('scroll',this.queueMeasure,true);
   window.visualViewport?.removeEventListener('resize',this.queueMeasure);window.visualViewport?.removeEventListener('scroll',this.queueMeasure);
  },
  methods:{
   handleKeys(event){if(!this.closable)return;if(event.key==='Escape'){event.preventDefault();this.$emit('close');}if(event.key==='Tab'){const nodes=[...this.$refs.card.querySelectorAll('button:not(:disabled)')],i=nodes.indexOf(document.activeElement);event.preventDefault();nodes[(i+(event.shiftKey?-1:1)+nodes.length)%nodes.length]?.focus({preventScroll:true});}},
-  reveal(){this.measured=false;this.$nextTick(()=>{if(this.paused||this._isDestroyed)return;this.observeTargets();this.measure();this.$nextTick(()=>{if(this.paused||this._isDestroyed)return;this.measure();this.measured=true;this.focusStep();});});},
+  reveal(){this.cancelFocusStep();this.measured=false;this.$nextTick(()=>{if(this.paused||this._isDestroyed)return;this.observeTargets();this.measure();this.$nextTick(()=>{if(this.paused||this._isDestroyed)return;this.measure();this.measured=true;this.$nextTick(this.queueFocusStep);});});},
   observeTargets(){if(!this.paused&&this._mutations)this._mutations.observe(this._tutorialTargetRoot,{childList:true,subtree:true});},
-  focusStep(){if(!this.paused&&!this.copy.interactive)this.$refs.card?.querySelector('button')?.focus({preventScroll:true});},
+  cancelFocusStep(){cancelAnimationFrame(this._focusFrame);this._focusFrame=null;},
+  queueFocusStep(){
+   this.cancelFocusStep();
+   if(this.paused||!this.measured||this.copy.interactive||this._isDestroyed||this._isBeingDestroyed)return;
+   // WebKit can briefly retain inherited visibility:hidden on the controls.
+   // Allow a paint, then retry only while focus has not reached the guide.
+   let attempts=0;
+   const focus=()=>{
+    this._focusFrame=null;
+    if(this.paused||!this.measured||this.copy.interactive||this._isDestroyed||this._isBeingDestroyed)return;
+    if(this.focusStep()||++attempts===12)return;
+    this._focusFrame=requestAnimationFrame(focus);
+   };
+   this._focusFrame=requestAnimationFrame(()=>{
+    this._focusFrame=null;
+    if(this.paused||!this.measured||this.copy.interactive||this._isDestroyed||this._isBeingDestroyed)return;
+    this._focusFrame=requestAnimationFrame(focus);
+   });
+  },
+  focusStep(){
+   if(this.paused||!this.measured||this.copy.interactive||this._isDestroyed||this._isBeingDestroyed)return false;
+   const card=this.$refs.card;
+   if(!card||card.contains(document.activeElement))return true;
+   card.querySelector('button:not(:disabled)')?.focus({preventScroll:true});
+   return card.contains(document.activeElement);
+  },
   queueMeasure(){if(this.paused||this._measureFrame)return;this._measureFrame=requestAnimationFrame(()=>{this._measureFrame=null;this.measure();});},
   measure(){
    if(this.paused)return;
