@@ -33,7 +33,7 @@
    <div class="raid-decision-line">
 
    <p class="raid-message" role="status" aria-live="polite">{{ message || (playing?'Résolution du tour…':frame.finished?frame.won?'La corruption recule.':'Le raid est terminé.':canAct?((frame.handRequests?.length?frame.handRequests.map(r=>frame.allies[r.slot]?.name).join(', ')+(frame.handRequests.length>1?' demandent':' demande')+' la main. ':'')+'Choisis une action pour '+current.name):pendingMine?'Tes actions sont enregistrées.':'Tes alliés préparent leurs actions.') }}</p><div class="raid-decision-tools"><button @click="help=!help" :aria-expanded="help" aria-label="Aide sur le raid">?</button><slot name="social-toggle"/></div></div>
-   <div class="raid-ally-cards" aria-label="Les quatre alliés"><raid-ally-card :requested="!!handRequest(i)" :request-mine="!!handRequest(i)?.mine" :can-request="requestable(i)" :request-busy="busy" :multiplayer="!!frame.multiplayer" :actions-left="frame.remainingActions?.[i]||0" @request="requestHand(i)" v-for="(p,i) in display.allies" :key="p.uuid" :pokemon="p" :src="sprite(p)" :disabled="!targetable(i)" :displayed="shown===i" :targeted="bossTargets(i)" :order="cardOrder(i)" :hit="cardHits[i]" :ready="frame.allies[i].ready" :controlled="frame.allies[i].canControl" :class="{'is-selected':shown===i,'is-corrupted':p.corrupted,'is-helped':p.effects?.helpingHand,'is-acting':frame.currentSlot===i&&!frame.finished,'is-withdrawn':p.withdrawn||!p.currentHp,'is-targeted':bossTargets(i),'is-valid-target':targeting&&targetable(i),'is-area-affected':selectedMove && areaMove(selectedMove) && selectedMove.targets.some(t=>t.slot===i),'is-hit':!!cardHits[i]&&cardHits[i].kind==='-damage','is-relay-target':relayTarget===i}" @choose="chooseCard(i)"/></div>
+   <div class="raid-ally-cards" aria-label="Les quatre alliés"><raid-ally-card :inspection-pokemon="frame.allies[i]" :requested="!!handRequest(i)" :request-mine="!!handRequest(i)?.mine" :can-request="requestable(i)" :request-busy="busy" :multiplayer="!!frame.multiplayer" :actions-left="frame.remainingActions?.[i]||0" @request="requestHand(i)" v-for="(p,i) in display.allies" :key="p.uuid" :pokemon="p" :src="sprite(p)" :disabled="!targetable(i)" :displayed="shown===i" :targeted="bossTargets(i)" :order="cardOrder(i)" :hit="cardHits[i]" :ready="frame.allies[i].ready" :controlled="frame.allies[i].canControl" :class="{'is-selected':shown===i,'is-corrupted':p.corrupted,'is-helped':p.effects?.helpingHand,'is-acting':frame.currentSlot===i&&!frame.finished,'is-withdrawn':p.withdrawn||!p.currentHp,'is-targeted':bossTargets(i),'is-valid-target':targeting&&targetable(i),'is-area-affected':selectedMove && areaMove(selectedMove) && selectedMove.targets.some(t=>t.slot===i),'is-hit':!!cardHits[i]&&cardHits[i].kind==='-damage','is-relay-target':relayTarget===i}" @choose="chooseCard(i)"/></div>
    <div v-if="!frame.finished" class="raid-controls">
     <div v-if="targeting" class="raid-targeting"><button v-if="bossTargetable" class="raid-boss-choice" @click="targetBoss" data-raid-boss-choice><span>⌖ Cible principale</span><b>{{ display.boss.name }}</b><small>Viser le boss →</small></button><div v-if="selectedMove && areaMove(selectedMove)" class="raid-area-review" data-raid-area-review><strong>{{ selectedMove.name }}</strong><p>{{ selectedMove.targets.some(t=>t.slot<4&&t.slot!==slot)?'Attention : cette capacité touche aussi tes alliés.':'Cette capacité affecte toutes les cibles indiquées.' }}</p><p>Cibles potentielles : {{ selectedMove.targets.map(t=>t.slot===4?display.boss.name:display.allies[t.slot]?.name).filter(Boolean).join(', ') }}</p><button :disabled="!canAct" @click="sendMove()">Confirmer la capacité</button><small>Les immunités et protections s’appliquent.</small><button @click="selectedMove=null">Retour aux capacités</button></div><div v-if="!selectedMove || !areaMove(selectedMove)" class="raid-target-prompt"><p>{{ passing?'Choisis l’allié qui reçoit la main.':'Cible de '+selectedMove.name }}</p><button @click="cancelTarget">Retour</button></div></div>
     <div v-else-if="canAct&&panel==='moves'" class="raid-moves"><battle-move-button v-for="(m,i) in current.moves" :key="m.index" :move="m.id||m.name" :resolved-type="m.type" :data-keyboard-number="i+1" :disabled="m.disabled||m.pp<=0&&m.id!=='struggle'" :reason="m.disabledReason||(m.pp<=0&&m.id!=='struggle'?'Aucun PP.':'')" :warning="areaMove(m)?(m.targets.some(t=>t.slot<4&&t.slot!==slot)?'Touche aussi tes alliés.':'Touche toutes les cibles indiquées.'):''" :style="{'--move-color':color(m.type)}" @choose="move(m)"><b>{{ m.name }}</b><small>{{ type(m.type) }} · {{ m.category==='Physical'?'Physique':m.category==='Special'?'Spéciale':'Statut' }} · {{ m.power||'—' }}</small><span>{{ m.pp }} / {{ m.maxpp }} PP</span></battle-move-button></div>
@@ -593,15 +593,15 @@ export default {
 .raid-decision-tools>button,.raid-decision-tools ::v-deep .battle-social-button{position:relative;inset:auto;display:grid;place-items:center;width:36px;height:36px;min-width:36px;min-height:36px;margin:0;padding:6px;border-radius:8px}
 .raid-decision-tools ::v-deep svg{width:19px;height:19px}
 .raid-ally-cards{grid-column:1;grid-row:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;min-width:0}
-.raid-ally-cards>.raid-card,.raid-console.is-multiplayer .raid-ally-cards>.raid-card{height:172px;min-height:172px;align-self:stretch}
+.raid-ally-cards>.raid-card,.raid-console.is-multiplayer .raid-ally-cards>.raid-card{height:192px;min-height:192px;align-self:stretch}
 .raid-controls,.raid-return{grid-column:2;grid-row:2;align-self:start;min-width:0}
 .raid-controls:empty{display:none}
 .raid-main-actions button,.raid-back,.raid-target-prompt button{min-height:44px}
 @media(max-width:1000px){
  .raid-console-body{grid-template-columns:minmax(0,1fr) minmax(240px,.85fr)}
  .raid-ally-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
- .raid-ally-cards>.raid-card{height:102px;min-height:102px}
- .raid-console.is-multiplayer .raid-ally-cards>.raid-card{height:116px;min-height:116px}
+ .raid-ally-cards>.raid-card{height:122px;min-height:122px}
+ .raid-console.is-multiplayer .raid-ally-cards>.raid-card{height:136px;min-height:136px}
 }
 @media(max-width:700px){
  .raid-console-body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;padding:6px 7px max(8px,env(safe-area-inset-bottom,0px));gap:7px}
@@ -623,8 +623,8 @@ export default {
 }
 @media(max-width:700px) and (max-height:700px){
  .raid-console-body{padding:6px;gap:6px}
- .raid-ally-cards>.raid-card{height:92px;min-height:92px}
- .raid-console.is-multiplayer .raid-ally-cards>.raid-card{height:106px;min-height:106px}
+ .raid-ally-cards>.raid-card{height:112px;min-height:112px}
+ .raid-console.is-multiplayer .raid-ally-cards>.raid-card{height:126px;min-height:126px}
 }
 @media(prefers-reduced-motion:reduce){.raid-console,.raid-stage{transition:none}}
 .raid-reduced .raid-console,.raid-reduced .raid-stage{transition:none}

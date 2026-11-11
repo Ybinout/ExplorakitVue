@@ -241,9 +241,8 @@
         </div>
 
         <div v-else-if="actionState.pokemonPanel" class="battle-grid battle-grid-pokemon" :data-replacement-choice="replacementChoice ? 'true' : null" aria-label="Pokémon disponibles">
+          <div v-for="{ pokemon, index } in orderedBattleTeam" :key="getPokemonBattleKey(pokemon) || index" class="battle-reserve-entry">
           <button
-            v-for="{ pokemon, index } in orderedBattleTeam"
-            :key="getPokemonBattleKey(pokemon) || index"
             type="button"
             class="battle-choice-btn battle-pokemon-choice"
             :data-party-uuid="pokemon.uuid"
@@ -254,6 +253,8 @@
             <span>{{ pokemon.name || pokemon.truename || 'Pokemon' }}</span>
             <small>{{ formatBattleHp(pokemon) }}<template v-if="index === 0"> · {{ tr('activePokemon') }}</template></small>
           </button>
+          <battle-pokemon-info :pokemon="pokemon"/>
+          </div>
           <div v-if="battleTeam.length <= 1" class="battle-empty-state">{{ tr('noOtherPokemon') }}</div>
         </div>
 
@@ -291,6 +292,7 @@
 </template>
 
 <script>
+import BattlePokemonInfo from './BattlePokemonInfo.vue';
 import BattleMoveButton from './BattleMoveButton.vue';
 import BattleEntrance from './BattleEntrance.vue';
 import TutorialCoach from '../tutorial/TutorialCoach.vue';
@@ -412,7 +414,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: {BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
+  components: {BattlePokemonInfo, BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
     tutorial:{type:Object,default:null},
     tutorialBusy:Boolean,
@@ -897,8 +899,8 @@ export default {
       this.musicKind = null;
       if (!keepPrelude) this.setMusicPrelude(false);
     },
-    consumeExperienceClick(event){if(event?.target?.closest?.('[data-social-surface]'))return;if(this._experiencePointer){this._experiencePointer=false;event.preventDefault();event.stopPropagation();}},
-    advanceExperience(event){if(event?.target?.closest?.('[data-battle-weather-info],[data-social-surface]'))return false;const skip=this.experienceBusy&&this._experienceControl?.skip||this._rewardRelease;if(!skip)return false;event?.preventDefault?.();event?.stopPropagation?.();if(event?.type==='pointerdown')this._experiencePointer=true;skip();return true;},
+    consumeExperienceClick(event){if(event?.target?.closest?.('[data-social-surface],[data-battle-pokemon-info],[data-pokemon-info]'))return;if(this._experiencePointer){this._experiencePointer=false;event.preventDefault();event.stopPropagation();}},
+    advanceExperience(event){if(event?.target?.closest?.('[data-battle-weather-info],[data-social-surface],[data-battle-pokemon-info],[data-pokemon-info]'))return false;const skip=this.experienceBusy&&this._experienceControl?.skip||this._rewardRelease;if(!skip)return false;event?.preventDefault?.();event?.stopPropagation?.();if(event?.type==='pointerdown')this._experiencePointer=true;skip();return true;},
     showRewardMessage(payload){
       this.showMessage(payload.message,true);this.rewardNotice=true;
       return new Promise(resolve=>{
@@ -1683,6 +1685,7 @@ export default {
 </script>
 
 <style scoped>
+.battle-reserve-entry{display:flex;align-items:center;gap:6px;min-width:0}.battle-reserve-entry>.battle-pokemon-choice{flex:1;min-width:0}
 .battle .battle-status.battle-status-corrupted{background:linear-gradient(130deg,#f0e2fa,#d7bee9)!important;border-color:#9b70b2!important;color:#382746}.battle-status-corrupted .battle-status-name{color:#4d2e65}[data-game-theme-mode=dark] .battle .battle-status.battle-status-corrupted{background:linear-gradient(130deg,#34243f,#50335f)!important;border-color:#b38acc!important;color:#f4e7fc}[data-game-theme-mode=dark] .battle-status-corrupted .battle-status-name{color:#f3dfff}
 
 .battle-caught-marker{display:inline-flex;align-items:center;flex:none;width:14px;height:14px}

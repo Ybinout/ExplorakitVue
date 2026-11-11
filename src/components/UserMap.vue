@@ -2386,7 +2386,7 @@ export default {
     removeNavbarShortcut(key) { this.navbarShortcuts=saveNavbarShortcuts(this.currentUserId,this.navbarShortcuts.filter(k=>k!==key)); },
     openNavbarShortcut(key) { if(key==='friends')return this.openFriends();if(key==='calculator')return this.openDamageCalculator();if(key==='quit')return this.quitGame();if(key==='learning')return this.openMoveLearning();if(key==='tournament-powers'){this.isMenuOpen=false;this.releaseAllMovementKeys();this.tournamentPanel={tab:'powers'};return;}return this.handleMenuAction(key); },
     handleBattleKeys(event) {
-      if(topGameOverlay(this.$el)?.hasAttribute('data-move-inspection'))return;
+      if(topGameOverlay(this.$el)?.matches('[data-move-inspection],[data-battle-pokemon-info]'))return;
       if(!this.battle || this.battleChatOpen || this.tradeModalVisible || this.incomingRequest.visible || this.battleResult || this.pendingBattleResult || this.learningVisible || this.evolutionVisible || this.patchNoticeOpen)return;
       const simple=!this.raidCombatActive&&!this.doublesFrame,overlay=this.$refs.battleOverlay;
       if(simple&&overlay?.experienceBusy)return;
