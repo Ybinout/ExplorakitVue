@@ -1,12 +1,13 @@
 <template>
-  <div class="region-backdrop" @mousedown.self="$emit('close')">
-    <section class="region-panel" role="dialog" aria-modal="true" aria-labelledby="region-title" @keydown.stop="onKey" @keyup.stop :class="{'reduce-motion': !animationsEnabled}">
+  <div class="region-backdrop" @mousedown.self="close">
+    <section class="region-panel" :style="panelStyle" role="dialog" aria-modal="true" aria-labelledby="region-title" @keydown.stop="onKey" @keyup.stop :class="{'reduce-motion': !animationsEnabled}">
       <header class="region-header">
         <div><p>RIFTMON <span>/ {{ en ? 'REGION GUIDE' : 'CARTE DE LA RÉGION' }}</span></p><h2 id="region-title">{{ pokemon ? pokemon.name : 'Minimap' }}</h2></div>
-        <button ref="close" class="region-close" :aria-label="en ? 'Close map' : 'Fermer la carte'" @click="$emit('close')">×</button>
+        <button ref="close" class="region-close" :aria-label="en ? 'Close map' : 'Fermer la carte'" @click="close">×</button>
       </header>
       <div v-if="loading || error" class="region-state" role="status"><p>{{ error || (en ? 'Unfolding the map…' : 'Ouverture de la carte…') }}</p><button v-if="error" @click="load">{{ en ? 'Retry' : 'Réessayer' }}</button></div>
       <div v-else-if="atlas" class="region-content">
+        <nav class="region-jumps" aria-label="Centrer une région"><button v-for="zone in jumpZones" :key="zone.key" :data-map-region="zone.key" @click="jumpRegion(zone.bounds)">{{zone.label}}</button></nav>
         <div class="region-location"><span class="you-dot"></span><span>{{ en ? 'You are here' : 'Tu es ici' }} <strong>{{ currentLabel }}</strong></span><button @click="showCurrent" :disabled="!currentNode">{{ en ? 'Locate me' : 'Me situer' }}</button></div>
         <div v-if="pokemon" class="habitat-heading" role="status">
           <img :src="$pokemonSprite(pokemon)" alt="" width="40" height="40">
@@ -15,7 +16,7 @@
           <span v-else>{{ en ? 'No known wild habitat' : 'Aucun habitat sauvage connu' }}<small>{{ en ? 'This species has no wild encounter in the current region.' : 'Cette espèce ne se rencontre pas dans la région actuelle.' }}</small></span>
         </div>
         <div class="map-scroll" ref="mapScroll" :class="{dragging,'is-overview':zoom===1}" tabindex="0" :aria-label="en ? 'Regional map. Zoom with + and −; move with arrow keys.' : 'Carte régionale. Zoome avec + et − ; déplace avec les flèches.'"
-          @wheel.prevent="wheelZoom" @pointerdown.prevent="beginPointer" @pointermove="movePointer" @pointerup="endPointer" @pointercancel="endPointer" @lostpointercapture="endPointer" @click.capture="mapClick">
+          @scroll.passive="rememberView" @wheel.prevent="wheelZoom" @pointerdown.prevent="beginPointer" @pointermove="movePointer" @pointerup="endPointer" @pointercancel="endPointer" @lostpointercapture="endPointer" @click.capture="mapClick">
           <div class="map-surface" :style="surfaceStyle">
           <svg class="region-art" :style="artStyle" :viewBox="`0 0 ${atlas.width} ${atlas.height}`" role="group" :aria-label="en ? 'Towns, routes and your position' : 'Villes, routes et ta position'">
             <region-map-terrain :width="atlas.width" :height="atlas.height" :dark-offset="atlas.darkContinent?.offsetX || 0" :magic="atlas.magicIsland" :safari="atlas.safari" :dark2="atlas.darkContinent2" :dark-label="en?atlas.darkContinent?.enLabel:atlas.darkContinent?.label" :en="en"/>
@@ -84,14 +85,18 @@
 </template>
 <script>
 import RegionMapTerrain from './RegionMapTerrain.vue';
+import {savedMapView,rememberMapView,regionBounds} from '@/services/regionMapMemory';
 import api from '@/services/api';
 import { getMapLocationLabel } from '@/services/mapLocations';
 import { mapLayout, anchoredMapScroll, clampMapZoom } from '@/services/regionMapViewport';
 export default {
   name:'RegionMapPanel',components:{RegionMapTerrain},
   props:{initialSelection:String,friendMembers:{type:Array,default:()=>[]},currentMap:String,currentRegion:String,pokemon:Object,entries:{type:Array,default:()=>[]},language:{type:String,default:'fr'},animationsEnabled:{type:Boolean,default:true},flight:{type:Object,default:null},flightAllowed:Boolean},
-  data:()=>({atlas:null,loading:true,error:'',selected:'',zoom:1,dragging:false,viewport:{width:512,height:448}}),
+  data:()=>({screenHeight:Math.min(window.innerHeight,window.visualViewport?.height||window.innerHeight),atlas:null,loading:true,error:'',selected:'',zoom:1,dragging:false,viewport:{width:512,height:448}}),
   computed:{
+    panelStyle(){const height=Math.max(160,Math.min(850,this.screenHeight-24));return{height:`min(${height}px, var(--game-popup-height, ${height}px))`,maxHeight:Math.max(160,this.screenHeight-24)+'px'};},
+    memoryScope(){return this.pokemon?'habitat-'+this.pokemon.id:'world';},
+    jumpZones(){return [['main',this.en?'Region':'Région'],['tower',this.en?'Super Battles':'Super Combats'],['safari','Safari'],['island',this.en?'Dark Island':'Île DC'],['magic',this.en?'Magic Island':'Île Magique'],['continent','Dark Continent']].map(([key,label])=>({key,label,bounds:regionBounds(this.atlas,key)})).filter(z=>z.bounds);},
     friendMarkers(){if(!this.atlas)return [];const colors=['#9b5e9d','#35798e','#a27432','#407e54','#a95463','#5d64a0'],offsets=[[12,0],[-12,0],[0,12],[0,-12],[12,12],[-12,12]],counts={};return this.friendMembers.filter(p=>p.online&&p.location).map(p=>{const node=this.atlas.nodes.find(n=>n.id===p.location.nodeId);if(!node)return null;const k=counts[node.id]||0;counts[node.id]=k+1;const offset=offsets[k%offsets.length];return {...p,nodeId:node.id,mode:p.location.mode,x:node.x+offset[0],y:node.y+offset[1],color:p.afk?'#db942e':colors[p.id%colors.length]};}).filter(Boolean);},
 
     canFlySelected(){return this.flightAllowed&&this.flight?.unlocked&&this.flight.owned!==false&&(this.selectedNode?.kind==='house'||this.selectedNode?.kind==='town'&&this.flight.visited.includes(this.selected)||this.flight.darkDestinations?.includes(this.selected));},
@@ -112,9 +117,17 @@ export default {
     selectableNodes(){return this.pokemon ? this.habitatNodes : [...this.displayNodes,...(this.isDark(this.currentNode?.id)?[this.currentNode]:[])];},
     edges(){return (this.atlas?.edges || []).filter(([a,b])=>!this.isDark(a)&&!this.isDark(b)&&!this.isSafari(a)&&!this.isSafari(b)).map(([a,b])=>{const from=this.atlas.nodes.find(n=>n.id===a),to=this.atlas.nodes.find(n=>n.id===b);return {id:a+':'+b,visited:this.isVisited(a)&&this.isVisited(b),path:`M${from.x} ${from.y}H${to.x}V${to.y}`,cave:from.kind==='cave'||to.kind==='cave'};});}
   },
-  mounted(){this.previousFocus=document.activeElement;this.$refs.close.focus({preventScroll:true});this.load();},
-  beforeDestroy(){this.disposed=true;this._resizeObserver?.disconnect();window.removeEventListener('resize',this.measureViewport);this._pointers?.clear();if(this.previousFocus?.isConnected)this.previousFocus.focus({preventScroll:true});},
+  mounted(){window.addEventListener('resize',this.measureScreen);window.visualViewport?.addEventListener('resize',this.measureScreen);this.previousFocus=document.activeElement;this.$refs.close.focus({preventScroll:true});this.load();},
+  beforeDestroy(){window.removeEventListener('resize',this.measureScreen);window.visualViewport?.removeEventListener('resize',this.measureScreen);this.rememberView();this.disposed=true;cancelAnimationFrame(this._scrollFrame);clearTimeout(this._memoryTimer);if(this._lastView)rememberMapView(this.memoryScope,{...this._lastView,selected:this.selected});this._resizeObserver?.disconnect();window.removeEventListener('resize',this.measureViewport);this._pointers?.clear();if(this.previousFocus?.isConnected)this.previousFocus.focus({preventScroll:true});},
   methods:{
+    measureScreen(){this.screenHeight=Math.min(window.innerHeight,window.visualViewport?.height||window.innerHeight);},
+    close(){this.rememberView();this.$emit('close');},
+    rememberView(){
+      const el=this.$refs.mapScroll;if(this.disposed||!this.atlas||!el?.isConnected||!this._viewRestored)return;
+      const scroll=this.scrollPosition(),l=this.layout;this._lastView={zoom:this.zoom,x:Math.min(1,Math.max(0,(scroll.x+l.width/2-l.offsetX)/l.mapWidth)),y:Math.min(1,Math.max(0,(scroll.y+l.height/2-l.offsetY)/l.mapHeight)),selected:this.selected};
+      if(!this._memoryTimer)this._memoryTimer=setTimeout(()=>{this._memoryTimer=null;if(!this.disposed&&this._lastView)rememberMapView(this.memoryScope,this._lastView);},120);
+    },
+    jumpRegion(bounds){const fit=Math.min(this.viewport.width/this.atlas.width,this.viewport.height/this.atlas.height);this.changeZoom(Math.min(4,Math.max(1,Math.min(this.viewport.width/(bounds.w*fit),this.viewport.height/(bounds.h*fit)))));this.$nextTick(()=>this.centerOn(bounds));},
     isVisited(id){return id==='owned-house'||id===this.currentNode?.id||(this.flight?.visitedRegions||[]).includes(id)||(this.flight?.visited||[]).includes(id);},
     modeLabel(mode){return {adventure:'Aventure',rift:'Rift',colosseum:'Colosseum'}[mode]||'';},
     selectFriendMember(member){this.selected=member.nodeId;this.centerOn(this.atlas.nodes.find(n=>n.id===member.nodeId));},
@@ -130,22 +143,25 @@ export default {
     showCurrent(){if(this.currentNode){this.selected=this.currentNode.id;this.centerOn(this.currentNode);}},
     observeViewport(){
       this._resizeObserver?.disconnect();window.removeEventListener('resize',this.measureViewport);
-      if(!this.$refs.mapScroll)return;this.measureViewport();if(this.initialSelection)this.centerOn(this.selectedNode);
+      if(!this.$refs.mapScroll)return;this.measureViewport();const memory=savedMapView(this.memoryScope);
+      if(!this._viewRestored){this._viewRestored=true;if(memory){this.zoom=memory.zoom;if(!this.initialSelection&&this.atlas.nodes.some(n=>n.id===memory.selected))this.selected=memory.selected;}this.$nextTick(()=>{if(this.disposed)return;if(this.initialSelection)this.centerOn(this.selectedNode);else if(memory)this.centerOn({x:memory.x*this.atlas.width,y:memory.y*this.atlas.height});else if(this.pokemon)this.centerOn(this.selectedNode);});}
       if(window.ResizeObserver){this._resizeObserver=new ResizeObserver(this.measureViewport);this._resizeObserver.observe(this.$refs.mapScroll);}
       else window.addEventListener('resize',this.measureViewport);
     },
     scrollPosition(){const el=this.$refs.mapScroll;return this._pendingScroll || {x:el.scrollLeft,y:el.scrollTop};},
     applyScroll(position){
-      const revision=(this._scrollRevision||0)+1;this._scrollRevision=revision;this._pendingScroll=position;
-      this.$nextTick(()=>{if(this.disposed||revision!==this._scrollRevision)return;const el=this.$refs.mapScroll;if(el){el.scrollLeft=position.x;el.scrollTop=position.y;}this._pendingScroll=null;});
+      const revision=(this._scrollRevision||0)+1;this._scrollRevision=revision;this._pendingScroll=position;cancelAnimationFrame(this._scrollFrame);
+      const apply=()=>{if(this.disposed||revision!==this._scrollRevision)return;const el=this.$refs.mapScroll;if(!el)return;const width=el.scrollWidth,height=el.scrollHeight;el.scrollLeft=Math.min(Math.max(0,width-el.clientWidth),position.x);el.scrollTop=Math.min(Math.max(0,height-el.clientHeight),position.y);this._pendingScroll=null;this.rememberView();};
+      this.$nextTick(()=>{apply();if(!this.disposed)this._scrollFrame=requestAnimationFrame(apply);});
     },
     measureViewport(){
       const el=this.$refs.mapScroll;if(!el||!el.clientWidth||!el.clientHeight)return;
       const before=this.layout,scroll=this.scrollPosition(),width=el.clientWidth,height=el.clientHeight;
       if(width===this.viewport.width&&height===this.viewport.height)return;
-      this.viewport={width,height};this.applyScroll(anchoredMapScroll(before,this.layout,scroll,{x:before.width/2,y:before.height/2},{x:width/2,y:height/2}));
+      this.viewport={width,height};if(this._centerTarget){this.centerOn(this._centerTarget);return;}this.applyScroll(anchoredMapScroll(before,this.layout,scroll,{x:before.width/2,y:before.height/2},{x:width/2,y:height/2}));
     },
     changeZoom(value,anchor=null,nextAnchor=null){
+      this._centerTarget=null;
       const el=this.$refs.mapScroll;if(!el)return;
       const control=document.activeElement;
       const before=this.layout,scroll=this.scrollPosition();anchor ||= {x:this.viewport.width/2,y:this.viewport.height/2};
@@ -155,7 +171,7 @@ export default {
     point(event){const el=this.$refs.mapScroll,r=el.getBoundingClientRect();return {x:event.clientX-r.left-el.clientLeft,y:event.clientY-r.top-el.clientTop};},
     wheelZoom(event){const delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?this.viewport.height:1);this.changeZoom(this.zoom*Math.exp(-Math.max(-100,Math.min(100,delta))*.003),this.point(event));},
     beginPointer(event){
-      if(event.pointerType==='mouse'&&event.button!==0)return;
+      if(event.pointerType==='mouse'&&event.button!==0)return;this._centerTarget=null;
       this.$refs.mapScroll.focus({preventScroll:true});
       this._pointers ||= new Map();const point=this.point(event);this._pointers.set(event.pointerId,point);
       this._moved=this._pointers.size>1;this._origin=point;this.dragging=true;
@@ -182,12 +198,14 @@ export default {
       if(this._pointers.size)this._origin=[...this._pointers.values()][0];
     },
     mapClick(event){if(performance.now()<(this._ignoreClickUntil||0)){event.preventDefault();event.stopPropagation();}},
-    centerOn(node){if(!node)return;this.applyScroll({x:Math.max(0,Math.min(this.layout.mapWidth-this.viewport.width,this.layout.offsetX+node.x/this.atlas.width*this.layout.mapWidth-this.viewport.width/2)),y:Math.max(0,Math.min(this.layout.mapHeight-this.viewport.height,this.layout.offsetY+node.y/this.atlas.height*this.layout.mapHeight-this.viewport.height/2))});},
-    onKey(e){if(e.target===this.$refs.mapScroll){if(['+','=','-','0'].includes(e.key)){e.preventDefault();this.changeZoom(e.key==='0'?1:e.key==='-'?this.zoom/1.25:this.zoom*1.25);return;}const direction={ArrowLeft:[-40,0],ArrowRight:[40,0],ArrowUp:[0,-40],ArrowDown:[0,40]}[e.key];if(direction){e.preventDefault();this.$refs.mapScroll.scrollBy(...direction);return;}}if(e.key==='Escape'){e.preventDefault();this.$emit('close');}if(e.key!=='Tab')return;const controls=[...this.$el.querySelectorAll('button:not(:disabled),select,[tabindex="0"]')];const first=controls[0],last=controls[controls.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}
+    centerOn(node){if(!node)return;this._centerTarget=node;this.applyScroll({x:Math.max(0,Math.min(this.layout.mapWidth-this.viewport.width,this.layout.offsetX+node.x/this.atlas.width*this.layout.mapWidth-this.viewport.width/2)),y:Math.max(0,Math.min(this.layout.mapHeight-this.viewport.height,this.layout.offsetY+node.y/this.atlas.height*this.layout.mapHeight-this.viewport.height/2))});},
+    onKey(e){if(e.target===this.$refs.mapScroll){if(['+','=','-','0'].includes(e.key)){e.preventDefault();this.changeZoom(e.key==='0'?1:e.key==='-'?this.zoom/1.25:this.zoom*1.25);return;}const direction={ArrowLeft:[-40,0],ArrowRight:[40,0],ArrowUp:[0,-40],ArrowDown:[0,40]}[e.key];if(direction){this._centerTarget=null;e.preventDefault();this.$refs.mapScroll.scrollBy(...direction);return;}}if(e.key==='Escape'){e.preventDefault();this.close();}if(e.key!=='Tab')return;const controls=[...this.$el.querySelectorAll('button:not(:disabled),select,[tabindex="0"]')];const first=controls[0],last=controls[controls.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}
   }
 };
 </script>
 <style scoped>
+.region-jumps{display:flex;gap:5px;padding:9px 12px;overflow:auto;border-bottom:1px solid var(--journal-border);background:var(--journal-card)}.region-jumps button{flex:none;font-size:10px;min-height:36px;padding:6px 9px;background:var(--journal-soft)}
+
 .legend-unvisited{background:#a5aca8!important;border:1px solid #747f7c}.map-unvisited{filter:grayscale(.9);opacity:.53}.map-node.map-unvisited:focus,.map-node.map-unvisited:hover{opacity:.85}
 .friend-map-marker{cursor:pointer}.friend-map-marker:focus{outline:none}.friend-map-marker:focus circle{stroke:#f6ca5d;stroke-width:3}.map-friend-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}.map-friend-list button{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px;padding:7px 10px;border:1px solid var(--journal-border);border-radius:7px;background:var(--journal-card);color:var(--journal-ink);font:11px var(--journal-font);cursor:pointer}.map-friend-list i{width:8px;height:8px;border-radius:50%;flex:none}.map-friend-list span{font-size:10px;color:var(--journal-muted)}
 
@@ -197,15 +215,15 @@ export default {
 .flight-module{padding:12px;background:var(--journal-soft);border:1px solid var(--journal-border);border-radius:10px;margin-bottom:12px}.flight-module p,.flight-unvisited{font-size:12px;line-height:1.5;margin:6px 0;color:var(--journal-muted)}.region-panel .flight-button{min-width:130px;background:var(--journal-accent);color:var(--journal-paper);font-weight:700}
 
 .region-backdrop{position:fixed;inset:0;z-index:1210;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--journal-backdrop);backdrop-filter:blur(7px)}
-.region-panel,.region-panel *{box-sizing:border-box}.region-panel{width:650px;max-width:100%;max-height:94dvh;display:flex;flex-direction:column;overflow:hidden;background:var(--journal-paper);color:var(--journal-ink);border:1px solid var(--journal-border);border-radius:18px;box-shadow:0 24px 80px #0005;text-align:left;font:14px var(--journal-font)}
+.region-panel,.region-panel *{box-sizing:border-box}.region-panel{min-height:0;transition-property:none!important;animation-name:none!important;width:650px;max-width:100%;max-height:94dvh;display:flex;flex-direction:column;overflow:hidden;background:var(--journal-paper);color:var(--journal-ink);border:1px solid var(--journal-border);border-radius:18px;box-shadow:0 24px 80px #0005;text-align:left;font:14px var(--journal-font)}
 .region-header{display:flex;align-items:center;justify-content:space-between;padding:17px 22px;background:var(--journal-card);border-bottom:1px solid var(--journal-border);gap:12px}.region-header p{margin:0 0 5px;font-size:9px;letter-spacing:.13em;color:var(--journal-muted)}.region-header p span{letter-spacing:.06em}.region-header h2{margin:0;font-size:24px;color:var(--journal-heading)}
-.region-panel button,.region-panel select{font:inherit;cursor:pointer;color:var(--journal-ink);background:var(--journal-card);border:1px solid var(--journal-border);border-radius:8px;min-height:44px;padding:8px 12px}.region-panel button:disabled{opacity:.5;cursor:default}.region-panel button:focus-visible,.region-panel select:focus-visible,.map-scroll:focus-visible{outline:3px solid var(--journal-accent);outline-offset:2px}.region-close{font-size:24px!important;width:44px;flex:none}.region-content{overflow:auto;min-height:0;overscroll-behavior:contain}.region-location{display:flex;align-items:center;gap:9px;padding:10px 18px;font-size:11px}.region-location strong{display:block;font-size:13px;margin-top:2px}.region-location button{margin-left:auto;font-size:11px}.you-dot{width:10px;height:10px;border-radius:50%;background:#34658c;outline:2px solid #fff;flex:none}
+.region-panel button,.region-panel select{font:inherit;cursor:pointer;color:var(--journal-ink);background:var(--journal-card);border:1px solid var(--journal-border);border-radius:8px;min-height:44px;padding:8px 12px}.region-panel button:disabled{opacity:.5;cursor:default}.region-panel button:focus-visible,.region-panel select:focus-visible,.map-scroll:focus-visible{outline:3px solid var(--journal-accent);outline-offset:2px}.region-close{font-size:24px!important;width:44px;flex:none}.region-content{flex:1 1 auto;overflow:auto;min-height:0;overscroll-behavior:contain}.region-location{display:flex;align-items:center;gap:9px;padding:10px 18px;font-size:11px}.region-location strong{display:block;font-size:13px;margin-top:2px}.region-location button{margin-left:auto;font-size:11px}.you-dot{width:10px;height:10px;border-radius:50%;background:#34658c;outline:2px solid #fff;flex:none}
 .map-scroll{overflow:scroll;min-width:0;height:clamp(180px,45dvh,420px);background:#2b637f;border-block:3px solid #86b5ae;touch-action:none;position:relative;overscroll-behavior:contain;cursor:grab;user-select:none}.map-scroll.dragging{cursor:grabbing}.map-surface{display:grid;place-items:center}.region-art{display:block;flex:none;max-width:none;max-height:none}.route-label{font-size:8px;fill:#6b653f;paint-order:stroke;stroke:#f4e7a9;stroke-width:2px;font-weight:700}.town-label{font-size:9px;fill:#284634;paint-order:stroke;stroke:#edf1c7;stroke-width:3;stroke-linejoin:round;font-weight:700}.map-node,.habitat-ping{cursor:pointer}.map-selection{filter:drop-shadow(0 1px 1px #234)}.ping-ring{animation:habitat-pulse 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center}@keyframes habitat-pulse{50%{opacity:.35;transform:scale(1.25)}}.reduce-motion .ping-ring{animation:none}@media(prefers-reduced-motion:reduce){.ping-ring{animation:none}}
 /* Keep both scrollbar tracks while zoomed: toggling one changes the fitted map
    height and can make ResizeObserver alternate between two sizes forever. */
 .map-scroll.is-overview{overflow:hidden}
 .map-tools{padding:8px 12px;background:var(--journal-card);border-bottom:1px solid var(--journal-border)}.map-legend{display:flex;align-items:center;gap:15px;font-size:11px;margin-bottom:6px}.map-zoom-controls{display:flex;align-items:center;gap:5px}.map-zoom-controls button{min-width:44px;padding:6px 10px}.map-zoom-controls [data-map-zoom="reset"]{margin-left:auto;font-size:11px}.map-zoom-level{min-width:42px;text-align:center;font-size:11px;font-variant-numeric:tabular-nums}.map-gesture-hint{margin:6px 0 0;font-size:10px;color:var(--journal-muted)}.map-legend span{display:flex;align-items:center;gap:6px}.map-legend i{display:inline-block;width:10px;height:10px}.legend-town{background:#d87765;border:2px solid #f4ddb3}.legend-route{background:#f4db8b;border:1px solid #b49c67}.legend-habitat{border:2px solid #ba602c;border-radius:50%;background:#ffce76}
 .region-detail{padding:14px 18px}.region-detail label{display:block;font-size:11px;color:var(--journal-muted);margin-bottom:6px}.region-detail select{width:100%}.place-detail{padding-top:13px;font-size:13px}.place-detail p{margin:6px 0;font-size:12px;color:var(--journal-muted)}.here-label{font-size:10px;margin-left:10px;color:var(--journal-accent)}.region-footer{padding:10px 18px;font-size:10px;color:var(--journal-muted);border-top:1px solid var(--journal-border)}.region-state{padding:35px;text-align:center}.habitat-heading{display:flex;align-items:center;gap:10px;padding:4px 18px 10px;font-weight:700;font-size:13px}.habitat-heading small{display:block;font-size:11px;font-weight:400;color:var(--journal-muted);margin-top:3px}.habitat-heading img{object-fit:contain;image-rendering:pixelated}
-@media(min-width:921px){.region-panel{width:780px}.region-content{display:grid;grid-template-columns:minmax(0,1fr) 190px;align-content:start}.region-location,.habitat-heading,.region-footer{grid-column:1 / -1}.region-location{grid-row:1}.habitat-heading{grid-row:2}.region-footer{grid-row:5}.map-scroll{grid-column:1;grid-row:3}.map-tools{grid-column:1;grid-row:4}.region-detail{grid-column:2;grid-row:3 / 5;padding:16px 12px;border-left:1px solid var(--journal-border)}.map-scroll{height:clamp(180px,calc(var(--game-popup-height,90dvh) - 340px),420px)}.here-label{display:block;margin:6px 0 0}.place-detail{line-height:1.5}}
+@media(min-width:921px){.region-panel{width:780px}.region-content{display:grid;grid-template-columns:minmax(0,1fr) 190px;align-content:start}.region-location,.habitat-heading,.region-footer{grid-column:1 / -1}.region-jumps{grid-column:1 / -1;grid-row:1}.region-location{grid-row:2}.habitat-heading{grid-row:3}.region-footer{grid-row:6}.map-scroll{grid-column:1;grid-row:4}.map-tools{grid-column:1;grid-row:5}.region-detail{grid-column:2;grid-row:4 / 6;padding:16px 12px;border-left:1px solid var(--journal-border)}.map-scroll{height:clamp(180px,calc(var(--game-popup-height,90dvh) - 340px),420px)}.here-label{display:block;margin:6px 0 0}.place-detail{line-height:1.5}}
 @media(max-width:600px){.region-backdrop{padding:8px}.region-panel{border-radius:13px;max-height:96dvh}.region-header{padding:12px 14px}.region-header h2{font-size:21px}.region-location,.region-detail{padding-inline:12px}.map-legend{gap:10px;padding-inline:12px}.region-art{max-height:none}.region-header p{font-size:8px}}
 </style>

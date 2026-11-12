@@ -31,8 +31,10 @@
       <draft-panel v-back="()=>draftOpen=false" v-if="draftOpen && !battle && !battleResult && !pendingBattleResult" :state="draftState" :catalog="draftCatalog" :friends="draftFriends" :busy="draftBusy" :error="draftError" :connected="!!socket?.connected" @command="draftCommand" @friends="loadDraftFriends" @close="draftOpen=false" @finish="finishDraft"/>
       <button v-if="draftState && !draftOpen && !battle && !battleResult" class="draft-resume" data-draft-resume @click="resumeDraft">{{ draftState.phase==='lobby'?'Ma table de Draft':'Reprendre la draft' }} →</button>
       <aside v-if="draftInvitation && !draftState && !battle" class="draft-invitation" role="status"><b>{{ draftInvitation.host }} t’invite à une draft.</b><small>Rejoins la Maison des Drafts, à la Ville du Lac.</small><span><button @click="acceptDraftInvitation" :disabled="draftBusy">Prendre place</button><button @click="draftInvitation=null">Plus tard</button></span></aside>
-      <whitepeak-club-panel :raid-bosses="raidBosses" :raid-busy="raidBusy" :raid-error="raidError" @raid-catalog="raidCommand('training-catalog')" @training="raidCommand('training',$event)" v-back="()=>clubPanel=null" v-if="clubPanel && !battle && !battleResult && !clubWatch" :tab="clubPanel.tab" :roulette="clubRoulette" :duel="clubDuel" :rosters="clubRosters" :trainers="clubTrainers" :balance="Number(progressionState.money)||0" :user-id="Number(currentUserId)" :busy="clubBusy" :error="clubError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled && !worldWeatherReducedMotion" :rows="clubRows" :ranking="clubRanking" @close="clubPanel=null" @tab="clubPanel={tab:$event}" @command="clubCommand" />
+      <whitepeak-club-panel :tournament="clubTournament" :raid-bosses="raidBosses" :raid-busy="raidBusy" :raid-error="raidError" @raid-catalog="raidCommand('training-catalog')" @training="raidCommand('training',$event)" v-back="()=>clubPanel=null" v-if="clubPanel && !battle && !battleResult && !clubWatch" :tab="clubPanel.tab" :roulette="clubRoulette" :duel="clubDuel" :rosters="clubRosters" :trainers="clubTrainers" :balance="Number(progressionState.money)||0" :user-id="Number(currentUserId)" :busy="clubBusy" :error="clubError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled && !worldWeatherReducedMotion" :rows="clubRows" :ranking="clubRanking" @close="clubPanel=null" @tab="clubPanel={tab:$event}" @command="clubCommand" />
       <button v-if="!clubPanel&&!battle&&clubDuel?.you>=0&&['review','preparation'].includes(clubDuel.phase)" class="house-resume-preparation" @click="clubPanel={tab:'duel'}">Reprendre la préparation →</button>
+      <button v-if="clubTournament&&map==='ville5_maison1'&&!battle&&!battleResult" class="tournament-room-button" @click="clubTournamentOpen=true">✧ Tournoi</button>
+      <div v-back="()=>clubTournamentOpen=false" v-if="clubTournamentOpen&&clubTournament" class="tournament-overlay" @keydown.esc.stop.prevent="clubTournamentOpen=false" @keydown.tab="trapTournamentFocus" @click.self="clubTournamentOpen=false"><section role="dialog" aria-modal="true" aria-label="Tableau du tournoi"><button class="tournament-overlay-close" aria-label="Fermer le tableau" @click="clubTournamentOpen=false">×</button><house-tournament-panel :state="clubTournament" :user-id="Number(currentUserId)" :busy="clubBusy" @command="clubCommand" @configure="clubTournamentOpen=false;openClubPanel()"/></section></div>
       <club-spectator v-back="closeClubWatch" v-if="clubWatch" :key="clubWatch.id" :start="clubWatch" :events="clubWatchEvents" :result="clubWatchResult" :mobile="showMobileControls" :preferences="battlePreferences" @close="closeClubWatch" />
       <button v-if="map==='ville5_maison1' && !battle && !battleResult && !clubWatch && !clubPanel" class="club-room-access" data-club-room-access @pointerdown.stop @click="openClubPanel">{{ clubDuel&&clubDuel.phase!=='finished' ? clubDuel.phase==='review'?'Vérifier les mises':clubDuel.phase==='battle'?'Duel en cours · Tribunes':'Combat préparé':'Organiser' }}</button>
       <super-tournament-panel v-back="closeTournamentPanel" v-if="tournamentPanel" :payload="tournamentPanel" :team="teamPokemons" :passives="superTournament.passives" :busy="tournamentBusy" :error="tournamentError" @close="closeTournamentPanel" @register="registerSuperTournament" @pause="pauseSuperTournament" @resume="resumeSuperTournament" @abandon="abandonSuperTournament" />
@@ -597,6 +599,7 @@ import { buildBattleResult } from '@/services/battleResult';
 import raidsGame from '@/services/raidsGame';
 import housingGame from '@/services/housingGame';
 import magicIslandGame from '@/services/magicIslandGame';
+import {drawMagicIslandBoat} from '@/services/magicIslandBoat';
 import casinoSlotsGame from '@/services/casinoSlotsGame';
 import {isCasino,slotMachines,machineBottom,drawSlotMachine} from '@/services/casinoSlotsArt';
 import {drawFurniture, drawStair} from '@/services/housingArt';
@@ -624,7 +627,7 @@ import { WorldMusic } from '@/services/worldMusic';
 export default {
   props: { patchNoticeOpen: Boolean },
   mixins:[magicIslandGame,socialGame,tradeGame,raidsGame,questJournalGame,comfortGame,draftGame,housingGame,casinoSlotsGame],
-  components: { TalentTreePanel:()=>import('./talents/TalentTreePanel.vue'), MagicIslandPanel:()=>import('./magicIsland/MagicIslandPanel.vue'), MarketPanel:()=>import('./market/MarketPanel.vue'), CasinoSlotsPanel:()=>import('./whitepeak/CasinoSlotsPanel.vue'), HousingPanel:()=>import('./housing/HousingPanel.vue'), DraftPanel:()=>import('./draft/DraftPanel.vue'),AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
+  components: { HouseTournamentPanel:()=>import('./whitepeak/HouseTournamentPanel.vue'), TalentTreePanel:()=>import('./talents/TalentTreePanel.vue'), MagicIslandPanel:()=>import('./magicIsland/MagicIslandPanel.vue'), MarketPanel:()=>import('./market/MarketPanel.vue'), CasinoSlotsPanel:()=>import('./whitepeak/CasinoSlotsPanel.vue'), HousingPanel:()=>import('./housing/HousingPanel.vue'), DraftPanel:()=>import('./draft/DraftPanel.vue'),AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
     SuperTournamentPanel, TournamentRewardPanel, AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
@@ -653,7 +656,7 @@ export default {
       trainerMusicPrelude: false,
       trainerOffer:null, trainerBusy:false, trainerError:'', driftPanelTab:'drifts', driftState: null, driftCatalogue: null, isDriftPanelOpen: false, driftTurnId: null, driftClock: Date.now(), driftOffset: 0, driftClockTimer: null, archivedDriftRunId: null, driftSpectator: null,
       starterBusy:false,starterError:'',
-      clubPanel:null,clubDuel:null,clubRoulette:null,clubRows:[],clubRanking:null,clubHonor:null,interactionHint:null,clubBusy:false,clubError:'',clubWatch:null,clubWatchEvents:[],clubWatchResult:null,
+      clubPanel:null,clubDuel:null,clubTournament:null,clubTournamentOpen:false,clubRoulette:null,clubRows:[],clubRanking:null,clubHonor:null,interactionHint:null,clubBusy:false,clubError:'',clubWatch:null,clubWatchEvents:[],clubWatchResult:null,
       clubControl:null,clubRosters:null,clubTrainers:[],
       doublesFrame:null,superTournament:{active:false},tournamentPanel:null,tournamentBusy:false,tournamentError:'',tournamentRewardError:'',
       worldDevices:null, pc:{visible:false,busy:false,state:null,error:'',notice:''},
@@ -930,7 +933,7 @@ export default {
     worldInteractionBlocked() { return this.patchNoticeOpen || this.otherInteractionBlocked; },
     otherInteractionBlocked() { return this.nonDialogueInteractionBlocked || this.textImageSequence.length > 0; },
     nonDialogueInteractionBlocked() {
-      return !!this.talentPanel || this.talentBusy || !!this.magicPanel || this.magicBusy || !!this.marketPanel || this.slotsOpen || !!this.housingPanel || !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.clubTournamentOpen || !!this.talentPanel || this.talentBusy || !!this.magicPanel || this.magicBusy || !!this.marketPanel || this.slotsOpen || !!this.housingPanel || !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.experienceLab || this.corruptedHeldWorkshop || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.coverageOpen || this.damageCalculatorOpen || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.interactionChoice.visible || this.incomingRequest.visible
@@ -944,6 +947,8 @@ export default {
     }
   },
   watch: {
+    clubTournamentOpen(open){if(open){this._tournamentFocus=document.activeElement;this.releaseAllMovementKeys();this.$nextTick(()=>this.$el.querySelector('.tournament-overlay-close')?.focus({preventScroll:true}));}else if(this._tournamentFocus?.isConnected)this._tournamentFocus.focus({preventScroll:true});},
+
     patchNoticeReady: { immediate: true, handler(ready) { this.$emit('patch-notice-ready', ready); } },
     '$route.name'() { this.$nextTick(() => this.$emit('patch-notice-ready', this.patchNoticeReady)); },
     worldChatAvailable(allowed){if(!allowed && this.worldChatOpen)this.closeWorldChat();},
@@ -998,6 +1003,8 @@ export default {
   },
 
   methods: {
+    trapTournamentFocus(event){const nodes=[...this.$el.querySelectorAll('.tournament-overlay button:not(:disabled),.tournament-overlay summary')].filter(n=>n.getClientRects().length),first=nodes[0],last=nodes.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}},
+
     finishAdventureOpening() {
       if(!this.openingScene || !this.socket?.connected)return;
       const scene=this.openingScene;
@@ -3158,6 +3165,7 @@ export default {
         } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
 
+      drawMagicIslandBoat(c,this.map);
       if(this.map==='void_arena'){c.fillStyle='rgba(4,2,10,.18)';c.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);}
       if (this.placeAmbienceActive && !document.hidden) {
         if (!this._placeAmbience) this._placeAmbience = new PlaceAmbienceRenderer();
@@ -3824,7 +3832,7 @@ export default {
     this.socket.on('disconnect', () => {
       this.experienceLab=null;
       this._clubRequestEpoch=(this._clubRequestEpoch||0)+1;
-      this.doublesFrame=null;this.clubPanel=null;this.clubControl=null;this.clubRosters=null;this.clubWatch=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.clubBusy=false;this.clubError='';
+      this.doublesFrame=null;this.clubPanel=null;this.clubControl=null;this.clubRosters=null;this.clubTournament=null;this.clubTournamentOpen=false;this.clubWatch=null;this.clubWatchEvents=[];this.clubWatchResult=null;this.clubBusy=false;this.clubError='';
       this.clearTeleporterCharge();
       this.closeWorldChat();this.clearWorldSpeech();
       this.closeShop();this.shop.loading=false;
@@ -3868,6 +3876,8 @@ export default {
     });
     this.socket.on('mapWeatherState', state => { this.mapWeather = state; });
     this.socket.on('whitepeak:open',payload=>{this.releaseAllMovementKeys();this.closeLegacyPanels();this.clubError='';this.clubPanel=payload;if(payload.rows)this.clubRows=payload.rows;if(payload.ranking){this.clubRanking=payload.ranking;this._clubRankingQuery={mode:payload.ranking.mode,page:payload.ranking.page,search:''};}});
+    this.socket.on('whitepeak:tournament',state=>{this.clubTournament=state;if(!state)this.clubTournamentOpen=false;});
+    this.socket.on('whitepeak:tournamentTurn',()=>{this.clubTournamentOpen=false;this.clubWatch=null;this.clubWatchEvents=[];this.clubWatchResult=null;});
     this.socket.on('whitepeak:honor',payload=>{this.clubHonor=payload;if(this.clubPanel?.tab==='board'&&this.clubRanking?.revision!==payload.revision&&!this.clubBusy)this.clubCommand('board',this._clubRankingQuery||{});this.drawPlayers();});
     this.socket.on('interactionHint',payload=>{this.interactionHint=payload;});
     this.socket.on('whitepeak:roulette',state=>{this.clubRoulette={...state,serverOffset:state.serverNow-Date.now()};});
@@ -5274,3 +5284,5 @@ button:hover {
 <style scoped>
 .housing-manage-button{position:absolute;left:15px;top:76px;z-index:20;display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--journal-border);border-radius:9px;background:var(--journal-paper);color:var(--journal-heading);box-shadow:0 3px 14px #07172233;font:600 11px var(--journal-font);cursor:pointer}.housing-manage-button svg{width:25px;height:25px}.housing-invitation{position:absolute;right:16px;top:76px;z-index:1500;width:min(310px,calc(100% - 32px));box-sizing:border-box;padding:17px;background:var(--journal-paper);border:1px solid var(--journal-border);border-radius:12px;box-shadow:var(--journal-shadow);color:var(--journal-ink);font:12px var(--journal-font)}.housing-invitation>b,.housing-invitation>small,.housing-invitation>span{display:block;margin-bottom:9px}.housing-invitation>small{font-size:8px;letter-spacing:.15em;color:var(--journal-muted)}.housing-invitation>div{display:flex;gap:7px}.housing-invitation button{padding:10px 12px;border:1px solid var(--journal-border);border-radius:7px;font:600 11px var(--journal-font);background:var(--journal-accent);color:var(--journal-on-accent);cursor:pointer}.housing-invitation button+button{background:var(--journal-card);color:var(--journal-ink)}@media(max-width:700px){.housing-manage-button{top:71px;padding:6px 9px;left:10px}.housing-manage-button svg{width:22px;height:22px}.housing-invitation{top:72px}}
 </style>
+
+<style scoped>.tournament-room-button{position:absolute;top:74px;right:80px;z-index:1210;border:1px solid var(--journal-border);border-radius:8px;padding:9px 12px;min-height:38px;background:var(--journal-card);color:var(--journal-ink);font:12px var(--journal-font);box-shadow:0 3px 12px #0002;cursor:pointer}.tournament-overlay{position:fixed;inset:0;z-index:4450;display:flex;align-items:center;justify-content:center;padding:14px;background:var(--journal-backdrop)}.tournament-overlay>section{position:relative;width:min(1120px,100%);max-height:94dvh;overflow:auto;background:var(--journal-paper);border:1px solid var(--journal-border);border-radius:18px;padding:24px}.tournament-overlay-close{position:sticky;top:0;float:right;margin-left:14px;width:38px;height:38px;border-radius:50%;background:var(--journal-card);border:1px solid var(--journal-border);color:var(--journal-heading);font-size:24px;cursor:pointer}@media(max-width:600px){.tournament-overlay{padding:7px}.tournament-overlay>section{padding:16px;border-radius:12px}.tournament-room-button{top:64px;right:73px;font-size:11px;padding:7px}}</style>
