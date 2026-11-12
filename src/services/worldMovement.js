@@ -1,13 +1,13 @@
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 export const MOVEMENT_INPUT_MS=150;
-export function movementInputWait(lastSent,now){return Number.isFinite(lastSent)?Math.max(0,MOVEMENT_INPUT_MS-(now-lastSent)):0;}
+export function movementInputWait(lastSent,now,interval=MOVEMENT_INPUT_MS){return Number.isFinite(lastSent)?Math.max(0,interval-(now-lastSent)):0;}
 // Canvas-only poses live outside Vue's observed player snapshots. The server is
 // always the destination: no prediction through collisions or unconfirmed tiles.
 export class WorldMovement {
   constructor(){this.poses=new Map();}
   seed(id,player,now){
     const pose={map:player.currentmap,x:player.x,y:player.y,fromX:player.x,fromY:player.y,toX:player.x,toY:player.y,
-      start:now,duration:0,receivedAt:now,cadence:MOVEMENT_INPUT_MS,frame:0,baseFrame:0,direction:player.direction||'down',moving:false};
+      start:now,duration:0,receivedAt:now,cadence:player.speedModuleActive?120:MOVEMENT_INPUT_MS,frame:0,baseFrame:0,direction:player.direction||'down',moving:false};
     this.poses.set(id,pose);return pose;
   }
   sample(id,player,now,held=false){
@@ -28,7 +28,7 @@ export class WorldMovement {
     if(cadence>=100&&cadence<=300)p.cadence=p.cadence*.8+cadence*.2;
     const continuous=now-p.start<=p.duration+100;
     p.receivedAt=now;p.fromX=p.x;p.fromY=p.y;p.toX=next.x;p.toY=next.y;p.start=now;
-    p.baseFrame=continuous?p.travelFrame:0;p.duration=clamp(p.cadence,130,180);
+    p.baseFrame=continuous?p.travelFrame:0;p.duration=clamp(p.cadence,next.speedModuleActive?104:130,next.speedModuleActive?144:180);
     const dx=next.x-current.x,dy=next.y-current.y;
     p.direction=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):dy?(dy>0?'down':'up'):next.direction||p.direction;
   }

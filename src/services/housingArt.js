@@ -1,3 +1,4 @@
+import {isAppliance,applianceSize,drawAppliance,drawFurnitureEffect} from './housingAppliances';
 import config from '@/data/housing.json';
 import metrics from '@/data/housingArt.json';
 import { drawPokemonTerminal } from './pokemonComputer';
@@ -45,6 +46,7 @@ export function furnitureSize(p) {
   return r % 180 ? { w: i.h, h: i.w } : { w: i.w, h: i.h };
 }
 function sprite(p) {
+  if(isAppliance(p.key))return {...applianceSize(p.key),face:(p.rotation||0)/90,index:-1};
   const item = artItem(p.key),
     face = (p.rotation ?? 0) / 90;
   return {
@@ -64,14 +66,15 @@ export function furnitureBounds(p) {
     bottom: (p.y + d.h) * 32,
   };
 }
-export function drawFurniture(c, art, p, alpha = 1) {
+export function drawFurniture(c, art, p, alpha = 1, now = performance.now(), fx = null) {
   if (!artItem(p.key) || !art?.furniture) return;
   const a = sprite(p),
     b = furnitureBounds(p);
   c.save();
   c.imageSmoothingEnabled = false;
   c.globalAlpha = alpha;
-  if (p.key === 'pokemon_pc' && a.face === 0) drawPokemonTerminal(c, b.x, b.y);
+  if(isAppliance(p.key))drawAppliance(c,p.key,b,p.rotation,fx?.until>Date.now()?now-fx.startedAt:null);
+  else if (p.key === 'pokemon_pc' && a.face === 0) drawPokemonTerminal(c, b.x, b.y);
   else
     c.drawImage(
       a.index>=22?art.cultivation:art.furniture,
@@ -85,6 +88,7 @@ export function drawFurniture(c, art, p, alpha = 1) {
       b.h
     );
   if (a.index>=22 && a.index<24 && art.growth) drawCrops(c,art,p,b);
+  drawFurnitureEffect(c,p,b,fx,now);
   c.restore();
 }
 function drawCrops(c,art,p,b){
@@ -122,7 +126,8 @@ export function drawItemIcon(c, art, key) {
     scale = Math.min(56 / a.w, 56 / a.h);
   c.clearRect(0, 0, 64, 64);
   c.imageSmoothingEnabled = false;
-  if (key === 'pokemon_pc') {
+  if(isAppliance(key)){drawAppliance(c,key,{x:12,y:8,w:40,h:48});}
+  else if (key === 'pokemon_pc') {
     c.save();
     c.translate(16, 8);
     drawPokemonTerminal(c, 0, 0);

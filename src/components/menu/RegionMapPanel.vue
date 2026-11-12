@@ -18,7 +18,7 @@
           @wheel.prevent="wheelZoom" @pointerdown.prevent="beginPointer" @pointermove="movePointer" @pointerup="endPointer" @pointercancel="endPointer" @lostpointercapture="endPointer" @click.capture="mapClick">
           <div class="map-surface" :style="surfaceStyle">
           <svg class="region-art" :style="artStyle" :viewBox="`0 0 ${atlas.width} ${atlas.height}`" role="group" :aria-label="en ? 'Towns, routes and your position' : 'Villes, routes et ta position'">
-            <region-map-terrain :width="atlas.width" :height="atlas.height" :dark-offset="atlas.darkContinent?.offsetX || 0" :safari="atlas.safari" :dark2="atlas.darkContinent2" :dark-label="en?atlas.darkContinent?.enLabel:atlas.darkContinent?.label" :en="en"/>
+            <region-map-terrain :width="atlas.width" :height="atlas.height" :dark-offset="atlas.darkContinent?.offsetX || 0" :magic="atlas.magicIsland" :safari="atlas.safari" :dark2="atlas.darkContinent2" :dark-label="en?atlas.darkContinent?.enLabel:atlas.darkContinent?.label" :en="en"/>
             <g shape-rendering="geometricPrecision" stroke-linejoin="round" stroke-linecap="round">
               <g v-for="edge in edges" :key="edge.id" :class="{'map-unvisited':!edge.visited}" :data-map-visited="String(edge.visited)">
                 <path :d="edge.path" fill="none" :stroke="edge.cave ? '#7e8765' : '#d1aa65'" stroke-width="8"/>

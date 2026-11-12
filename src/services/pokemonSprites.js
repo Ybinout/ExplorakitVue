@@ -7,7 +7,7 @@ export function setPokemonSpriteMotion(preferences){motionEnabled=preferences?.a
 export function pokemonSpriteKey(pokemon, side='front') {
   const source=typeof pokemon==='object'&&pokemon?pokemon:{id:pokemon};
   const battle=source.__battle||{},illusion=battle.illusion;
-  const id=Number(illusion?.id||battle.transformSpriteId||battle.formSpriteId||source.data?.id||source.pokemonId||source.spriteId||source.id);
+  const id=Number(illusion?.formSpriteId||illusion?.id||battle.transformSpriteId||battle.formSpriteId||source.formSpriteId||source.data?.id||source.pokemonId||source.spriteId||source.id);
   if(!Number.isInteger(id)||id<1)return null;
   const shiny=shinyValue(illusion?illusion.shiny:battle.transformed&&Object.hasOwn(battle,'transformSpriteShiny')?battle.transformSpriteShiny:source.shiny);
   const folder=(shiny?'shiny/':'')+(side==='back'?'back':'front');

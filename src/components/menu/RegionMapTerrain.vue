@@ -56,6 +56,7 @@
    </g>
    <text x="646" y="399" class="island-label">{{ darkLabel || 'Dark Continent' }}</text>
   </g>
+  <g v-if="magic" data-magic-island-scenery :transform="`translate(${magic.x},${magic.y})`"><path d="M8 19 17 8 40 12 61 6 95 14 105 32 101 63 87 74 61 69 39 76 11 64 5 43Z" fill="#b2c58c" stroke="#d5c9b0" stroke-width="7"/><path d="m28 24 25 12 32-8M53 36l-5 22" fill="none" stroke="#b19e7b" stroke-width="4"/><path d="m20 20 7-5 7 5v10H20Zm58 2 7-5 7 5v10H78ZM25 51l7-5 7 5v10H25Zm53-2 7-5 7 5v10H78Z" fill="#e0b8a0" stroke="#7a7f71" stroke-width="2"/></g>
   <g v-if="safari" data-safari-scenery :transform="`translate(${safari.x},${safari.y})`">
    <path :d="coasts.safari" fill="#67b4b2" stroke="#67b4b2" stroke-width="30" opacity=".45"/>
    <path :d="coasts.safari" fill="#a5d2bd" stroke="#a5d2bd" stroke-width="13"/>
@@ -90,7 +91,7 @@ import dc2Art from '@/data/dark2Atlas';
 const extendedDarkCoast='M9 -300H500V500H11L11 157'+dc2Art.coast.split('L11 157')[1];
 import {atlasCoasts,mainlandForests,mainlandRidges,seaCurrents} from '@/services/regionMapTerrain';
 export default{
- name:'RegionMapTerrain',props:{width:Number,height:Number,darkOffset:{type:Number,default:0},safari:Object,dark2:Object,darkLabel:String,en:Boolean},
+ name:'RegionMapTerrain',props:{width:Number,height:Number,darkOffset:{type:Number,default:0},magic:Object,safari:Object,dark2:Object,darkLabel:String,en:Boolean},
  data:()=>({dc2Art,extendedDarkCoast,coasts:atlasCoasts,forests:mainlandForests,ridges:mainlandRidges,currents:seaCurrents})
 };
 </script>

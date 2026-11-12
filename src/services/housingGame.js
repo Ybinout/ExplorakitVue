@@ -15,6 +15,7 @@ export default {
     housingNotice: '',
     housingArt: null,
     housingGrowthClock: 0,
+    housingEffects: {},
   }),
   computed: {
     housingActive() {
@@ -38,6 +39,9 @@ export default {
       const now=Date.now()+(this._housingClockOffset||0),dates=(this.housingState?.crops||[]).flatMap(c=>[c.plantedAt+300000,c.plantedAt+1200000]).filter(d=>d>now);
       if(dates.length)this._housingGrowthTimer=setTimeout(()=>{this.housingGrowthClock++;this.drawPlayers();this.scheduleHousingGrowth();},Math.min(...dates)-now+30);
     },
+    housingVisualPosition(player,position){
+      const pose=player.housingPose;return this.housingActive&&pose?{...position,x:pose.x,y:pose.y,direction:pose.direction,frame:0,seated:true,seatDepth:pose.depth}:position;
+    },
     housingItemBottom(p) {
       return furnitureBounds(p).bottom;
     },
@@ -48,7 +52,13 @@ export default {
         this.socket.on(name, fn);
         handlers.push([name, fn]);
       };
+      on('housing:effect',event=>{
+        if(this.players[event.actorId])this.$set(this.players[event.actorId],'housingPose',event.pose);
+        if(event.furnitureId)this.$set(this.housingEffects,event.furnitureId,{...event,startedAt:performance.now()});
+        this.drawPlayers();
+      });
       on('housing:state', (state) => {
+        this.housingEffects={};
         this.housingState = state;
         this._housingClockOffset=(state?.serverNow||Date.now())-Date.now();
         this.scheduleHousingGrowth();

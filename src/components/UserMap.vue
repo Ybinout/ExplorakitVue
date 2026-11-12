@@ -14,6 +14,7 @@
       <casino-slots-panel v-back="()=>slotsOpen=false" v-if="slotsOpen && !battle" :state="slotsState" :machine="slotsMachine" :balance="Number(progressionState.money)||0" :busy="slotsBusy" :error="slotsError" :connected="!!socket?.connected" :motion="preferences.animationsEnabled&&!worldWeatherReducedMotion" @command="slotsCommand" @asset-error="slotsError=$event" @close="slotsOpen=false"/>
       <aside v-if="marketNotices.length && !battle && !patchNoticeOpen" class="market-sale-toast" role="status"><div><strong>{{marketNotices.length===1?'Vente réussie !':marketNotices.length+' ventes réalisées !'}}</strong><p>{{marketNotices.length===1?marketNotices[0].message:'Les Pokédollars ont été versés sur ton compte. Retrouve le détail au comptoir, dans Mes ventes.'}}</p></div><button :disabled="marketNoticeBusy" @click="acknowledgeMarketNotices">Compris</button></aside>
       <market-panel v-back="()=>marketPanel=null" v-if="marketPanel && !battle" :initial="marketPanel" :socket="socket" :user-id="Number(players[socket?.id]?.userId)||0" @close="marketPanel=null"/>
+      <magic-island-panel v-if="magicPanel" :panel="magicPanel" :items="bagItems" :busy="magicBusy" :error="magicError" :notice="magicNotice" :result="magicResult" @close="magicPanel=null" @command="magicCommand" @refresh="refreshMagicPanel"/>
       <housing-panel v-back="()=> $refs.housingPanel?.close()" ref="housingPanel" v-if="housingPanel && !battle" :payload="housingPanel" :room="housingState" :friends="socialState.accepted" :busy="housingBusy" :error="housingError" :notice="housingNotice" :command="housingCommand" @close="closeHousingPanel"/>
       <button v-if="housingState?.isOwner && !housingPanel && !worldInteractionBlocked" class="housing-manage-button" data-housing-manage aria-label="Aménager ma maison" @pointerdown.stop @click.stop="openHousingManage"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="m3 15 11-10 11 10M6 13v14h9V17H11v10M22 20l1-2 3 1 2-1 2 3-1 2 1 2-2 3-2-1-3 1-1-2-2-1v-3Z"/><circle cx="25" cy="24" r="2"/></svg><span>Ma maison</span></button>
       <aside v-if="housingInvitation && !battle" class="housing-invitation" role="status"><small>UNE PORTE OUVERTE</small><b>{{ housingInvitation.name }} t’invite chez lui.</b><span>{{ housingInvitation.entryName }}</span><div><button :disabled="housingBusy" @click="housingCommand('invitation',{id:housingInvitation.id,accept:true})">Visiter →</button><button :disabled="housingBusy" @click="housingCommand('invitation',{id:housingInvitation.id,accept:false})">Plus tard</button></div></aside>
@@ -125,6 +126,7 @@
         </div>
         <bag-panel v-back="()=>isBagOpen=false" v-if="isBagOpen" :inert="trainingFeedback || automaticTrainingOpen || heldPickerUuid || corruptionInstall?'':null" :aria-hidden="trainingFeedback || automaticTrainingOpen || heldPickerUuid || corruptionInstall?'true':null" ref="bagPanel" :favorite-keys="bagFavorites" :favorite-busy="bagFavoriteBusy" @favorite="setBagFavorite" :module-shortcut="isDrift?null:moduleShortcut" :shortcut-busy="moduleShortcutBusy || medicineBusy" @shortcut="assignModuleShortcut" :view-state="bagViewState" @remember="bagViewState=$event" :money="Number(isDrift ? driftState?.money : progressionState.money) || 0" :items="bagItems" :loading="bagLoading" :error="bagError" :notice="medicineNotice" :repel-steps="repelSteps" :empty-label="emptyBagLabel" :expedition="isDrift" :language="preferences.language" @close="isBagOpen = false" @team="handleMenuAction('pokemon')">
           <template #actions="{item}">
+              <button v-if="item.speedModule && !isDrift" class="bag-use-button" :disabled="!!battle || magicBusy || mapLoading" @click="useModule(item)">{{item.active?'Désactiver':'Activer'}} le module</button>
               <button v-if="item.darkAerialModule && !isDrift" class="bag-use-button" :disabled="!!battle || medicineBusy || mapLoading" @click="useModule(item)">{{item.active?'Désactiver':'Activer'}} le module</button>
               <button v-if="item.key==='fly_module' && !isDrift" class="bag-use-button" data-use-fly-module :disabled="!!battle || mapLoading || !!flight" @click="useModule(item)">{{ preferences.language==='en'?'Use':'Utiliser' }}</button>
               <template v-else-if="item.experienceModule && !isDrift">
@@ -591,6 +593,7 @@ import evolutionGraph from '@/data/evolutionGraph.json';
 import { buildBattleResult } from '@/services/battleResult';
 import raidsGame from '@/services/raidsGame';
 import housingGame from '@/services/housingGame';
+import magicIslandGame from '@/services/magicIslandGame';
 import casinoSlotsGame from '@/services/casinoSlotsGame';
 import {isCasino,slotMachines,machineBottom,drawSlotMachine} from '@/services/casinoSlotsArt';
 import {drawFurniture, drawStair} from '@/services/housingArt';
@@ -617,8 +620,8 @@ import { WorldMusic } from '@/services/worldMusic';
 
 export default {
   props: { patchNoticeOpen: Boolean },
-  mixins:[socialGame,tradeGame,raidsGame,questJournalGame,comfortGame,draftGame,housingGame,casinoSlotsGame],
-  components: { MarketPanel:()=>import('./market/MarketPanel.vue'), CasinoSlotsPanel:()=>import('./whitepeak/CasinoSlotsPanel.vue'), HousingPanel:()=>import('./housing/HousingPanel.vue'), DraftPanel:()=>import('./draft/DraftPanel.vue'),AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
+  mixins:[magicIslandGame,socialGame,tradeGame,raidsGame,questJournalGame,comfortGame,draftGame,housingGame,casinoSlotsGame],
+  components: { MagicIslandPanel:()=>import('./magicIsland/MagicIslandPanel.vue'), MarketPanel:()=>import('./market/MarketPanel.vue'), CasinoSlotsPanel:()=>import('./whitepeak/CasinoSlotsPanel.vue'), HousingPanel:()=>import('./housing/HousingPanel.vue'), DraftPanel:()=>import('./draft/DraftPanel.vue'),AutomaticTraining,PatchHistory,TutorialCoach, SafariTravelPanel,
     SuperTournamentPanel, TournamentRewardPanel, AdventureOpening,
     RoomObstacleAction,
     FlightTransition, VoidTransition,
@@ -924,7 +927,7 @@ export default {
     worldInteractionBlocked() { return this.patchNoticeOpen || this.otherInteractionBlocked; },
     otherInteractionBlocked() { return this.nonDialogueInteractionBlocked || this.textImageSequence.length > 0; },
     nonDialogueInteractionBlocked() {
-      return !!this.marketPanel || this.slotsOpen || !!this.housingPanel || !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
+      return !!this.magicPanel || this.magicBusy || !!this.marketPanel || this.slotsOpen || !!this.housingPanel || !!this.raidPreview || !!this.raidState && ['lobby','active'].includes(this.raidState.phase) || this.raidPanelVisible || !!this.clubPanel || !!this.clubWatch || !!this.openingScene || !!this.mirrorScene || this.mirrorRift?.stage==='won' || !!this.pendingRoomEntry || !!this.roomObstacleAction || !!this.lucieDeparture || !!this.flight || this.quitting || this.lock || this.battle || this.battleResult || this.driftSpectator
         || this.experienceLab || this.corruptedHeldWorkshop || this.corruptionWorkshop || this.corruptionInstall || this.tradeModalVisible || this.friendsOpen || this.heldPickerUuid || this.trainingFeedback || this.evolutionVisible || this.trainerOffer || this.learningVisible || this.isDriftPanelOpen || this.isMenuOpen || this.isBagOpen || this.isAppearancePanelOpen
         || this.coverageOpen || this.damageCalculatorOpen || this.tournamentPanel || this.tournamentRewardVisible || this.pc.visible || this.selectedPokemonUuid || this.isTeamPanelOpen || this.activeInfoPanel || this.chatSession.visible
         || this.shop.visible || this.interactionChoice.visible || this.incomingRequest.visible
@@ -932,7 +935,7 @@ export default {
     },
     doubleTapAllowed() { return this.showMobileControls && !this.patchNoticeOpen && !this.nonDialogueInteractionBlocked && !this.worldChatOpen && !this.mapLoading && !this.mapLoadError && !this.worldContextLost; },
     canUseModuleShortcut(){return !!this.socket?.connected && !this.isDrift && !this.superTournament.active && !this.movementBlocked && !this.moduleShortcutBusy && !this.medicineBusy && !this.fishing;},
-    moduleShortcutLabel(){const names={experience_module:'Module d’expérience',fly_module:'Module Vol',professional_trainer_card:'Carte du Dresseur Professionnel',super_tournament_pass:'PASS Super Tournoi',void_teleporter:'Téléporteur chargé',dark_aerial_module:'Module Vol obscur'};return `Y · ${names[this.moduleShortcut]||'Module'}`;},
+    moduleShortcutLabel(){const names={mysterious_speed_module:'Module mystérieux',experience_module:'Module d’expérience',fly_module:'Module Vol',professional_trainer_card:'Carte du Dresseur Professionnel',super_tournament_pass:'PASS Super Tournoi',void_teleporter:'Téléporteur chargé',dark_aerial_module:'Module Vol obscur'};return `Y · ${names[this.moduleShortcut]||'Module'}`;},
     canUseBagConsumables() {
       return !this.battle && (!this.isDrift || (this.driftState?.alive && this.driftState?.phase === 'exploration' && !this.driftState?.storagePaused && !this.driftState?.recoveryWaiting));
     }
@@ -1191,6 +1194,7 @@ export default {
     },
     async acknowledgeMarketNotices(){if(this.marketNoticeBusy||!this.socket?.connected)return;const ids=this.marketNotices.map(n=>n.id);this.marketNoticeBusy=true;try{const r=await new Promise((resolve,reject)=>this.socket.timeout(8000).emit('market:read',{ids},(e,r)=>e?reject(e):resolve(r)));if(r?.success)this.marketNotices=this.marketNotices.filter(n=>!ids.includes(n.id));}catch(e){this.showInteractionNotice('La notification sera conservée jusqu’à la prochaine connexion.');}finally{this.marketNoticeBusy=false;}},
     async useModule(item){
+      if(item.speedModule){const r=await this.magicCommand('setSpeed',{active:!item.active});if(r?.success)this.showInteractionNotice(r.state.speed.active?'Module de vitesse activé.':'Module de vitesse désactivé.');return;}
       if(!item||this.isDrift||this.battle||this.battleResult||this.superTournament.active||this.mapLoading||this.flight||this.medicineBusy)return;
       this.isBagOpen=false;this.releaseAllMovementKeys();
       if(item.key==='fly_module'){await this.handleMenuAction('minimap');return;}
@@ -2433,6 +2437,7 @@ export default {
     async openDamageCalculator(){this.releaseAllMovementKeys();this.isMenuOpen=false;this.closeLegacyPanels();this.closeInfoPanel();await this.loadTeamPokemons();this.damageCalculatorOpen=true;},
     calculateStrategy(payload){return new Promise((resolve,reject)=>{if(!this.socket?.connected){reject(Error('Connexion interrompue.'));return;}this.socket.timeout(10000).emit('strategy:calculate',payload,(error,response)=>{if(error)reject(Error('Le serveur ne répond pas. Réessaie.'));else if(!response?.success)reject(Error(response?.message||'Simulation indisponible.'));else resolve(response.result);});});},
     closeLegacyPanels() {
+      this.magicPanel=null;
       this.coverageOpen=false;this.damageCalculatorOpen=false;
       this.friendsOpen=false;this.heldPickerUuid=null;
       this.pc.visible=false;
@@ -3012,7 +3017,7 @@ export default {
       this.animationFrameId = null;
       this.lastAnimationTimestamp = null;
     },
-    startMovementLoop(delay = MOVEMENT_INPUT_MS) {
+    startMovementLoop(delay = this.movementInputMs || MOVEMENT_INPUT_MS) {
       if (this.movementIntervalId !== null) return;
       this.movementIntervalId = window.setTimeout(() => {
         this.movementIntervalId = null;
@@ -3027,7 +3032,7 @@ export default {
     },
     restartMovementInput() {
       this.stopMovementLoop();
-      const wait = movementInputWait(this._lastMovementSentAt, performance.now());
+      const wait = movementInputWait(this._lastMovementSentAt, performance.now(),this.movementInputMs);
       if (wait > 0) { this.startMovementLoop(wait); return; }
       this.updatePlayerPosition();
       this.startMovementLoop();
@@ -3210,19 +3215,19 @@ export default {
       const housePlan=this.housingPlan;
       let houseObject=0;
       if(this.housingActive && this.housingArt){
-        for(const p of housePlan.ground)drawFurniture(c,this.housingArt,p);
+        for(const p of housePlan.ground)drawFurniture(c,this.housingArt,p,1,now,this.housingEffects[p.id]);
         drawStair(c,this.housingArt,this.housingFloor?.stairs?.up,true);
         drawStair(c,this.housingArt,this.housingFloor?.stairs?.down,false);
       }
       const playerOrder=Object.keys(this.players);
       const casinoObjects=isCasino(this.map)?slotMachines:[];let casinoObject=0;
-      if(this.housingActive||casinoObjects.length||hasTallGrass(this.map))playerOrder.sort((a,b)=>this.visualPlayer(a,this.players[a],now).y-this.visualPlayer(b,this.players[b],now).y);
+      if(this.housingActive||casinoObjects.length||hasTallGrass(this.map))playerOrder.sort((a,b)=>this.housingVisualPosition(this.players[a],this.visualPlayer(a,this.players[a],now)).y-this.housingVisualPosition(this.players[b],this.visualPlayer(b,this.players[b],now)).y);
       // Housing furniture joins the same depth order as the characters' feet.
       for (const playerId of playerOrder) {
         const player = this.players[playerId];
-        const position=this.visualPlayer(playerId,player,now);
+        const position=this.housingVisualPosition(player,this.visualPlayer(playerId,player,now));
         while(casinoObject<casinoObjects.length && machineBottom(casinoObjects[casinoObject])<=position.y+10)drawSlotMachine(c,casinoObjects[casinoObject++],now,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
-        if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length && this.housingItemBottom(housePlan.objects[houseObject]) <= position.y+10)drawFurniture(c,this.housingArt,housePlan.objects[houseObject++]);
+        if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length && this.housingItemBottom(housePlan.objects[houseObject]) <= (position.seated?position.seatDepth:position.y+10)){const item=housePlan.objects[houseObject++];drawFurniture(c,this.housingArt,item,1,now,this.housingEffects[item.id]);}
 
         // DÃ©finit une direction par dÃ©faut si la direction actuelle est indÃ©finie
         if (!player.direction) {
@@ -3254,6 +3259,7 @@ export default {
           if (sprite && playerSpriteSheet?.complete && playerSpriteSheet.naturalWidth && playerSpriteSheet.naturalHeight) {
             const pose=flightPose(playerId===this.socket?.id?this.flight:null,now,!this.decorMotionEnabled||this.worldWeatherReducedMotion);
             c.save();c.globalAlpha=pose.alpha;
+            if(position.seated){c.beginPath();c.rect(position.x-32,position.y-45,64,52);c.clip();}
             if(this._tallGrass?.map===this.map&&!pose.lift)this._tallGrass.clipActor(c,position);
             c.translate(strike.x,strike.y);
             c.translate(position.x,position.y+10-pose.lift);c.scale(pose.scale,pose.scale);c.translate(-position.x,-position.y-10);
@@ -3273,7 +3279,7 @@ export default {
       }
 
       while(casinoObject<casinoObjects.length)drawSlotMachine(c,casinoObjects[casinoObject++],now,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
-      if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length)drawFurniture(c,this.housingArt,housePlan.objects[houseObject++]);
+      if(this.housingActive && this.housingArt)while(houseObject<housePlan.objects.length){const item=housePlan.objects[houseObject++];drawFurniture(c,this.housingArt,item,1,now,this.housingEffects[item.id]);}
       if(!this.battle && !document.hidden && this.roomObstacleAction?.map===this.map)
         drawRoomStrike(c,this.roomObstacleAction,now,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
       if(this.arenaCollapse?.map===this.map&&!this.battle&&!document.hidden)drawHozeCeiling(c,this.arenaCollapse,now,this.decorMotionEnabled&&!this.worldWeatherReducedMotion);
@@ -3362,6 +3368,7 @@ export default {
     this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token,{mirrorRift:true,adventureOpening:true});
     this.bindRaidSocket();
     this.bindHousingSocket();
+    this.bindMagicIslandSocket();
     this.bindSlotsSocket();
     this.bindSocialSocket();this.bindTradeSocket();
     this.socket.on('adventureOpening',scene=>{if(this.isDrift)return;this.releaseAllMovementKeys();this.openingScene=scene;});

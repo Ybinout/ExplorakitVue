@@ -267,10 +267,11 @@
             :key="item.key"
             type="button"
             :data-tutorial-ball="item.key==='pokeball'?'':null" class="battle-choice-btn battle-choice-btn-bag"
-            :disabled="!canChooseAction"
+            :disabled="!canChooseAction || !!ballRestriction(item)"
+            :title="ballRestriction(item)"
             @click="submitAction({ action: 'bag', itemKey: item.key }, tr('throwBall'))"
           >
-            <span>{{ item.name }}</span>
+            <span>{{ item.name }}<small v-if="ballRestriction(item)" style="display:block;font-size:10px">{{ballRestriction(item)}}</small></span>
             <span>x{{ item.quantity }}</span>
           </button>
         </div>
@@ -581,7 +582,7 @@ export default {
     capturePolicyText() {
       if(!this.capturePolicy)return '';
       const p=this.capturePolicy,en=this.preferences.language==='en';
-      if(p.darkContinent)return en?'Capture impossible · Dark Continent Pokémon are too powerful.':'Capture impossible · Les Pokémon du Dark Continent sont trop puissants.';
+      if(p.darkContinent)return en?'Corrupted Balls only · 30% with a matching type. Elites cannot be caught.':'Balls Corrompues uniquement · 30 % avec le bon type. Les Élites sont incapturables.';
       if(p.excessLevels>0)return en?`Very difficult capture · level ${this.opponent?.level}, badge tier ${p.comfortableLevel}. More badges greatly improve your chances.`:`Capture très difficile · Niv. ${this.opponent?.level}, palier ${p.comfortableLevel}. Gagne des badges pour améliorer tes chances.`;
       return en?`${p.badgeCount} badge(s) · capture tier: level ${p.comfortableLevel}. Above it, captures remain possible but much harder.`:`${p.badgeCount} badge${p.badgeCount>1?'s':''} · palier de capture : Niv. ${p.comfortableLevel}. Au-delà, les captures restent possibles mais bien plus difficiles.`;
     },
@@ -705,6 +706,14 @@ export default {
     this._battleAudio?.dispose();
   },
   methods: {
+    ballRestriction(item){
+      const dark=this.capturePolicy?.darkContinent||['dark-jungle','dark-continent2'].includes(this.environment),en=this.preferences.language==='en';
+      if(dark&&!item.corruptedBallType)return en?'Corrupted Ball required':'Ball Corrompue nécessaire';
+      if(item.corruptedBallType&&!dark)return en?'Dark Continent only':'Dark Continent uniquement';
+      if(item.corruptedBallType){const p=this.opponent;if(p?.corruption?.permanent||p?.darkContinentEncounter?.kind==='corrupted')return en?'Elite: cannot catch':'Élite : incapturable';const types=[p?.type1,p?.type2,...(p?.data?.type||[])];if(types.length&&!types.includes(item.corruptedBallType))return en?'Incompatible type':'Type incompatible';}
+      return '';
+    },
+
     syncTutorialCoach(){
       clearTimeout(this._tutorialReadyTimer);
       const phase=this.tutorialPhase;

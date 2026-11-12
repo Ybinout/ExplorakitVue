@@ -1,9 +1,11 @@
+import magicWater from '../data/magicWater';
 import safariWater from '../data/safariWater.js';
 import dark2Water from '../data/dark2Water.js';
 import { WaterfallRenderer } from './waterfalls.js';
 // Pixel currents stay inside each mapped lake, never across its shoreline.
 const WIDTH = 448, HEIGHT = 320, FRAME_MS = 1000 / 15, CREST_COLOR = [190,235,255];
 const LAKES = {
+  ...Object.fromEntries(Object.entries(magicWater).map(([map,cells])=>[map,{cells:new Set(cells),bounds:{left:0,right:448,top:0,bottom:320},palette:'jungle-water',ripples:true}])),
   ...Object.fromEntries(Object.entries(dark2Water).map(([map,cells])=>[map,{cells:new Set(cells),bounds:{left:0,right:448,top:0,bottom:320},palette:'jungle-water',ripples:true}])),
   ...Object.fromEntries(Array.from({length:15},(_,i)=>['safari'+(i+1),{cells:new Set(safariWater['safari'+(i+1)]||[]),bounds:{left:0,right:448,top:0,bottom:320},palette:'jungle-water',ripples:true}])),
   ...Object.fromEntries(Array.from({length:9},(_,i)=>['jungle'+(i+1),{bounds:{left:0,right:448,top:0,bottom:320},palette:'jungle-water',ripples:true}])),
