@@ -1,5 +1,6 @@
 import {isAppliance,applianceSize,drawAppliance,drawFurnitureEffect} from './housingAppliances';
 import config from '@/data/housing.json';
+import berryRules from '@/data/berryMutation.json';
 import metrics from '@/data/housingArt.json';
 import { drawPokemonTerminal } from './pokemonComputer';
 const sources = {
@@ -95,7 +96,7 @@ function drawCrops(c,art,p,b){
   const item=artItem(p.key),count=item.slots,side=(p.rotation||0)%180!==0;
   for(let i=0;i<count;i++){
     const crop=p.crops?.find(x=>x.slot===i);if(!crop)continue;
-    const elapsed=Math.max(0,(p.growthNow||Date.now())-crop.plantedAt),stage=elapsed>=1200000?2:elapsed>=300000?1:0;
+    const elapsed=Math.max(0,(p.growthNow||Date.now())-crop.plantedAt),stage=elapsed>=berryRules.growthMs?2:elapsed>=berryRules.seedMs?1:0;
     const x=b.x+(count===1?b.w/2:side?b.w/2:b.w*(i+.5)/count), y=b.y+(count===1?b.h*.35:side?b.h*(i+.5)/count:b.h*.27);
     c.drawImage(art.growth,stage*32,0,32,32,x-20,y-29,40,40);
   }

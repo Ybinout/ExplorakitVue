@@ -1,3 +1,5 @@
+import berryRules from '@/data/berryMutation.json';
+import {occupantLayout} from './housingOccupant';
 import {
   isHousingMap,
   loadHousingArt,
@@ -36,11 +38,11 @@ export default {
   methods: {
     scheduleHousingGrowth(){
       clearTimeout(this._housingGrowthTimer);
-      const now=Date.now()+(this._housingClockOffset||0),dates=(this.housingState?.crops||[]).flatMap(c=>[c.plantedAt+300000,c.plantedAt+1200000]).filter(d=>d>now);
+      const now=Date.now()+(this._housingClockOffset||0),dates=(this.housingState?.crops||[]).flatMap(c=>[c.plantedAt+berryRules.seedMs,c.plantedAt+berryRules.growthMs]).filter(d=>d>now);
       if(dates.length)this._housingGrowthTimer=setTimeout(()=>{this.housingGrowthClock++;this.drawPlayers();this.scheduleHousingGrowth();},Math.min(...dates)-now+30);
     },
     housingVisualPosition(player,position){
-      const pose=player.housingPose;return this.housingActive&&pose?{...position,x:pose.x,y:pose.y,direction:pose.direction,frame:0,seated:true,seatDepth:pose.depth}:position;
+      const pose=player.housingPose,placement=this.housingPlan?.objects?.find(p=>p.id===pose?.furnitureId);if(!this.housingActive||!pose||!placement)return position;const layout=occupantLayout(placement,pose);return {...position,x:layout.cx,y:layout.depth-10,direction:pose.kind==='rest'?'down':pose.direction,frame:0,seated:true,seatDepth:layout.depth,housingOccupant:{placement,pose,layout}};
     },
     housingItemBottom(p) {
       return furnitureBounds(p).bottom;
