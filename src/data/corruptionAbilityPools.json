@@ -5925,25 +5925,6 @@
       ]
     },
     {
-      "key": "cmod_ability_noguard",
-      "ability": "No Guard",
-      "name": "Annule Garde",
-      "species": [
-        {
-          "id": 66,
-          "name": "Machoc"
-        },
-        {
-          "id": 67,
-          "name": "Machopeur"
-        },
-        {
-          "id": 68,
-          "name": "Mackogneur"
-        }
-      ]
-    },
-    {
       "key": "cmod_ability_poisonheal",
       "ability": "Poison Heal",
       "name": "Soin Poison",
@@ -7406,21 +7387,6 @@
         {
           "id": 553,
           "name": "Crocorible"
-        }
-      ]
-    },
-    {
-      "key": "cmod_ability_noguard",
-      "ability": "No Guard",
-      "name": "Annule Garde",
-      "species": [
-        {
-          "id": 622,
-          "name": "Gringolem"
-        },
-        {
-          "id": 623,
-          "name": "Golemastoc"
         }
       ]
     },
@@ -10612,17 +10578,6 @@
       ]
     },
     {
-      "key": "cmod_ability_noguard",
-      "ability": "No Guard",
-      "name": "Annule Garde",
-      "species": [
-        {
-          "id": 588,
-          "name": "Carabing"
-        }
-      ]
-    },
-    {
       "key": "cmod_ability_oblivious",
       "ability": "Oblivious",
       "name": "Benêt",
@@ -12200,21 +12155,6 @@
         {
           "id": 563,
           "name": "Tutankafer"
-        }
-      ]
-    },
-    {
-      "key": "cmod_ability_noguard",
-      "ability": "No Guard",
-      "name": "Annule Garde",
-      "species": [
-        {
-          "id": 622,
-          "name": "Gringolem"
-        },
-        {
-          "id": 623,
-          "name": "Golemastoc"
         }
       ]
     },
