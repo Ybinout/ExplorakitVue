@@ -161,8 +161,7 @@
             <h3>Une maison, trois niveaux au maximum.</h3>
             <p>
               Chaque étage possède son modèle et ses vingt emplacements de
-              meubles. Les escaliers sont inclus, et peuvent être déplacés dans
-              l’éditeur.
+              meubles. Les escaliers sont inclus et restent fixes dans la partie sombre, à gauche de la pièce.
             </p>
             <ol>
               <li v-for="(f, i) in home.floors" :key="i">

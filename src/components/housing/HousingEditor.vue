@@ -36,7 +36,7 @@
         </div>
       </div>
       </div>
-      <details v-if="draft.stairs.up||draft.stairs.down" class="house-stairs-tools"><summary>Déplacer les escaliers</summary><button v-if="draft.stairs.up" :disabled="locked" @click="stair('up')">↗ Vers l’étage supérieur</button><button v-if="draft.stairs.down" :disabled="locked" @click="stair('down')">↙ Vers l’étage inférieur</button></details>
+      <p v-if="draft.stairs.up||draft.stairs.down" class="house-stairs-tools">Les escaliers sont fixes à gauche. Garde leurs accès dégagés.</p>
     </div>
   </div>
 </template>
@@ -80,7 +80,7 @@ export default {
     },
     bounds() {
       const m = this.model;
-      return { x: m.x - 1, y: m.y - 3, w: m.w + 2, h: m.h + 5 };
+      return { x: Math.max(0, m.x - 2), y: m.y - 3, w: m.w + 3, h: m.h + 5 };
     },
     canvasWidth() {
       return Math.max(1,Math.min(this.viewportWidth-12,(this.viewportHeight-12)*this.bounds.w/this.bounds.h))*this.zoom;
@@ -215,12 +215,6 @@ export default {
         this.tool = null;
         this.draw();
       }
-    },
-    stair(key) {
-      this.view = 'room';
-      this.tool = { kind: 'stair', key };
-      this.preview = null;
-      this.draw();
     },
     stockClick(item) {
       if (performance.now() < (this._ignoreClick || 0) || item.available <= 0)

@@ -25,7 +25,7 @@ export function layoutError(f) {
     taken = new Set(),
     solid = new Set(),
     targets = [];
-  if (f.placements.length > 10) return 'Dix meubles maximum par pièce.';
+  if (f.placements.length > 20) return 'Vingt meubles maximum par pièce.';
   const claim = (p, w, h, block) => {
     for (const [x, y] of cells(p, w, h)) {
       const k = tileKey(x, y);
@@ -41,11 +41,11 @@ export function layoutError(f) {
     return '';
   };
   for (const s of Object.values(f.stairs).filter(Boolean)) {
-    const e = claim(s, 2, 2, false);
-    if (e) return e;
-    if (!inside(m, s.x, s.y + 2))
-      return 'Laisse une case au pied de l’escalier.';
-    targets.push({ x: s.x, y: s.y + 2 });
+    if (s.x !== m.x - 2) return 'Les escaliers restent fixes à gauche.';
+    for (const x of [s.x + 2, s.x + 3]) {
+      if (!inside(m, x, s.y + 1)) return 'Laisse l’accès à l’escalier dégagé.';
+      targets.push({ x, y: s.y + 1 });
+    }
   }
   for (const p of f.placements) {
     const i = artItem(p.key);
@@ -70,6 +70,8 @@ export function layoutError(f) {
     ])
       q.push({ x: p.x + dx, y: p.y + dy });
   }
+  for (const p of targets)
+    if (!seen.has(tileKey(p.x, p.y))) return 'Un escalier n’est plus accessible depuis l’entrée.';
   for (let y = m.y; y < m.y + m.h; y++)
     for (let x = m.x; x < m.x + m.w; x++)
       if (

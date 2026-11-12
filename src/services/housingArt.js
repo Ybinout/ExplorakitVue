@@ -7,7 +7,6 @@ const sources = {
   furniture: require('@/assets/housing/furniture-rotations-v4.png'),
   cultivation: require('@/assets/berries/cultivation-furniture-v1.png'),
   growth: require('@/assets/berries/growth-v1.png'),
-  architecture: require('@/assets/housing/architecture-v1.png'),
 };
 let pending;
 export function loadHousingArt() {
@@ -101,23 +100,49 @@ function drawCrops(c,art,p,b){
     c.drawImage(art.growth,stage*32,0,32,32,x-20,y-29,40,40);
   }
 }
+// Pixel geometry shares the actual left-hand threshold (x + 2, y + 1).
+// Two tiny cached canvases replace the old atlas cutout and its white matte.
+const stairCanvases = new Map();
+function stairCanvas(up) {
+  if (stairCanvases.has(up)) return stairCanvases.get(up);
+  const canvas = document.createElement('canvas');
+  canvas.width = 96; canvas.height = 64;
+  const c = canvas.getContext('2d');
+  const box = (x, y, w, h, color) => { c.fillStyle = color; c.fillRect(x, y, w, h); };
+  // Recessed wooden stairwell: dark outer masonry, warm wood, no white outline.
+  box(0, 4, 64, 60, '#0a111a');
+  box(2, 8, 62, 54, '#211d1b');
+  box(6, 12, 58, 48, '#151619');
+  for (let i = 0; i < 7; i++) {
+    const x = 8 + i * 8, top = up ? 12 + i * 3 : 30 - i;
+    const colors = up ? ['#78604a', '#705840', '#67513c', '#614c37', '#5b4633', '#533f30', '#4b392b']
+      : ['#242326', '#2d2927', '#38302b', '#44372e', '#514030', '#5e4a35', '#6a543e'];
+    box(x, top, 8, 58 - top, '#2a2421');
+    box(x, top, 6, 54 - top, colors[i]);
+    box(x, top, 2, 54 - top, up ? '#927454' : '#796044');
+    box(x, 54, 8, 4, '#312a24');
+  }
+  // Open doorway and short landing meet the room's left edge without a lip.
+  box(64, 32, 32, 32, '#594532');
+  box(66, 34, 30, 26, '#786047');
+  box(66, 36, 30, 2, '#8a7051');
+  box(66, 48, 30, 2, '#5e4936');
+  box(66, 60, 30, 4, '#382d25');
+  box(2, 4, 64, 4, '#2e2926');
+  box(2, 8, 4, 52, '#4f4133');
+  box(6, 8, 58, 4, '#66503a');
+  box(6, 60, 60, 4, '#43372c');
+  box(62, 12, 4, 20, '#70543a');
+  box(62, 32, 4, 28, '#453729');
+  box(8, 12, 4, 44, up ? '#29282a' : '#0d121b');
+  stairCanvases.set(up, canvas);
+  return canvas;
+}
 export function drawStair(c, art, p, up = true) {
-  if (!art?.architecture || !p) return;
-  const index = up ? 16 : 17,
-    a = metrics.fixtures.find((f) => f.index === index);
+  if (!p) return;
   c.save();
   c.imageSmoothingEnabled = false;
-  c.drawImage(
-    art.architecture,
-    (index % 6) * 64 + Math.floor((64 - a.w) / 2),
-    Math.floor(index / 6) * 64 + 64 - a.h,
-    a.w,
-    a.h,
-    p.x * 32,
-    (p.y + 2) * 32 - 96,
-    64,
-    96
-  );
+  c.drawImage(stairCanvas(up), p.x * 32, p.y * 32);
   c.restore();
 }
 export function drawItemIcon(c, art, key) {
