@@ -478,6 +478,10 @@ export default {
       if (r?.success) {
         this.pending = null;
         this.dirty = false;
+      } else if (r?.retryable === false) {
+        // A definitive rejection made no change: keep the draft editable.
+        // An uncertain response must keep its request ID for a safe retry.
+        this.pending = null;
       }
     },
     async reload() {
