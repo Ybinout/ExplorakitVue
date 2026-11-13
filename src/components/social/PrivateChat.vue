@@ -3,7 +3,7 @@
     <div ref="messages" class="private-messages" role="log" aria-label="Messages privés" aria-live="polite" :aria-busy="loading">
       <button v-if="before" class="private-older" :disabled="loading||!connected" @click="load(true)">Messages précédents</button>
       <p v-if="loading&&!messages.length" class="private-empty">Chargement…</p><p v-else-if="!messages.length" class="private-empty">Écris à {{ friend.username }}. Ta conversation reste disponible hors connexion.</p>
-      <article v-for="m in messages" :key="m.id" :data-social-message="m.id" :class="{mine:m.senderId===userId}"><small>{{ m.senderId===userId?'Toi':friend.username }} · {{ time(m.createdAt) }}</small><p>{{ m.text }}</p></article>
+      <article v-for="m in messages" :key="m.id" :data-social-message="m.id" :class="{mine:m.senderId===userId}"><small>{{ m.senderId===userId?'Toi':friend.username }} · {{ time(m.createdAt) }}<span v-if="m.automatic" class="message-automatic" data-message-automatic> · Automatique</span></small><p>{{ m.text }}</p></article>
     </div>
     <p v-if="error" class="private-error" role="alert">{{ error }}</p>
     <form class="private-compose" @submit.prevent="send"><label class="sr-only" :for="inputId">Message pour {{ friend.username }}</label><textarea :id="inputId" ref="draft" v-model="draft" data-social-draft :rows="compact?1:2" maxlength="500" placeholder="Ton message…" :disabled="!connected||sending" @input="remember" @keydown.enter.exact.prevent="send"></textarea><button data-social-send :disabled="!connected||sending||!draft.trim()" :aria-label="sending?'Envoi en cours':'Envoyer le message'"><journal-icon name="send"/><span v-if="!compact">{{ sending?'Envoi…':'Envoyer' }}</span></button></form>

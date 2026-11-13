@@ -618,6 +618,7 @@ import TutorialCoach from './tutorial/TutorialCoach.vue';
 import {drawEarlyGrassGuide} from '@/services/earlyGrassGuide';
 import { trainerPaletteKey, normalizeTrainerPalette, themedTrainerSheet, trainerPalettePreview, supportsTrainerPalette } from '@/services/trainerPalette';
 import { GAMEPAD_EVENT } from '@/services/gamepad';
+import { observeActionRhythm } from '@/services/actionObservation';
 import { attachGameFullscreen } from '@/services/gameFullscreen';
 import { localizeAbilityName, localizeMoveName, translate } from '@/services/i18n';
 import {natureLabel} from '@/services/pokemonNatures';
@@ -3382,6 +3383,7 @@ export default {
     }
 
     this.socket = this.isDrift ? createDriftSocket(token) : createGameSocket(token,{mirrorRift:true,adventureOpening:true});
+    this._actionObservation=observeActionRhythm(this.socket,{root:this.$el});
     this.bindRaidSocket();
     this.bindHousingSocket();
     this.bindMagicIslandSocket();
@@ -4052,6 +4054,7 @@ export default {
   }
   ,
   beforeDestroy() {
+    this._actionObservation?.stop();
     this._touchAction?.reset();
     this.clearTeleporterCharge();
     this.closeWorldChat();this.clearWorldSpeech();
