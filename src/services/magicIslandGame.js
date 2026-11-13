@@ -32,7 +32,7 @@ export default{
    const signature=JSON.stringify({name,data});if(this._talentTicket?.signature!==signature)this._talentTicket={signature,requestId:newRequestId()};
    try{const r=await new Promise((resolve,reject)=>this.socket.timeout(15000).emit('talents:'+name,{...data,requestId:this._talentTicket.requestId},(e,r)=>e?reject(Error('La réponse tarde. Réessaie la même confirmation.')):resolve(r)));
     if(!r?.success)throw Error(r?.message||'Action indisponible.');this._talentTicket=null;this.talentPanel=r.state;
-    if(name!=='open')this.talentNotice=name==='refund'?'Points restitués. Les ressources dépensées ne sont pas rendues.':name==='purchase'?'Module acquis : tes 41 points sont disponibles.':'Talent activé.';
+    if(name!=='open')this.talentNotice=name==='refund'?'Points restitués. Ce talent pourra être réactivé gratuitement.':name==='purchase'?'Module acquis : tes 41 points sont disponibles.':r.result?.reactivated?'Talent réactivé gratuitement.':'Talent activé.';
    }catch(e){this.talentError=e.message;if(!this.talentPanel)this.showInteractionNotice(e.message,6500);if(!e.message.includes('réponse tarde'))this._talentTicket=null;}
    finally{this.talentBusy=false;}
   },
