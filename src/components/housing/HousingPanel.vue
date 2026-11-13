@@ -1,5 +1,6 @@
 <template>
-  <berry-garden-panel v-if="['garden','mutator'].includes(payload.kind)" :payload="payload" :busy="busy" :error="error" :command="command" @close="$emit('close')"/>
+  <housing-trash-panel v-if="payload.kind==='trash'" :payload="payload" :busy="busy" :error="error" :notice="notice" :command="command" @close="$emit('close')"/>
+  <berry-garden-panel v-else-if="['garden','mutator'].includes(payload.kind)" :payload="payload" :busy="busy" :error="error" :command="command" @close="$emit('close')"/>
   <div v-else class="housing-backdrop" @keydown.stop="keyDown" @keyup.stop>
     <section
       ref="dialog"
@@ -351,6 +352,7 @@
   </div>
 </template>
 <script>
+import HousingTrashPanel from './HousingTrashPanel.vue';
 import { housingModels, housingItems } from '@/services/housingArt';
 import HousingEditor from './HousingEditor.vue';
 import BerryGardenPanel from './BerryGardenPanel.vue';
@@ -369,7 +371,7 @@ const categories = {
   cultures: 'Culture et mutation',
 };
 export default {
-  components: { BerryGardenPanel, HousingEditor, HousingItemIcon, HousingModelPreview },
+  components: { HousingTrashPanel, BerryGardenPanel, HousingEditor, HousingItemIcon, HousingModelPreview },
   props: {
     payload: Object,
     room: Object,

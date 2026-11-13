@@ -8,6 +8,7 @@
    <span class="raid-card-portrait"><pokemon-portrait :src="src" alt=""/><span v-if="hit" :key="hit.id" class="raid-card-hit" :class="{'is-heal':hit.kind==='-heal'}">{{ hit.kind==='-heal'?'+':'−' }}{{ hit.amount }}</span></span>
    <span class="raid-card-detail"><span class="raid-card-name"><b>{{ pokemon.name }}</b><small>{{ stateLabel }}</small></span><span class="raid-card-health"><i :style="{width:percent+'%'}"/></span><span class="raid-card-life">{{ pokemon.currentHp }}/{{ pokemon.maxHp }} PV <battle-status-pill v-if="pokemon.status!=='normal'" :status="pokemon.status" compact/></span><span class="raid-card-threat"><i :style="{width:pokemon.aggro+'%'}"/></span></span>
   </span>
+  <span v-if="pokemon.effects?.confusion || pokemon.effects?.disabledMove" class="raid-card-volatiles" data-raid-volatiles><span v-if="pokemon.effects.confusion">Confus</span><span v-if="pokemon.effects.disabledMove" :title="'Entrave : '+pokemon.effects.disabledMove">Entrave · {{ pokemon.effects.disabledMove }}</span></span>
   <span class="raid-card-meta"><span :title="pokemon.ownerName">{{ pokemon.ownerName }} <b>{{ ready?'✓':controlled?'· toi':'' }}</b></span><small>Aggro <b>{{ pokemon.aggro }} %</b></small></span>
  </button><small v-if="multiplayer" class="raid-card-request-note" aria-live="polite">{{ requested?(requestMine?'Demande envoyée':'Demande la main'):actionsLeft>0?actionsLeft+' action'+(actionsLeft>1?'s':'')+' disponible'+(actionsLeft>1?'s':''):'Action terminée' }}</small>
  </article>
@@ -53,4 +54,7 @@ export default{components:{BattlePokemonInfo,PokemonPortrait,BattleStatusPill},p
  .raid-card-meta{font-size:7px;line-height:10px}
  .raid-card-meta small{font-size:7px}
 }
+</style>
+<style scoped>
+.raid-card-volatiles{display:flex;gap:3px;flex-wrap:wrap;font-size:8px;line-height:12px;max-width:100%;color:var(--journal-ink)}.raid-card-volatiles span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;border:1px solid #a48dba;border-radius:4px;padding:0 4px;background:color-mix(in srgb,#a48dba 13%,var(--journal-card))}
 </style>

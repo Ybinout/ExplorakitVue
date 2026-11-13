@@ -46,6 +46,7 @@ export function furnitureSize(p) {
   return r % 180 ? { w: i.h, h: i.w } : { w: i.w, h: i.h };
 }
 function sprite(p) {
+  if(p.key==='trash_bin')return {w:16,h:20,face:(p.rotation||0)/90,index:-1};
   if(isAppliance(p.key))return {...applianceSize(p.key),face:(p.rotation||0)/90,index:-1};
   const item = artItem(p.key),
     face = (p.rotation ?? 0) / 90;
@@ -73,7 +74,11 @@ export function drawFurniture(c, art, p, alpha = 1, now = performance.now(), fx 
   c.save();
   c.imageSmoothingEnabled = false;
   c.globalAlpha = alpha;
-  if(isAppliance(p.key))drawAppliance(c,p.key,b,p.rotation,fx?.until>Date.now()?now-fx.startedAt:null);
+  if(p.key==='trash_bin'){
+    c.translate(Math.round(b.x),Math.round(b.y));c.scale(b.w/16,b.h/20);
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(3,5,10,14,'#31434d');r(4,6,8,12,'#789791');r(5,8,1,8,'#aec6b4');r(9,8,1,8,'#577672');r(2,3,12,3,'#31434d');r(3,3,10,2,'#a2b9ac');r(6,1,4,2,'#31434d');r(4,18,8,1,'#25323b');
+  }else if(isAppliance(p.key))drawAppliance(c,p.key,b,p.rotation,fx?.until>Date.now()?now-fx.startedAt:null);
   else if (p.key === 'pokemon_pc' && a.face === 0) drawPokemonTerminal(c, b.x, b.y);
   else
     c.drawImage(

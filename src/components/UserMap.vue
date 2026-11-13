@@ -366,8 +366,9 @@
             class="mobile-action-a"
             :disabled="(!!roomObstacleAction && (!roomObstacleAction.manual || roomObstacleAction.success)) || !!lucieDeparture || !!mirrorScene || mirrorRift?.stage==='won'"
             :aria-label="textImageSequence.length ? (preferences.language === 'en' ? 'Continue dialogue' : 'Continuer le dialogue') : (preferences.language === 'en' ? 'Interact' : 'Parler ou agir')"
-            @pointerdown.stop.prevent="triggerMobileActionA"
-            @click="activateMobileActionA"
+            @pointerdown.stop.prevent
+            @pointerup.stop.prevent="triggerMobileActionA"
+            @click.stop.prevent="activateMobileActionA"
           >
             A
           </button>
@@ -507,6 +508,7 @@ import TeamPokemonTraits from './TeamPokemonTraits.vue';
 import { flightPose } from '@/services/flightAnimation';
 import {resolveMapAsset} from '@/services/mapAssets';
 import {drawDepartment} from '@/services/departmentLayout';
+import {drawWorldDecorEdits} from '@/services/worldDecorEdits';
 import { getWorldCamera, WORLD_WIDTH, WORLD_HEIGHT } from '@/services/worldCamera';
 import { createMapSceneLoader } from '@/services/mapScene';
 import { TouchAction } from '@/services/touchAction';
@@ -3165,6 +3167,7 @@ export default {
         } else { this._villageWater?.suspend(); c.drawImage(this.mapImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT); }
       }
 
+      drawWorldDecorEdits(c,this.map);
       drawMagicIslandBoat(c,this.map);
       if(this.map==='void_arena'){c.fillStyle='rgba(4,2,10,.18)';c.fillRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);}
       if (this.placeAmbienceActive && !document.hidden) {

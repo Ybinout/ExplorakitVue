@@ -1,6 +1,6 @@
 // Pointer Events give mouse, pen and touch the same owner-confirmed drop path.
-export function createComputerDrag({root, changed, drop, navigateBox, openBoxPicker, ended}) {
-  let gesture=null, frame=null, navTimer=null, navStep=null, pickerTimer=null;
+export function createComputerDrag({root, changed, drop, navigateBox, openBoxPicker, ended, longPress}) {
+  let gesture=null, frame=null, navTimer=null, navStep=null, pickerTimer=null, holdTimer=null;
   function boxStepAt(x,y) {
     if(root.querySelector('.pc-box-picker'))return null;
     const button=document.elementFromPoint(x,y)?.closest('[data-pc-box-step]');
@@ -44,7 +44,7 @@ export function createComputerDrag({root, changed, drop, navigateBox, openBoxPic
     update();frame=requestAnimationFrame(scrollLoop);
   }
   function cancel() {
-    const old=gesture;gesture=null;clearTimeout(pickerTimer);pickerTimer=null;cancelAnimationFrame(frame);clearTimeout(navTimer);navTimer=null;navStep=null;
+    const old=gesture;gesture=null;clearTimeout(holdTimer);holdTimer=null;clearTimeout(pickerTimer);pickerTimer=null;cancelAnimationFrame(frame);clearTimeout(navTimer);navTimer=null;navStep=null;
     if(old?.active){ended?.();try{root.releasePointerCapture(old.pointerId);}catch{ /* Already released by the browser. */ }}
     changed(null);
   }
@@ -52,11 +52,16 @@ export function createComputerDrag({root, changed, drop, navigateBox, openBoxPic
     start(event,pokemon,from) {
       if(event.isPrimary===false || event.button!==0 || gesture)return;
       gesture={pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,pokemon,from,active:false,to:null};
+      if(event.pointerType==='touch'&&from.kind==='box'&&longPress)holdTimer=setTimeout(()=>{
+        if(!gesture||gesture.active)return;
+        cancel();longPress(pokemon);
+      },500);
     },
     move(event) {
       if(!gesture || event.pointerId!==gesture.pointerId)return;
       gesture.x=event.clientX;gesture.y=event.clientY;
       if(!gesture.active && Math.hypot(gesture.x-gesture.startX,gesture.y-gesture.startY)>=8){
+        clearTimeout(holdTimer);holdTimer=null;
         gesture.active=true;try{root.setPointerCapture(event.pointerId);}catch{ /* Synthetic test pointers. */ }
         frame=requestAnimationFrame(scrollLoop);
       }
