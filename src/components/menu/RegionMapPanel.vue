@@ -29,11 +29,12 @@
                 <title>{{ label(node.id) }}{{ isVisited(node.id)?'':(en?' · Not visited':' · Non visité') }}</title>
                 <rect :x="node.x-12" :y="node.y-12" width="24" height="24" fill="transparent"/>
                 <path v-if="node.kind==='house'" :d="`M${node.x-8} ${node.y-1}l8-7 8 7h-2v9h-12v-9Z`" fill="#fff1cb" stroke="#885f46" stroke-width="2" data-house-marker/>
+                <g v-if="node.kind==='flight'" :data-dark-flight-marker="node.id" :transform="`translate(${node.x},${node.y})`"><circle r="9" fill="#49305f" stroke="#eddbff" stroke-width="1.5"/><path d="M-6 1-2 0 0-5 2 0 6 1 2 3 0 6-2 3Z" fill="#f4e6ff"/></g>
                 <rect v-if="node.kind === 'town'" :x="node.x-7" :y="node.y-6" width="14" height="12" fill="#f7f0c5" stroke="#94745b" stroke-width="1"/>
                 <path v-if="node.kind === 'town'" :d="`M${node.x-5} ${node.y-4}h10v8h-10Z`" fill="#d87765"/>
-                <rect v-else-if="node.kind!=='house'" :x="node.x-3" :y="node.y-3" width="6" height="6" :fill="node.kind==='cave' ? '#6b7967' : '#f7edb4'"/>
+                <rect v-else-if="node.kind!=='house' && node.kind!=='flight'" :x="node.x-3" :y="node.y-3" width="6" height="6" :fill="node.kind==='cave' ? '#6b7967' : '#f7edb4'"/>
                 <text v-if="node.kind==='route' && !isSafari(node.id)" :x="node.x+10" :y="node.y+3" class="route-label">{{ routeLabel(node.id) }}</text>
-                <text v-if="node.kind === 'town' || node.kind === 'event' || node.kind === 'house'" :x="node.x" :y="node.y - (currentNode?.id === node.id ? 28 : 14)" text-anchor="middle" class="town-label">{{ shortLabel(node.id) }}</text>
+                <text v-if="node.kind === 'town' || node.kind === 'event' || node.kind === 'house' || node.kind === 'flight'" :x="node.x" :y="node.y - (currentNode?.id === node.id ? 28 : 14)" text-anchor="middle" class="town-label">{{ shortLabel(node.id) }}</text>
               </g>
             </g>
             <g v-for="node in habitatNodes" :key="`habitat-${node.id}`" class="habitat-ping" :data-habitat-ping="node.id" @click="selected = node.id">
@@ -66,6 +67,7 @@
           <div v-if="flightAllowed && !pokemon" class="flight-module" data-flight-module>
             <strong>{{ en ? 'Flight Module' : 'Module Vol' }}</strong>
             <p>{{ flight?.unlocked ? (en ? 'Choose a visited town or your house, then take flight.' : 'Choisis une ville visitée ou ta maison, puis prends ton envol.') : (en ? 'Raphael will give you this module after your victory.' : 'Raphael te remettra ce module après ta victoire.') }}</p>
+            <div v-if="darkLandingNodes.length" class="dark-flight-links" data-dark-flight-links><p>{{en?'Dark Flight active · Choose a landing point.':'Vol obscur activé · Choisis un point d’atterrissage.'}}</p><button v-for="node in darkLandingNodes" :key="node.id" :data-dark-flight-link="node.id" :aria-pressed="selected===node.id" @click="selected=node.id;centerOn(node)"><span aria-hidden="true">✦</span>{{label(node.id)}}<span aria-hidden="true">↗</span></button></div>
           </div>
           <template v-if="pokemon">
             <label for="region-place">{{ en ? 'Habitats' : 'Localisations' }}</label>
@@ -76,7 +78,7 @@
         </div>
         <footer class="region-footer">{{ pokemon ? (en ? 'Presence areas, not guaranteed encounters.' : 'Zones de présence, rencontres non garanties.') : (en ? 'Select a town or route to find your way.' : 'Sélectionne une ville ou une route pour te repérer.') }}</footer>
       </div>
-      <div v-if="flightAllowed && !pokemon && (['town','house'].includes(selectedNode?.kind) || flight?.darkDestinations?.includes(selected)) && flight?.unlocked" class="flight-actionbar">
+      <div v-if="flightAllowed && !pokemon && (['town','house'].includes(selectedNode?.kind) || darkLandingNodes.some(n=>n.id===selected)) && flight?.unlocked" class="flight-actionbar">
         <div><small>{{ en ? 'Flight destination' : 'Destination du vol' }}</small><strong>{{ label(selected) }}</strong></div>
         <button class="flight-button" data-fly :disabled="!canFlySelected" @click="$emit('fly',selected)">{{ canFlySelected ? (en ? 'Fly here ↗' : 'Voler ici ↗') : (en ? 'Not visited' : 'Non visitée') }}</button>
       </div>
@@ -85,6 +87,7 @@
 </template>
 <script>
 import RegionMapTerrain from './RegionMapTerrain.vue';
+import {darkFlightNodes} from '@/services/darkFlightMap';
 import {savedMapView,rememberMapView,regionBounds} from '@/services/regionMapMemory';
 import api from '@/services/api';
 import { getMapLocationLabel } from '@/services/mapLocations';
@@ -99,7 +102,7 @@ export default {
     jumpZones(){return [['main',this.en?'Region':'Région'],['tower',this.en?'Super Battles':'Super Combats'],['safari','Safari'],['island',this.en?'Dark Island':'Île DC'],['magic',this.en?'Magic Island':'Île Magique'],['continent','Dark Continent']].map(([key,label])=>({key,label,bounds:regionBounds(this.atlas,key)})).filter(z=>z.bounds);},
     friendMarkers(){if(!this.atlas)return [];const colors=['#9b5e9d','#35798e','#a27432','#407e54','#a95463','#5d64a0'],offsets=[[12,0],[-12,0],[0,12],[0,-12],[12,12],[-12,12]],counts={};return this.friendMembers.filter(p=>p.online&&p.location).map(p=>{const node=this.atlas.nodes.find(n=>n.id===p.location.nodeId);if(!node)return null;const k=counts[node.id]||0;counts[node.id]=k+1;const offset=offsets[k%offsets.length];return {...p,nodeId:node.id,mode:p.location.mode,x:node.x+offset[0],y:node.y+offset[1],color:p.afk?'#db942e':colors[p.id%colors.length]};}).filter(Boolean);},
 
-    canFlySelected(){return this.flightAllowed&&this.flight?.unlocked&&this.flight.owned!==false&&(this.selectedNode?.kind==='house'||this.selectedNode?.kind==='town'&&this.flight.visited.includes(this.selected)||this.flight.darkDestinations?.includes(this.selected));},
+    canFlySelected(){return this.flightAllowed&&this.flight?.unlocked&&this.flight.owned!==false&&(this.selectedNode?.kind==='house'||this.selectedNode?.kind==='town'&&this.flight.visited.includes(this.selected)||this.darkLandingNodes.some(n=>n.id===this.selected));},
     layout(){return mapLayout(this.atlas || {width:512,height:448},this.viewport,this.zoom);},
     artStyle(){return {width:this.layout.mapWidth+'px',height:this.layout.mapHeight+'px'};},
     surfaceStyle(){return {width:Math.max(this.viewport.width,this.layout.mapWidth)+'px',height:Math.max(this.viewport.height,this.layout.mapHeight)+'px'};},
@@ -110,8 +113,9 @@ export default {
     currentNode(){return this.atlas?.nodes.find(n=>n.id===(this.currentRegion || this.atlas.aliases[this.currentMap]));},
     currentLabel(){return this.currentNode ? this.label(this.currentNode.id) : this.label(this.currentMap);},
     houseNode(){if(this.pokemon||!this.flight?.house)return null;const n=this.atlas?.nodes.find(n=>n.id===this.flight.house.nodeId);return n?{id:'owned-house',kind:'house',x:n.x+17,y:n.y+12}:null;},
-    displayNodes(){return [...(this.atlas?.nodes||[]).filter(n=>!this.isDark(n.id)),...(this.houseNode?[this.houseNode]:[])];},
-    selectedNode(){return [...(this.atlas?.nodes||[]),...(this.houseNode?[this.houseNode]:[])].find(n=>n.id===this.selected);},
+    darkLandingNodes(){return this.pokemon?[]:darkFlightNodes(this.atlas,this.flight);},
+    displayNodes(){return [...(this.atlas?.nodes||[]).filter(n=>!this.isDark(n.id)),...this.darkLandingNodes,...(this.houseNode?[this.houseNode]:[])];},
+    selectedNode(){return this.displayNodes.find(n=>n.id===this.selected)||this.atlas?.nodes.find(n=>n.id===this.selected);},
     selectedHabitats(){return this.locations.filter(l=>l.map===this.selected);},
     habitatNodes(){const ids=new Set(this.locations.map(l=>l.map));return (this.atlas?.nodes || []).filter(n=>ids.has(n.id));},
     selectableNodes(){return this.pokemon ? this.habitatNodes : [...this.displayNodes,...(this.isDark(this.currentNode?.id)?[this.currentNode]:[])];},
@@ -128,13 +132,13 @@ export default {
       if(!this._memoryTimer)this._memoryTimer=setTimeout(()=>{this._memoryTimer=null;if(!this.disposed&&this._lastView)rememberMapView(this.memoryScope,this._lastView);},120);
     },
     jumpRegion(bounds){const fit=Math.min(this.viewport.width/this.atlas.width,this.viewport.height/this.atlas.height);this.changeZoom(Math.min(4,Math.max(1,Math.min(this.viewport.width/(bounds.w*fit),this.viewport.height/(bounds.h*fit)))));this.$nextTick(()=>this.centerOn(bounds));},
-    isVisited(id){return id==='owned-house'||id===this.currentNode?.id||(this.flight?.visitedRegions||[]).includes(id)||(this.flight?.visited||[]).includes(id);},
+    isVisited(id){return id==='owned-house'||this.darkLandingNodes.some(n=>n.id===id)||id===this.currentNode?.id||(this.flight?.visitedRegions||[]).includes(id)||(this.flight?.visited||[]).includes(id);},
     modeLabel(mode){return {adventure:'Aventure',rift:'Rift',colosseum:'Colosseum'}[mode]||'';},
     selectFriendMember(member){this.selected=member.nodeId;this.centerOn(this.atlas.nodes.find(n=>n.id===member.nodeId));},
 
     isSafari(id){return /^safari(?:[1-9]|1[0-5])$/.test(id||'');},
     isDark(id){return /^(?:jungle[1-9]|DC2_\d{2})$/.test(id||'');},
-    label(id){if(id==='owned-house')return this.en?'My house':'Ma maison';return /^jungle[1-9]$/.test(id||'')?(this.en?this.atlas?.darkContinent?.enLabel:this.atlas?.darkContinent?.label)||'Dark Continent':getMapLocationLabel(id,this.language);},
+    label(id){if(id==='owned-house')return this.en?'My house':'Ma maison';if(this.darkLandingNodes.some(n=>n.id===id))return id==='jungle1'?(this.en?'Dark Continent Island':'Île du Dark Continent'):'Dark Continent';return /^jungle[1-9]$/.test(id||'')?(this.en?this.atlas?.darkContinent?.enLabel:this.atlas?.darkContinent?.label)||'Dark Continent':getMapLocationLabel(id,this.language);},
     routeLabel(id){return /^jungle[1-9]$/.test(id)?'Jungle '+id.slice(6):this.label(id).replace('Route ','');},
     shortLabel(id){return id==='start' ? (this.en?'Home village':'Village de départ') : this.label(id);},
     speciesName(id){return this.entries.find(p=>p.id===id)?.name || `#${id}`;},
@@ -203,6 +207,10 @@ export default {
   }
 };
 </script>
+<style scoped>
+.dark-flight-links{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.dark-flight-links>p{flex-basis:100%;margin:0 0 2px;font-size:11px;color:var(--journal-muted)}.dark-flight-links>button{display:flex;align-items:center;justify-content:space-between;gap:9px;min-height:42px;padding:9px 12px;border:1px solid var(--journal-border);border-radius:9px;background:var(--journal-soft);color:var(--journal-ink);font:inherit;font-size:12px;cursor:pointer}.dark-flight-links>button[aria-pressed=true]{background:var(--journal-selected);border-color:var(--journal-accent)}.dark-flight-links>button>span{color:var(--journal-accent)}.dark-flight-links>button:focus-visible{outline:2px solid var(--journal-accent);outline-offset:2px}
+@media(max-width:500px){.dark-flight-links>button{flex:1 1 100%;font-size:11px}}
+</style>
 <style scoped>
 .region-jumps{display:flex;gap:5px;padding:9px 12px;overflow:auto;border-bottom:1px solid var(--journal-border);background:var(--journal-card)}.region-jumps button{flex:none;font-size:10px;min-height:36px;padding:6px 9px;background:var(--journal-soft)}
 
