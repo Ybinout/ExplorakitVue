@@ -1,3 +1,4 @@
+import talentCatalog from '@/data/talentTree.json';
 function newRequestId(){if(window.crypto.randomUUID)return window.crypto.randomUUID();const a=window.crypto.getRandomValues(new Uint8Array(16));a[6]=(a[6]&15)|64;a[8]=(a[8]&63)|128;const h=Array.from(a,n=>n.toString(16).padStart(2,'0')).join('');return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;}
 export default{
  data:()=>({magicPanel:null,magicBusy:false,magicError:'',magicResult:null,magicNotice:'',speedModuleState:{owned:false,active:false},talentPanel:null,talentBusy:false,talentError:'',talentNotice:''}),
@@ -32,7 +33,7 @@ export default{
    const signature=JSON.stringify({name,data});if(this._talentTicket?.signature!==signature)this._talentTicket={signature,requestId:newRequestId()};
    try{const r=await new Promise((resolve,reject)=>this.socket.timeout(15000).emit('talents:'+name,{...data,requestId:this._talentTicket.requestId},(e,r)=>e?reject(Error('La réponse tarde. Réessaie la même confirmation.')):resolve(r)));
     if(!r?.success)throw Error(r?.message||'Action indisponible.');this._talentTicket=null;this.talentPanel=r.state;
-    if(name!=='open')this.talentNotice=name==='refund'?'Points restitués. Ce talent pourra être réactivé gratuitement.':name==='purchase'?'Module acquis : tes 41 points sont disponibles.':r.result?.reactivated?'Talent réactivé gratuitement.':'Talent activé.';
+    if(name!=='open')this.talentNotice=name==='refund'?'Points restitués. Ce talent pourra être réactivé gratuitement.':name==='purchase'?`Module acquis : ${talentCatalog.maxPoints} points, ${talentCatalog.maxBranchPoints} par branche.`:r.result?.reactivated?'Talent réactivé gratuitement.':'Talent activé.';
    }catch(e){this.talentError=e.message;if(!this.talentPanel)this.showInteractionNotice(e.message,6500);if(!e.message.includes('réponse tarde'))this._talentTicket=null;}
    finally{this.talentBusy=false;}
   },
