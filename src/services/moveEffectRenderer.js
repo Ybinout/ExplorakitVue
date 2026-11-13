@@ -7,7 +7,10 @@ const SHAPES=[[0,-.5,.35,.8,0,1,-.35,.6],[.25,-1.6,-.9,.2,-.1,.15,-.45,1.5,1,-.4
 const SPECIAL_PALETTES={
  'spirit-flames':{ink:'#9ab5ff',light:'#eee0ff',dark:'#665097',shape:'wisp'},
  recovery:{ink:'#7ce6af',light:'#ecffe6',dark:'#3e937c',shape:'star'},
- 'hyper-beam':{ink:'#ffd380',light:'#ffffe0',dark:'#aa5a91',shape:'dash'}
+ 'hyper-beam':{ink:'#ffd380',light:'#ffffe0',dark:'#aa5a91',shape:'dash'},
+ 'helping-hands':{ink:'#f0c675',light:'#fff6d3',dark:'#a7786a',shape:'star'},
+ 'facade-rush':{ink:'#e79dab',light:'#fff3d5',dark:'#705985',shape:'dash'},
+ 'return-comet':{ink:'#87d2e4',light:'#fff8df',dark:'#536ca4',shape:'star'}
 };
 const STATUS_STYLES=new Set(['sword-dance','calm-mind','dragon-dance','butterfly-dance','toxic-drops','spores','spirit-flames','recovery','barrier','hazard-rocks','hazard-spikes','hazard-web','decoy','warp','trick-room','wish','future-sight','purify','stat-weave','status-motes','status']);
 const AREA_STYLES=new Set(['ground-wave','surf','mud-wave','earthquake','blizzard','rock-slide','rock-cage','draco-meteors','eruption','water-spout','heat-wave','toxic-wave','electric-field','detonation','fairy-field','hurricane','ice-spin','petal-dance','leaf-storm']);
@@ -45,6 +48,8 @@ export class MoveEffectRenderer {
    case 'leaf':c.beginPath();c.moveTo(-1,1);c.quadraticCurveTo(-1.1,-1.2,1.2,-1);c.quadraticCurveTo(1.2,.5,-1,1);c.fill();this.line(-.9,.9,.8,-.7,p.light,.15);break;
    case 'crystal':this.pathShape(SHAPES[2],p.ink,p.light,.12);this.line(0,-1.3,0,1,p.light,.14);break;
    case 'fist':this.pathShape(SHAPES[3],p.ink,p.light,.12);this.line(-.5,-.5,.2,.25,p.light,.15);break;
+   case 'boot':this.pathShape([-.5,-1.3,.45,-1.3,.45,.25,1.25,.55,1.3,1,-.65,1,-.75,.35],p.ink,p.light,.12);this.line(-.6,.7,1.15,.7,p.dark,.16);break;
+   case 'palm':this.pathShape([-.6,1,-.85,.2,-1.15,-.2,-.95,-.5,-.45,-.12,-.55,-1.15,-.25,-1.3,-.05,-.4,.05,-1.45,.35,-1.45,.4,-.4,.55,-1.25,.85,-1.15,.7,.1,.45,1],p.ink,p.light,.1);break;
    case 'bubble':c.beginPath();c.arc(0,0,1,0,TAU);c.fillStyle=p.dark;c.fill();c.strokeStyle=p.ink;c.lineWidth=.32;c.stroke();c.beginPath();c.arc(-.3,-.3,.25,0,TAU);c.fillStyle=p.light;c.fill();break;
    case 'earth':this.pathShape(SHAPES[4],p.ink);this.line(-.8,.1,.3,-.2,p.light,.15);break;
    case 'feather':c.beginPath();c.moveTo(-1,1);c.bezierCurveTo(-1.1,-.7,.2,-1.4,1,-1);c.quadraticCurveTo(1,.4,-1,1);c.fill();this.line(-1,1,.7,-.8,p.light,.17);this.line(-.2,.1,.7,.2,p.light,.12);break;
@@ -126,7 +131,12 @@ export class MoveEffectRenderer {
   }else{for(let n=0;n<7;n++){const a=n*TAU/7;this.streak(x+Math.cos(a)*p*w*.6,y+Math.sin(a)*p*45*s,a,25*s,k.ink,6*s);}this.burst(x,y-20*s,t);}
  }
  status(target,t){const c=this.c,p=this.palette,s=this.unit,x=target.x,y=target.y,style=this.fx.style; c.globalAlpha=Math.sin(clamp(t)*Math.PI)*.9;
-  if(style==='sword-dance'){
+  if(style==='helping-hands'){
+   // Two open hands clap beside the ally, then send a short upward shower.
+   const gap=(10+Math.abs(Math.cos(t*Math.PI*2))*26)*s;
+   for(const direction of[-1,1]){c.save();c.translate(x+direction*gap,y-8*s);c.scale(direction,1);this.particle('palm',0,0,21*s,-.25);c.restore();}
+   for(let n=0;n<9*this.quality;n++){const u=fract(t+n*.173);this.particle('star',x+Math.sin(n*2.4)*30*s,y-12*s-u*60*s,(3+Math.sin(u*Math.PI)*3)*s,n+t);}
+  }else if(style==='sword-dance'){
    for(let n=0;n<3;n++){const a=t*TAU+n*TAU/3;c.save();c.translate(x+Math.cos(a)*48*s,y+Math.sin(a)*15*s-25*s*t);c.rotate(Math.sin(a)*.4);c.scale(s,s);this.pathShape([0,-45,6,-30,4,12,-4,12,-6,-30],p.light,'#7494ae',2);this.line(-10,12,10,12,'#d8b569',4);this.line(0,12,0,28,'#856b6e',5);c.restore();}
   }else if(style==='barrier'||style==='decoy'){
    c.save();c.translate(x,y);c.scale(s*(.7+ease(t)*.4),s*(.7+ease(t)*.4));this.pathShape([0,-63,46,-40,40,23,0,58,-40,23,-46,-40],null,p.light,3);this.pathShape([0,-50,34,-32,28,18,0,44,-28,18,-34,-32],null,p.ink,5);c.restore();
@@ -143,7 +153,16 @@ export class MoveEffectRenderer {
  }
  impact(target,t){const c=this.c,k=this.palette,s=this.unit,x=target.x,y=target.y,style=this.fx.style;
   if(this.presence>1){this.halo(x,y,(45+this.fx.intensity*35)*s*(.65+ease(t)*.6),(1-t)*.95);const rays=Math.floor(7*this.quality);c.globalAlpha=(1-t)*.85;for(let n=0;n<rays;n++){const a=n*TAU/Math.max(1,rays)+this.seeds[n]*.5,r=(20+ease(t)*80)*s;this.streak(x+Math.cos(a)*r,y+Math.sin(a)*r*.8,a,(12+20*(1-t))*s,k.light,(2.2+this.fx.intensity*2)*s);}c.globalAlpha=1;}
-  if(this.fx.family==='bite'||style==='drain-bite'){
+  if(this.fx.family==='kick'){
+   const angle=style==='spinning-kick'?t*Math.PI*1.5:Math.sin(t*Math.PI)*.65-.3;
+   c.globalAlpha=1-t;this.particle('boot',x,y,(30+this.fx.intensity*12)*s,angle);
+   for(let n=0;n<5;n++){const a=angle+n*.18;this.streak(x-Math.cos(a)*30*s,y-Math.sin(a)*30*s,a,32*s,k.light,(3-n*.4)*s);}
+   if(style==='blazing-kick')for(let n=0;n<9*this.quality;n++)this.particle('flame',x+Math.sin(n*2.4)*36*s,y+Math.cos(n*2.4)*24*s,(7-t*4)*s,n+t);
+   c.globalAlpha=1;
+  }else if(style==='return-comet'||style==='facade-rush'){
+   c.globalAlpha=1-t;for(let n=0;n<6;n++){const a=n*TAU/6+t*.4,r=(18+ease(t)*35)*s;this.particle(style==='return-comet'?'star':'metal',x+Math.cos(a)*r,y+Math.sin(a)*r*.7,(12-t*6)*s,a);}
+   this.particle(style==='return-comet'?'star':'fist',x,y,35*s*(1-t*.35),t*.3);c.globalAlpha=1;
+  }else if(this.fx.family==='bite'||style==='drain-bite'){
    c.save();c.translate(x,y);c.scale(s,s);const gap=(1-ease(Math.min(1,t*3)))*24; c.globalAlpha=clamp((1-t)*2);
    for(const sign of[-1,1]){c.save();c.scale(1,sign);c.translate(0,-gap);this.pathShape([-39,-31,-25,-36,-18,-12,-5,-33,5,-8,19,-30,26,-12,39,-31,31,-43,-31,-43],k.light,k.ink,2);c.restore();}c.restore();
   }else if(this.fx.family==='claw'){
@@ -183,8 +202,12 @@ export class MoveEffectRenderer {
     else if(fx.style==='drain-vines'){const a=Math.sin(t*12)*12*this.unit;c.beginPath();c.moveTo(p.startX,p.startY);c.quadraticCurveTo((p.startX+target.x)/2,(p.startY+target.y)/2+a,target.x,target.y);c.strokeStyle=this.palette.ink;c.lineWidth=3*this.unit;c.stroke();this.particle('leaf',lerp(p.startX,target.x,ease(t)),lerp(p.startY,target.y,ease(t)),9*this.unit,t*6);}
     else if(STATUS_STYLES.has(fx.style)||fx.damageClass==='status'){if(target.connected!==false)this.status(target,t);}
     else if(['projectile','drain'].includes(fx.family))this.projectile(target,t);
-    else if(['charge','punch'].includes(fx.family)){
+    else if(fx.family==='kick'){
+     const a=Math.atan2(target.y-p.startY,target.x-p.startX),u=flight(t),x=lerp(p.startX,target.x,u),y=lerp(p.startY,target.y,u)-Math.sin(t*Math.PI)*35*this.unit;
+     c.globalAlpha=.85;this.particle('boot',x,y,24*this.unit,a+Math.sin(t*Math.PI)*.7);this.streak(x,y,a,65*this.unit,this.palette.ink,7*this.unit);c.globalAlpha=1;
+    }else if(['charge','punch'].includes(fx.family)){
      const a=Math.atan2(target.y-p.startY,target.x-p.startX),x=lerp(p.startX,target.x,ease(t)),y=lerp(p.startY,target.y,ease(t));for(let n=0;n<5;n++)this.streak(x-n*10*this.unit,y+n*6*this.unit,a,50*this.unit,this.palette.ink,(4-n*.5)*this.unit);
+     if(fx.style==='return-comet'||fx.style==='facade-rush')for(let n=0;n<7*this.quality;n++){const u=clamp(t-n*.045);this.particle(fx.style==='return-comet'?'star':'dash',lerp(p.startX,target.x,ease(u)),lerp(p.startY,target.y,ease(u))+Math.sin(n+t*5)*12*this.unit,(7-n*.65)*this.unit,a);}
     }
    }else if(stage==='impact'&&target.connected!==false){
     const hits=clamp(Number(fx.result?.hits)||1,1,10),pulse=hits>1?fract(t*hits):t;this.impact(target,pulse);
