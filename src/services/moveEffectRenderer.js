@@ -1,4 +1,5 @@
 import { ELEMENTS } from './moveVisuals.js';
+import { drawElementAccents } from './moveElementAccents.js';
 const TAU=Math.PI*2,clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const ease=t=>1-Math.pow(1-clamp(t),3),lerp=(a,b,t)=>a+(b-a)*t;
 const fract=n=>n-Math.floor(n);
@@ -187,7 +188,7 @@ export class MoveEffectRenderer {
  paintAt(ms){if(!this.c||!this.fx||!this.path)return;const began=this.now(),c=this.c,fx=this.fx,p=this.path,t=clamp(ms/this.duration()),stage=fx.stage;
   c.setTransform(this.dpr,0,0,this.dpr,0,0);c.clearRect(0,0,this.width,this.height);if(t>=1)return;c.save();
   if(this.exclusions.length){c.beginPath();c.rect(0,0,this.width,this.height);for(const r of this.exclusions)c.rect(r.x-2,r.y-2,r.width+4,r.height+4);c.clip('evenodd');}
-  c.lineJoin='round';c.lineCap='round';this.stats.particles=0;
+  c.lineJoin='round';c.lineCap='round';this.stats.particles=0;this.stats.elementParticles=0;
   const targets=this.targets;this.targetCount=Math.max(1,targets.length);
   if(stage==='windup'){
    const count=Math.floor((8+fx.intensity*12)*this.quality);for(let n=0;n<count;n++){const a=n*2.4+t*3,r=(1-t)*60*this.unit;this.particle(this.palette.shape,p.startX+Math.cos(a)*r,p.startY+Math.sin(a)*r*.55,(2+t*3)*this.unit*(this.presence>1?1.7:1),a);}
@@ -219,6 +220,7 @@ export class MoveEffectRenderer {
    }
   }
   }
+  drawElementAccents(this,stage,t);
   c.restore();const cost=this.now()-began;this.stats.frames++;this.stats.drawMs+=(cost-this.stats.drawMs)*.12;this.stats.maxDrawMs=Math.max(this.stats.maxDrawMs,cost);
   if(this.stats.frames>8&&this.stats.drawMs>3&&this.quality>.5)this.quality=Math.max(.45,this.quality-.15);this.stats.quality=this.quality;
  }

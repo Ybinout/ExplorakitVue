@@ -285,7 +285,7 @@
         <button v-if="houseControl?.cooperative" class="battle-main-btn action-bag house-pass-button" data-keyboard-number="2" data-house-pass :disabled="houseControl.busy || !houseControl.canPass || !canChooseAction" @click="$emit('house-pass')">Passer la main</button>
         <button v-else-if="!opponent?.storyActor" data-tutorial-bag data-keyboard-number="2" class="battle-main-btn action-bag" :disabled="tournament || ['whitepeak-club','draft-house'].includes(environment) || !canChooseAction || replacementChoice" @click="openBag">{{ tr('bag') }}</button>
         <button data-keyboard-number="3" class="battle-main-btn action-pokemon" :disabled="!canChooseAction" @click="setPanel('pokemon')">{{ tr('pokemon') }}</button>
-        <button data-keyboard-number="4" class="battle-main-btn action-flee" :disabled="capturePolicy?.darkContinent || ['dark-jungle','dark-continent2'].includes(environment) || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
+        <button data-keyboard-number="4" class="battle-main-btn action-flee" :disabled="(capturePolicy?.darkContinent || ['dark-jungle','dark-continent2'].includes(environment)) && fleeAllowed!==true || !canChooseAction || replacementChoice" @click="tournament ? $emit('tournament-abandon') : submitAction({ action: 'flee' }, tr('fleeing'))">{{ tournament ? 'Abandonner' : tr('flee') }}</button>
       </div>
     </div>
     <tutorial-coach v-if="tutorialEnabled" :paused="!tutorialVisible" :blocked="presentationBusy || (['attack','capture'].includes(tutorialPhase) && !canChooseAction)" :target-loading="bagLoading" :step="tutorial.phase" :selector="tutorialSelector" :busy="tutorialBusy" :error="tutorialError" @next="$emit('tutorial-next')" @retry="openBag"/>
@@ -425,6 +425,7 @@ export default {
     houseControl:{type:Object,default:null},
     readOnly:{type:Boolean,default:false},
     tournament:{type:Boolean,default:false},
+    fleeAllowed:{type:Boolean,default:null},
     mobile: Boolean,
     daylight: { type: Object, default: () => ({ night: 0, warmth: 0, phase: 'day' }) },
     mapName: { type: String, default: '' },

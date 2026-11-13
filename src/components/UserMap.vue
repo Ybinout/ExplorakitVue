@@ -50,7 +50,7 @@
        <template #social-toggle><button class="battle-social-button" @click="battleChatOpen=!battleChatOpen" aria-label="Amis et messages"><journal-icon name="messages"/><notification-badge :count="socialAlertCount"/></button></template>
        <template #social-chat><combat-social-panel v-back="()=>battleChatOpen=false" v-if="battleChatOpen" :state="socialState" :user-id="Number(currentUserId)" :connected="socialConnected" :incoming-message="socialMessage" :command="socialCommand" :drafts="socialDrafts" :conversations="socialConversations" @conversation="rememberSocialConversation" :initial-target="battleChatTarget" :trade-invite="incomingTrade" @draft="rememberSocialDraft" @reading="setSocialReading" @target="battleChatTarget=$event" @close="battleChatOpen=false"/></template>
       </raid-battle>
-      <battle-overlay v-show="!doublesFrame && !raidCombatActive"
+      <battle-overlay :flee-allowed="battleFleeAllowed" v-show="!doublesFrame && !raidCombatActive"
         ref="battleOverlay"
         :tutorial="isDrift?null:earlyTutorial" :tutorial-busy="earlyTutorialBusy" :tutorial-error="earlyTutorialError" @tutorial-next="advanceEarlyTutorial"
         :social-chat-open="battleChatOpen" @social-close="battleChatOpen=false" :active="battle && !doublesFrame && !raidCombatActive" :external-music-active="(!!doublesFrame || raidCombatActive) && battle" :mobile="showMobileControls" :map-name="map" :daylight="worldDaylight"
@@ -675,6 +675,7 @@ export default {
       movementIntervalId: null,
       lock: false,
       battle: false,
+      battleFleeAllowed: null,
       worldContextLost: false,
       battleResult: null,
       pendingBattleResult: null,
@@ -3930,6 +3931,7 @@ export default {
     this.socket.on('pcUpdated',state=>{if(this.pc.visible)this.pc.state=state;});
 
     this.socket.on('battletrigger', (data) => {
+      this.battleFleeAllowed=typeof data?.fleeAllowed==='boolean'?data.fleeAllowed:null;
       this.battleChatOpen=false;
       this.friendsOpen=false;this.heldPickerUuid=null;this.trainingFeedback=null;
       this.cancelFishing();
