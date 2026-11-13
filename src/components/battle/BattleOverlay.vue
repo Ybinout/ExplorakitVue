@@ -302,6 +302,7 @@ import { waitForBattleAssets, entranceDelay } from '@/services/battleEntrance';
 import { pokemonSpriteMetrics } from '@/services/pokemonSprites';
 import { arenaChampion } from '@/services/arenaEntrance';
 import { createBattlePresentation } from '@/services/battlePresentation';
+import {isMoveAnnouncement,moveAnnouncementDuration} from '@/services/battleNarration';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
 import { battleMusicTrack, trainerPreludeMusicTrack } from '@/services/battleMusic';
@@ -851,7 +852,17 @@ export default {
         if (method === 'playMoveResult') return this.battleMoveFx.visible ? 0 : this.resultFx.visible ? 1150 : 250;
         return 0;
       };
-      return this._presentation.push(() => method==='updateBattleState' ? this.presentState(payload) : this[method](payload), delay);
+      return this._presentation.push(async () => {
+        // Let the animation and HP updates run normally. Only a replacement
+        // narration waits for the minimum reading time, including reduced motion.
+        const epoch=this.visualEpoch;
+        const remaining=(this._moveNarrationUntil||0)-performance.now();
+        if(['showMessage','showRewardMessage','requestAction'].includes(method)&&remaining>0&&!document.hidden){
+          await this.transitionWait(remaining);
+          if(epoch!==this.visualEpoch)return;
+        }
+        return method==='updateBattleState'?this.presentState(payload):this[method](payload);
+      }, delay);
     },
     setMusicPrelude(active) {
       if (this.musicPrelude === active) return;
@@ -1072,6 +1083,9 @@ export default {
     },
     showMessage(message, hold = false) {
       if (!message) return;
+      const announcement=isMoveAnnouncement(message);
+      this._moveNarrationUntil=announcement&&!document.hidden?performance.now()+moveAnnouncementDuration(message):0;
+      if(announcement)hold=true;
       if (this.messageTimer) clearTimeout(this.messageTimer);
       this.messageTimer = null;
       this.actionState.text = localizeBattleText(message, this.preferences.language);
@@ -1636,6 +1650,7 @@ export default {
     clearAllTimers() {
       this.$refs.weatherInfo?.dismiss();
       this._rewardRelease?.();
+      this._moveNarrationUntil=0;
       this._battleAudio?.stop();
       this.cancelEntrance();
       clearTimeout(this.criticalTimer); this.criticalFx.side=null; this.pendingCritical=null;

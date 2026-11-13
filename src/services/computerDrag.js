@@ -45,16 +45,20 @@ export function createComputerDrag({root, changed, drop, navigateBox, openBoxPic
   }
   function cancel() {
     const old=gesture;gesture=null;clearTimeout(holdTimer);holdTimer=null;clearTimeout(pickerTimer);pickerTimer=null;cancelAnimationFrame(frame);clearTimeout(navTimer);navTimer=null;navStep=null;
-    if(old?.active){ended?.();try{root.releasePointerCapture(old.pointerId);}catch{ /* Already released by the browser. */ }}
+    if(old?.active || old?.longPressed){ended?.();try{root.releasePointerCapture(old.pointerId);}catch{ /* Already released by the browser. */ }}
     changed(null);
   }
   return {
-    start(event,pokemon,from) {
+    start(event,pokemon,from,{selected=false}={}) {
       if(event.isPrimary===false || event.button!==0 || gesture)return;
       gesture={pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,pokemon,from,active:false,to:null};
-      if(event.pointerType==='touch'&&from.kind==='box'&&longPress)holdTimer=setTimeout(()=>{
+      if(event.pointerType==='touch'&&from.kind==='box'&&!selected&&longPress)holdTimer=setTimeout(()=>{
         if(!gesture||gesture.active)return;
-        cancel();longPress(pokemon);
+        // Keep ownership of the finger: a hold selects, then the same gesture
+        // can drag the selection. Holding an already selected member never
+        // deselects it or destroys the group's pending drag.
+        holdTimer=null;gesture.longPressed=true;longPress(pokemon);
+        try{root.setPointerCapture(gesture.pointerId);}catch{ /* Synthetic test pointers. */ }
       },500);
     },
     move(event) {
@@ -74,7 +78,7 @@ export function createComputerDrag({root, changed, drop, navigateBox, openBoxPic
       cancel();
       if(current.active && current.to)drop({action:'move',pokemonUuid:current.pokemon.uuid,from:current.from,to:current.to});
     },
-    leave() {if(!gesture?.active)cancel();},
+    leave() {if(!gesture?.active&&!gesture?.longPressed)cancel();},
     cancel
   };
 }
