@@ -79,12 +79,12 @@ export class SandstormRenderer {
       this.textures.push(canvas);
     }
   }
-  draw(c, timestamp, { width, height, pixelRatio = 1, intensity = 2, wind = 2, environment = 'grass', groundTop, motion = true, clear = true }) {
+  draw(c, timestamp, { width, height, pixelRatio = 1, intensity = 2, wind = 2, environment = 'grass', groundTop, presence=1, motion = true, clear = true }) {
     if (this.destroyed || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return false;
     const time = Number.isFinite(timestamp) ? Math.max(0, timestamp) : 0;
     const ratio = clamp(Number(pixelRatio) || 1, .5, 1.5);
     const floor = Number.isFinite(groundTop) ? groundTop : rainGroundTop(width, height, environment);
-    const signature = `${width}:${height}:${ratio}:${intensity}:${wind}:${floor}:${motion}`;
+    const signature = `${width}:${height}:${ratio}:${intensity}:${wind}:${floor}:${motion}:${presence}`;
     if (signature === this.signature && (!motion || time >= this.lastTime && time - this.lastTime < FRAME_MS)) return false;
     this.signature = signature; this.lastTime = time;
     this.prepareTextures();
@@ -100,8 +100,8 @@ export class SandstormRenderer {
     }
     const colors = ['120,85,48', '242,210,155', '198,149,79'];
     for (const grain of frame.grains) {
-      c.fillStyle = `rgba(${colors[grain.color]},${grain.alpha})`;
-      c.beginPath(); c.ellipse(grain.x, grain.y, grain.radius * grain.stretch, grain.radius, grain.angle, 0, Math.PI * 2); c.fill();
+      c.fillStyle = `rgba(${colors[grain.color]},${Math.min(.9,grain.alpha*presence)})`;
+      c.beginPath(); c.ellipse(grain.x, grain.y, grain.radius * grain.stretch * presence, grain.radius * presence, grain.angle, 0, Math.PI * 2); c.fill();
     }
     c.restore(); this.frames++; return true;
   }

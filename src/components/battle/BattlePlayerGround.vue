@@ -1,15 +1,15 @@
-<template><div class="player-ground" :class="'ground-'+material" :style="position" data-player-ground aria-hidden="true"><i/></div></template>
+<template><div class="player-ground" :class="'ground-'+material" :style="position" data-player-ground aria-hidden="true"/></template>
 <script>
 import {portraitGround,groundStyle,groundMaterial} from '@/services/battleGround';
 import {pokemonSpriteMetrics} from '@/services/pokemonSprites';
 export default{
  props:{geometry:Object,environment:{type:String,default:'grass'},selector:String,identity:String},
- data:()=>({measured:null}),
- computed:{position(){return groundStyle(this.geometry||this.measured);},material(){return groundMaterial(this.environment);}},
+ data:()=>({measured:null,compact:false}),
+ computed:{position(){return groundStyle(this.geometry||this.measured,{compact:this.compact});},material(){return groundMaterial(this.environment);}},
  watch:{identity(){this.$nextTick(this.measure);}},
- mounted(){if(this.geometry)return;this.stage=this.$el.parentElement;this.observer=new ResizeObserver(this.measure);this.observer.observe(this.stage);this.stage.addEventListener('load',this.measure,true);this.$nextTick(this.measure);},
+ mounted(){this.stage=this.$el.parentElement;this.observer=new ResizeObserver(this.measure);this.observer.observe(this.stage);this.stage.addEventListener('load',this.measure,true);this.$nextTick(this.measure);},
  beforeDestroy(){this.closed=true;cancelAnimationFrame(this.measureFrame);this.observer?.disconnect();this.stage?.removeEventListener('load',this.measure,true);},
- methods:{measure(){if(this.closed)return;cancelAnimationFrame(this.measureFrame);this.measureFrame=requestAnimationFrame(()=>{if(this.closed)return;const next=portraitGround(this.stage?.querySelector(this.selector),this.stage,pokemonSpriteMetrics);if(JSON.stringify(next)!==JSON.stringify(this.measured))this.measured=next;});}}
+ methods:{measure(){if(this.closed)return;cancelAnimationFrame(this.measureFrame);this.measureFrame=requestAnimationFrame(()=>{if(this.closed)return;this.compact=this.stage?.clientWidth<700;if(this.geometry)return;const next=portraitGround(this.stage?.querySelector(this.selector),this.stage,pokemonSpriteMetrics);if(JSON.stringify(next)!==JSON.stringify(this.measured))this.measured=next;});}}
 };
 </script>
 <style scoped>

@@ -34,7 +34,7 @@ export default {
       this._sandFrame = null;
       if (this._disposed || document.hidden) return;
       const context = this.$refs.canvas?.getContext('2d'); if (!context) return;
-      this._sandRenderer.draw(context, timestamp, { ...this._sandSize, environment: this.environment, motion: this._sandMotion });
+      this._sandRenderer.draw(context, timestamp, { ...this._sandSize, environment: this.environment, intensity:3, wind:3, presence:1.1, motion: this._sandMotion });
       if (this._sandMotion) this._sandFrame = requestAnimationFrame(this.paint);
     }
   }

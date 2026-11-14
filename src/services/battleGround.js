@@ -4,9 +4,10 @@ export function portraitGround(node,stage,metricsFor=()=>null){
  const [l,t,rr,bb]=metrics?.bounds||[0,0,image.naturalWidth||1,image.naturalHeight||1],[w,h]=metrics?.size||[image.naturalWidth||1,image.naturalHeight||1];
  return{centerX:b.left-r.left+(l+rr)/w*b.width/2,centerY:b.top-r.top+(t+bb)/h*b.height/2,bottomY:b.top-r.top+bb/h*b.height,width:(rr-l)/w*b.width,height:(bb-t)/h*b.height};
 }
-export function groundStyle(g){
+export function groundStyle(g,{compact=false}={}){
  if(!g||![g.centerX,g.bottomY,g.width].every(Number.isFinite))return {display:'none'};
- return{left:g.centerX+'px',top:(g.bottomY+3)+'px',width:Math.max(130,Math.min(500,g.width*1.7))+'px',height:Math.max(30,Math.min(85,g.width*.32))+'px'};
+ const lift=compact?Math.max(9,Math.min(22,g.height*.075)):Math.max(4,Math.min(11,g.height*.035));
+ return{left:g.centerX+'px',top:(g.bottomY-lift)+'px',width:Math.max(130,Math.min(500,g.width*(compact?1.55:1.7)))+'px',height:Math.max(compact?38:30,Math.min(85,g.width*(compact?.40:.32)))+'px'};
 }
 export function groundMaterial(environment){
  if(['dark-jungle','grass'].includes(environment))return 'grass';

@@ -19,7 +19,7 @@
       <picture v-else-if="environment === 'snow'" class="battle-arena-background" data-battle-environment="snow"><source v-if="mobile" media="(orientation: portrait)" :srcset="snowBackgrounds.mobile"><img :src="snowBackgrounds.wide" class="battle-background battle-snow-background" alt=""></picture>
       <picture v-else class="battle-arena-background"><source v-if="mobile" media="(orientation: portrait)" :srcset="raining ? rainBackgrounds.grassMobile : require('@/assets/battle/grass-mobile-v3.webp')"><img :src="raining ? rainBackgrounds.grassWide : require('@/assets/battle/back.webp')" class="battle-background" alt=""></picture>
       <battle-ambience class="battle-background" :environment="challenge?'colosseum':environment" :animations-enabled="preferences.animationsEnabled && !entranceActive"/>
-      <battle-player-ground v-if="currentPokemon?.data" :environment="challenge?'colosseum':environment" :geometry="getSpriteGeometry('player')"/>
+      <battle-contact-shadow v-for="side in ['player','wild']" :key="'shadow-'+side" :geometry="getSpriteGeometry(side)"/><battle-player-ground v-if="currentPokemon?.data" :environment="challenge?'colosseum':environment" :geometry="getSpriteGeometry('player')"/>
       <battle-waterfalls v-if="!challenge && environment === 'lake-gym'" :animations-enabled="preferences.animationsEnabled" />
       <battle-tournament-scenery v-if="environment === 'super-tournament'" :animations-enabled="preferences.animationsEnabled && !entranceActive" />
       <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
@@ -31,7 +31,7 @@
       <div v-if="outdoorLighting" class="battle-daylight-veil" aria-hidden="true"></div>
       <level-growth v-if="levelGrowthNotice" class="battle-level-growth" :growth="levelGrowthNotice" compact />
       <div class="battle-atmosphere" aria-hidden="true"></div>
-      <battle-rain v-if="fieldState.weather === 'rain'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
+      <battle-sun v-if="fieldState.weather==='sun'" :animations-enabled="preferences.animationsEnabled"/><battle-rain v-if="fieldState.weather === 'rain'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
       <battle-snow v-else-if="fieldState.weather === 'hail'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
       <battle-sandstorm v-else-if="fieldState.weather === 'sandstorm'" :animations-enabled="preferences.animationsEnabled" :environment="challenge ? 'colosseum' : environment" />
       <div v-else class="battle-weather-layer" aria-hidden="true"></div>
@@ -298,6 +298,7 @@
 </template>
 
 <script>
+import BattleSun from './BattleSun.vue';
 import BattlePokemonInfo from './BattlePokemonInfo.vue';
 import BattleMoveButton from './BattleMoveButton.vue';
 import BattleEntrance from './BattleEntrance.vue';
@@ -311,6 +312,8 @@ import {BATTLE_PACING,battleReadingTime} from '@/services/battlePacing';
 import {conditionStatusVisual,narratedStatusVisual,statusEffectDuration} from '@/services/battleStatusVisuals';
 import BattleAmbience from './BattleAmbience.vue';
 import BattlePlayerGround from './BattlePlayerGround.vue';
+import BattleContactShadow from './BattleContactShadow.vue';
+import {weatherAudioKind,weatherDamageKind} from '@/services/battleWeatherAudio';
 import PokeBallVisual from './PokeBallVisual.vue';
 import {pokeBallStyle} from '@/services/pokeBallStyle';
 import SpriteTintLayer from './SpriteTintLayer.vue';
@@ -434,7 +437,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: {PokeBallVisual,BattleAmbience,BattlePlayerGround,SpriteTintLayer,BattleStatusEffect,BattlePokemonInfo, BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
+  components: {BattleSun,BattleContactShadow,PokeBallVisual,BattleAmbience,BattlePlayerGround,SpriteTintLayer,BattleStatusEffect,BattlePokemonInfo, BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
     tutorial:{type:Object,default:null},
     tutorialBusy:Boolean,
@@ -675,14 +678,15 @@ export default {
     canChooseAction(){this.syncTutorialCoach();},
     mapName(map) {
       if (this.musicPrelude && map !== this.battleMapName) this.stopMusic();
-      if (map !== 'route4_maison') this.disposeTrainerSequence();
+      if (!['route4_maison','ville5_maison1','draft_house'].includes(map)) this.disposeTrainerSequence();
       else this.preloadTrainerSequence();
       this.preloadSnowBackground(); this.preloadTournamentBackground(); this.preloadArenaPortrait();
     },
     mobile() { this.preloadSnowBackground(); this.preloadTournamentBackground(); },
     audioVolume() { this.syncAudio(); },
     soundEnabled() { this.syncAudio(); },
-    externalMusicActive() { this.syncMusic(); },
+    externalMusicActive() { this.syncMusic();if(!this.active&&!this.externalMusicActive)this.setCombatWeather(null); },
+    'fieldState.weather'(kind){if(this.active&&!this.externalMusicActive)this.setCombatWeather(kind);},
     active(isActive) {
       if (isActive) { this.battleMapName = this.mapName; this.setMusicPrelude(false); }
       if (!isActive) { this._battleAudio?.stop(); this.stopMusic(); this.resetBattleUi(); }
@@ -750,7 +754,7 @@ export default {
     },
     isVisuallyShiny(pokemon) { return this.$pokemonSprite(pokemon).includes('/shiny/'); },
     preloadTrainerSequence(force = false) {
-      if (!force && this.mapName !== 'route4_maison') return null;
+      if (!force && !['route4_maison','ville5_maison1','draft_house'].includes(this.mapName)) return null;
       this._trainerSequence ||= new SequencedMusic({intro:require('@/assets/msc/gwenn-intro.mp3'),loop:require('@/assets/msc/gwenn-loop.mp3')});
       this._trainerSequence.prepare().catch(()=>{});
       return this._trainerSequence;
@@ -797,6 +801,7 @@ export default {
     },
     prepareEntrance(encounterKind = 'wild', trainerKey = null, tournamentEntrance = null, houseSpecies = []) {
       this.cancelEntrance();
+      if(encounterKind==='pvp')this.preloadTrainerSequence(true);
       this.battleMapName = this.mapName;
       this._entranceController = new AbortController();
       this._entranceStartedAt = performance.now();
@@ -936,6 +941,7 @@ export default {
       this.spriteMotionPaused=document.hidden;
       if (document.hidden) { this.clearMoveFx(); this.cancelEntrance(); this._presentation?.skipWait(); this._rewardRelease?.(); this._transitionRelease?.(); this.clearCaptureTimers({settle:true}); }
       this._battleAudio?.setVolume(this.soundEnabled && !document.hidden ? this.audioVolume : 0);
+      if(this.active&&!this.externalMusicActive)this.setCombatWeather(this.fieldState.weather);
       this.syncMusic();
     },
     resumeAudio() {
@@ -1311,7 +1317,7 @@ export default {
           continue;
         }
         if(step.message&&!this.isCriticalLine(step.message))this.showMessage(step.message,true);
-        const changes={player:[],wild:[]};let hpChanged=false;
+        const changes={player:[],wild:[]};let hpChanged=false;this._weatherImpactKind=weatherDamageKind(step.message);
         for(const update of step.pokemon||[]){
           const side=update.side==='player'?'player':'wild',p=side==='player'?this.currentPokemon:this.opponent;if(!p||p.uuid!==update.uuid)continue;
           const before=JSON.parse(JSON.stringify(p)),hp=Number(p.currentHp);
@@ -1324,6 +1330,7 @@ export default {
           }
           changes[side]=battleConditionChanges(before,p);
         }
+        this._weatherImpactKind=null;
         if(step.weather){this.fieldState.weather=step.weather.kind;this.weatherMetadata={...step.weather};}
         if(changes.player.length||changes.wild.length)this.playConditionChanges(changes);
         if(this.isCriticalLine(step.message)&&!this._criticalNarrationShown)this.showCriticalAtImpact();
@@ -1652,6 +1659,7 @@ export default {
       if(direct)this._pendingImpactSound=null;
       if (numericDelta < 0) this.playImpact({
         direct,critical:direct&&sound.result.critical,effectiveness:direct?sound.result.effectiveness:1,
+        weather:this._weatherImpactKind||null,
         damage: -numericDelta,
         maxHp: Number((target === 'player' ? this.currentPokemon : this.opponent)?.maxHp)
       });
@@ -1736,9 +1744,10 @@ export default {
     async prepareSampleRequest(request){try{await this.prepareSamples(request);}finally{request.done?.();}},
     playEntryCry(side,timing={}){this.playBattleSample({kind:'cry',pokemon:side==='player'?this.currentPokemon:this.opponent,...timing});},
     playBattleSample(payload){if(!this.soundEnabled||!this.audioVolume||document.hidden)return;if(payload.kind==='cry')this._battleAudio?.samples?.cry(payload.pokemon,{delay:payload.delay||0});else this._battleAudio?.samples?.move(payload.name,payload.duration);},
+    setCombatWeather(value){const kind=weatherAudioKind(value);if(kind!==this._weatherAudioKind){this._weatherAudioKind=kind;if(kind)this.playCombatCue({kind:'weather',weather:kind});}this._battleAudio?.setWeather(kind);},
     playCombatCue(payload){if(this.soundEnabled&&this.audioVolume&&!document.hidden)this._battleAudio?.cue(payload);},
     playImpact(payload){if(this.soundEnabled&&this.audioVolume&&!document.hidden)this._battleAudio?.impact(payload);},
-    stopCombatAudio(){this._battleAudio?.stop();},
+    stopCombatAudio(){this._weatherAudioKind=null;this._battleAudio?.stop();},
     unlockAudio() {
       this.syncAudio();
       return this._battleAudio?.unlock();

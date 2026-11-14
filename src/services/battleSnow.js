@@ -1,9 +1,9 @@
 // Individual flakes: no tiled texture, whole-layer translation or large blur.
 import { rainGroundTop } from './battleRain.js';
-const FRAME_MS = 1000 / 30, LIMIT = 220, LANDING_SECONDS = .55;
+const FRAME_MS = 1000 / 30, LIMIT = 240, LANDING_SECONDS = .55;
 const fract = value => value - Math.floor(value);
 const seed = i => fract(Math.sin((i + 1) * 127.1) * 43758.5453);
-export function snowParticleCount(width, height) { return Math.min(LIMIT, Math.max(80, Math.round(width * height / 1800))); }
+export function snowParticleCount(width, height) { return Math.min(LIMIT, Math.max(80, Math.round(width * height / 1600))); }
 export class BattleSnowRenderer {
   constructor() {
     this.particles = Array.from({ length: LIMIT }, (_, i) => ({ x: seed(i * 5), ground: seed(i * 5 + 1), phase: seed(i * 5 + 2), depth: seed(i * 5 + 3), sway: seed(i * 5 + 4) }));
@@ -23,7 +23,7 @@ export class BattleSnowRenderer {
     c.lineCap = 'round';
     for (let i = 0; i < count; i++) {
       const p = this.particles[i], depth = p.depth;
-      const radius = .65 + depth * depth * 2.15, speed = 20 + depth * 35;
+      const radius = .75 + depth * depth * 2.35, speed = 20 + depth * 35;
       const groundY = groundTop + p.ground * Math.max(0, height - groundTop - 4);
       const fallTime = (groundY + 8) / speed, period = fallTime + LANDING_SECONDS;
       const clock = seconds + p.phase * period, cycle = Math.floor(clock / period), age = clock - cycle * period;

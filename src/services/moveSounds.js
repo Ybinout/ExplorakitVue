@@ -39,10 +39,14 @@ export function audibleCombatPlan(plan){
  return plan.map(v=>({...v,volume:v.volume*gain}));
 }
 export const COMBAT_MUSIC_GAIN=.75;
+// Applied after the existing safe voice mix, not cancelled by its headroom cap.
+export const IMPACT_GAIN=2.5,STATUS_GAIN=2;
 
 const tone=(frequency,endFrequency,duration=.18,volume=.10,delay=0,type='sine')=>({kind:'tone',frequency,endFrequency,duration,volume,delay,type});
 const noise=(frequency,endFrequency,duration,volume,filter='bandpass',delay=0)=>({kind:'noise',frequency,endFrequency,duration,volume,filter,delay});
-export function combatCuePlan({kind,status}={}) {
+export function combatCuePlan({kind,status,weather}={}) {
+  if(kind==='weather-damage')return weather==='hail'?[noise(4200,1600,.18,.14,'highpass'),tone(240,110,.18,.11,0,'triangle')]:[noise(1400,480,.23,.17,'lowpass'),tone(165,70,.20,.11,0,'triangle')];
+  if(kind==='weather')return ({rain:[noise(3200,2000,.45,.15,'bandpass'),noise(1700,1200,.24,.10,'highpass',.12)],sandstorm:[noise(900,450,.55,.19,'lowpass'),tone(125,80,.35,.07,0,'triangle')],hail:[noise(5200,2200,.18,.12,'highpass'),tone(1047,784,.16,.07),noise(4300,1800,.18,.09,'highpass',.16)],snow:[noise(2000,900,.45,.09,'lowpass'),tone(784,659,.28,.045)],sun:[tone(330,440,.32,.075),tone(494,659,.28,.055,.06)]})[weather]||[];
   if(kind==='stat-up'||kind==='stat-down'){
     const up=kind==='stat-up',notes=up?[392,494,659]:[659,494,392];
     return notes.map((f,i)=>tone(f,f*(up?1.14:.87),.19,.10,i*.055,'triangle'));

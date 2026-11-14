@@ -1,11 +1,11 @@
 // Short drops land on the battlefield and become tiny, perspective-scaled impacts.
-const FRAME_MS = 1000 / 30, LIMIT = 128, IMPACT_SECONDS = .22;
+const FRAME_MS = 1000 / 30, LIMIT = 148, IMPACT_SECONDS = .22;
 const fract = value => value - Math.floor(value);
 function seed(index) { return fract(Math.sin((index + 1) * 127.1) * 43758.5453); }
 export function rainGroundTop(width, height, environment = 'grass') {
   return height * (environment === 'lake-gym' ? .4 : environment === 'cave' ? .36 : environment === 'colosseum' ? .43 : width < height ? .36 : .44);
 }
-export function rainParticleCount(width, height) { return Math.min(LIMIT, Math.max(40, Math.round(width * height / 3600))); }
+export function rainParticleCount(width, height) { return Math.min(LIMIT, Math.max(40, Math.round(width * height / 3100))); }
 export class BattleRainRenderer {
   constructor() {
     this.particles = Array.from({ length: LIMIT }, (_, i) => ({ x: seed(i * 4), ground: seed(i * 4 + 1), phase: seed(i * 4 + 2), depth: seed(i * 4 + 3) }));
@@ -27,7 +27,7 @@ export class BattleRainRenderer {
       const groundX = fract(p.x + cycle * .61803398875) * (width + 24) - 12, lean = .11 + .035 * p.depth;
       if (age < fallTime) {
         const y = -length + age * speed, x = groundX - (groundY - y) * lean;
-        c.lineWidth = .95 + p.depth * .4; c.strokeStyle = `rgba(213,234,244,${.46 + p.depth * .3})`;
+        c.lineWidth = 1.05 + p.depth * .4; c.strokeStyle = `rgba(213,234,244,${.52 + p.depth * .3})`;
         c.beginPath(); c.moveTo(x - length * lean, y - length); c.lineTo(x, y); c.stroke(); this.stats.drops++;
       } else if (motion) {
         const progress = (age - fallTime) / IMPACT_SECONDS, spread = (.65 + progress * 2.6) * perspective;

@@ -1,5 +1,6 @@
-import {damageImpactPlan,combatCuePlan,audibleCombatPlan} from './moveSounds.js';
+import {damageImpactPlan,combatCuePlan,audibleCombatPlan,IMPACT_GAIN,STATUS_GAIN} from './moveSounds.js';
 import {BattleSamples} from './battleSamples.js';
+import {BattleWeatherAudio,weatherAudioKind} from './battleWeatherAudio.js';
 
 // Small synthesized effects: no download on the critical path of an attack.
 export class BattleAudio {
@@ -13,6 +14,7 @@ export class BattleAudio {
     this.volume = 0;
     this.voices = new Set();
     this.disposed = false;
+    this.weatherDesired=null;this.weatherAudio=new BattleWeatherAudio(this);
   }
   setVolume(volume) {
     this.volume = Math.max(0, Math.min(1, Number(volume) || 0));
@@ -21,31 +23,39 @@ export class BattleAudio {
       if(gain.setTargetAtTime)gain.setTargetAtTime(this.volume,now,.012);
       else gain.setValueAtTime(this.volume,now);
     }
-    if (!this.volume) this.stop();
+    if (!this.volume) this.stop({keepWeather:true});else this.weatherAudio.set(this.weatherDesired);
   }
   unlock() {
     if (this.disposed || !this.volume) return Promise.resolve();
     try {
       this.ensureContext();if(!this.context)return Promise.resolve();
       // Called from pointer/key gestures, including touch release on Safari.
-      return this.context.state !== 'running' ? this.context.resume().catch(() => {}) : Promise.resolve();
+      return (this.context.state !== 'running' ? this.context.resume().catch(() => {}) : Promise.resolve()).then(()=>this.weatherAudio.set(this.weatherDesired));
     } catch (_) { return Promise.resolve(); }
   }
   ensureContext(){if(!this.context&&!this.disposed){try{this.context=this.createContext();if(this.context){this.output=this.context.createGain();this.output.gain.value=this.volume;this.output.connect(this.context.destination);}}catch{ /* Audio unavailable. */ }}}
   enableSamples(catalogue,options){this.samples ||= new BattleSamples(this,catalogue,options);return this.samples;}
+  effectDestination(){
+    if(!this.context.createWaveShaper)return this.output;
+    // A peak-only ceiling preserves quiet impacts; it does not pull their
+    // envelope down like a compressor recovering from the previous transient.
+    if(!this.effectLimiter){const n=this.context.createWaveShaper(),curve=new Float32Array(4097);for(let i=0;i<curve.length;i++){const x=i/(curve.length-1)*2-1,a=Math.abs(x);curve[i]=Math.sign(x)*(a<=.85?a:.85+.1*Math.tanh((a-.85)/.1));}n.curve=curve;n.oversample='2x';n.connect(this.output);this.effectLimiter=n;}
+    return this.effectLimiter;
+  }
   voice(source, duration, options, filter = null) {
     const c = this.context, gain = c.createGain();
     // Bound even fast/reduced-motion battles, and release evicted nodes now.
     if(this.voices.size>=48){const oldest=this.voices.values().next().value;try{oldest.stop();}catch{ /* Already ended. */ }oldest.onended?.();}
     const start = c.currentTime + (options.delay || 0);
+    const mixGain=options.mixGain??1,level=(options.volume||.1)*mixGain,floor=.0001*mixGain;
     const attack=Math.min(duration*.4,options.attack||.008),hold=Math.min(duration-.01,options.hold||0);
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(options.volume || 0.1, start + attack);
-    if(hold>attack)gain.gain.setValueAtTime(options.volume||.1,start+hold);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    gain.gain.setValueAtTime(floor, start);
+    gain.gain.exponentialRampToValueAtTime(level, start + attack);
+    if(hold>attack)gain.gain.setValueAtTime(level,start+hold);
+    gain.gain.exponentialRampToValueAtTime(floor, start + duration);
     source.connect(filter || gain);
     if (filter) filter.connect(gain);
-    gain.connect(this.output);
+    gain.connect(this.effectDestination());
     this.voices.add(source);
     let released=false;
     source.onended = () => {
@@ -83,20 +93,22 @@ export class BattleAudio {
   }
   impact(payload={}) {
     this.samples?.duck();
-    this.playPlan(damageImpactPlan(payload));
+    this.playPlan(payload.weather?combatCuePlan({kind:'weather-damage',weather:payload.weather}):damageImpactPlan(payload),IMPACT_GAIN);
   }
   cue(payload={}) {
-    this.playPlan(combatCuePlan(payload));
+    this.playPlan(combatCuePlan(payload),payload.kind==='status'?STATUS_GAIN:payload.kind==='weather-damage'?IMPACT_GAIN:1);
   }
-  playPlan(plan) {
+  setWeather(kind){this.weatherDesired=weatherAudioKind(kind);this.weatherAudio.set(this.weatherDesired);}
+  playPlan(plan,gain=1) {
     if(!this.ready())return;
     for(const voice of audibleCombatPlan(plan)){
-      const {kind,frequency,duration,...options}=voice;
+      const {kind,frequency,duration,...options}=voice;options.mixGain=gain;
       if(kind==='noise')this.noise(duration,frequency,options);
       else this.tone(frequency,duration,options);
     }
   }
-  stop() {
+  stop({keepWeather=false}={}) {
+    this.weatherAudio.stop();if(!keepWeather)this.weatherDesired=null;
     this.samples?.stop();
     for (const source of this.voices) { try { source.stop(); } catch (_) { /* Already ended. */ } source.onended?.(); }
     this.voices.clear();
@@ -104,6 +116,7 @@ export class BattleAudio {
   dispose() {
     this.samples?.dispose();
     this.stop(); this.disposed = true;
+    this.effectLimiter?.disconnect();
     this.context?.close?.().catch(() => {});
   }
 }

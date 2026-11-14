@@ -8,14 +8,16 @@
     :aria-valuenow="safeCurrent"
   >
     <div class="health-bar-trail" :style="trailStyle"></div>
-    <div class="health-bar" :class="{'health-fluid':animated&&safeCurrent>0}" :style="healthBarStyle"></div>
+    <div class="health-bar" :class="{'health-fluid':animated&&safeCurrent>0}" :style="healthBarStyle"><health-liquid v-if="animated" :value="safeCurrent"/></div>
   </div>
 </template>
 
 <script>
+import HealthLiquid from './battle/HealthLiquid.vue';
 import {healthColors} from '@/services/healthBarTheme';
 import './battle/healthFluid.css';
 export default {
+  components:{HealthLiquid},
   props: {
     animated:{type:Boolean,default:false},
     currentHp: {
