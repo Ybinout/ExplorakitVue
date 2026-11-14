@@ -11,6 +11,7 @@
      <pokemon-portrait :src="sprite(spot.p,spot.own)" :alt="spot.p.name" :class="{'double-recall':effect?.kind==='switch'&&effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot}"/>
      <span v-if="effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect?.amount" class="double-damage" :class="{'is-heal':effect.kind==='-heal'}">{{ effect.kind==='-heal'?'+':'−' }}{{ effect.amount }}</span>
      <battle-stat-change v-if="!reduced&&['-boost','-unboost'].includes(effect?.kind)&&effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot" class="double-stat" :key="effect.id" :effects="[{kind:effect.delta>0?'up':'down',delta:effect.delta,key:effect.stat,text:statLabel(effect.stat)+' '+(effect.delta>0?'+':'')+effect.delta}]"/>
+     <battle-status-effect v-if="statusFx?.actor?.side===spot.side && statusFx?.actor?.slot===spot.slot" :key="statusFx.nonce" class="double-status-visual" :effect="statusFx" :reduced="reduced"/>
      <battle-persistent-effect v-if="spot.p.effects" class="double-persistent" :effects="spot.p.effects" :reduced="reduced"/>
      <span v-if="spot.own&&!spectator" class="double-owner">{{ control?.slots?.[spot.slot]?.ownerName }}<b v-if="control?.slots?.[spot.slot]?.delegated"> → {{ control.slots[spot.slot].controllerName }}</b></span>
     </button>
@@ -52,17 +53,24 @@ import BattleSnow from '../battle/BattleSnow.vue';
 import BattleSandstorm from '../battle/BattleSandstorm.vue';
 import BattleWeatherInfo from '../battle/BattleWeatherInfo.vue';
 import {moveVisual} from '@/services/moveVisuals';
+import BattleStatusEffect from '../battle/BattleStatusEffect.vue';
+import {nativeStatusVisual,STATUS_VISUALS} from '@/services/battleStatusVisuals';
+import {BATTLE_PACING,battleReadingTime,nativeEventPause} from '@/services/battlePacing';
 import {doubleMoveVisual} from '@/services/doubleMoveVisuals';
 import {localizeTypeName} from '@/services/pokemonTypes';
 const colors={Normal:'#92927b',Fire:'#cf7049',Water:'#558cc5',Electric:'#c6a841',Grass:'#66975d',Ice:'#65a9b1',Fighting:'#b56559',Poison:'#a36ca2',Ground:'#aa8855',Flying:'#8e8fbe',Psychic:'#c16d92',Bug:'#8a993f',Rock:'#a49860',Ghost:'#8172a6',Dragon:'#7978be',Dark:'#817064',Steel:'#859aa2',Fairy:'#c68eae'};
 export default {
- components:{BattlePokemonInfo,BattleMoveButton,PokemonPortrait,BattleMoveEffect,BattlePersistentEffect,BattleRain,BattleSnow,BattleSandstorm,BattleWeatherInfo,BattleStatChange},props:{frame:Object,control:Object,busy:Boolean,error:String,settled:Boolean,spectator:Boolean,reduced:Boolean},
- data:()=>({display:null,slot:0,reserves:false,selectedMove:null,message:'',effect:null,fx:null,playing:false,loading:true,askForfeit:false,narrow:false}),
+ components:{BattleStatusEffect,BattlePokemonInfo,BattleMoveButton,PokemonPortrait,BattleMoveEffect,BattlePersistentEffect,BattleRain,BattleSnow,BattleSandstorm,BattleWeatherInfo,BattleStatChange},props:{frame:Object,control:Object,busy:Boolean,error:String,settled:Boolean,spectator:Boolean,reduced:Boolean},
+ data:()=>({statusFx:null,statusNonce:0,display:null,slot:0,reserves:false,selectedMove:null,message:'',effect:null,fx:null,playing:false,loading:true,askForfeit:false,narrow:false}),
  computed:{weatherName(){return({raindance:'rain',sunnyday:'sun',sandstorm:'sandstorm',hail:'hail',snowscape:'snow'})[this.display?.weather]||null;},own(){return this.frame.active?.[this.frame.side]||[];},controls(){return this.control?.slots?.[this.slot];},decision(){return this.frame.request?.slots?.[this.slot];},canAct(){return !this.playing&&!this.loading&&!this.busy&&!this.control?.paused&&!!this.controls?.canControl&&!!this.decision?.required&&!this.frame.choices[this.slot];},prompt(){return this.canAct?'Choisis une capacité puis sa cible.':'Les dresseurs préparent leurs actions.';},targets(){return this.selectedMove?.targets||[];},spots(){const s=this.display||this.frame;return [0,1].flatMap(side=>[0,1].map(slot=>({side,slot,key:`double-${side}-${slot}`,p:s.active?.[side]?.[slot],own:side===this.frame.side,x:side===this.frame.side?(this.narrow?[18,50]:[18,43])[slot]:(this.narrow?[52,84]:[58,83])[slot],y:side===this.frame.side?100:this.narrow?50:60})));}},
  watch:{frame:{immediate:true,handler(frame){this._frames ||= [];this._frames.push(JSON.parse(JSON.stringify(frame)));this.play();}},'frame.turnId'(){this.selectedMove=null;this.reserves=false;this.autoSlot();},control(){this.autoSlot();}},
- mounted(){this._previousFocus=document.activeElement;this.$refs.dialog.focus({preventScroll:true});this._resize=new ResizeObserver(entries=>{this.narrow=entries[0].contentRect.width<641;});this._resize.observe(this.$refs.stage);},
- beforeDestroy(){if(this._previousFocus?.isConnected)this._previousFocus.focus({preventScroll:true});this._resize?.disconnect();this._closed=true;for(const finish of this._waiters||[])finish();},
- methods:{areaMove:isAreaMove,onKey(e){if(e.key==='Escape'){this.selectedMove=null;this.reserves=false;}if(e.key!=='Tab')return;const list=[...this.$el.querySelectorAll('button:not(:disabled),input,textarea')].filter(n=>n.getClientRects().length);const first=list[0],last=list[list.length-1];if(e.shiftKey&&[first,this.$el].includes(document.activeElement)){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}},statLabel(s){return({atk:'Attaque',def:'Défense',spa:'Att. Spé.',spd:'Déf. Spé.',spe:'Vitesse',accuracy:'Précision',evasion:'Esquive'})[s]||s;},type:localizeTypeName,color(type){return colors[type]||colors.Normal;},status(s){return({brn:'BRÛ',psn:'PSN',tox:'PSN+',par:'PAR',slp:'SOM',frz:'GEL'})[s]||s;},boostText(p){return Object.entries(p.boosts||{}).filter(([,n])=>n).map(([s,n])=>`${({atk:'Att',def:'Déf',spa:'ASp',spd:'DSp',spe:'Vit',accuracy:'Préc',evasion:'Esq'})[s]||s} ${n>0?'+':''}${n}`).join(' · ');},sprite(p,back=false){return this.$pokemonSprite({...p,gender:p.gender==='F'?'female':p.gender==='M'?'male':'genderless',data:{id:p.pokemonId}},{side:back?'back':'front',animated:!this.reduced});},chooseSlot(slot){this.slot=slot;this.reserves=false;this.selectedMove=null;},autoSlot(){if(this.controls?.canControl&&!this.frame.choices[this.slot])return;const next=this.control?.slots?.find(s=>s.canControl&&!this.frame.choices[s.slot]);if(next)this.chooseSlot(next.slot);},move(m){if(!this.canAct)return;const selected=['normal','any','adjacentAlly','adjacentAllyOrSelf'].includes(m.target);if(selected){this.selectedMove=m;if(m.targets.length===1)this.submitMove(m.targets[0].loc);}else{this.selectedMove=m;if(!this.areaMove(m))this.submitMove();}},target(side,slot){if(this.areaMove(this.selectedMove))return;const t=this.targets.find(t=>t.side===side&&t.slot===slot);if(t)this.submitMove(t.loc);},submitMove(targetLoc){const m=this.selectedMove;if(m)this.submit({action:'attack',moveIndex:m.index,targetLoc});},submit(payload){if(!this.canAct)return;this.$emit('action',{...payload,slot:this.slot,turnId:this.frame.turnId,controlRevision:this.controls.revision});this.selectedMove=null;this.reserves=false;},sleep(ms){if(this._closed)return Promise.resolve();return new Promise(resolve=>{this._waiters ||= new Set();const finish=()=>{clearTimeout(timer);this._waiters.delete(finish);resolve();};const timer=setTimeout(finish,ms);this._waiters.add(finish);});},
+ mounted(){this._previousFocus=document.activeElement;this.$refs.dialog.focus({preventScroll:true});this._resize=new ResizeObserver(entries=>{this.narrow=entries[0].contentRect.width<641;});this._resize.observe(this.$refs.stage);this._visibility=()=>{if(document.hidden){this._readUntil=0;for(const finish of this._waiters||[])finish();this.statusFx=null;}};document.addEventListener('visibilitychange',this._visibility);},
+ beforeDestroy(){if(this._previousFocus?.isConnected)this._previousFocus.focus({preventScroll:true});this._resize?.disconnect();document.removeEventListener('visibilitychange',this._visibility);this._closed=true;for(const finish of this._waiters||[])finish();},
+ methods:{
+ async holdNarration(){const ms=(this._readUntil||0)-performance.now();if(ms>0&&!document.hidden)await this.sleep(ms);},
+ async narrate(text,move=false){if(!text)return;await this.holdNarration();if(this._closed)return;this.message=text;this._readUntil=performance.now()+battleReadingTime(text,{move,hidden:document.hidden});},
+ statusCue(e){const cue=nativeStatusVisual(e);if(cue&&e.actor){this.statusFx={...cue,actor:e.actor,nonce:++this.statusNonce};return cue;}return null;},
+ areaMove:isAreaMove,onKey(e){if(e.key==='Escape'){this.selectedMove=null;this.reserves=false;}if(e.key!=='Tab')return;const list=[...this.$el.querySelectorAll('button:not(:disabled),input,textarea')].filter(n=>n.getClientRects().length);const first=list[0],last=list[list.length-1];if(e.shiftKey&&[first,this.$el].includes(document.activeElement)){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}},statLabel(s){return({atk:'Attaque',def:'Défense',spa:'Att. Spé.',spd:'Déf. Spé.',spe:'Vitesse',accuracy:'Précision',evasion:'Esquive'})[s]||s;},type:localizeTypeName,color(type){return colors[type]||colors.Normal;},status(s){return({brn:'BRÛ',psn:'PSN',tox:'PSN+',par:'PAR',slp:'SOM',frz:'GEL'})[s]||s;},boostText(p){return Object.entries(p.boosts||{}).filter(([,n])=>n).map(([s,n])=>`${({atk:'Att',def:'Déf',spa:'ASp',spd:'DSp',spe:'Vit',accuracy:'Préc',evasion:'Esq'})[s]||s} ${n>0?'+':''}${n}`).join(' · ');},sprite(p,back=false){return this.$pokemonSprite({...p,gender:p.gender==='F'?'female':p.gender==='M'?'male':'genderless',data:{id:p.pokemonId}},{side:back?'back':'front',animated:!this.reduced});},chooseSlot(slot){this.slot=slot;this.reserves=false;this.selectedMove=null;},autoSlot(){if(this.controls?.canControl&&!this.frame.choices[this.slot])return;const next=this.control?.slots?.find(s=>s.canControl&&!this.frame.choices[s.slot]);if(next)this.chooseSlot(next.slot);},move(m){if(!this.canAct)return;const selected=['normal','any','adjacentAlly','adjacentAllyOrSelf'].includes(m.target);if(selected){this.selectedMove=m;if(m.targets.length===1)this.submitMove(m.targets[0].loc);}else{this.selectedMove=m;if(!this.areaMove(m))this.submitMove();}},target(side,slot){if(this.areaMove(this.selectedMove))return;const t=this.targets.find(t=>t.side===side&&t.slot===slot);if(t)this.submitMove(t.loc);},submitMove(targetLoc){const m=this.selectedMove;if(m)this.submit({action:'attack',moveIndex:m.index,targetLoc});},submit(payload){if(!this.canAct)return;this.$emit('action',{...payload,slot:this.slot,turnId:this.frame.turnId,controlRevision:this.controls.revision});this.selectedMove=null;this.reserves=false;},sleep(ms){if(this._closed||document.hidden)return Promise.resolve();return new Promise(resolve=>{this._waiters ||= new Set();const finish=()=>{clearTimeout(timer);this._waiters.delete(finish);resolve();};const timer=setTimeout(finish,ms);this._waiters.add(finish);});},
  async preload(frame){const urls=[hallBackground,...frame.active.flat().filter(Boolean).map(p=>this.sprite(p))];await Promise.race([Promise.all(urls.map(src=>new Promise(resolve=>{const img=new Image();img.onload=img.onerror=resolve;img.src=src;}))),this.sleep(5000)]);},
  async play(){
  if(this.playing||this._closed)return;this.playing=true;
@@ -72,7 +80,13 @@ export default {
   const events=frame.events||[];
   for(let n=0;n<events.length;n++){
    const e=events[n];if(this._closed)break;
-   this.message=e.message||this.message;this.effect={...e,id:Math.random()};
+   const cue=nativeStatusVisual(e);
+   const residual=e.kind==='-damage'&&e.direct===false;
+   const message=residual&&cue?`${this.display.active[e.actor?.side]?.[e.actor?.slot]?.name} · ${STATUS_VISUALS[cue.status].label}.`:e.message;
+   if(e.kind==='move'){await this.finishMoveFx();await this.sleep(this.reduced||document.hidden?0:BATTLE_PACING.actionPause);}
+   if(message&&!(e.kind==='-damage'&&!residual))await this.narrate(message,e.kind==='move');
+   if(this._closed)break;
+   this.effect={...e,id:Math.random()};this.statusCue(e);
    if(e.kind==='-singleturn'&&e.effect==='Protect'&&e.actor&&this.display.active[e.actor.side]?.[e.actor.slot])this.$set(this.display.active[e.actor.side][e.actor.slot],'effects',{...this.display.active[e.actor.side][e.actor.slot].effects,shield:true});
    if(e.kind==='move'){await this.animate(e,doubleMoveVisual(events,n,this.display.active));continue;}
    if(['switch','drag','replace'].includes(e.kind)&&e.actor&&e.pokemon)this.$set(this.display.active[e.actor.side],e.actor.slot,{...e.pokemon});
@@ -82,18 +96,20 @@ export default {
      // All travel is finished before changing this target's HP. Recoil and
      // residual damage never masquerade as another successful move impact.
      if(e.kind==='-damage'&&e.direct!==false&&this.fx){const target=this.fx.fullTargets.find(t=>t.side===e.actor.side&&t.slot===e.actor.slot);if(target?.connected){const key=`${e.actor.side}:${e.actor.slot}`,seen=this._moveHitCount[key]||0;
-      if(seen>0&&target.hits>1&&!this.reduced){this.fx={...this.fx,stage:'travel',travelMs:130,result:{success:true,hits:1},path:{...this.fx.path,targets:[target]}};await this.sleep(130);}
+      if(seen>0&&target.hits>1&&!this.reduced){this.fx={...this.fx,stage:'travel',travelMs:BATTLE_PACING.hitGap,result:{success:true,hits:1},path:{...this.fx.path,targets:[target]}};await this.sleep(BATTLE_PACING.hitGap);}
       this._moveHitCount[key]=seen+1;this._impactAt=performance.now();this.fx={...this.fx,stage:'impact',pulse:(this.fx.pulse||0)+1,result:{success:true,hits:1,critical:target.critical},path:{...this.fx.path,targets:[target]}};}}
-     if(e.kind==='-heal'&&this.fx?.family==='drain'&&!this.reduced){this.fx={...this.fx,stage:'drain',path:{...this.fx.path,targets:this.fx.fullTargets.filter(t=>t.connected)}};await this.sleep(500);}
+     if(e.kind==='-heal'&&this.fx?.family==='drain'&&!this.reduced){this.fx={...this.fx,stage:'drain',path:{...this.fx.path,targets:this.fx.fullTargets.filter(t=>t.connected)}};await this.sleep(BATTLE_PACING.drain);}
      this.effect.amount=Math.abs(p.currentHp-e.hp);this.$set(p,'currentHp',e.hp);if(e.maxHp)this.$set(p,'maxHp',e.maxHp);
     }
    }
+   if(['-status','-curestatus'].includes(e.kind)&&e.actor){const p=this.display.active[e.actor.side]?.[e.actor.slot];if(p)this.$set(p,'status',e.kind==='-curestatus'?'normal':e.effect);}
    if(e.kind==='faint'&&e.actor&&this.display.active[e.actor.side]?.[e.actor.slot])this.$set(this.display.active[e.actor.side][e.actor.slot],'fainted',true);
    if(['-boost','-unboost'].includes(e.kind)&&e.actor){const p=this.display.active[e.actor.side]?.[e.actor.slot];if(p)this.$set(p,'boosts',{...p.boosts,[e.stat]:Math.min(6,Math.max(-6,(p.boosts?.[e.stat]||0)+e.delta))});}
    if(['-immune','-miss','-fail'].includes(e.kind)&&this.fx){const point=this.point(e.kind==='-miss'?e.target:e.actor);this.fx={...this.fx,stage:'miss',path:{...this.fx.path,targets:[{...point,connected:false}]}};}
-   await this.sleep(this.reduced?20:['-boost','-unboost'].includes(e.kind)?STAT_CHANGE_DURATION:e.message?330:0);
+   await this.sleep(document.hidden?0:['-boost','-unboost'].includes(e.kind)?(this.reduced?20:STAT_CHANGE_DURATION):this.reduced?20:nativeEventPause(e,cue));
+   this.statusFx=null;
   }
-  await this.finishMoveFx();this.display=JSON.parse(JSON.stringify(frame));this.effect=null;this.fx=null;
+  await this.finishMoveFx();await this.holdNarration();this.display=JSON.parse(JSON.stringify(frame));this.effect=null;this.fx=null;this.statusFx=null;this.message='';
  }}finally{this.playing=false;this.autoSlot();}
 },
  point(actor){
@@ -103,7 +119,7 @@ export default {
  },
  isMoveActor(spot){return this.fx&&['charge','punch'].includes(this.fx.family)&&this.fx.actor?.side===spot.side&&this.fx.actor?.slot===spot.slot;},
  async finishMoveFx(){
-  if(!this.reduced&&this.fx?.visibilityScale>1&&this._impactAt)await this.sleep(Math.max(0,this.fx.impactMs-(performance.now()-this._impactAt)));
+  if(!this.reduced&&!document.hidden&&this.fx&&this._impactAt)await this.sleep(Math.max(0,this.fx.impactMs-(performance.now()-this._impactAt)));
   this._impactAt=0;
  },
  async animate(e,plan){
@@ -113,7 +129,7 @@ export default {
   this._moveHitCount={};this.fx=fx;await this.sleep(this.reduced?0:v.windupMs);if(this._closed)return;
   this.fx={...fx,stage:plan.prepared?'windup':'travel'};await this.sleep(this.reduced?20:v.travelMs);if(this._closed)return;
   this.fx={...fx,stage:plan.failed?'miss':plan.prepared?'await':e.category==='Status'?'aura':'await'};
-  if(e.category==='Status')await this.sleep(this.reduced?20:240);
+  if(e.category==='Status')await this.sleep(this.reduced?20:BATTLE_PACING.status);
  }}
 
 };
@@ -160,4 +176,8 @@ export default {
 </style>
 <style scoped>
 .double-area-review{padding:10px;border:2px solid #b59b62;background:var(--journal-soft);border-radius:9px;font-size:12px}.double-area-review p{margin:5px 0}.double-area-review button{min-height:44px;width:100%}.double-moves ::v-deep .move-action{background:var(--journal-card);border:1px solid var(--type-color);border-left-width:4px;border-radius:8px;text-align:left;padding:8px;color:var(--journal-ink);min-height:64px}.double-moves ::v-deep .move-action b,.double-moves ::v-deep .move-action small,.double-moves ::v-deep .move-action span{display:block;font-size:11px}
+</style>
+
+<style scoped>
+.double-status-visual{left:10%;right:auto;top:auto;bottom:12px;width:80%;height:var(--sprite-height);z-index:5}
 </style>

@@ -41,6 +41,7 @@
 
       <battle-move-effect v-if="battleMoveFx.visible && !reducedMotion()" :key="`move-${battleMoveFx.nonce}`"
         :fx="battleMoveFx" :path="movePath" :color="battleMoveStyle['--battle-move-color']" />
+      <battle-status-effect v-for="side in ['wild','player']" :key="`status-${side}-${statusVisuals[side]?.nonce}`" :effect="statusVisuals[side]" :style="statusPosition(side)" :reduced="reducedMotion()" />
       <battle-persistent-effect v-for="side in ['wild','player']" :key="`persistent-${side}-${getPokemonBattleKey(side === 'wild' ? opponent : currentPokemon)}`"
         :effects="persistentEffects(side)" :style="conditionPosition(side)" :reduced="reducedMotion()" />
 
@@ -153,7 +154,7 @@
 
       <div v-for="side in ['wild','player']" :key="`conditions-${side}`" class="battle-condition-fx" :data-condition-side="side" :style="conditionPosition(side)" aria-hidden="true">
         <battle-stat-change :key="`stats-${conditionNonce}-${side}`" :effects="conditionFx[side]" :language="preferences.language" />
-        <i v-for="(effect,index) in conditionFx[side].filter(e=>e.kind!=='up' && e.kind!=='down')" :key="effect.key" :class="`condition-${effect.kind}`" :style="{'--effect-index':index,'--effect-count':conditionFx[side].length}">{{ effect.symbol }}</i>
+        <i v-for="(effect,index) in conditionFx[side].filter(e=>e.kind!=='up' && e.kind!=='down' && !statusVisualForChange(e))" :key="effect.key" :class="`condition-${effect.kind}`" :style="{'--effect-index':index,'--effect-count':conditionFx[side].length}">{{ effect.symbol }}</i>
       </div>
 
       <div v-if="criticalFx.side" :key="`critical-${criticalFx.nonce}`" class="battle-critical-burst" :data-critical-side="criticalFx.side" :style="conditionPosition(criticalFx.side)" aria-hidden="true"><b>!</b></div>
@@ -302,6 +303,9 @@ import { waitForBattleAssets, entranceDelay } from '@/services/battleEntrance';
 import { pokemonSpriteMetrics } from '@/services/pokemonSprites';
 import { arenaChampion } from '@/services/arenaEntrance';
 import { createBattlePresentation } from '@/services/battlePresentation';
+import {BATTLE_PACING,battleReadingTime} from '@/services/battlePacing';
+import {conditionStatusVisual,narratedStatusVisual} from '@/services/battleStatusVisuals';
+import BattleStatusEffect from './BattleStatusEffect.vue';
 import {isMoveAnnouncement,moveAnnouncementDuration} from '@/services/battleNarration';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
@@ -416,7 +420,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: {BattlePokemonInfo, BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
+  components: {BattleStatusEffect,BattlePokemonInfo, BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
     tutorial:{type:Object,default:null},
     tutorialBusy:Boolean,
@@ -463,7 +467,7 @@ export default {
       entranceAssetsLoading: false,
       entranceChampion: null,
       feedbackHeights: { wild: 0, player: 0 }, feedbackSceneSize: { width: 0, height: 0 },
-      visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionNonce:0, conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
+      statusVisuals:{player:null,wild:null}, statusVisualNonce:0, visualEpoch:0, transitionFx:{player:'',wild:''}, transitionLabel:'', conditionNotice:'', conditionNonce:0, conditionFx:{wild:[],player:[]}, conditionTimer:null, driftNotices:[], driftNoticeTimer:null,
       sendOuts: [], trainerSpeech: null,
       phaseReturning: { player:false, wild:false },
       usableMoveIndexes: null,moveDisabledReasons:[],
@@ -849,16 +853,16 @@ export default {
         if (!this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
         if (method === 'playMoveAnimation') return this.battleMoveFx.windupMs || 180;
         if (method === 'playDriftEffects') return 650;
-        if (method === 'updateFieldState' && !this._pendingBattleField && this.fieldFx.changes.length) return 700;
-        if (method === 'playMoveResult') return this.battleMoveFx.visible ? 0 : this.resultFx.visible ? 1150 : 250;
+        if (method === 'updateFieldState' && !this._pendingBattleField && this.fieldFx.changes.length) return BATTLE_PACING.field;
+        if (method === 'playMoveResult') return this.battleMoveFx.visible ? 0 : this.resultFx.visible ? 1250 : 320;
         return 0;
       };
       return this._presentation.push(async () => {
         // Let the animation and HP updates run normally. Only a replacement
         // narration waits for the minimum reading time, including reduced motion.
         const epoch=this.visualEpoch;
-        const remaining=(this._moveNarrationUntil||0)-performance.now();
-        if(['showMessage','showRewardMessage','requestAction'].includes(method)&&remaining>0&&!document.hidden){
+        const remaining=Math.max(this._narrationUntil||0,this._moveNarrationUntil||0)-performance.now();
+        if(['showMessage','showRewardMessage','requestAction','playMoveAnimation'].includes(method)&&remaining>0&&!document.hidden){
           await this.transitionWait(remaining);
           if(epoch!==this.visualEpoch)return;
         }
@@ -923,7 +927,7 @@ export default {
     consumeExperienceClick(event){if(event?.target?.closest?.('[data-social-surface],[data-battle-pokemon-info],[data-pokemon-info]'))return;if(this._experiencePointer){this._experiencePointer=false;event.preventDefault();event.stopPropagation();}},
     advanceExperience(event){if(event?.target?.closest?.('[data-battle-weather-info],[data-social-surface],[data-battle-pokemon-info],[data-pokemon-info]'))return false;const skip=this.experienceBusy&&this._experienceControl?.skip||this._rewardRelease;if(!skip)return false;event?.preventDefault?.();event?.stopPropagation?.();if(event?.type==='pointerdown')this._experiencePointer=true;skip();return true;},
     showRewardMessage(payload){
-      this.showMessage(payload.message,true);this.rewardNotice=true;
+      this.showMessage(payload.message,true,false);this.rewardNotice=true;
       return new Promise(resolve=>{
         const finish=()=>{clearTimeout(this._rewardTimer);this._rewardTimer=null;this._rewardRelease=null;this.rewardNotice=false;resolve();};
         this._rewardRelease=finish;
@@ -971,9 +975,12 @@ export default {
     async finishPresentation() {
       this.finishing = true;
       this.canAct = false;
-      this.actionState.text = this.preferences.language==='en'?'Battle ended.':'Combat terminé.';
+      const epoch=this.visualEpoch;
       await this._presentation?.drain();
       await this._experiencePlayback;
+      const remaining=Math.max(this._narrationUntil||0,this._moveNarrationUntil||0)-performance.now();
+      if(remaining>0&&!document.hidden&&epoch===this.visualEpoch)await this.transitionWait(remaining);
+      if(epoch===this.visualEpoch)this.actionState.text = this.preferences.language==='en'?'Battle ended.':'Combat terminé.';
     },
     cancelExperience() {
       this._experiencePointer=false;
@@ -1051,7 +1058,7 @@ export default {
     openBag() {
       if(this.tournament||['whitepeak-club','draft-house'].includes(this.environment))return;
       if (!this.canChooseAction) {
-        this.showMessage(this.tr('waitTurnBag'));
+        this.showMessage(this.tr('waitTurnBag'),false,false);
         return;
       }
       this.setPanel('bag');
@@ -1065,7 +1072,7 @@ export default {
       this.canAct = false;
       this.$emit('action', { ...payload, ...(this.houseControl ? {controlRevision:this.houseControl.revision} : {}), ...(this.replacementId ? { replacementId:this.replacementId } : {}), ...(this.actionTurnId ? { turnId:this.actionTurnId } : {}) });
       this.replacementChoice = false;
-      this.showMessage(message, true);
+      this.showMessage(message, true, false);
     },
     requestAction(request) {
       if(this.finishing)return;
@@ -1076,16 +1083,19 @@ export default {
       this.replacementId = data.replacementId || null;
       this.actionTurnId = data.turnId || null;
       this.canAct = true;
-      this.showMessage(data.message || this.tr('chooseAction'), true);
+      this.showMessage(data.message || this.tr('chooseAction'), true, false);
       if (this.replacementChoice) {
         this.actionState.patient = false;
         this.actionState.pokemonPanel = true;
       } else this.$emit('request-bag');
     },
-    showMessage(message, hold = false) {
+    showMessage(message, hold = false, readable = true) {
       if (!message) return;
       const announcement=isMoveAnnouncement(message);
       this._moveNarrationUntil=announcement&&!document.hidden?performance.now()+moveAnnouncementDuration(message):0;
+      this._narrationUntil=readable?performance.now()+battleReadingTime(message,{move:announcement,hidden:document.hidden}):0;
+      const status=narratedStatusVisual(message,[{side:'player',pokemon:this.currentPokemon},{side:'wild',pokemon:this.opponent}]);
+      if(status)this.playStatusVisual(status.side,status);
       if(announcement)hold=true;
       if (this.messageTimer) clearTimeout(this.messageTimer);
       this.messageTimer = null;
@@ -1108,6 +1118,7 @@ export default {
       const epoch = this.visualEpoch;
       const opening = !this.player && this.entrancePhase === 'holding';
       const events = payload.transitions || [];
+      for(const [side,p]of [['player',payload.player?.equipe?.pokemons?.[0]],['wild',payload.wildPokemon]]){const old=side==='player'?this.currentPokemon:this.opponent;if(old?.uuid!==p?.uuid)this.$set(this.statusVisuals,side,null);}
       const changes = { player:battleConditionChanges(this.currentPokemon,payload.player?.equipe?.pokemons?.[0]), wild:battleConditionChanges(this.opponent,payload.wildPokemon) };
       const outgoing = events.filter(e => e.kind === 'faint' || e.kind === 'recall');
       const incoming = events.filter(e => e.kind === 'enter');
@@ -1152,7 +1163,7 @@ export default {
         await this.transitionWait(220);
         if (epoch !== this.visualEpoch) return;
         move.stage = 'drain';
-        await this.transitionWait(560);
+        await this.transitionWait(BATTLE_PACING.drain);
         if (epoch !== this.visualEpoch) return;
         for (const {side,previous,nextHp,delta} of healing) {
           this.$set(previous, 'currentHp', nextHp);
@@ -1164,8 +1175,10 @@ export default {
         this.moveTimer = setTimeout(() => { move.visible = false; this.moveTimer = null; }, Math.max(650,move.impactMs||0));
       }
       this.pendingCritical = null;
-      if (hpChanged && !this.reducedMotion()) await this.transitionWait(1020);
-      if (!hpChanged && move.visible && !this.reducedMotion()) await this.transitionWait(680);
+      if (hpChanged && !this.reducedMotion()) await this.transitionWait(move.visible?1120:BATTLE_PACING.residual);
+      if (!hpChanged && move.visible && !this.reducedMotion()) await this.transitionWait(Math.max(780,move.impactMs));
+      // A completed attack must not be reused for poison, weather or recoil snapshots.
+      if(move.visible){clearTimeout(this.moveTimer);move.visible=false;this.moveTimer=null;}
       if (epoch !== this.visualEpoch) return;
       if (outgoing.length) {
         this.clearMoveFx(); this.resultFx.visible = false; this.driftNotices = [];
@@ -1208,7 +1221,7 @@ export default {
       }
       if (changes.player.length || changes.wild.length) {
         this.playConditionChanges(changes);
-        if (!this.reducedMotion()) await this.transitionWait([...changes.player,...changes.wild].some(e=>['up','down'].includes(e.kind))?STAT_CHANGE_DURATION:680);
+        if (!this.reducedMotion()) await this.transitionWait([...changes.player,...changes.wild].some(e=>['up','down'].includes(e.kind))?STAT_CHANGE_DURATION:BATTLE_PACING.status);
         if (epoch !== this.visualEpoch) return;
         this.conditionFx={player:[],wild:[]};
       }
@@ -1216,6 +1229,15 @@ export default {
         clearTimeout(this._transitionLabelTimer);
         this._transitionLabelTimer = setTimeout(() => { this.transitionLabel = ''; }, 900);
       }
+    },
+    statusVisualForChange:conditionStatusVisual,
+    statusPosition(side) {
+      const g=this.getSpriteGeometry(side),size=Math.max(75,Math.min(220,Math.max(g.width,g.height)*1.18));
+      return {left:`${g.centerX-size/2}px`,top:`${g.centerY-size/2}px`,width:`${size}px`,height:`${size}px`};
+    },
+    playStatusVisual(side,effect) {
+      if(this.reducedMotion())return;
+      this.$set(this.statusVisuals,side,{...effect,nonce:++this.statusVisualNonce});
     },
     conditionPosition(side) {
       const geometry = this.getSpriteGeometry(side);
@@ -1238,6 +1260,7 @@ export default {
       this.conditionNotice = ['player','wild'].filter(side=>changes[side].length).map(side=>`${side==='player'?'Allié':'Adversaire'} · ${changes[side].map(e=>e.text).join(' · ')}`).join(' / ');
       this.conditionNonce++;
       this.conditionFx = this.reducedMotion() ? {player:[],wild:[]} : changes;
+      for(const side of ['player','wild']){const effect=changes[side].map(conditionStatusVisual).find(Boolean);if(effect)this.playStatusVisual(side,effect);}
       this.conditionTimer = setTimeout(()=>{this.conditionFx={player:[],wild:[]};this.conditionNotice='';},Math.max(1300,STAT_CHANGE_DURATION+120));
     },
     playDriftEffects(payload={}) {
@@ -1655,6 +1678,7 @@ export default {
       this._battleAudio?.stop();
       this.cancelEntrance();
       clearTimeout(this.criticalTimer); this.criticalFx.side=null; this.pendingCritical=null;
+      this._narrationUntil=0;this._moveNarrationUntil=0;this.statusVisuals={player:null,wild:null};
       this.visualEpoch++;this._sendOutController?.abort();this.sendOuts=[];this.trainerSpeech=null;this._transitionRelease?.();clearTimeout(this._transitionLabelTimer);clearTimeout(this.driftNoticeTimer);this.transitionFx={player:'',wild:''};this.transitionLabel='';this.driftNotices=[];clearTimeout(this.conditionTimer);this.conditionFx={player:[],wild:[]};this.conditionNotice='';
       if (this.messageTimer) clearTimeout(this.messageTimer);
       if (this.resultTimer) clearTimeout(this.resultTimer);

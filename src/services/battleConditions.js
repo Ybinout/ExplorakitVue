@@ -43,7 +43,7 @@ export function battleConditionChanges(previous,next) {
     if(delta) changes.push({key,kind:delta>0?'up':'down',symbol:delta>0?'↑':'↓',delta,from:stage(previous,key),to:stage(next,key),text:`${short} ${delta>0?'+':''}${delta}`});
   }
   if(previous.status!==next.status) {
-    if(AILMENTS[next.status]) changes.push({key:'ailment',kind:'status',symbol:'!',text:AILMENTS[next.status]});
+    if(AILMENTS[next.status]) changes.push({key:'ailment',kind:'status',status:next.status,symbol:'!',text:AILMENTS[next.status]});
     else if(AILMENTS[previous.status]) changes.push({key:'ailment',kind:'cure',symbol:'+',text:'Statut soigné'});
   }
   for(const [key,[text,kind,symbol]] of Object.entries(CONDITIONS)) {

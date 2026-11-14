@@ -1,3 +1,4 @@
+import {pacedMovePhases} from './battlePacing.js';
 import { MOVE_VISUAL_CATALOG } from './moveVisualCatalog.js';
 // Presentation-only families. Canonical move names stay independent of localisation.
 const groups = {
@@ -85,11 +86,12 @@ export function moveVisual(payload = {}) {
   const vivid=damageClass!=='status'&&(['projectile','beam','drain','zone'].includes(family)||magical);
   const visibilityScale=vivid?(family==='beam'?1.5:family==='zone'?1.45:magical?2.45:2.15):1;
   const heavy=['hyper-beam','draco-meteors','sky-thunder','fire-blast'].includes(style);
-  return {family,style,moveType,damageClass,power,intensity,visibilityScale,
+  const profile = {family,style,moveType,damageClass,power,intensity,visibilityScale,
     target:payload.moveTarget||meta[3]||'opponent',
     windupMs:phase==='prepare'?460:family==='kick'||style==='facade-rush'||style==='return-comet'?200:style==='helping-hands'?160:vivid?(family==='beam'?300:magical?260:220):heavy?280:family==='beam'?180:family==='charge'||family==='punch'?120:90,
     travelMs:family==='kick'?360:style==='helping-hands'?680:style==='facade-rush'||style==='return-comet'?380:vivid?(family==='zone'?620:family==='beam'?680:magical?780:700):heavy?510:family==='beam'?390:family==='projectile'?360:family==='zone'?410:family==='charge'||family==='punch'?250:190,
     impactMs:family==='kick'||style==='facade-rush'||style==='return-comet'?520:style==='helping-hands'?460:vivid?(magical||heavy?700:640):heavy?620:410,camera:power>=100||heavy};
+  return {...profile,...pacedMovePhases(profile)};
 }
 export function persistentMoveVisuals(pokemon) {
   if (!pokemon?.uuid || !(pokemon.currentHp > 0)) return {shield:false,clone:false};
