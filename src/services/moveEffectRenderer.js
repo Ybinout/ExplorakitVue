@@ -1,3 +1,4 @@
+import {drawGroundDebris} from './moveGroundDebris.js';
 import {drawMoveVariant} from './moveVariantEffects.js';
 import { ELEMENTS } from './moveVisuals.js';
 import { drawElementAccents } from './moveElementAccents.js';
@@ -247,7 +248,7 @@ export class MoveEffectRenderer {
    }
   }
   }
-  this.stats.variantParticles=0;drawElementAccents(this,stage,t);drawMoveVariant(this,targets,t,stage);
+  this.stats.variantParticles=0;drawElementAccents(this,stage,t);drawMoveVariant(this,targets,t,stage);drawGroundDebris(this,targets,t,stage);
   c.restore();const cost=this.now()-began;this.stats.frames++;this.stats.drawMs+=(cost-this.stats.drawMs)*.12;this.stats.maxDrawMs=Math.max(this.stats.maxDrawMs,cost);
   if(this.stats.frames>8&&this.stats.drawMs>3&&this.quality>.5)this.quality=Math.max(.45,this.quality-.15);this.stats.quality=this.quality;
  }

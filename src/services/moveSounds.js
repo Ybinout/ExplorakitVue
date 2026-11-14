@@ -7,9 +7,9 @@ export function damageImpactStrength(damage, maxHp) {
 }
 
 const profiles = {
-  light: { frequency: 230, endFrequency: 100, duration: 0.10, volume: 0.15, noiseFrequency: 2400, noiseDuration: 0.065, noiseVolume: 0.13 },
-  medium: { frequency: 170, endFrequency: 65, duration: 0.16, volume: 0.23, noiseFrequency: 1800, noiseDuration: 0.10, noiseVolume: 0.21 },
-  heavy: { frequency: 115, endFrequency: 40, duration: 0.24, volume: 0.32, noiseFrequency: 1150, noiseDuration: 0.15, noiseVolume: 0.29 }
+  light: { frequency: 155, endFrequency: 72, duration: 0.12, volume: 0.20, noiseFrequency: 1900, noiseDuration: 0.08, noiseVolume: 0.16 },
+  medium: { frequency: 110, endFrequency: 48, duration: 0.19, volume: 0.30, noiseFrequency: 1550, noiseDuration: 0.12, noiseVolume: 0.25 },
+  heavy: { frequency: 78, endFrequency: 40, duration: 0.25, volume: 0.38, noiseFrequency: 1100, noiseDuration: 0.17, noiseVolume: 0.33 }
 };
 
 export function damageImpactPlan({ damage, maxHp, critical = false, effectiveness = 1, direct = true } = {}) {
@@ -18,19 +18,27 @@ export function damageImpactPlan({ damage, maxHp, critical = false, effectivenes
   const { frequency, endFrequency, duration, volume, noiseFrequency, noiseDuration, noiseVolume } = profile;
   if(direct && effectiveness===0)return [];
   if(direct && critical)return [
-    {kind:'tone',type:'triangle',frequency:145,endFrequency:45,duration:.27,volume:.29,attack:.003},
-    {kind:'noise',filter:'lowpass',frequency:3200,endFrequency:650,duration:.16,volume:.23,attack:.002},
-    {kind:'tone',type:'sine',frequency:1175,endFrequency:520,duration:.12,volume:.10,attack:.003},
-    {kind:'tone',type:'triangle',frequency:73,endFrequency:42,duration:.22,volume:.10,delay:.025,attack:.003}
+    {kind:'tone',type:'triangle',frequency:98,endFrequency:40,duration:.30,volume:.34,attack:.003},
+    {kind:'noise',filter:'lowpass',frequency:2600,endFrequency:550,duration:.18,volume:.27,attack:.002},
+    {kind:'tone',type:'triangle',frequency:196,endFrequency:90,duration:.14,volume:.12,attack:.003},
+    {kind:'tone',type:'sine',frequency:55,endFrequency:40,duration:.24,volume:.10,delay:.025,attack:.003}
   ];
   const scale=direct&&effectiveness<1?.53:direct&&effectiveness>1?1.08:1;
   const voices=[
     { kind: 'tone', type: 'triangle', frequency, endFrequency, duration, volume:volume*scale, attack: 0.004 },
     { kind: 'noise', filter: 'lowpass', frequency: noiseFrequency, endFrequency: noiseFrequency / 3, duration: noiseDuration, volume:noiseVolume*scale, attack: 0.003 }
   ];
-  if(direct&&effectiveness>1)voices.push({kind:'tone',type:'sine',frequency:660,endFrequency:990,duration:.16,volume:.10,delay:.015,attack:.004});
+  if(direct&&effectiveness>1)voices.push({kind:'tone',type:'triangle',frequency:165,endFrequency:72,duration:.20,volume:.12,delay:.015,attack:.004});
   return voices;
 }
+
+// Boost only combat plans, preserving world jingles and master-volume behaviour.
+// Conservative aggregate amplitude prevents clipping even for simultaneous notes.
+export function audibleCombatPlan(plan){
+ const total=plan.reduce((sum,v)=>sum+v.volume,0),budget=plan.length>=4?.92:plan.length===3?.88:.76,gain=Math.min(1.65,budget/Math.max(.001,total));
+ return plan.map(v=>({...v,volume:v.volume*gain}));
+}
+export const COMBAT_MUSIC_GAIN=.75;
 
 const tone=(frequency,endFrequency,duration=.18,volume=.10,delay=0,type='sine')=>({kind:'tone',frequency,endFrequency,duration,volume,delay,type});
 const noise=(frequency,endFrequency,duration,volume,filter='bandpass',delay=0)=>({kind:'noise',frequency,endFrequency,duration,volume,filter,delay});

@@ -1,4 +1,4 @@
-import {damageImpactPlan,combatCuePlan} from './moveSounds.js';
+import {damageImpactPlan,combatCuePlan,audibleCombatPlan} from './moveSounds.js';
 
 // Small synthesized effects: no download on the critical path of an attack.
 export class BattleAudio {
@@ -92,7 +92,7 @@ export class BattleAudio {
   }
   playPlan(plan) {
     if(!this.ready())return;
-    for(const voice of plan){
+    for(const voice of audibleCombatPlan(plan)){
       const {kind,frequency,duration,...options}=voice;
       if(kind==='noise')this.noise(duration,frequency,options);
       else this.tone(frequency,duration,options);

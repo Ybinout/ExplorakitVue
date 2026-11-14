@@ -1,13 +1,15 @@
 <template>
- <section ref="dialog" tabindex="-1" class="double-battle" role="dialog" aria-modal="true" aria-label="Combat Double" @keydown.stop="onKey" @keyup.stop data-double-battle>
+ <section ref="dialog" tabindex="-1" class="double-battle" :class="{'double-reduced':reduced}" role="dialog" aria-modal="true" aria-label="Combat Double" @keydown.stop="onKey" @keyup.stop data-double-battle>
   <header><span><small>MAISON DES COMBATS · DOUBLE</small><b>{{ frame.players[frame.side].name }} <i>contre</i> {{ frame.players[1-frame.side].name }}</b></span><strong>Tour {{ frame.turn }}</strong><button v-if="spectator" @click="$emit('close')">Quitter les tribunes</button><button v-else @click="askForfeit=true" aria-label="Abandonner le duel">⚑</button><slot name="social-toggle"/></header>
   <div ref="stage" class="double-stage" :class="{'move-camera-impact':!reduced&&fx?.camera&&fx?.stage==='impact'}">
+   <battle-ambience environment="double-hall" :background="ambientImages" :animations-enabled="!reduced && !loading"/>
+   <battle-player-ground v-for="spot in spots.filter(s=>s.own&&s.p)" :key="'ground-'+spot.key" environment="whitepeak-club" :selector="'[data-double-position='+spot.key+'] .pokemon-portrait'" :identity="spot.p.uuid"/>
    <battle-rain v-if="display?.weather==='raindance'" :animations-enabled="!reduced" environment="arena"/><battle-snow v-if="display?.weather==='hail' || display?.weather==='snowscape'" :animations-enabled="!reduced" environment="arena"/><battle-sandstorm v-if="display?.weather==='sandstorm'" :animations-enabled="!reduced" environment="arena"/>
    <div class="double-side-effects"><span v-for="(side,i) in display?.sideEffects||[]" :key="i"><b v-if="side.length">{{ i===frame.side?'Ton camp':'Camp adverse' }}</b><small v-for="e in side" :key="e.id">{{ e.name }}{{ e.layers?' ×'+e.layers:e.turns?' · '+e.turns+' t':'' }}</small></span></div>
    <battle-weather-info v-if="weatherName" class="double-weather" :weather="weatherName"/>
    <div v-for="spot in spots" :key="spot.key" :ref="spot.key" :data-double-position="spot.key" class="double-combatant" :class="[spot.own?'own':'foe',isMoveActor(spot)?'double-caster-'+fx.stage:'',{'is-corrupted':spot.p?.corrupted,'is-target':targets.some(t=>t.side===spot.side&&t.slot===spot.slot),'is-fainted':spot.p?.fainted,'takes-hit':effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect.kind==='-damage','is-critical':effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect.kind==='-damage'&&effect.critical}]" :style="{'--x':spot.x+'%','--y':spot.y+'%'}">
     <button v-if="spot.p" class="double-target" :disabled="!targets.some(t=>t.side===spot.side&&t.slot===spot.slot)" @click="target(spot.side,spot.slot)" :aria-label="`Cibler ${spot.p.name}`">
-     <span class="double-card"><span><b>{{ spot.p.name }}</b><small>N. {{ spot.p.level }} {{ spot.p.gender==='M'?'♂':spot.p.gender==='F'?'♀':'' }}</small></span><span class="double-hp"><i :style="{width:Math.max(0,spot.p.currentHp/spot.p.maxHp*100)+'%'}"/></span><small>{{ spot.p.currentHp }}/{{ spot.p.maxHp }} PV <span v-if="spot.p.status!=='normal'">· {{ status(spot.p.status) }}</span></small><em v-if="boostText(spot.p)">{{ boostText(spot.p) }}</em></span>
+     <span class="double-card"><span><b>{{ spot.p.name }}</b><small>N. {{ spot.p.level }} {{ spot.p.gender==='M'?'♂':spot.p.gender==='F'?'♀':'' }}</small></span><span class="double-hp"><i :class="{'health-fluid':!reduced&&spot.p.currentHp>0}" :style="{width:Math.max(0,spot.p.currentHp/spot.p.maxHp*100)+'%',background:healthFill(spot.p.currentHp,spot.p.maxHp)}"/></span><small>{{ spot.p.currentHp }}/{{ spot.p.maxHp }} PV <span v-if="spot.p.status!=='normal'">· {{ status(spot.p.status) }}</span></small><em v-if="boostText(spot.p)">{{ boostText(spot.p) }}</em></span>
      <pokemon-portrait class="battle-tintable" :tint="tintStyle(spot)" :src="sprite(spot.p,spot.own)" :alt="spot.p.name" :class="{'double-recall':effect?.kind==='switch'&&effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot}"/>
      <span v-if="effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect?.amount" class="double-damage" :class="{'is-heal':effect.kind==='-heal'}">{{ effect.kind==='-heal'?'+':'−' }}{{ effect.amount }}</span>
      <battle-stat-change v-if="!reduced&&['-boost','-unboost'].includes(effect?.kind)&&effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot" class="double-stat" :key="effect.id" :effects="[{kind:effect.delta>0?'up':'down',delta:effect.delta,key:effect.stat,text:statLabel(effect.stat)+' '+(effect.delta>0?'+':'')+effect.delta}]"/>
@@ -40,6 +42,10 @@
  </section>
 </template>
 <script>
+import BattleAmbience from '../battle/BattleAmbience.vue';
+import BattlePlayerGround from '../battle/BattlePlayerGround.vue';
+import {healthFill} from '@/services/healthBarTheme';
+import '../battle/healthFluid.css';
 import BattlePokemonInfo from '../battle/BattlePokemonInfo.vue';
 import BattleMoveButton from '../battle/BattleMoveButton.vue';
 import {isAreaMove} from '@/services/moveInspection';
@@ -62,13 +68,14 @@ import {doubleMoveVisual} from '@/services/doubleMoveVisuals';
 import {localizeTypeName} from '@/services/pokemonTypes';
 const colors={Normal:'#92927b',Fire:'#cf7049',Water:'#558cc5',Electric:'#c6a841',Grass:'#66975d',Ice:'#65a9b1',Fighting:'#b56559',Poison:'#a36ca2',Ground:'#aa8855',Flying:'#8e8fbe',Psychic:'#c16d92',Bug:'#8a993f',Rock:'#a49860',Ghost:'#8172a6',Dragon:'#7978be',Dark:'#817064',Steel:'#859aa2',Fairy:'#c68eae'};
 export default {
- components:{BattleStatusEffect,BattlePokemonInfo,BattleMoveButton,PokemonPortrait,BattleMoveEffect,BattlePersistentEffect,BattleRain,BattleSnow,BattleSandstorm,BattleWeatherInfo,BattleStatChange},props:{frame:Object,control:Object,busy:Boolean,error:String,settled:Boolean,spectator:Boolean,reduced:Boolean},
- data:()=>({statusFx:null,statusNonce:0,display:null,slot:0,reserves:false,selectedMove:null,message:'',effect:null,fx:null,playing:false,loading:true,askForfeit:false,narrow:false}),
+ components:{BattleAmbience,BattlePlayerGround,BattleStatusEffect,BattlePokemonInfo,BattleMoveButton,PokemonPortrait,BattleMoveEffect,BattlePersistentEffect,BattleRain,BattleSnow,BattleSandstorm,BattleWeatherInfo,BattleStatChange},props:{frame:Object,control:Object,busy:Boolean,error:String,settled:Boolean,spectator:Boolean,reduced:Boolean},
+ data:()=>({ambientImages:{wide:hallBackground,mobile:hallBackground},statusFx:null,statusNonce:0,display:null,slot:0,reserves:false,selectedMove:null,message:'',effect:null,fx:null,playing:false,loading:true,askForfeit:false,narrow:false}),
  computed:{weatherName(){return({raindance:'rain',sunnyday:'sun',sandstorm:'sandstorm',hail:'hail',snowscape:'snow'})[this.display?.weather]||null;},own(){return this.frame.active?.[this.frame.side]||[];},controls(){return this.control?.slots?.[this.slot];},decision(){return this.frame.request?.slots?.[this.slot];},canAct(){return !this.playing&&!this.loading&&!this.busy&&!this.control?.paused&&!!this.controls?.canControl&&!!this.decision?.required&&!this.frame.choices[this.slot];},prompt(){return this.canAct?'Choisis une capacité puis sa cible.':'Les dresseurs préparent leurs actions.';},targets(){return this.selectedMove?.targets||[];},spots(){const s=this.display||this.frame;return [0,1].flatMap(side=>[0,1].map(slot=>({side,slot,key:`double-${side}-${slot}`,p:s.active?.[side]?.[slot],own:side===this.frame.side,x:side===this.frame.side?(this.narrow?[18,50]:[18,43])[slot]:(this.narrow?[52,84]:[58,83])[slot],y:side===this.frame.side?100:this.narrow?50:60})));}},
  watch:{frame:{immediate:true,handler(frame){this._frames ||= [];this._frames.push(JSON.parse(JSON.stringify(frame)));this.play();}},'frame.turnId'(){this.selectedMove=null;this.reserves=false;this.autoSlot();},control(){this.autoSlot();}},
  mounted(){this._previousFocus=document.activeElement;this.$refs.dialog.focus({preventScroll:true});this._resize=new ResizeObserver(entries=>{this.narrow=entries[0].contentRect.width<641;});this._resize.observe(this.$refs.stage);this._visibility=()=>{if(document.hidden){this._readUntil=0;for(const finish of this._waiters||[])finish();this.statusFx=null;}};document.addEventListener('visibilitychange',this._visibility);},
  beforeDestroy(){if(this._previousFocus?.isConnected)this._previousFocus.focus({preventScroll:true});this._resize?.disconnect();document.removeEventListener('visibilitychange',this._visibility);this._closed=true;this.$emit('audio-stop');for(const finish of this._waiters||[])finish();},
  methods:{
+ healthFill,
  clearStatusFx(nonce){if(this.statusFx?.nonce===nonce)this.statusFx=null;},
  tintStyle(spot){const active=this.effect?.actor?.side===spot.side&&this.effect?.actor?.slot===spot.slot;return spriteTint(this.statusFx?.actor?.side===spot.side&&this.statusFx?.actor?.slot===spot.slot?this.statusFx:null,active&&['-boost','-unboost'].includes(this.effect.kind)?[{kind:this.effect.delta>0?'up':'down'}]:[],this.reduced,'drop-shadow(0 5px 3px #192f4244)');},
  async holdNarration(){const ms=(this._readUntil||0)-performance.now();if(ms>0&&!document.hidden)await this.sleep(ms);},

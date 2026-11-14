@@ -8,13 +8,16 @@
     :aria-valuenow="safeCurrent"
   >
     <div class="health-bar-trail" :style="trailStyle"></div>
-    <div class="health-bar" :style="healthBarStyle"></div>
+    <div class="health-bar" :class="{'health-fluid':animated&&safeCurrent>0}" :style="healthBarStyle"></div>
   </div>
 </template>
 
 <script>
+import {healthColors} from '@/services/healthBarTheme';
+import './battle/healthFluid.css';
 export default {
   props: {
+    animated:{type:Boolean,default:false},
     currentHp: {
       type: [Number, String],
       default: 0
@@ -77,9 +80,7 @@ export default {
   },
   methods: {
     getHealthBarColor(percentage) {
-      if (percentage > 50) return { start: '#64e16a', end: '#2cb55b' };
-      if (percentage > 20) return { start: '#f4d35e', end: '#e6a13b' };
-      return { start: '#ff6e6e', end: '#d14444' };
+      return healthColors(percentage);
     }
   }
 };

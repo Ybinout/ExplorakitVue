@@ -1,0 +1,8 @@
+/* Shared by the combat HP fills, never by shield, XP or aggro gauges. */
+.health-fluid{position:relative;overflow:hidden;isolation:isolate;transition:width .52s cubic-bezier(.22,.8,.3,1)!important}
+.health-fluid::before,.health-fluid::after{content:'';position:absolute;pointer-events:none;inset:0 -50%;width:200%;border-radius:inherit;will-change:transform}
+.health-fluid::before{background:repeating-linear-gradient(112deg,transparent 0 15%,#fff3 20%,transparent 25% 40%);animation:health-current 5.8s linear infinite;opacity:.5}
+.health-fluid::after{inset:-35% -50% 10%;background:radial-gradient(ellipse at 25% 0,#ffffff70 0 13%,transparent 47%),radial-gradient(ellipse at 75% 0,#ffffff50 0 10%,transparent 43%);animation:health-wave 4.6s ease-in-out infinite alternate;opacity:.45}
+@keyframes health-current{from{transform:translateX(-23%)}to{transform:translateX(23%)}}
+@keyframes health-wave{from{transform:translate(-7%,-8%) scaleY(.8)}to{transform:translate(7%,10%) scaleY(1.1)}}
+@media(prefers-reduced-motion:reduce){.health-fluid{transition:none!important}.health-fluid::before,.health-fluid::after{animation:none;will-change:auto;opacity:.2}}

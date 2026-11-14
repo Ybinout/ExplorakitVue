@@ -18,6 +18,8 @@
       <picture v-else-if="environment === 'cave'" class="battle-arena-background" data-battle-environment="cave"><source v-if="mobile" media="(orientation: portrait)" :srcset="require('@/assets/battle/cave-mobile-v1.webp')"><img src="../../assets/battle/cave-wide-v1.webp" class="battle-background battle-cave-background" alt=""></picture>
       <picture v-else-if="environment === 'snow'" class="battle-arena-background" data-battle-environment="snow"><source v-if="mobile" media="(orientation: portrait)" :srcset="snowBackgrounds.mobile"><img :src="snowBackgrounds.wide" class="battle-background battle-snow-background" alt=""></picture>
       <picture v-else class="battle-arena-background"><source v-if="mobile" media="(orientation: portrait)" :srcset="raining ? rainBackgrounds.grassMobile : require('@/assets/battle/grass-mobile-v3.webp')"><img :src="raining ? rainBackgrounds.grassWide : require('@/assets/battle/back.webp')" class="battle-background" alt=""></picture>
+      <battle-ambience class="battle-background" :environment="challenge?'colosseum':environment" :animations-enabled="preferences.animationsEnabled && !entranceActive"/>
+      <battle-player-ground v-if="currentPokemon?.data" :environment="challenge?'colosseum':environment" :geometry="getSpriteGeometry('player')"/>
       <battle-waterfalls v-if="!challenge && environment === 'lake-gym'" :animations-enabled="preferences.animationsEnabled" />
       <battle-tournament-scenery v-if="environment === 'super-tournament'" :animations-enabled="preferences.animationsEnabled && !entranceActive" />
       <!-- Share the fighters' ground anchors; background cropping must not move their platforms. -->
@@ -118,7 +120,7 @@
           </span>
         </div>
         <battle-traits :pokemon="opponent" opponent :language="preferences.language" />
-        <health-bar :current-hp="opponent.currentHp" :hp-max="opponent.maxHp" />
+        <health-bar :animated="!reducedMotion()" :current-hp="opponent.currentHp" :hp-max="opponent.maxHp" />
         <div class="battle-status-details">
           <span class="battle-hp-value">{{ formatBattleHp(opponent) }}</span>
           <battle-conditions :pokemon="opponent"/>
@@ -145,7 +147,7 @@
           </span>
         </div>
         <battle-traits :pokemon="currentPokemon" :language="preferences.language" />
-        <health-bar :current-hp="currentPokemon.currentHp" :hp-max="currentPokemon.maxHp" />
+        <health-bar :animated="!reducedMotion()" :current-hp="currentPokemon.currentHp" :hp-max="currentPokemon.maxHp" />
         <experience-bar :pokemon="currentPokemon" :playback-percent="experienceVisual?.uuid === currentPokemon.uuid ? experienceVisual.percent : null" />
         <span v-if="experienceNotice" class="experience-notice" :title="experienceNotice" role="status">{{ experienceNotice }}</span>
         <div class="battle-status-details">
@@ -307,12 +309,15 @@ import { arenaChampion } from '@/services/arenaEntrance';
 import { createBattlePresentation } from '@/services/battlePresentation';
 import {BATTLE_PACING,battleReadingTime} from '@/services/battlePacing';
 import {conditionStatusVisual,narratedStatusVisual,statusEffectDuration} from '@/services/battleStatusVisuals';
+import BattleAmbience from './BattleAmbience.vue';
+import BattlePlayerGround from './BattlePlayerGround.vue';
 import SpriteTintLayer from './SpriteTintLayer.vue';
 import BattleStatusEffect from './BattleStatusEffect.vue';
 import {spriteTint} from '@/services/spriteTint';
 import {isMoveAnnouncement,moveAnnouncementDuration} from '@/services/battleNarration';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
+import {COMBAT_MUSIC_GAIN} from '@/services/moveSounds';
 import {moveOrigin} from '@/services/moveOrigin';
 import { battleMusicTrack, trainerPreludeMusicTrack } from '@/services/battleMusic';
 import { SequencedMusic } from '@/services/sequencedMusic';
@@ -425,7 +430,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: {SpriteTintLayer,BattleStatusEffect,BattlePokemonInfo, BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
+  components: {BattleAmbience,BattlePlayerGround,SpriteTintLayer,BattleStatusEffect,BattlePokemonInfo, BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
     tutorial:{type:Object,default:null},
     tutorialBusy:Boolean,
@@ -818,7 +823,7 @@ export default {
         for (const id of this._entranceSpecies || []) if (Number.isInteger(id) && id > 0) sources.add(this.getPokemonSprite({data:{id}},'front'));
       }
       const reserves = [...sources].filter(Boolean).map(src=>{const image=new Image();image.decoding='async';image.src=src;return image;});
-      const entranceImages=()=>[...(this.$el.querySelectorAll?.('.battle-background, .battle-sprite, .battle-platform img, .entrance-portrait') || []),...reserves];
+      const entranceImages=()=>[...(this.$el.querySelectorAll?.('img.battle-background, .battle-sprite, .battle-platform img, .entrance-portrait') || []),...reserves];
       const animated=entranceImages().some(image=>image.src?.includes('/animated/'));
       await waitForBattleAssets(entranceImages, { signal, timeoutMs:house?12000:animated?8000:2400 });
       if (obsolete()) return;
@@ -915,7 +920,7 @@ export default {
     },
     syncMusic() {
       if (!this.music) return;
-      this.music.volume = this.audioVolume * (this.musicKind === 'wild' ? 0.24 : 0.4);
+      this.music.volume = this.audioVolume * COMBAT_MUSIC_GAIN * (this.musicKind === 'wild' ? 0.24 : 0.4);
       if ((!this.active && !this.externalMusicActive && !this.musicPrelude) || !this.soundEnabled || !this.audioVolume || document.hidden) this.music.pause();
       else if (this.music.paused) this.music.play().catch(() => {});
     },

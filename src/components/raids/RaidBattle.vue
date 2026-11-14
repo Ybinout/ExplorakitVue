@@ -1,12 +1,13 @@
 <template>
  <section ref="dialog" tabindex="-1" class="raid-battle" :class="{'raid-reduced':reduced}" :style="{'--raid-bg':'url('+backgrounds.wide+')','--raid-mobile-bg':'url('+backgrounds.mobile+')'}" role="dialog" aria-modal="true" aria-label="Raid de corruption" @keydown.stop="onKey" @keyup.stop data-raid-battle>
   <div ref="stage" class="raid-stage" :class="[phaseEffect,{'is-enraged':display?.boss.rage?.value>=(display?.boss.rage?.highThreshold||75),'is-entering':loading,'is-critical':effect?.kind==='-damage'&&effect.critical}]">
+   <battle-ambience :environment="backgroundEnvironment" :background="backgrounds" :animations-enabled="!reduced && !loading"/><battle-player-ground v-if="main" :environment="backgroundEnvironment" selector=".raid-ally .pokemon-portrait" :identity="main.uuid"/>
    <raid-mist :map-name="mapName" :reduced="reduced"/><raid-field-effects :frame="display||frame" :reduced="reduced"/><battle-rain v-if="weather==='rain'" environment="arena" :animations-enabled="!reduced"/><battle-snow v-if="['hail','snow'].includes(weather)" environment="arena" :animations-enabled="!reduced"/><battle-sandstorm v-if="weather==='sandstorm'" environment="arena" :animations-enabled="!reduced"/>
    <div class="raid-boss-info"><article class="raid-boss-hud" aria-label="État du boss">
     <small class="raid-boss-context">Tour {{ display.turn }} · {{ difficulty }}</small>
     <span class="raid-boss-title"><b>{{ display.boss.name }}</b><small>N. {{ display.boss.level }} · CORROMPU</small></span>
     <div class="raid-gauge-heading"><b>PV</b><span data-raid-boss-hp>{{ display.boss.currentHp }} / {{ display.boss.maxHp }}</span></div>
-    <div class="raid-boss-health" role="progressbar" aria-label="PV du boss" :aria-valuenow="display.boss.currentHp" :aria-valuemax="display.boss.maxHp" aria-valuemin="0"><i class="raid-gauge-trail" :style="{width:percent(display.boss)+'%'}"/><i :style="{width:percent(display.boss)+'%'}"/><em style="left:30%"/><em style="left:70%"/></div>
+    <div class="raid-boss-health" role="progressbar" aria-label="PV du boss" :aria-valuenow="display.boss.currentHp" :aria-valuemax="display.boss.maxHp" aria-valuemin="0"><i class="raid-gauge-trail" :style="{width:percent(display.boss)+'%'}"/><i :class="{'health-fluid':!reduced&&display.boss.currentHp>0}" :style="{width:percent(display.boss)+'%'}"/><em style="left:30%"/><em style="left:70%"/></div>
     <battle-status-pill :status="display.boss.status"/><raid-stat-stages :boosts="display.boss.boosts"/>
     <div class="raid-shield-meter" :class="{'is-active':display.shield?.hp>0,'is-breaking':phaseEffect==='shield-break'}" data-raid-shield>
      <div class="raid-gauge-heading"><b>◇ Bouclier</b><span>{{ display.vulnerableTurns&&!display.shield?.hp ? 'Brisé · '+display.vulnerableTurns+' tours de répit' : display.shield ? display.shield.hp+' / '+display.shield.max : 'Inactif' }}</span></div>
@@ -17,7 +18,7 @@
    </article><aside v-if="display.intention" class="raid-intention" data-raid-intention><strong>{{ display.intention.move }}</strong><span>{{ display.intention.area ? 'Tous les alliés' : 'Cible : '+(display.allies[display.intention.target]?.name || '—') }}</span><b>Dans {{ display.intention.remaining }} action{{ display.intention.remaining>1?'s':'' }}</b></aside></div><transition name="raid-announcement"><aside v-if="announcement" class="raid-announcement" role="status" data-raid-announcement><span aria-hidden="true">⚠</span><strong>{{ announcement }}</strong></aside></transition>
    <article v-if="main" class="raid-active-hud" :class="{'is-corrupted':main.corrupted}" :data-pokemon-uuid="main.uuid" data-raid-active-hud>
     <div><b>{{ main.name }}</b><small>N. {{ main.level }}</small><battle-status-pill :status="main.status"/></div>
-    <health-bar :key="main.uuid" :current-hp="main.currentHp" :hp-max="main.maxHp"/><span class="raid-active-hp">{{ main.currentHp }} / {{ main.maxHp }} PV <em v-if="main.withdrawn">· Retiré</em></span>
+    <health-bar :animated="!reduced" :key="main.uuid" :current-hp="main.currentHp" :hp-max="main.maxHp"/><span class="raid-active-hp">{{ main.currentHp }} / {{ main.maxHp }} PV <em v-if="main.withdrawn">· Retiré</em></span>
     <raid-stat-stages :key="main.uuid" :boosts="main.boosts"/><div class="raid-rage-label"><span>Aggro · attention du boss</span><b>{{ main.aggro }} %</b></div><span class="raid-active-rage" role="progressbar" aria-label="Aggro : attention du boss" :aria-valuenow="main.aggro" aria-valuemin="0" aria-valuemax="100"><i :style="{width:main.aggro+'%'}"/></span>
    </article>
    <div v-if="activeEffects.length" class="raid-team-effects" aria-label="Effets collectifs actifs"><span v-for="e in activeEffects" :key="e.key" :class="{'is-enemy':e.enemy}" :title="e.description" data-raid-team-effect><b>{{ e.enemy?'Boss · ':'' }}{{ e.name }}</b><small>{{ e.description }}<template v-if="e.turns"> · {{ e.turns }} tour{{ e.turns>1?'s':'' }}</template></small></span></div>
@@ -34,7 +35,7 @@
    <div class="raid-decision-line">
 
    <p class="raid-message" role="status" aria-live="polite">{{ message || (playing?'Résolution du tour…':frame.finished?frame.won?'La corruption recule.':'Le raid est terminé.':canAct?((frame.handRequests?.length?frame.handRequests.map(r=>frame.allies[r.slot]?.name).join(', ')+(frame.handRequests.length>1?' demandent':' demande')+' la main. ':'')+'Choisis une action pour '+current.name):pendingMine?'Tes actions sont enregistrées.':'Tes alliés préparent leurs actions.') }}</p><div class="raid-decision-tools"><button @click="help=!help" :aria-expanded="help" aria-label="Aide sur le raid">?</button><slot name="social-toggle"/></div></div>
-   <div class="raid-ally-cards" aria-label="Les quatre alliés"><raid-ally-card :inspection-pokemon="frame.allies[i]" :requested="!!handRequest(i)" :request-mine="!!handRequest(i)?.mine" :can-request="requestable(i)" :request-busy="busy" :multiplayer="!!frame.multiplayer" :actions-left="frame.remainingActions?.[i]||0" @request="requestHand(i)" v-for="(p,i) in display.allies" :key="p.uuid" :pokemon="p" :src="sprite(p)" :disabled="!targetable(i)" :displayed="shown===i" :targeted="bossTargets(i)" :order="cardOrder(i)" :hit="cardHits[i]" :ready="frame.allies[i].ready" :controlled="frame.allies[i].canControl" :class="{'is-selected':shown===i,'is-corrupted':p.corrupted,'is-helped':p.effects?.helpingHand,'is-acting':frame.currentSlot===i&&!frame.finished,'is-withdrawn':p.withdrawn||!p.currentHp,'is-targeted':bossTargets(i),'is-valid-target':targeting&&targetable(i),'is-area-affected':selectedMove && areaMove(selectedMove) && selectedMove.targets.some(t=>t.slot===i),'is-hit':!!cardHits[i]&&cardHits[i].kind==='-damage','is-relay-target':relayTarget===i}" @choose="chooseCard(i)"/></div>
+   <div class="raid-ally-cards" aria-label="Les quatre alliés"><raid-ally-card :animated="!reduced" :inspection-pokemon="frame.allies[i]" :requested="!!handRequest(i)" :request-mine="!!handRequest(i)?.mine" :can-request="requestable(i)" :request-busy="busy" :multiplayer="!!frame.multiplayer" :actions-left="frame.remainingActions?.[i]||0" @request="requestHand(i)" v-for="(p,i) in display.allies" :key="p.uuid" :pokemon="p" :src="sprite(p)" :disabled="!targetable(i)" :displayed="shown===i" :targeted="bossTargets(i)" :order="cardOrder(i)" :hit="cardHits[i]" :ready="frame.allies[i].ready" :controlled="frame.allies[i].canControl" :class="{'is-selected':shown===i,'is-corrupted':p.corrupted,'is-helped':p.effects?.helpingHand,'is-acting':frame.currentSlot===i&&!frame.finished,'is-withdrawn':p.withdrawn||!p.currentHp,'is-targeted':bossTargets(i),'is-valid-target':targeting&&targetable(i),'is-area-affected':selectedMove && areaMove(selectedMove) && selectedMove.targets.some(t=>t.slot===i),'is-hit':!!cardHits[i]&&cardHits[i].kind==='-damage','is-relay-target':relayTarget===i}" @choose="chooseCard(i)"/></div>
    <div v-if="!frame.finished" class="raid-controls">
     <div v-if="targeting" class="raid-targeting"><button v-if="bossTargetable" class="raid-boss-choice" @click="targetBoss" data-raid-boss-choice><span>⌖ Cible principale</span><b>{{ display.boss.name }}</b><small>Viser le boss →</small></button><div v-if="selectedMove && areaMove(selectedMove)" class="raid-area-review" data-raid-area-review><strong>{{ selectedMove.name }}</strong><p>{{ selectedMove.targets.some(t=>t.slot<4&&t.slot!==slot)?'Attention : cette capacité touche aussi tes alliés.':'Cette capacité affecte toutes les cibles indiquées.' }}</p><p>Cibles potentielles : {{ selectedMove.targets.map(t=>t.slot===4?display.boss.name:display.allies[t.slot]?.name).filter(Boolean).join(', ') }}</p><button :disabled="!canAct" @click="sendMove()">Confirmer la capacité</button><small>Les immunités et protections s’appliquent.</small><button @click="selectedMove=null">Retour aux capacités</button></div><div v-if="!selectedMove || !areaMove(selectedMove)" class="raid-target-prompt"><p>{{ passing?'Choisis l’allié qui reçoit la main.':'Cible de '+selectedMove.name }}</p><button @click="cancelTarget">Retour</button></div></div>
     <div v-else-if="canAct&&panel==='moves'" class="raid-moves"><battle-move-button v-for="(m,i) in current.moves" :key="m.index" :move="m.id||m.name" :resolved-type="m.type" :data-keyboard-number="i+1" :disabled="m.disabled||m.pp<=0&&m.id!=='struggle'" :reason="m.disabledReason||(m.pp<=0&&m.id!=='struggle'?'Aucun PP.':'')" :warning="areaMove(m)?(m.targets.some(t=>t.slot<4&&t.slot!==slot)?'Touche aussi tes alliés.':'Touche toutes les cibles indiquées.'):''" :style="{'--move-color':color(m.type)}" @choose="move(m)"><b>{{ m.name }}</b><small>{{ type(m.type) }} · {{ m.category==='Physical'?'Physique':m.category==='Special'?'Spéciale':'Statut' }} · {{ m.power||'—' }}</small><span>{{ m.pp }} / {{ m.maxpp }} PP</span></battle-move-button></div>
@@ -50,6 +51,8 @@
  </section>
 </template>
 <script>
+import BattleAmbience from '../battle/BattleAmbience.vue';
+import BattlePlayerGround from '../battle/BattlePlayerGround.vue';
 import BattleMoveButton from '../battle/BattleMoveButton.vue';
 import {isAreaMove} from '@/services/moveInspection';
 import RaidMist from './RaidMist.vue';
@@ -79,7 +82,7 @@ import timing from '../../../../data/game/raid_presentation.json';
 import { localizeTypeName, typeBadgeStyle } from '@/services/pokemonTypes';
 import {darkBattleBackgroundKey,darkBattleBackgrounds} from '@/services/darkBattleBackgrounds';
 export default {
-  components: {BattleStatusEffect,BattleMoveButton,
+  components: {BattleAmbience,BattlePlayerGround,BattleStatusEffect,BattleMoveButton,
     RaidMist,RaidStatStages,RaidAllyCard,RaidFieldEffects,RaidShield,BattleStatusPill,HealthBar,
     RaidCorruptionEffect,
     PokemonPortrait,
@@ -125,6 +128,7 @@ export default {
     clock: Date.now()
   }),
   computed: {
+    backgroundEnvironment(){return darkBattleBackgroundKey(this.mapName,this.finalRift);},
     backgrounds() {return darkBattleBackgrounds[darkBattleBackgroundKey(this.mapName,this.finalRift)];},
     main() {
       return this.display?.allies[this.shown];
