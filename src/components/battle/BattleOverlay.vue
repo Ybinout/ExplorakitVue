@@ -39,7 +39,7 @@
       <battle-field-effects :state="fieldModel" :changes="fieldFx.changes" :nonce="fieldFx.nonce" :language="preferences.language" :animations-enabled="preferences.animationsEnabled" />
       <battle-field-side v-for="side in ['player','opponent']" :key="side" :class="side==='player'?'battle-position-player':'battle-position-wild'" :state="fieldModel" :side="side" :pokemon="side==='player'?currentPokemon:opponent" :changes="fieldFx.changes.filter(e=>e.scope===side)" :nonce="fieldFx.nonce" :animations-enabled="preferences.animationsEnabled" />
       <battle-weather-info v-if="fieldState.weather" ref="weatherInfo" :weather="fieldState.weather" :metadata="weatherMetadata" :language="preferences.language" />
-      <battle-send-out v-for="entry in sendOuts" :key="entry.uuid" :side="entry.side" :style="sendOutPosition(entry.side)" />
+      <battle-send-out v-for="entry in sendOuts" :key="entry.side+'-'+entry.uuid" :side="entry.side" :style="sendOutPosition(entry.side)" :ball-type="entry.ballType" :recall="entry.recall" @schedule="entry.cry && playEntryCry(entry.side,$event)" />
 
       <battle-move-effect v-if="battleMoveFx.visible && !reducedMotion()" :key="`move-${battleMoveFx.nonce}`"
         :fx="battleMoveFx" :path="movePath" :color="battleMoveStyle['--battle-move-color']" />
@@ -182,10 +182,10 @@
         <div class="capture-fx-shadow"></div>
         <div class="capture-fx-ring" :class="`ring-${captureFx.state}`"></div>
         <div
-          :key="captureFx.nonce"
           class="capture-fx-ball"
-          :class="[`ball-${captureFx.ballType}`, `state-${captureFx.state}`]"
-        ></div>
+          :class="[`ball-${captureFx.ballType}`, `state-${captureFx.state}`,{'shake-even':captureFx.nonce%2===0}]"
+        ><poke-ball-visual :type="captureFx.ballType" :opened="['impact','absorb'].includes(captureFx.state)"/></div>
+        <div class="capture-fx-absorption"><i v-for="n in 10" :key="n" :style="{'--particle':n}"/></div>
       </div>
     </div>
 
@@ -311,12 +311,16 @@ import {BATTLE_PACING,battleReadingTime} from '@/services/battlePacing';
 import {conditionStatusVisual,narratedStatusVisual,statusEffectDuration} from '@/services/battleStatusVisuals';
 import BattleAmbience from './BattleAmbience.vue';
 import BattlePlayerGround from './BattlePlayerGround.vue';
+import PokeBallVisual from './PokeBallVisual.vue';
+import {pokeBallStyle} from '@/services/pokeBallStyle';
 import SpriteTintLayer from './SpriteTintLayer.vue';
 import BattleStatusEffect from './BattleStatusEffect.vue';
 import {spriteTint} from '@/services/spriteTint';
 import {isMoveAnnouncement,moveAnnouncementDuration} from '@/services/battleNarration';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
+import combatAudio from '@/data/combatAudio.json';
+import {entryCry} from '@/services/battleSamples';
 import {COMBAT_MUSIC_GAIN} from '@/services/moveSounds';
 import {moveOrigin} from '@/services/moveOrigin';
 import { battleMusicTrack, trainerPreludeMusicTrack } from '@/services/battleMusic';
@@ -430,7 +434,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: {BattleAmbience,BattlePlayerGround,SpriteTintLayer,BattleStatusEffect,BattlePokemonInfo, BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
+  components: {PokeBallVisual,BattleAmbience,BattlePlayerGround,SpriteTintLayer,BattleStatusEffect,BattlePokemonInfo, BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
     tutorial:{type:Object,default:null},
     tutorialBusy:Boolean,
@@ -607,12 +611,14 @@ export default {
       const deltaX = path.targetX - path.startX;
       const deltaY = path.targetY - path.startY;
       return {
+        ...pokeBallStyle(this.captureFx.ballType),
         '--capture-start-x': `${path.startX}px`,
         '--capture-start-y': `${path.startY}px`,
         '--capture-target-x': `${path.targetX}px`,
         '--capture-target-y': `${path.targetY}px`,
         '--capture-ground-y': `${path.groundY}px`,
         '--capture-dx': `${deltaX}px`,
+        '--capture-lift':`${Math.min(120,(this.$refs.battleScene?.clientHeight||440)*.28)}px`,
         '--capture-dy': `${deltaY}px`,
         '--capture-mid-x': `${deltaX * 0.55}px`,
         '--capture-mid-y': `${deltaY * 0.55 - 105}px`,
@@ -699,6 +705,7 @@ export default {
     }
     this._feedbackObserver = new ResizeObserver(this.measureFeedback);
     this._battleAudio = new BattleAudio();
+    this._battleAudio.enableSamples(combatAudio,{base:process.env.BASE_URL});
     this.syncAudio();
     window.addEventListener('pointerdown', this.resumeAudio);
     window.addEventListener('pointerup', this.resumeAudio);
@@ -887,6 +894,7 @@ export default {
           await this.transitionWait(remaining);
           if(epoch!==this.visualEpoch)return;
         }
+        if(method==='playMoveAnimation'){await this.prepareSamples({moves:[payload?.moveName]},900);if(epoch!==this.visualEpoch)return;}
         return method==='updateBattleState'?this.presentState(payload):this[method](payload);
       }, delay);
     },
@@ -1146,6 +1154,7 @@ export default {
       const changes = { player:battleConditionChanges(this.currentPokemon,payload.player?.equipe?.pokemons?.[0]), wild:battleConditionChanges(this.opponent,payload.wildPokemon) };
       const outgoing = events.filter(e => e.kind === 'faint' || e.kind === 'recall');
       const incoming = events.filter(e => e.kind === 'enter');
+      if(incoming.length){await this.prepareSamples({pokemon:[payload.player?.equipe?.pokemons?.[0],payload.wildPokemon].filter(Boolean),moves:payload.player?.equipe?.pokemons?.[0]?.abilities||[]},1800);if(epoch!==this.visualEpoch)return;}
       const move = this.battleMoveFx;
       const connected = moveConnected(move.result);
       if (move.visible && !move.prepare && !this.reducedMotion()) {
@@ -1228,10 +1237,11 @@ export default {
         this.transitionLabel = outgoing.map(e => `${e.name} ${e.kind === 'faint' ? 'est K.O.' : 'est rappelé.'}`).join(' · ');
         this.transitionFx = { player: '', wild: '' };
         for (const e of outgoing) this.$set(this.transitionFx, e.side === 'player' ? 'player' : 'wild', e.kind);
+        this.sendOuts=this.reducedMotion()?[]:outgoing.filter(e=>e.kind==='recall').map(e=>({side:e.side==='player'?'player':'wild',uuid:e.uuid,recall:true,ballType:'pokeball'}));
         if (!this.reducedMotion()) await this.transitionWait(550);
       }
       if (epoch !== this.visualEpoch) return;
-      this.transitionFx = { player: '', wild: '' };
+      this.transitionFx = { player: '', wild: '' };this.sendOuts=[];
       for (const e of incoming) this.$set(this.transitionFx,e.side === 'player' ? 'player' : 'wild','waiting');
       this.updateBattleState(payload);
       if (opening) {
@@ -1250,7 +1260,10 @@ export default {
         }
         for (const e of incoming) this.$set(this.transitionFx, e.side === 'player' ? 'player' : 'wild', 'enter');
         this.trainerSpeech = incoming.find(e => e.trainerSpeech)?.trainerSpeech || null;
-        this.sendOuts = this.reducedMotion() ? [] : incoming.map(e=>({side:e.side==='player'?'player':'wild',uuid:e.uuid}));
+        const entries=incoming.map(e=>{const side=e.side==='player'?'player':'wild';return{side,uuid:e.uuid,own:side==='player',pokemon:side==='player'?this.currentPokemon:this.opponent};});
+        const selected=entryCry(entries);
+        this.sendOuts = this.reducedMotion() ? [] : entries.map(e=>({...e,cry:e===selected,ballType:e.pokemon?.ballType||e.pokemon?.caughtBall||'pokeball'}));
+        if(this.reducedMotion()&&selected)this.playEntryCry(selected.side);
         if (!this.reducedMotion()) await this.transitionWait(800);
       }
       if (epoch !== this.visualEpoch) return;
@@ -1567,10 +1580,11 @@ export default {
       const side = actor === 'opponent' ? 'wild' : 'player';
       if (payload.phase === 'strike') this.$set(this.phaseReturning,side,true);
       const profile=moveVisual(payload);
+      const sample={kind:'move',name:payload.moveName,duration:(profile.windupMs+profile.travelMs+profile.impactMs)/1000};
       const damageClass = payload.phase === 'prepare' ? 'status' : profile.damageClass;
       this.clearMoveFx();
       clearTimeout(this.resultTimer); this.resultFx.visible = false;
-      if (this.reducedMotion()) return;
+      if (this.reducedMotion()) {this.playBattleSample(sample);return;}
       this._moveWindupAt=performance.now();
       this.movePath = this.buildMovePath(actor, damageClass, payload.phase === 'prepare' ? 'self' : profile.target,profile);
       const targetSide = actor === 'opponent' ? 'player' : 'wild';
@@ -1579,6 +1593,7 @@ export default {
         actor, moveName:payload.moveName || '', moveType:profile.moveType, damageClass,
         visible:true, nonce:this.battleMoveFx.nonce+1, stage:'windup', result:null, prepare:payload.phase==='prepare', moveTarget:profile.target, fieldMove:hasBattleFieldVisual(payload.moveName)
       });
+      this.playBattleSample(sample);
     },
     playMoveResult(payload = {}) {
       this.battleMoveFx.result = payload;
@@ -1699,7 +1714,7 @@ export default {
       const resultDelay = 1180 + shakes * 300;
       timers.push(setTimeout(() => {
         this.captureFx.state = success ? 'success' : 'fail';
-        if (!success) this.captureFx.targetContained = false;
+        if (!success) {this.captureFx.targetContained = false;this.playEntryCry('wild');}
         this.captureFx.message = success
           ? this.tr('captured', { pokemon: pokemonName })
           : this.tr('escaped', { pokemon: pokemonName });
@@ -1714,6 +1729,13 @@ export default {
       this.captureTimers = timers;
       return playback;
     },
+    async prepareSamples(payload,timeout=1800){
+      if(!this.soundEnabled||!this.audioVolume||document.hidden)return;
+      let timer;await Promise.race([this._battleAudio?.samples?.prepare(payload),new Promise(resolve=>{timer=setTimeout(resolve,timeout);})]).finally(()=>clearTimeout(timer));
+    },
+    async prepareSampleRequest(request){try{await this.prepareSamples(request);}finally{request.done?.();}},
+    playEntryCry(side,timing={}){this.playBattleSample({kind:'cry',pokemon:side==='player'?this.currentPokemon:this.opponent,...timing});},
+    playBattleSample(payload){if(!this.soundEnabled||!this.audioVolume||document.hidden)return;if(payload.kind==='cry')this._battleAudio?.samples?.cry(payload.pokemon,{delay:payload.delay||0});else this._battleAudio?.samples?.move(payload.name,payload.duration);},
     playCombatCue(payload){if(this.soundEnabled&&this.audioVolume&&!document.hidden)this._battleAudio?.cue(payload);},
     playImpact(payload){if(this.soundEnabled&&this.audioVolume&&!document.hidden)this._battleAudio?.impact(payload);},
     stopCombatAudio(){this._battleAudio?.stop();},
@@ -1888,7 +1910,7 @@ export default {
 .battle-capture-notice{background:#e6f4f8;color:#245268;border:1px solid #9bbac8}
 .battle-drift-notices{display:flex;flex-direction:column;gap:5px;color:#f8f1ff}
 .battle-drift-notices p{border:1px solid #bfadd9;background:#413563}
-.battle-fainted{opacity:0}.battle-transition-recall .battle-sprite{animation:combat-recall .55s ease-in forwards!important}.battle-transition-faint .battle-sprite{animation:combat-faint .55s ease-in forwards!important}.battle-transition-waiting .battle-sprite{opacity:0;animation:none!important}.battle-transition-enter .battle-sprite{animation:combat-enter .42s .34s ease-out both!important}@keyframes combat-recall{to{filter:brightness(3);transform:scale(.05);opacity:0}}@keyframes combat-faint{to{filter:grayscale(1);transform:translateY(65%);opacity:0}}@keyframes combat-enter{from{filter:brightness(2);transform:scale(.15);opacity:0}to{transform:scale(1);opacity:1}}.battle-reduced-motion .battle-sprite{animation:none!important}@media(prefers-reduced-motion:reduce){.battle-sprite{animation:none!important}}
+.battle-fainted{opacity:0}.battle-transition-recall .battle-sprite{animation:combat-recall .55s cubic-bezier(.48,0,.8,.4) forwards!important}.battle-transition-faint .battle-sprite{animation:combat-faint .55s ease-in forwards!important}.battle-transition-waiting .battle-sprite{opacity:0;animation:none!important}.battle-transition-enter .battle-sprite{animation:combat-enter .42s .34s ease-out both!important}@keyframes combat-recall{0%{filter:brightness(1);transform:scale(1)}30%{filter:brightness(2.3) saturate(.25);transform:scale(.85,1.06)}75%{filter:brightness(4) saturate(0);transform:scale(.2,.5);opacity:.8}100%{filter:brightness(4);transform:translate(-16px,12px) scale(.01);opacity:0}}@keyframes combat-faint{to{filter:grayscale(1);transform:translateY(65%);opacity:0}}@keyframes combat-enter{from{filter:brightness(2);transform:scale(.15);opacity:0}to{transform:scale(1);opacity:1}}.battle-reduced-motion .battle-sprite{animation:none!important}@media(prefers-reduced-motion:reduce){.battle-sprite{animation:none!important}}
 
 .battle-entry-holding > .battle-scene, .battle-entry-holding > .battle-action-shell { visibility:hidden; }
 .battle-entry-holding .battle-sprite { animation:none; }
@@ -2369,47 +2391,16 @@ export default {
   width: 44px;
   height: 44px;
   border-radius: 999px;
-  border: 2px solid #111;
-  background: linear-gradient(#d94545 0 48%, #f8f8f8 48% 100%);
+  border: 0;
+  background: none;
   left: var(--capture-start-x);
   top: var(--capture-start-y);
   margin: -22px 0 0 -22px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
 }
 
-.capture-fx-ball::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 48%;
-  height: 3px;
-  background: #111;
-}
-
-.capture-fx-ball::after {
-  content: "";
-  position: absolute;
-  width: 11px;
-  height: 11px;
-  border-radius: 999px;
-  background: #f3f3f3;
-  border: 2px solid #111;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.capture-fx-ball.ball-superball {
-  background: linear-gradient(#3f64e0 0 48%, #f8f8f8 48% 100%);
-}
-
-.capture-fx-ball.ball-hyperball {
-  background: linear-gradient(#2d2d2d 0 48%, #f3d647 48% 100%);
-}
-
 .capture-fx-ball.state-throw {
-  animation: capture-throw 0.52s cubic-bezier(0.2, 0.72, 0.3, 1) forwards;
+  animation: capture-throw 0.5s linear forwards;
 }
 
 .capture-fx-ball.state-impact,
@@ -2430,6 +2421,8 @@ export default {
   top: var(--capture-ground-y);
   animation: capture-shake 0.28s ease-in-out;
 }
+
+.capture-fx-ball.state-shake.shake-even{animation-name:capture-shake-even}
 
 .capture-fx-ball.state-success {
   left: var(--capture-target-x);
@@ -2486,7 +2479,7 @@ export default {
   height: 130px;
   opacity: 0;
   transform: translate(-50%, -50%) rotate(90deg);
-  background: linear-gradient(90deg, transparent, rgba(255, 77, 77, 0.9), #fff, rgba(255, 77, 77, 0.9), transparent);
+  background: linear-gradient(90deg, transparent, var(--ball-aura), #fff, var(--ball-aura), transparent);
   filter: blur(2px) drop-shadow(0 0 8px #ff6767);
 }
 
@@ -2509,7 +2502,7 @@ export default {
   border-radius: 999px;
   opacity: 0;
   transform-origin: 50% 0;
-  background: linear-gradient(#fff, rgba(255, 95, 95, 0));
+  background: linear-gradient(#fff, var(--ball-aura), transparent);
 }
 
 .capture-fx-burst i:nth-child(1) { transform: rotate(0deg); }
@@ -2671,23 +2664,17 @@ export default {
 }
 
 @keyframes capture-throw {
-  0% {
-    transform: scale(0.88) rotate(-30deg);
-  }
-  55% {
-    transform: translate(var(--capture-mid-x), var(--capture-mid-y)) scale(1.08) rotate(205deg);
-  }
-  82% {
-    transform: translate(var(--capture-near-x), var(--capture-near-y)) scale(1.02) rotate(330deg);
-  }
-  100% {
-    transform: translate(var(--capture-dx), var(--capture-dy)) scale(1) rotate(390deg);
-  }
+ 0%{transform:scale(.8) rotate(-80deg)}
+ 20%{transform:translate(calc(var(--capture-dx)*.2),calc(var(--capture-dy)*.2 - var(--capture-lift)*.64)) scale(.92) rotate(40deg)}
+ 40%{transform:translate(calc(var(--capture-dx)*.4),calc(var(--capture-dy)*.4 - var(--capture-lift)*.96)) scale(1.04) rotate(160deg)}
+ 60%{transform:translate(calc(var(--capture-dx)*.6),calc(var(--capture-dy)*.6 - var(--capture-lift)*.96)) scale(1.06) rotate(280deg)}
+ 80%{transform:translate(calc(var(--capture-dx)*.8),calc(var(--capture-dy)*.8 - var(--capture-lift)*.64)) scale(1.02) rotate(400deg)}
+ 100%{transform:translate(var(--capture-dx),var(--capture-dy)) scale(1) rotate(520deg)}
 }
 
 @keyframes capture-impact {
   0% { transform: scale(0.72); filter: brightness(2.5) drop-shadow(0 0 16px #fff); }
-  55% { transform: scale(1.2); filter: brightness(1.6) drop-shadow(0 0 12px #ff6b6b); }
+  55% { transform: scale(1.2); filter: brightness(1.6) drop-shadow(0 0 12px var(--ball-aura)); }
   100% { transform: scale(1) rotate(8deg); filter: none; }
 }
 
@@ -2699,6 +2686,21 @@ export default {
 }
 
 @keyframes capture-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-8px) rotate(-7deg);
+  }
+  50% {
+    transform: translateX(8px) rotate(7deg);
+  }
+  75% {
+    transform: translateX(-5px) rotate(-5deg);
+  }
+}
+
+@keyframes capture-shake-even {
   0%, 100% {
     transform: translateX(0);
   }
@@ -3090,6 +3092,13 @@ export default {
 }
 .experience-notice { display:block; max-width:100%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:#297eb5; font-size:11px; font-weight:800; }
 .battle-draft .battle-platform{display:none}
+.capture-fx-ball{box-shadow:none;filter:drop-shadow(0 4px 3px #162b4f55)}
+.capture-fx-absorption{position:absolute;left:var(--capture-target-x);top:var(--capture-target-y);width:1px;height:1px}
+.capture-fx-absorption i{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--ball-aura);opacity:0;--angle:calc(var(--particle)*36deg)}
+.capture-state-absorb .capture-fx-absorption i{animation:capture-inward .28s ease-in both;animation-delay:calc(var(--particle)*5ms)}
+@keyframes capture-inward{0%{transform:rotate(var(--angle)) translateX(66px) scale(1);opacity:0}20%{opacity:.9}100%{transform:rotate(calc(var(--angle) + 45deg)) translateX(1px) scale(.1);opacity:0}}
+.capture-state-fail .battle-sprite{animation:capture-release .35s ease-out both}
+@keyframes capture-release{from{opacity:0;transform:scale(.1);filter:brightness(3)}to{opacity:1;transform:scale(1);filter:brightness(1)}}
 </style>
 
 <style scoped>

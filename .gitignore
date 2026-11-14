@@ -27,3 +27,4 @@ pnpm-debug.log*
 
 # Generated lossless assets; sources are versioned in assets/pokemon.
 /public/img/pokemon/
+/public/audio/combat/

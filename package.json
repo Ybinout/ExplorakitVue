@@ -6,8 +6,8 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "prebuild": "node scripts/unpackPokemonSprites.cjs",
-    "preserve": "node scripts/unpackPokemonSprites.cjs"
+    "prebuild": "node scripts/unpackPokemonSprites.cjs && node scripts/unpackCombatAudio.cjs",
+    "preserve": "node scripts/unpackPokemonSprites.cjs && node scripts/unpackCombatAudio.cjs"
   },
   "dependencies": {
     "axios": "^1.5.0",

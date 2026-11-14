@@ -2,7 +2,7 @@
  <section ref="dialog" tabindex="-1" class="double-battle" :class="{'double-reduced':reduced}" role="dialog" aria-modal="true" aria-label="Combat Double" @keydown.stop="onKey" @keyup.stop data-double-battle>
   <header><span><small>MAISON DES COMBATS · DOUBLE</small><b>{{ frame.players[frame.side].name }} <i>contre</i> {{ frame.players[1-frame.side].name }}</b></span><strong>Tour {{ frame.turn }}</strong><button v-if="spectator" @click="$emit('close')">Quitter les tribunes</button><button v-else @click="askForfeit=true" aria-label="Abandonner le duel">⚑</button><slot name="social-toggle"/></header>
   <div ref="stage" class="double-stage" :class="{'move-camera-impact':!reduced&&fx?.camera&&fx?.stage==='impact'}">
-   <battle-ambience environment="double-hall" :background="ambientImages" :animations-enabled="!reduced && !loading"/>
+   <battle-send-out v-for="entry in sendOuts" :key="entry.key" :side="entry.own?'player':'wild'" :recall="entry.recall" :style="entry.position" @schedule="entry.cry && entrySound(entry.pokemon,$event)"/><battle-ambience environment="double-hall" :background="ambientImages" :animations-enabled="!reduced && !loading"/>
    <battle-player-ground v-for="spot in spots.filter(s=>s.own&&s.p)" :key="'ground-'+spot.key" environment="whitepeak-club" :selector="'[data-double-position='+spot.key+'] .pokemon-portrait'" :identity="spot.p.uuid"/>
    <battle-rain v-if="display?.weather==='raindance'" :animations-enabled="!reduced" environment="arena"/><battle-snow v-if="display?.weather==='hail' || display?.weather==='snowscape'" :animations-enabled="!reduced" environment="arena"/><battle-sandstorm v-if="display?.weather==='sandstorm'" :animations-enabled="!reduced" environment="arena"/>
    <div class="double-side-effects"><span v-for="(side,i) in display?.sideEffects||[]" :key="i"><b v-if="side.length">{{ i===frame.side?'Ton camp':'Camp adverse' }}</b><small v-for="e in side" :key="e.id">{{ e.name }}{{ e.layers?' ×'+e.layers:e.turns?' · '+e.turns+' t':'' }}</small></span></div>
@@ -10,7 +10,7 @@
    <div v-for="spot in spots" :key="spot.key" :ref="spot.key" :data-double-position="spot.key" class="double-combatant" :class="[spot.own?'own':'foe',isMoveActor(spot)?'double-caster-'+fx.stage:'',{'is-corrupted':spot.p?.corrupted,'is-target':targets.some(t=>t.side===spot.side&&t.slot===spot.slot),'is-fainted':spot.p?.fainted,'takes-hit':effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect.kind==='-damage','is-critical':effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect.kind==='-damage'&&effect.critical}]" :style="{'--x':spot.x+'%','--y':spot.y+'%'}">
     <button v-if="spot.p" class="double-target" :disabled="!targets.some(t=>t.side===spot.side&&t.slot===spot.slot)" @click="target(spot.side,spot.slot)" :aria-label="`Cibler ${spot.p.name}`">
      <span class="double-card"><span><b>{{ spot.p.name }}</b><small>N. {{ spot.p.level }} {{ spot.p.gender==='M'?'♂':spot.p.gender==='F'?'♀':'' }}</small></span><span class="double-hp"><i :class="{'health-fluid':!reduced&&spot.p.currentHp>0}" :style="{width:Math.max(0,spot.p.currentHp/spot.p.maxHp*100)+'%',background:healthFill(spot.p.currentHp,spot.p.maxHp)}"/></span><small>{{ spot.p.currentHp }}/{{ spot.p.maxHp }} PV <span v-if="spot.p.status!=='normal'">· {{ status(spot.p.status) }}</span></small><em v-if="boostText(spot.p)">{{ boostText(spot.p) }}</em></span>
-     <pokemon-portrait class="battle-tintable" :tint="tintStyle(spot)" :src="sprite(spot.p,spot.own)" :alt="spot.p.name" :class="{'double-recall':effect?.kind==='switch'&&effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot}"/>
+     <pokemon-portrait class="battle-tintable" :tint="tintStyle(spot)" :src="sprite(spot.p,spot.own)" :alt="spot.p.name" :class="{'double-entry':entryKeys[spot.key],'double-switch-out':recallKey===spot.key}"/>
      <span v-if="effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect?.amount" class="double-damage" :class="{'is-heal':effect.kind==='-heal'}">{{ effect.kind==='-heal'?'+':'−' }}{{ effect.amount }}</span>
      <battle-stat-change v-if="!reduced&&['-boost','-unboost'].includes(effect?.kind)&&effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot" class="double-stat" :key="effect.id" :effects="[{kind:effect.delta>0?'up':'down',delta:effect.delta,key:effect.stat,text:statLabel(effect.stat)+' '+(effect.delta>0?'+':'')+effect.delta}]"/>
      <battle-status-effect v-if="statusFx?.actor?.side===spot.side && statusFx?.actor?.slot===spot.slot" :key="statusFx.nonce" class="double-status-visual" :effect="statusFx" @finished="clearStatusFx" :reduced="reduced"/>
@@ -44,6 +44,8 @@
 <script>
 import BattleAmbience from '../battle/BattleAmbience.vue';
 import BattlePlayerGround from '../battle/BattlePlayerGround.vue';
+import BattleSendOut from '../battle/BattleSendOut.vue';
+import {entryCry} from '@/services/battleSamples';
 import {healthFill} from '@/services/healthBarTheme';
 import '../battle/healthFluid.css';
 import BattlePokemonInfo from '../battle/BattlePokemonInfo.vue';
@@ -68,14 +70,32 @@ import {doubleMoveVisual} from '@/services/doubleMoveVisuals';
 import {localizeTypeName} from '@/services/pokemonTypes';
 const colors={Normal:'#92927b',Fire:'#cf7049',Water:'#558cc5',Electric:'#c6a841',Grass:'#66975d',Ice:'#65a9b1',Fighting:'#b56559',Poison:'#a36ca2',Ground:'#aa8855',Flying:'#8e8fbe',Psychic:'#c16d92',Bug:'#8a993f',Rock:'#a49860',Ghost:'#8172a6',Dragon:'#7978be',Dark:'#817064',Steel:'#859aa2',Fairy:'#c68eae'};
 export default {
- components:{BattleAmbience,BattlePlayerGround,BattleStatusEffect,BattlePokemonInfo,BattleMoveButton,PokemonPortrait,BattleMoveEffect,BattlePersistentEffect,BattleRain,BattleSnow,BattleSandstorm,BattleWeatherInfo,BattleStatChange},props:{frame:Object,control:Object,busy:Boolean,error:String,settled:Boolean,spectator:Boolean,reduced:Boolean},
- data:()=>({ambientImages:{wide:hallBackground,mobile:hallBackground},statusFx:null,statusNonce:0,display:null,slot:0,reserves:false,selectedMove:null,message:'',effect:null,fx:null,playing:false,loading:true,askForfeit:false,narrow:false}),
+ components:{BattleSendOut,BattleAmbience,BattlePlayerGround,BattleStatusEffect,BattlePokemonInfo,BattleMoveButton,PokemonPortrait,BattleMoveEffect,BattlePersistentEffect,BattleRain,BattleSnow,BattleSandstorm,BattleWeatherInfo,BattleStatChange},props:{frame:Object,control:Object,busy:Boolean,error:String,settled:Boolean,spectator:Boolean,reduced:Boolean},
+ data:()=>({sendOuts:[],entryKeys:{},recallKey:null,ambientImages:{wide:hallBackground,mobile:hallBackground},statusFx:null,statusNonce:0,display:null,slot:0,reserves:false,selectedMove:null,message:'',effect:null,fx:null,playing:false,loading:true,askForfeit:false,narrow:false}),
  computed:{weatherName(){return({raindance:'rain',sunnyday:'sun',sandstorm:'sandstorm',hail:'hail',snowscape:'snow'})[this.display?.weather]||null;},own(){return this.frame.active?.[this.frame.side]||[];},controls(){return this.control?.slots?.[this.slot];},decision(){return this.frame.request?.slots?.[this.slot];},canAct(){return !this.playing&&!this.loading&&!this.busy&&!this.control?.paused&&!!this.controls?.canControl&&!!this.decision?.required&&!this.frame.choices[this.slot];},prompt(){return this.canAct?'Choisis une capacité puis sa cible.':'Les dresseurs préparent leurs actions.';},targets(){return this.selectedMove?.targets||[];},spots(){const s=this.display||this.frame;return [0,1].flatMap(side=>[0,1].map(slot=>({side,slot,key:`double-${side}-${slot}`,p:s.active?.[side]?.[slot],own:side===this.frame.side,x:side===this.frame.side?(this.narrow?[18,50]:[18,43])[slot]:(this.narrow?[52,84]:[58,83])[slot],y:side===this.frame.side?100:this.narrow?50:60})));}},
  watch:{frame:{immediate:true,handler(frame){this._frames ||= [];this._frames.push(JSON.parse(JSON.stringify(frame)));this.play();}},'frame.turnId'(){this.selectedMove=null;this.reserves=false;this.autoSlot();},control(){this.autoSlot();}},
  mounted(){this._previousFocus=document.activeElement;this.$refs.dialog.focus({preventScroll:true});this._resize=new ResizeObserver(entries=>{this.narrow=entries[0].contentRect.width<641;});this._resize.observe(this.$refs.stage);this._visibility=()=>{if(document.hidden){this._readUntil=0;for(const finish of this._waiters||[])finish();this.statusFx=null;}};document.addEventListener('visibilitychange',this._visibility);},
  beforeDestroy(){if(this._previousFocus?.isConnected)this._previousFocus.focus({preventScroll:true});this._resize?.disconnect();document.removeEventListener('visibilitychange',this._visibility);this._closed=true;this.$emit('audio-stop');for(const finish of this._waiters||[])finish();},
  methods:{
  healthFill,
+ prepareAudio(payload){return this.$listeners['prepare-audio']?new Promise(done=>this.$emit('prepare-audio',{...payload,done})):Promise.resolve();},
+ entrySound(pokemon,timing={}){if(!this._closed)this.$emit('sample',{kind:'cry',pokemon,...timing});},
+ entryPosition(actor){const p=this.point(actor);return{left:p.x+'px',top:p.y+'px'};},
+ async initialEntries(frame){
+  const entries=frame.active.flatMap((team,side)=>team.map((pokemon,slot)=>({pokemon,side,slot,own:side===frame.side,key:`double-${side}-${slot}`}))).filter(e=>e.pokemon?.currentHp>0),selected=entryCry(entries);
+  this.entryKeys=Object.fromEntries(entries.map(e=>[e.key,true]));this.sendOuts=this.reduced?[]:entries.map(e=>({...e,cry:e===selected,position:this.entryPosition(e)}));
+  if(this.reduced&&selected)this.entrySound(selected.pokemon);await this.sleep(this.reduced?0:800);this.sendOuts=[];this.entryKeys={};
+ },
+ async switchPokemon(e,selected){
+  const key=`double-${e.actor.side}-${e.actor.slot}`,old=this.display.active[e.actor.side]?.[e.actor.slot];
+  if(old?.uuid===e.pokemon.uuid){this.$set(this.display.active[e.actor.side],e.actor.slot,{...e.pokemon});return;}
+  await this.prepareAudio({pokemon:[e.pokemon],moves:e.actor.side===this.frame.side?e.pokemon.abilities||[]:[]});if(this._closed)return;
+  const position=this.entryPosition(e.actor),own=e.actor.side===this.frame.side;
+  if(old?.currentHp>0&&!this.reduced){this.recallKey=key;this.sendOuts=[{key,own,position,recall:true}];await this.sleep(450);if(this._closed)return;}
+  this.recallKey=null;this.$set(this.display.active[e.actor.side],e.actor.slot,{...e.pokemon});this.entryKeys={[key]:true};
+  this.sendOuts=this.reduced?[]:[{key,own,position,pokemon:e.pokemon,cry:e===selected}];if(this.reduced&&e===selected)this.entrySound(e.pokemon);
+  await this.sleep(this.reduced?0:800);this.sendOuts=[];this.entryKeys={};
+ },
  clearStatusFx(nonce){if(this.statusFx?.nonce===nonce)this.statusFx=null;},
  tintStyle(spot){const active=this.effect?.actor?.side===spot.side&&this.effect?.actor?.slot===spot.slot;return spriteTint(this.statusFx?.actor?.side===spot.side&&this.statusFx?.actor?.slot===spot.slot?this.statusFx:null,active&&['-boost','-unboost'].includes(this.effect.kind)?[{kind:this.effect.delta>0?'up':'down'}]:[],this.reduced,'drop-shadow(0 5px 3px #192f4244)');},
  async holdNarration(){const ms=(this._readUntil||0)-performance.now();if(ms>0&&!document.hidden)await this.sleep(ms);},
@@ -87,8 +107,9 @@ export default {
  if(this.playing||this._closed)return;this.playing=true;
  try{while(this._frames.length&&!this._closed){
   const frame=this._frames.shift();
-  if(!this.display){this.display=JSON.parse(JSON.stringify(frame));await this.preload(frame);this.loading=false;}
+  if(!this.display){this.display=JSON.parse(JSON.stringify(frame));await Promise.all([this.preload(frame),this.prepareAudio({pokemon:frame.active.flat().filter(Boolean),moves:(frame.active[frame.side]||[]).flatMap(p=>p?.abilities||[])})]);if(this._closed)return;this.loading=false;await this.$nextTick();await this.initialEntries(frame);}
   const events=frame.events||[];
+  const switches=events.filter(e=>['switch','drag'].includes(e.kind)&&e.actor&&e.pokemon);const selected=entryCry(switches.map(e=>({pokemon:e.pokemon,own:e.actor.side===frame.side,event:e})))?.event;
   for(let n=0;n<events.length;n++){
    const e=events[n];if(this._closed)break;
    if(['-crit','-supereffective','-resisted'].includes(e.kind))continue;
@@ -103,7 +124,7 @@ export default {
    this.effect={...e,id:Math.random()};this.statusCue(e);
    if(e.kind==='-singleturn'&&e.effect==='Protect'&&e.actor&&this.display.active[e.actor.side]?.[e.actor.slot])this.$set(this.display.active[e.actor.side][e.actor.slot],'effects',{...this.display.active[e.actor.side][e.actor.slot].effects,shield:true});
    if(e.kind==='move'){await this.animate(e,doubleMoveVisual(events,n,this.display.active));continue;}
-   if(['switch','drag','replace'].includes(e.kind)&&e.actor&&e.pokemon)this.$set(this.display.active[e.actor.side],e.actor.slot,{...e.pokemon});
+   if(['switch','drag','replace'].includes(e.kind)&&e.actor&&e.pokemon)await this.switchPokemon(e,selected);
    if(['-damage','-heal'].includes(e.kind)&&e.actor){
     const p=this.display.active[e.actor.side]?.[e.actor.slot];
     if(p){
@@ -139,11 +160,11 @@ export default {
   this._impactAt=0;
  },
  async animate(e,plan){
-  await this.finishMoveFx();if(this._closed)return;
+  await this.finishMoveFx();await this.prepareAudio({moves:[e.moveName]});if(this._closed)return;
   await this.$nextTick();const targets=plan.targets.map(t=>({...t,...this.point(t)})),target=targets[0]||this.point(e.target),start=e.delayed?{x:target.x,y:target.y-80}:this.point(e.actor),v=moveVisual({moveName:e.moveName,moveType:e.moveType,power:e.power,damageClass:e.category?.toLowerCase(),moveTarget:e.moveTarget,phase:plan.prepared?'prepare':undefined});
   const origin=moveOrigin(start,target,{own:e.actor?.side===this.frame.side,family:v.family,self:['self','allySide','allyTeam'].includes(e.moveTarget),delayed:e.delayed||plan.prepared});
   const fx={...v,id:Math.random(),actor:e.actor,result:{success:!plan.failed,hits:1},stage:'windup',fullTargets:targets,path:{startX:origin.x,startY:origin.y,targetX:target.x,targetY:target.y,groundY:target.groundY,targets}};
-  this._moveHitCount={};this.fx=fx;await this.sleep(this.reduced?0:v.windupMs);if(this._closed)return;
+  this._moveHitCount={};this.fx=fx;this.$emit('sample',{kind:'move',name:e.moveName,duration:(v.windupMs+v.travelMs+v.impactMs)/1000});await this.sleep(this.reduced?0:v.windupMs);if(this._closed)return;
   this.fx={...fx,stage:plan.prepared?'windup':'travel'};await this.sleep(this.reduced?20:v.travelMs);if(this._closed)return;
   this.fx={...fx,stage:plan.failed?'miss':plan.prepared?'await':e.category==='Status'?'aura':'await'};
   if(e.category==='Status')await this.sleep(this.reduced?20:BATTLE_PACING.status);
@@ -158,6 +179,10 @@ export default {
 @media(max-width:640px){.double-battle header{padding:7px 10px;gap:8px}header b{font-size:11px}header small{font-size:7px}header>strong{font-size:11px}.double-console{padding:7px 10px 10px;max-height:54%}.double-message{font-size:12px;height:36px;margin-bottom:6px}.double-stage{min-height:210px}.double-combatant{width:29%;--sprite-height:clamp(76px,16vh,130px)}.double-target>.pokemon-portrait{height:var(--sprite-height)}.double-card{padding:4px 6px;font-size:10px}.double-card small{font-size:8px}.double-owner{font-size:8px}.double-slots button{padding:5px 8px;font-size:11px;min-height:42px}.double-controller{font-size:10px}.double-moves{gap:6px}.double-moves button{padding:6px 8px;min-height:60px;font-size:12px}.double-moves small{font-size:9px}.double-reserves{grid-template-columns:repeat(4,minmax(0,1fr))}.double-target-hint{font-size:11px}.double-target-hint button{font-size:10px}}
 @media(max-height:580px) and (min-width:641px){.double-battle{display:grid;grid-template-columns:1fr 380px;grid-template-rows:56px 1fr}header{grid-column:1/-1}.double-console{max-height:100%;border-top:0}.double-stage{min-height:0}.double-combatant{--sprite-height:min(120px,calc((100dvh - 56px)/2 - 64px))}.double-reserves{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.double-entry{animation:double-entry .42s .34s ease-out both}.double-switch-out{animation:double-switch-out .45s ease-in both}
+@keyframes double-entry{from{opacity:0;transform:scale(.1);filter:brightness(3)}to{opacity:1;transform:scale(1);filter:brightness(1)}}
+@keyframes double-switch-out{0%{opacity:1;transform:scale(1)}40%{filter:brightness(2.5);transform:scale(.7,1.1)}100%{opacity:0;filter:brightness(4);transform:scale(.01)}}
+.double-reduced .double-entry,.double-reduced .double-switch-out{animation:none}
 </style>
 
 <style scoped>

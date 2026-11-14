@@ -1,4 +1,5 @@
 import {damageImpactPlan,combatCuePlan,audibleCombatPlan} from './moveSounds.js';
+import {BattleSamples} from './battleSamples.js';
 
 // Small synthesized effects: no download on the critical path of an attack.
 export class BattleAudio {
@@ -25,17 +26,13 @@ export class BattleAudio {
   unlock() {
     if (this.disposed || !this.volume) return Promise.resolve();
     try {
-      if (!this.context) {
-        this.context = this.createContext();
-        if (!this.context) return Promise.resolve();
-        this.output = this.context.createGain();
-        this.output.gain.value = this.volume;
-        this.output.connect(this.context.destination);
-      }
+      this.ensureContext();if(!this.context)return Promise.resolve();
       // Called from pointer/key gestures, including touch release on Safari.
       return this.context.state !== 'running' ? this.context.resume().catch(() => {}) : Promise.resolve();
     } catch (_) { return Promise.resolve(); }
   }
+  ensureContext(){if(!this.context&&!this.disposed){try{this.context=this.createContext();if(this.context){this.output=this.context.createGain();this.output.gain.value=this.volume;this.output.connect(this.context.destination);}}catch{ /* Audio unavailable. */ }}}
+  enableSamples(catalogue,options){this.samples ||= new BattleSamples(this,catalogue,options);return this.samples;}
   voice(source, duration, options, filter = null) {
     const c = this.context, gain = c.createGain();
     // Bound even fast/reduced-motion battles, and release evicted nodes now.
@@ -85,6 +82,7 @@ export class BattleAudio {
     this.voice(source, duration, options, filter);
   }
   impact(payload={}) {
+    this.samples?.duck();
     this.playPlan(damageImpactPlan(payload));
   }
   cue(payload={}) {
@@ -99,10 +97,12 @@ export class BattleAudio {
     }
   }
   stop() {
+    this.samples?.stop();
     for (const source of this.voices) { try { source.stop(); } catch (_) { /* Already ended. */ } source.onended?.(); }
     this.voices.clear();
   }
   dispose() {
+    this.samples?.dispose();
     this.stop(); this.disposed = true;
     this.context?.close?.().catch(() => {});
   }
