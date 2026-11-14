@@ -1,11 +1,11 @@
 <template>
- <div v-if="effect && !reduced" class="battle-status-effect" :class="'status-visual-'+effect.status" :data-status-visual="effect.status" :data-status-phase="effect.phase" :style="{'--status-color':palette.color,'--status-accent':palette.accent,'--status-duration':duration+'ms'}" aria-hidden="true">
+ <div v-if="effect && !reduced" class="battle-status-effect" :class="'status-visual-'+effect.status" @animationend.self="$emit('finished',effect.nonce)" :data-status-visual="effect.status" :data-status-phase="effect.phase" :style="{'--status-color':palette.color,'--status-accent':palette.accent,'--status-duration':effectDuration+'ms'}" aria-hidden="true">
   <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
    <template v-if="effect.status==='poison'">
-    <g v-for="(p,i) in bubbles" :key="i" class="status-rise" :style="delay(i)"><circle :cx="p.x" :cy="p.y" :r="p.r" fill="var(--status-accent)" opacity=".38"/><circle :cx="p.x-1" :cy="p.y-2" :r="p.r*.67" fill="var(--status-color)" opacity=".85"/><path :d="`M${p.x-2} ${p.y-3}l2 -1`" stroke="#f7dfff" stroke-width="2" stroke-linecap="round"/></g>
+    <g v-for="(p,i) in bubbles" :key="i" class="status-rise" :style="delay(i)"><circle :cx="p.x" :cy="p.y" :r="p.r" fill="var(--status-accent)" opacity=".56"/><circle :cx="p.x-1" :cy="p.y-2" :r="p.r*.67" fill="var(--status-color)" opacity=".96"/><path :d="`M${p.x-2} ${p.y-3}l2 -1`" stroke="#f7dfff" stroke-width="2" stroke-linecap="round"/></g>
    </template>
    <template v-else-if="effect.status==='burn'">
-    <g v-for="(x,i) in [40,68,96,120]" :key="x" class="status-flame" :style="delay(i)"><path :d="`M${x} 128 C${x-20} 110 ${x+3} 101 ${x-3} 78 C${x+17} 96 ${x+9} 103 ${x+15} 108 C${x+20} 98 ${x+21} 96 ${x+20} 92 C${x+35} 118 ${x+15} 135 ${x} 128Z`" fill="var(--status-accent)"/><path :d="`M${x+5} 126 Q${x-1} 118 ${x+9} 104 Q${x+8} 115 ${x+16} 118 Q${x+17} 129 ${x+5} 126Z`" fill="var(--status-color)"/><path :d="`M${x+7} 71l2 -7`" stroke="var(--status-color)" stroke-width="3" stroke-linecap="round"/></g>
+    <g v-for="(x,i) in [26,52,78,104,130]" :key="x" class="status-flame" :style="delay(i)"><path :d="`M${x} 128 C${x-20} 110 ${x+3} 101 ${x-3} 78 C${x+17} 96 ${x+9} 103 ${x+15} 108 C${x+20} 98 ${x+21} 96 ${x+20} 92 C${x+35} 118 ${x+15} 135 ${x} 128Z`" fill="var(--status-accent)"/><path :d="`M${x+5} 126 Q${x-1} 118 ${x+9} 104 Q${x+8} 115 ${x+16} 118 Q${x+17} 129 ${x+5} 126Z`" fill="var(--status-color)"/><path :d="`M${x+7} 71l2 -7`" stroke="var(--status-color)" stroke-width="3" stroke-linecap="round"/></g>
    </template>
    <template v-else-if="effect.status==='confusion'">
     <g class="status-confused"><path d="M34 39C52 20 110 20 128 39M129 43C111 57 53 59 33 45" stroke="var(--status-accent)" stroke-width="2" stroke-dasharray="8 13" opacity=".7"/><path v-for="(p,i) in [[32,40],[80,25],[129,42]]" :key="i" :transform="`translate(${p[0]} ${p[1]}) rotate(${i*25})`" d="M0 -8 2 -2 8 0 2 2 0 8 -2 2 -8 0 -2 -2Z" fill="var(--status-color)"/><text x="78" y="62" text-anchor="middle" font-size="22" font-family="sans-serif" fill="var(--status-color)">?</text></g>
@@ -41,12 +41,11 @@
  </div>
 </template>
 <script>
-import {STATUS_VISUALS} from '@/services/battleStatusVisuals';
-import {BATTLE_PACING} from '@/services/battlePacing';
-const bubbles=Object.freeze([{x:32,y:113,r:8},{x:49,y:88,r:6},{x:119,y:107,r:10},{x:102,y:73,r:5},{x:73,y:126,r:7},{x:130,y:59,r:5}]);
+import {STATUS_VISUALS,statusEffectDuration} from '@/services/battleStatusVisuals';
+const bubbles=Object.freeze([{x:32,y:113,r:11},{x:49,y:88,r:6},{x:119,y:107,r:13},{x:102,y:73,r:5},{x:73,y:126,r:7},{x:130,y:59,r:7},{x:39,y:51,r:8},{x:86,y:99,r:11},{x:142,y:123,r:7}]);
 export default {
- props:{effect:Object,reduced:Boolean,duration:{type:Number,default:BATTLE_PACING.status}},
- computed:{palette(){return STATUS_VISUALS[this.effect?.status]||STATUS_VISUALS.cure;},bubbles(){return bubbles;}},
+ props:{effect:Object,reduced:Boolean,duration:{type:Number,default:0}},
+ computed:{effectDuration(){return this.duration||statusEffectDuration(this.effect);},palette(){return STATUS_VISUALS[this.effect?.status]||STATUS_VISUALS.cure;},bubbles(){return bubbles;}},
  methods:{delay(i){return {'--status-delay':`${i*45}ms`};}}
 };
 </script>

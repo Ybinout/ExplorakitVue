@@ -1,8 +1,10 @@
-<template><span class="pokemon-portrait" :class="{'is-shiny':shiny}" :title="shiny?'Pokémon chromatique':null"><img :src="src" :alt="alt" :style="imageStyle" @load="fitSprite"><span v-if="shiny" class="portrait-shiny" aria-label="Pokémon chromatique">✦</span></span></template>
+<template><span class="pokemon-portrait" :class="{'is-shiny':shiny}" :title="shiny?'Pokémon chromatique':null"><img :src="src" :alt="alt" :style="imageStyle" @load="fitSprite"><sprite-tint-layer v-if="tint" :src="src" :tint="tint" :style="imageStyle"/><span v-if="shiny" class="portrait-shiny" aria-label="Pokémon chromatique">✦</span></span></template>
 <script>
+import SpriteTintLayer from '@/components/battle/SpriteTintLayer.vue';
 import { pokemonSpriteMetrics } from '@/services/pokemonSprites';
 export default {
-  props: { src: String, alt: { type: String, default: '' } },
+  components:{SpriteTintLayer},
+  props: { tint:Object, src: String, alt: { type: String, default: '' } },
   data: () => ({ imageStyle: {} }),
   computed: { shiny() { return String(this.src || '').includes('/shiny/'); } },
   watch: { src() { this.imageStyle = {}; } },

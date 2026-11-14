@@ -41,7 +41,7 @@
 
       <battle-move-effect v-if="battleMoveFx.visible && !reducedMotion()" :key="`move-${battleMoveFx.nonce}`"
         :fx="battleMoveFx" :path="movePath" :color="battleMoveStyle['--battle-move-color']" />
-      <battle-status-effect v-for="side in ['wild','player']" :key="`status-${side}-${statusVisuals[side]?.nonce}`" :effect="statusVisuals[side]" :style="statusPosition(side)" :reduced="reducedMotion()" />
+      <battle-status-effect v-for="side in ['wild','player']" :key="`status-${side}-${statusVisuals[side]?.nonce}`" :effect="statusVisuals[side]" @finished="clearStatusVisual(side,$event)" :style="statusPosition(side)" :reduced="reducedMotion()" />
       <battle-persistent-effect v-for="side in ['wild','player']" :key="`persistent-${side}-${getPokemonBattleKey(side === 'wild' ? opponent : currentPokemon)}`"
         :effects="persistentEffects(side)" :style="conditionPosition(side)" :reduced="reducedMotion()" />
 
@@ -65,12 +65,13 @@
         ]"
       >
         <img
-          :class="['battle-sprite', { 'battle-hit-shake': attackFx.wild.hit, 'battle-sprite-ready': battleSpriteStyles.wild['--sprite-image-width'] }]"
+          :class="['battle-sprite', 'battle-tintable', { 'battle-hit-shake': attackFx.wild.hit, 'battle-sprite-ready': battleSpriteStyles.wild['--sprite-image-width'] }]"
           :style="{...battleSpriteStyles.wild,...moveActorStyle('wild')}"
           :src="getPokemonSprite(opponent, 'front')"
           :alt="opponent.truename || opponent.name || 'Pokemon adverse'"
           @load="calibrateBattleSprite($event, 'wild')"
         >
+        <sprite-tint-layer :class="['battle-sprite', {'battle-hit-shake':attackFx.wild.hit,'battle-sprite-ready':battleSpriteStyles.wild['--sprite-image-width']}]" :src="getPokemonSprite(opponent, 'front')" :tint="spriteTintStyle('wild')" :style="{...battleSpriteStyles.wild,...moveActorStyle('wild')}"/>
         <span v-if="isVisuallyShiny(opponent)" class="battle-shiny-glints" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span>
         <span v-if="phasedState('wild')" class="battle-phase-marker" data-battle-phase="opponent">{{ phaseLabel(opponent) }}</span>
       </div>
@@ -87,12 +88,13 @@
         ]"
       >
         <img
-          :class="['battle-sprite', { 'battle-hit-shake': attackFx.player.hit, 'battle-sprite-ready': battleSpriteStyles.player['--sprite-image-width'] }]"
+          :class="['battle-sprite', 'battle-tintable', { 'battle-hit-shake': attackFx.player.hit, 'battle-sprite-ready': battleSpriteStyles.player['--sprite-image-width'] }]"
           :style="{...battleSpriteStyles.player,...moveActorStyle('player')}"
           :src="getPokemonSprite(currentPokemon, 'back')"
           :alt="currentPokemon.name || 'Ton Pokemon'"
           @load="calibrateBattleSprite($event, 'player')"
         >
+        <sprite-tint-layer :class="['battle-sprite', {'battle-hit-shake':attackFx.player.hit,'battle-sprite-ready':battleSpriteStyles.player['--sprite-image-width']}]" :src="getPokemonSprite(currentPokemon, 'back')" :tint="spriteTintStyle('player')" :style="{...battleSpriteStyles.player,...moveActorStyle('player')}"/>
         <span v-if="isVisuallyShiny(currentPokemon)" class="battle-shiny-glints" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span>
         <span v-if="phasedState('player')" class="battle-phase-marker" data-battle-phase="player">{{ phaseLabel(currentPokemon) }}</span>
       </div>
@@ -304,8 +306,10 @@ import { pokemonSpriteMetrics } from '@/services/pokemonSprites';
 import { arenaChampion } from '@/services/arenaEntrance';
 import { createBattlePresentation } from '@/services/battlePresentation';
 import {BATTLE_PACING,battleReadingTime} from '@/services/battlePacing';
-import {conditionStatusVisual,narratedStatusVisual} from '@/services/battleStatusVisuals';
+import {conditionStatusVisual,narratedStatusVisual,statusEffectDuration} from '@/services/battleStatusVisuals';
+import SpriteTintLayer from './SpriteTintLayer.vue';
 import BattleStatusEffect from './BattleStatusEffect.vue';
+import {spriteTint} from '@/services/spriteTint';
 import {isMoveAnnouncement,moveAnnouncementDuration} from '@/services/battleNarration';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
@@ -420,7 +424,7 @@ import { ARENA_LIGHTS } from '@/services/placeAmbience';
 
 export default {
   name: 'BattleOverlay',
-  components: {BattleStatusEffect,BattlePokemonInfo, BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
+  components: {SpriteTintLayer,BattleStatusEffect,BattlePokemonInfo, BattleMoveButton, TutorialCoach, BattleBall, BattleStatChange, BattleWeatherInfo, BattleParty, BattleTraits, BattleFieldEffects, BattleFieldSide, BattleMoveEffect, BattlePersistentEffect, LevelGrowth, BattleEntrance, BattleSendOut, HealthBar, ExperienceBar, PotentialStar, PokemonGender, BattleConditions, BattleRain, BattleWaterfalls, BattleTournamentScenery, BattleSnow, BattleSandstorm },
   props: {
     tutorial:{type:Object,default:null},
     tutorialBusy:Boolean,
@@ -851,18 +855,29 @@ export default {
       this._presentation ||= createBattlePresentation({ changed: busy => { this.presentationBusy = busy; } });
       const delay = () => {
         if (!this.preferences.animationsEnabled || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
-        if (method === 'playMoveAnimation') return this.battleMoveFx.windupMs || 180;
-        if (method === 'playDriftEffects') return 650;
+        if (method === 'playMoveAnimation') return 0;
+        if (method === 'playDriftEffects') return this._pendingDriftFx?0:650;
         if (method === 'updateFieldState' && !this._pendingBattleField && this.fieldFx.changes.length) return BATTLE_PACING.field;
-        if (method === 'playMoveResult') return this.battleMoveFx.visible ? 0 : this.resultFx.visible ? 1250 : 320;
+        if (method === 'playMoveResult') return 0;
         return 0;
       };
       return this._presentation.push(async () => {
         // Let the animation and HP updates run normally. Only a replacement
         // narration waits for the minimum reading time, including reduced motion.
         const epoch=this.visualEpoch;
+        if(method==='showMessage'){
+          const message=String(payload||''),count=this._feedbackDuplicates?.get(message)||0;
+          if(count){this._feedbackDuplicates.set(message,count-1);return;}
+          if(this.isCriticalLine(message)){
+            if(this._criticalNarrationShown)return;
+            if(this.battleMoveFx.visible||this._delayedMovePackets?.length){this._deferredCriticalText=message;return;}
+          }
+        }
+        if(method==='playDriftEffects'&&this.battleMoveFx.visible&&['windup','travel'].includes(this.battleMoveFx.stage)){this._pendingDriftFx=payload;return;}
+        if(method==='playMoveAnimation'&&payload?.delayed){(this._delayedMovePackets ||= []).push({animation:payload});return;}
+        if(method==='playMoveResult'&&this._delayedMovePackets?.length&&!this.battleMoveFx.visible){this._delayedMovePackets.at(-1).result=payload;return;}
         const remaining=Math.max(this._narrationUntil||0,this._moveNarrationUntil||0)-performance.now();
-        if(['showMessage','showRewardMessage','requestAction','playMoveAnimation'].includes(method)&&remaining>0&&!document.hidden){
+        if((['showMessage','showRewardMessage','requestAction'].includes(method)||method==='playMoveAnimation'&&!this._announcementAwaitingAnimation)&&remaining>0&&!document.hidden){
           await this.transitionWait(remaining);
           if(epoch!==this.visualEpoch)return;
         }
@@ -1092,6 +1107,7 @@ export default {
     showMessage(message, hold = false, readable = true) {
       if (!message) return;
       const announcement=isMoveAnnouncement(message);
+      if(announcement)this._announcementAwaitingAnimation=!(this.battleMoveFx.visible&&this.battleMoveFx.stage==='windup');
       this._moveNarrationUntil=announcement&&!document.hidden?performance.now()+moveAnnouncementDuration(message):0;
       this._narrationUntil=readable?performance.now()+battleReadingTime(message,{move:announcement,hidden:document.hidden}):0;
       const status=narratedStatusVisual(message,[{side:'player',pokemon:this.currentPokemon},{side:'wild',pokemon:this.opponent}]);
@@ -1117,6 +1133,8 @@ export default {
     async presentState(payload = {}) {
       const epoch = this.visualEpoch;
       const opening = !this.player && this.entrancePhase === 'holding';
+      if(payload.presentationSteps?.length){await this.presentResidualSteps(payload.presentationSteps,epoch);if(epoch!==this.visualEpoch)return;}
+      else if(this._delayedMovePackets?.length){const pending=this._delayedMovePackets.shift();this.playMoveAnimation(pending.animation);this.playMoveResult(pending.result||{});if(!this.reducedMotion())await this.transitionWait(this.battleMoveFx.windupMs);}
       const events = payload.transitions || [];
       for(const [side,p]of [['player',payload.player?.equipe?.pokemons?.[0]],['wild',payload.wildPokemon]]){const old=side==='player'?this.currentPokemon:this.opponent;if(old?.uuid!==p?.uuid)this.$set(this.statusVisuals,side,null);}
       const changes = { player:battleConditionChanges(this.currentPokemon,payload.player?.equipe?.pokemons?.[0]), wild:battleConditionChanges(this.opponent,payload.wildPokemon) };
@@ -1125,6 +1143,7 @@ export default {
       const move = this.battleMoveFx;
       const connected = moveConnected(move.result);
       if (move.visible && !move.prepare && !this.reducedMotion()) {
+        await this.transitionWait(Math.max(0,move.windupMs-(performance.now()-(this._moveWindupAt||0))));if(epoch!==this.visualEpoch)return;
         // No HP changes until the projectile/beam reaches its target. The queued
         // server result is authoritative for misses, immunity and protection.
         this.movePath = this.buildMovePath(move.actor,move.damageClass,move.moveTarget);
@@ -1133,12 +1152,14 @@ export default {
         await this.transitionWait(move.travelMs);
         if (epoch !== this.visualEpoch) return;
         move.stage = connected ? (move.damageClass === 'status' ? 'aura' : 'impact') : 'miss';
+        this.revealMoveFeedback();
         if (connected && this._pendingMoveHits) {const {side,hits}=this._pendingMoveHits;this.playConditionChanges({player:[],wild:[],[side]:Array.from({length:hits},(_,i)=>({key:`hit-${i}`,kind:'hit',symbol:'✦',text:i===0?`${hits} coups`:''}))});this.conditionNotice='';this._pendingMoveHits=null;}
       }
       if (this._pendingBattleField) {
         const field=this._pendingBattleField;this._pendingBattleField=null;this.applyFieldState(field);
       }
-      const healing = [];
+      this.revealMoveFeedback();
+      const healing = [], backlash = [];
       // Settle damage on the Pokémon that received it before removing its sprite.
       let hpChanged = false;
       for (const [side, previous, next] of [
@@ -1150,7 +1171,10 @@ export default {
         if (previous && Number.isFinite(nextHp) && nextHp !== Number(previous.currentHp)) {
           const delta = nextHp - Number(previous.currentHp);
           if (faint) this.$set(this.transitionFx, side, 'hit');
-          if (delta > 0 && move.visible && move.family === 'drain' && connected && !this.reducedMotion()) {
+          const actorSide=move.actor==='opponent'?'wild':'player';
+          if(delta<0&&side===actorSide&&move.visible&&connected&&Number(move.result?.damage)>0){
+            backlash.push({side,previous,nextHp,delta});
+          } else if (delta > 0 && move.visible && move.family === 'drain' && connected && !this.reducedMotion()) {
             healing.push({side,previous,nextHp,delta});
           } else {
             this.$set(previous, 'currentHp', nextHp);
@@ -1170,13 +1194,26 @@ export default {
           this.triggerHealthFx(side,delta,nextHp);
         }
       }
+      if(backlash.length){
+        if(!this.reducedMotion())await this.transitionWait(Math.max(620,move.impactMs));if(epoch!==this.visualEpoch)return;
+        this.clearMoveFx();this.pendingCritical=null;this.resultFx.visible=false;clearTimeout(this.criticalTimer);this.criticalFx.side=null;
+        for(const side of ['player','wild']){this.clearHealthTimers(side);Object.assign(this.attackFx[side],{visible:false,hit:false});}
+        for(const hit of backlash){
+          this.showMessage(`${hit.previous.truename||hit.previous.name} perd ${-hit.delta} PV après l’impact.`,true);
+          this.playStatusVisual(hit.side,{status:'recoil',phase:'tick'});
+          this.$set(hit.previous,'currentHp',hit.nextHp);this.triggerHealthFx(hit.side,hit.delta);
+          if(!this.reducedMotion())await this.transitionWait(BATTLE_PACING.residual);
+          if(epoch!==this.visualEpoch)return;
+        }
+      }
       if (move.visible) {
         clearTimeout(this.moveTimer);
         this.moveTimer = setTimeout(() => { move.visible = false; this.moveTimer = null; }, Math.max(650,move.impactMs||0));
       }
+      if(this._pendingDriftFx){const pending=this._pendingDriftFx;this._pendingDriftFx=null;this.playDriftEffects(pending);}
       this.pendingCritical = null;
-      if (hpChanged && !this.reducedMotion()) await this.transitionWait(move.visible?1120:BATTLE_PACING.residual);
-      if (!hpChanged && move.visible && !this.reducedMotion()) await this.transitionWait(Math.max(780,move.impactMs));
+      if (hpChanged && !backlash.length && !this.reducedMotion()) await this.transitionWait(move.visible?Math.max(680,move.impactMs):BATTLE_PACING.residual);
+      if (!hpChanged && move.visible && !this.reducedMotion()) await this.transitionWait(Math.max(620,move.impactMs));
       // A completed attack must not be reused for poison, weather or recoil snapshots.
       if(move.visible){clearTimeout(this.moveTimer);move.visible=false;this.moveTimer=null;}
       if (epoch !== this.visualEpoch) return;
@@ -1221,7 +1258,7 @@ export default {
       }
       if (changes.player.length || changes.wild.length) {
         this.playConditionChanges(changes);
-        if (!this.reducedMotion()) await this.transitionWait([...changes.player,...changes.wild].some(e=>['up','down'].includes(e.kind))?STAT_CHANGE_DURATION:BATTLE_PACING.status);
+        if (!this.reducedMotion()) await this.transitionWait([...changes.player,...changes.wild].some(e=>['up','down'].includes(e.kind))?STAT_CHANGE_DURATION:Math.max(BATTLE_PACING.status,...Object.values(this.statusVisuals).map(statusEffectDuration)));
         if (epoch !== this.visualEpoch) return;
         this.conditionFx={player:[],wild:[]};
       }
@@ -1230,6 +1267,54 @@ export default {
         this._transitionLabelTimer = setTimeout(() => { this.transitionLabel = ''; }, 900);
       }
     },
+    isCriticalLine(text){return /^(?:(?:coup )?critique|(?:a )?critical hit)\s*!?$/i.test(String(text||'').trim());},
+    showCriticalAtImpact(){if(this._criticalNarrationShown)return;this._criticalNarrationShown=true;this.showMessage(this._deferredCriticalText||(this.preferences.language==='en'?'Critical hit!':'Coup critique !'),true);this._deferredCriticalText=null;},
+    revealMoveFeedback(){
+      const pending=this._pendingResultFeedback;if(!pending)return;this._pendingResultFeedback=null;
+      clearTimeout(this.resultTimer);Object.assign(this.resultFx,pending,{visible:pending.labels.length>0,nonce:this.resultFx.nonce+1});
+      this.resultTimer=setTimeout(()=>{this.resultFx.visible=false;},1000);
+    },
+    async presentResidualSteps(steps,epoch){
+      this._feedbackDuplicates ||= new Map();
+      for(const step of steps)if(step.message)this._feedbackDuplicates.set(step.message,(this._feedbackDuplicates.get(step.message)||0)+1);
+      this.clearMoveFx();this.pendingCritical=null;
+      for(const step of steps){
+        if(epoch!==this.visualEpoch)return;
+        const remaining=(this._narrationUntil||0)-performance.now();if(remaining>0&&!document.hidden)await this.transitionWait(remaining);
+        if(epoch!==this.visualEpoch)return;
+        for(const side of ['player','wild']){this.$set(this.statusVisuals,side,null);this.clearHealthTimers(side);Object.assign(this.attackFx[side],{visible:false,hit:false});}
+        this.conditionFx={player:[],wild:[]};this.conditionNotice='';
+        if(step.delayed){
+          this._criticalNarrationShown=false;this.playMoveAnimation({...step.delayed,phase:'strike'});this.playMoveResult(step.delayed.result);
+          if(step.message)this.showMessage(step.message,true);
+          if(!this.reducedMotion()){await this.transitionWait(this.battleMoveFx.windupMs);if(epoch!==this.visualEpoch)return;this.battleMoveFx.stage='travel';await this.transitionWait(this.battleMoveFx.travelMs);if(epoch!==this.visualEpoch)return;this.battleMoveFx.stage=moveConnected(step.delayed.result)?'await':'miss';if(!moveConnected(step.delayed.result)){this.revealMoveFeedback();await this.transitionWait(BATTLE_PACING.result);if(epoch!==this.visualEpoch)return;this.clearMoveFx();}}
+          continue;
+        }
+        if(step.message&&!this.isCriticalLine(step.message))this.showMessage(step.message,true);
+        const changes={player:[],wild:[]};let hpChanged=false;
+        for(const update of step.pokemon||[]){
+          const side=update.side==='player'?'player':'wild',p=side==='player'?this.currentPokemon:this.opponent;if(!p||p.uuid!==update.uuid)continue;
+          const before=JSON.parse(JSON.stringify(p)),hp=Number(p.currentHp);
+          if(update.currentHp<=0)this.$set(this.transitionFx,side,'hit');
+          this.$set(p,'maxHp',update.maxHp);this.$set(p,'status',update.status);
+          this.$set(p,'__battle',{...p.__battle,...update.conditions,statStages:update.statStages});
+          if(update.currentHp!==hp){
+            if(this.battleMoveFx.visible){this.battleMoveFx.stage=moveConnected(this.battleMoveFx.result)?'impact':'miss';this.revealMoveFeedback();}
+            this.$set(p,'currentHp',update.currentHp);this.triggerHealthFx(side,update.currentHp-hp);hpChanged=true;
+          }
+          changes[side]=battleConditionChanges(before,p);
+        }
+        if(step.weather){this.fieldState.weather=step.weather.kind;this.weatherMetadata={...step.weather};}
+        if(changes.player.length||changes.wild.length)this.playConditionChanges(changes);
+        if(this.isCriticalLine(step.message)&&!this._criticalNarrationShown)this.showCriticalAtImpact();
+        if(!document.hidden)await this.transitionWait(this.reducedMotion()?Math.max(0,(this._narrationUntil||0)-performance.now()):Math.max(hpChanged?BATTLE_PACING.residual:0,changes.player.length||changes.wild.length?BATTLE_PACING.status:0,...Object.values(this.statusVisuals).map(statusEffectDuration),step.message?battleReadingTime(step.message):0));
+        if(epoch!==this.visualEpoch)return;
+        this.clearMoveFx();this.conditionFx={player:[],wild:[]};
+      }
+      this._delayedMovePackets=[];
+    },
+    spriteTintStyle(side){return spriteTint(this.statusVisuals[side],this.conditionFx[side],this.reducedMotion());},
+    clearStatusVisual(side,nonce){if(this.statusVisuals[side]?.nonce===nonce)this.$set(this.statusVisuals,side,null);},
     statusVisualForChange:conditionStatusVisual,
     statusPosition(side) {
       const g=this.getSpriteGeometry(side),size=Math.max(75,Math.min(220,Math.max(g.width,g.height)*1.18));
@@ -1468,6 +1553,7 @@ export default {
         '--anticipate-x':`${-dx/length*7}px`,'--anticipate-y':`${-dy/length*7}px`};
     },
     playMoveAnimation(payload = {}) {
+      this._announcementAwaitingAnimation=false;this._criticalNarrationShown=false;this._pendingResultFeedback=null;
       const actor = payload.actor === 'opponent' ? 'opponent' : 'player';
       const side = actor === 'opponent' ? 'wild' : 'player';
       if (payload.phase === 'strike') this.$set(this.phaseReturning,side,true);
@@ -1476,6 +1562,7 @@ export default {
       this.clearMoveFx();
       clearTimeout(this.resultTimer); this.resultFx.visible = false;
       if (this.reducedMotion()) return;
+      this._moveWindupAt=performance.now();
       this.movePath = this.buildMovePath(actor, damageClass, payload.phase === 'prepare' ? 'self' : profile.target);
       const targetSide = actor === 'opponent' ? 'player' : 'wild';
       this.movePath.groundY = this.getSpriteGeometry(targetSide).bottomY - 4;
@@ -1507,17 +1594,9 @@ export default {
         labels.push({ key: 'resisted', text: this.tr('resisted') });
       }
       this.resultFx.visible = false;
-      if (!labels.length) return;
-      if (this.resultTimer) clearTimeout(this.resultTimer);
-      this.resultFx.actor = payload.actor === 'player' ? 'opponent' : 'player';
-      this.resultFx.labels = labels;
-      this.resultFx.nonce += 1;
-      this.resultFx.visible = true;
-      this.resultTimer = setTimeout(() => {
-        this.resultFx.visible = false;
-        this.resultTimer = null;
-      }, 1150);
+      this._pendingResultFeedback={actor:payload.actor==='player'?'opponent':'player',labels};
     },
+
     triggerHealthFx(target, delta) {
       if (!target || !this.attackFx[target]) return;
       const numericDelta = Number(delta);
@@ -1526,6 +1605,7 @@ export default {
       const fxState = this.attackFx[target];
       fxState.critical = numericDelta < 0 && this.pendingCritical?.side === target && this.pendingCritical.key === this.getPokemonBattleKey(target === 'player' ? this.currentPokemon : this.opponent);
       if (fxState.critical) {
+        this.showCriticalAtImpact();
         if (!this.reducedMotion()) {
           this.criticalFx = {side:target,nonce:this.criticalFx.nonce+1};
           this.criticalTimer = setTimeout(()=>{this.criticalFx.side=null;},700);
@@ -1678,6 +1758,7 @@ export default {
       this._battleAudio?.stop();
       this.cancelEntrance();
       clearTimeout(this.criticalTimer); this.criticalFx.side=null; this.pendingCritical=null;
+      this._announcementAwaitingAnimation=false;this._pendingDriftFx=null;this._feedbackDuplicates=new Map();this._delayedMovePackets=[];this._pendingResultFeedback=null;this._criticalNarrationShown=false;this._deferredCriticalText=null;
       this._narrationUntil=0;this._moveNarrationUntil=0;this.statusVisuals={player:null,wild:null};
       this.visualEpoch++;this._sendOutController?.abort();this.sendOuts=[];this.trainerSpeech=null;this._transitionRelease?.();clearTimeout(this._transitionLabelTimer);clearTimeout(this.driftNoticeTimer);this.transitionFx={player:'',wild:''};this.transitionLabel='';this.driftNotices=[];clearTimeout(this.conditionTimer);this.conditionFx={player:[],wild:[]};this.conditionNotice='';
       if (this.messageTimer) clearTimeout(this.messageTimer);

@@ -1,6 +1,6 @@
 <template>
  <section ref="dialog" tabindex="-1" class="raid-battle" :class="{'raid-reduced':reduced}" :style="{'--raid-bg':'url('+backgrounds.wide+')','--raid-mobile-bg':'url('+backgrounds.mobile+')'}" role="dialog" aria-modal="true" aria-label="Raid de corruption" @keydown.stop="onKey" @keyup.stop data-raid-battle>
-  <div ref="stage" class="raid-stage" :class="[phaseEffect,{'is-enraged':display?.boss.rage?.value>=(display?.boss.rage?.highThreshold||75),'is-entering':loading,'is-critical':effect?.kind==='-crit'}]">
+  <div ref="stage" class="raid-stage" :class="[phaseEffect,{'is-enraged':display?.boss.rage?.value>=(display?.boss.rage?.highThreshold||75),'is-entering':loading,'is-critical':effect?.kind==='-damage'&&effect.critical}]">
    <raid-mist :map-name="mapName" :reduced="reduced"/><raid-field-effects :frame="display||frame" :reduced="reduced"/><battle-rain v-if="weather==='rain'" environment="arena" :animations-enabled="!reduced"/><battle-snow v-if="['hail','snow'].includes(weather)" environment="arena" :animations-enabled="!reduced"/><battle-sandstorm v-if="weather==='sandstorm'" environment="arena" :animations-enabled="!reduced"/>
    <div class="raid-boss-info"><article class="raid-boss-hud" aria-label="État du boss">
     <small class="raid-boss-context">Tour {{ display.turn }} · {{ difficulty }}</small>
@@ -22,9 +22,9 @@
    </article>
    <div v-if="activeEffects.length" class="raid-team-effects" aria-label="Effets collectifs actifs"><span v-for="e in activeEffects" :key="e.key" :class="{'is-enemy':e.enemy}" :title="e.description" data-raid-team-effect><b>{{ e.enemy?'Boss · ':'' }}{{ e.name }}</b><small>{{ e.description }}<template v-if="e.turns"> · {{ e.turns }} tour{{ e.turns>1?'s':'' }}</template></small></span></div>
    <div class="raid-top-tools"><battle-weather-info v-if="weather" class="raid-weather" :weather="weather"/><div v-if="!frame.finished" class="raid-clock" :class="{'is-warning':remaining<=10,'is-danger':remaining<=5,'is-paused':playing||loading}" role="timer" :aria-label="'Temps de décision : '+remaining+' secondes'" data-raid-clock><strong>{{ remaining }}</strong><small>secondes</small></div></div>
-   <div ref="boss" class="raid-boss" :role="bossTargetable?'button':undefined" :tabindex="bossTargetable?0:-1" :aria-label="bossTargetable?'Viser '+display.boss.name:undefined" @click="targetBoss" @keydown.enter.prevent="targetBoss" @keydown.space.prevent="targetBoss" :class="{'is-area-affected':selectedMove && areaMove(selectedMove) && selectedMove.targets.some(t=>t.slot===4),'is-selectable':bossTargetable,'is-shielded':display.shield?.hp>0,'takes-hit':effect?.slot===4&&effect?.kind==='-damage','fainted':bossFainted}"><span class="raid-boss-aura"/><span v-if="bossTargetable" class="raid-target-label">⌖ Viser {{ display.boss.name }}</span><pokemon-portrait :src="sprite(display.boss)" :alt="display.boss.name"/><raid-shield v-if="display.shield?.hp>0" :shield="display.shield" :hit="phaseEffect==='shield-hit'"/><battle-persistent-effect :effects="display.boss.effects" :reduced="reduced"/><span v-if="effect?.slot===4&&amount" class="raid-damage" :class="{'is-heal':effect.kind==='-heal'}">{{ effect.kind==='-heal'?'+':'−' }}{{ amount }}</span><span v-if="effect?.slot===4&&(effect.kind==='-crit'||effect.critical)" class="raid-critical">CRITIQUE !</span><battle-stat-change v-if="!reduced&&effect?.slot===4&&['-boost','-unboost'].includes(effect.kind)" :key="effect.id" :effects="statEffect(effect)"/></div>
-   <div ref="ally" class="raid-ally" :class="[focusPhase,{'takes-hit':effect?.slot===shown&&effect?.kind==='-damage','fainted':main?.currentHp<=0&&!main?.withdrawn,'retired':main?.withdrawn}]"><pokemon-portrait v-if="main" :src="sprite(main,true)" :alt="main.name"/><battle-persistent-effect v-if="main" :effects="main.effects" :reduced="reduced"/><span v-if="main?.effects?.helpingHand" class="raid-helping-hand" data-raid-helping-hand aria-label="Coup d’Main actif">✦</span><span v-if="effect?.slot===shown&&amount" class="raid-damage" :class="{'is-heal':effect.kind==='-heal'}">{{ effect.kind==='-heal'?'+':'−' }}{{ amount }}</span><span v-if="effect?.slot===shown&&(effect.kind==='-crit'||effect.critical)" class="raid-critical">CRITIQUE !</span><battle-stat-change v-if="!reduced&&effect?.slot===shown&&['-boost','-unboost'].includes(effect.kind)" :key="effect.id" :effects="statEffect(effect)"/></div>
-   <battle-status-effect v-if="statusFx && (statusFx.slot===4 || statusFx.slot===shown)" :key="statusFx.nonce" :effect="statusFx" :style="statusPosition(statusFx.slot)" :reduced="reduced"/>
+   <div ref="boss" class="raid-boss" :role="bossTargetable?'button':undefined" :tabindex="bossTargetable?0:-1" :aria-label="bossTargetable?'Viser '+display.boss.name:undefined" @click="targetBoss" @keydown.enter.prevent="targetBoss" @keydown.space.prevent="targetBoss" :class="{'is-area-affected':selectedMove && areaMove(selectedMove) && selectedMove.targets.some(t=>t.slot===4),'is-selectable':bossTargetable,'is-shielded':display.shield?.hp>0,'takes-hit':effect?.slot===4&&effect?.kind==='-damage','fainted':bossFainted}"><span class="raid-boss-aura"/><span v-if="bossTargetable" class="raid-target-label">⌖ Viser {{ display.boss.name }}</span><pokemon-portrait class="battle-tintable" :tint="tintStyle(4)" :src="sprite(display.boss)" :alt="display.boss.name"/><raid-shield v-if="display.shield?.hp>0" :shield="display.shield" :hit="phaseEffect==='shield-hit'"/><battle-persistent-effect :effects="display.boss.effects" :reduced="reduced"/><span v-if="effect?.slot===4&&amount" class="raid-damage" :class="{'is-heal':effect.kind==='-heal'}">{{ effect.kind==='-heal'?'+':'−' }}{{ amount }}</span><span v-if="effect?.slot===4&&effect.kind==='-damage'&&effect.critical" class="raid-critical">CRITIQUE !</span><battle-stat-change v-if="!reduced&&effect?.slot===4&&['-boost','-unboost'].includes(effect.kind)" :key="effect.id" :effects="statEffect(effect)"/></div>
+   <div ref="ally" class="raid-ally" :class="[focusPhase,{'takes-hit':effect?.slot===shown&&effect?.kind==='-damage','fainted':main?.currentHp<=0&&!main?.withdrawn,'retired':main?.withdrawn}]"><pokemon-portrait v-if="main" class="battle-tintable" :tint="tintStyle(shown)" :src="sprite(main,true)" :alt="main.name"/><battle-persistent-effect v-if="main" :effects="main.effects" :reduced="reduced"/><span v-if="main?.effects?.helpingHand" class="raid-helping-hand" data-raid-helping-hand aria-label="Coup d’Main actif">✦</span><span v-if="effect?.slot===shown&&amount" class="raid-damage" :class="{'is-heal':effect.kind==='-heal'}">{{ effect.kind==='-heal'?'+':'−' }}{{ amount }}</span><span v-if="effect?.slot===shown&&effect.kind==='-damage'&&effect.critical" class="raid-critical">CRITIQUE !</span><battle-stat-change v-if="!reduced&&effect?.slot===shown&&['-boost','-unboost'].includes(effect.kind)" :key="effect.id" :effects="statEffect(effect)"/></div>
+   <battle-status-effect v-if="statusFx && (statusFx.slot===4 || statusFx.slot===shown)" :key="statusFx.nonce" :effect="statusFx" @finished="clearStatusFx" :style="statusPosition(statusFx.slot)" :reduced="reduced"/>
    <battle-move-effect v-if="fx&&!reduced" :key="fx.id" :fx="fx" :path="fx.path" :color="color(fx.moveType)"/>
    <raid-corruption-effect :event="corruptionFx" :reduced="reduced"/>
    <div v-if="loading" class="raid-entry" role="status"><span class="raid-entry-rift"/><b>La faille s’ouvre…</b><small>Chargement du terrain et des Pokémon</small></div>
@@ -70,9 +70,10 @@ import BattleSandstorm from '../battle/BattleSandstorm.vue';
 import BattleWeatherInfo from '../battle/BattleWeatherInfo.vue';
 import { moveVisual } from '@/services/moveVisuals';
 import BattleStatusEffect from '../battle/BattleStatusEffect.vue';
-import {nativeStatusVisual,STATUS_VISUALS} from '@/services/battleStatusVisuals';
+import {nativeStatusVisual,STATUS_VISUALS,statusEffectDuration,effectSourceLabel} from '@/services/battleStatusVisuals';
 import {BATTLE_PACING,battleReadingTime} from '@/services/battlePacing';
 import { raidMovePlan, EFFECT_DETAILS } from '@/services/raidPresentation';
+import {spriteTint} from '@/services/spriteTint';
 import timing from '../../../../data/game/raid_presentation.json';
 import { localizeTypeName, typeBadgeStyle } from '@/services/pokemonTypes';
 import {darkBattleBackgroundKey,darkBattleBackgrounds} from '@/services/darkBattleBackgrounds';
@@ -213,6 +214,8 @@ export default {
     });
   },
   methods: {
+    clearStatusFx(nonce){if(this.statusFx?.nonce===nonce)this.statusFx=null;},
+    tintStyle(slot){return spriteTint(this.statusFx?.slot===slot?this.statusFx:null,this.effect?.slot===slot&&['-boost','-unboost'].includes(this.effect.kind)?this.statEffect(this.effect):[],this.reduced,slot===4?'drop-shadow(0 0 10px #9853c844)':'');},
     say(text,move=false){this.message=text;this._readUntil=performance.now()+battleReadingTime(text,{move,hidden:document.hidden});},
     async holdNarration(){const ms=(this._readUntil||0)-performance.now();if(ms>0&&!document.hidden)await this.sleep(ms);},
     statusPosition(slot){const p=this.point(slot),size=slot===4?210:190;return {left:`${p.x-size/2}px`,top:`${p.y-size/2}px`,width:`${size}px`,height:`${size}px`};},
@@ -461,11 +464,12 @@ export default {
       if(e.kind==='-heal'&&this.fx?.family==='drain'&&!this.reduced){await this.finishMoveFx();this.fx={...this.fx,stage:'drain'};await this.sleep(BATTLE_PACING.drain);}
       this.$set(p,'currentHp',e.hp);if(e.maxHp)this.$set(p,'maxHp',e.maxHp);
       if(e.kind==='-damage'&&amount)this.$emit('impact',{damage:amount,maxHp:p.maxHp});
+      if(e.kind==='-damage'&&e.direct!==false&&target?.critical)this.say('Coup critique !');
       if(e.kind==='-heal'||e.direct===false){
-        const cue=nativeStatusVisual(e),reason=cue?' · '+STATUS_VISUALS[cue.status].label:'';
+        const reason=effectSourceLabel(e)?' · '+effectSourceLabel(e):'';
         this.say(p.name+(e.kind==='-heal'?' récupère ':' perd ')+amount+' PV'+reason+'.');
       }
-      await this.sleep(this.reduced?25:e.direct===false?BATTLE_PACING.residual:timing.damageMs);
+      await this.sleep(this.reduced?25:e.direct===false?Math.max(BATTLE_PACING.residual,statusEffectDuration(nativeStatusVisual(e))):timing.damageMs);
     },
     collectiveEvent(e) {
       const sideEvent=e.kind.startsWith('-side'),key=sideEvent?'sideEffects':'fieldEffects';
@@ -487,18 +491,20 @@ export default {
         const events=eventKey!==this._eventToken?frame.events||[]:[];this._eventToken=eventKey;
         for(let i=0;i<events.length&&!this._closed;i++){
           const e=events[i];
+          if(e.kind==='-crit')continue;
           if(e.kind==='bossRage'){this.$set(this.display.boss,'rage',{value:e.value,bonusPercent:e.bonusPercent,maximum:e.maximum,highThreshold:e.highThreshold});continue;}
           if(e.kind==='aggro'){if(e.shares)this.display.allies.forEach((p,i)=>this.$set(p,'aggro',e.shares[i]||0));else if(this.display.allies[e.slot])this.$set(this.display.allies[e.slot],'aggro',e.value);if(this.display.intention&&!this.display.intention.area&&e.focus!==undefined)this.$set(this.display.intention,'target',e.focus);continue;}
           if(e.kind==='weather'){this.$set(this.display,'weather',e.effect);continue;}
           if(e.kind==='-singleturn'&&/Helping Hand/.test(e.effect||'')){await this.holdNarration();const p=this.display.allies[e.slot];if(p){this.$set(p,'effects',{...p.effects,helpingHand:true});this.say('Coup d’Main renforce la prochaine attaque de '+p.name+'.');await this.sleep(this.reduced?20:timing.statusMs);}continue;}
           if(e.kind==='intention'){if(this.display.intention){this.$set(this.display.intention,'remaining',e.remaining);if(!this.display.intention.area)this.$set(this.display.intention,'target',e.target);}continue;}
           if(['upkeep','turn'].includes(e.kind)){this._sequentialMove=null;continue;}
-          if(!['-crit','-boost','-unboost'].includes(e.kind)){await this.finishMoveFx();await this.holdNarration();if(this._closed)break;}
+          await this.finishMoveFx();await this.holdNarration();if(this._closed)break;
           this.statusFx=null;
           if(e.kind==='move'){if(e.slot===4)this.$set(this.display,'intention',null);await this.animate(e,events,i);continue;}
           if(['-damage','-heal','-immune','-miss','-activate','-crit','-boost','-unboost','-status'].includes(e.kind))await this.replayAreaTarget(e);
           const p=e.slot===4?this.display.boss:this.display.allies[e.slot];
           const cue=p?await this.statusCue(e):null;
+          if(p&&['-boost','-unboost'].includes(e.kind)){this.fx=null;if(e.slot<4)await this.focusAlly(e.slot);}
           if(['-damage','-heal'].includes(e.kind)){await this.showDamage(e);continue;}
           this.effect={...e,id:Math.random()};this.amount=0;
           if(e.kind==='shield'){
@@ -513,11 +519,11 @@ export default {
           }else if(e.kind==='pass'){await this.relay(e);
           }else if(e.kind==='passFailed'){this.say(e.kind==='pass'?p.name+' passe la main à '+this.display.allies[e.target]?.name+'.':'Le relais échoue : cet allié ne peut pas recevoir cette réserve.');await this.sleep(this.reduced?30:timing.resultMs);
           }else if(e.kind==='-activate'&&p&&/Protect|Wide Guard|Mat Block|Quick Guard/.test(e.effect||'')){this.$set(p,'effects',{...p.effects,shield:true});this.say(p.name+' est protégé !');await this.sleep(this.reduced?20:timing.statusMs);
-          }else if(cue&&['-start','-end','-activate','cant'].includes(e.kind)){this.say(p.name+' · '+STATUS_VISUALS[cue.status].label+'.');await this.sleep(this.reduced?30:timing.statusMs);
+          }else if(cue&&['-start','-end','-activate','cant'].includes(e.kind)){this.say(p.name+' · '+STATUS_VISUALS[cue.status].label+'.');await this.sleep(this.reduced?30:Math.max(timing.statusMs,statusEffectDuration(cue)));
           }else if(e.kind==='-crit'){await this.sleep(this.reduced?20:180);
           }else if(['-boost','-unboost'].includes(e.kind)&&p){this.$set(p,'boosts',{...p.boosts,[e.effect]:Math.max(-6,Math.min(6,(p.boosts[e.effect]||0)+(e.kind==='-boost'?1:-1)*Number(e.value)))});this.say(p.name+' : '+this.statEffect(e)[0].text+(e.kind==='-boost'?' augmente.':' diminue.'));await this.sleep(this.reduced?30:timing.statMs);
-          }else if(['-sidestart','-sideend','-fieldstart','-fieldend'].includes(e.kind)){this.collectiveEvent(e);await this.sleep(this.reduced?30:timing.statusMs);
-          }else if(['-status','-curestatus'].includes(e.kind)&&p){this.$set(p,'status',e.kind==='-curestatus'?'normal':({brn:'burn',psn:'poison',tox:'badly_poison',par:'paralyze',slp:'sleep',frz:'freeze'})[e.effect]||e.effect);this.say(p.name+(e.kind==='-curestatus'?' est rétabli.':' : '+this.status(p.status)+'.'));await this.sleep(this.reduced?30:timing.statusMs);
+          }else if(['-sidestart','-sideend','-fieldstart','-fieldend'].includes(e.kind)){this.collectiveEvent(e);await this.sleep(this.reduced?30:Math.max(timing.statusMs,statusEffectDuration(cue)));
+          }else if(['-status','-curestatus'].includes(e.kind)&&p){this.$set(p,'status',e.kind==='-curestatus'?'normal':({brn:'burn',psn:'poison',tox:'badly_poison',par:'paralyze',slp:'sleep',frz:'freeze'})[e.effect]||e.effect);this.say(p.name+(e.kind==='-curestatus'?' est rétabli.':' : '+this.status(p.status)+'.'));await this.sleep(this.reduced?30:Math.max(timing.statusMs,statusEffectDuration(cue)));
           }else if(e.kind==='faint'&&e.slot===4){await this.faintBoss();
           }else if(['-immune','-miss','-fail','cant','faint'].includes(e.kind)&&p){this.say(e.kind==='-immune'?p.name+' est immunisé.':e.kind==='-miss'?'L’attaque manque sa cible.':e.kind==='faint'?p.name+(e.slot<4&&frame.allies[e.slot]?.survivalKitUsed?' reste K.O. : son Kit de survie a été consommé.':e.slot<4&&frame.allies[e.slot]?.permanentlyLost?' est définitivement perdu.':' est K.O.'):e.kind==='cant'?p.name+' ne peut pas agir.':'La capacité échoue.');await this.sleep(this.reduced?30:timing.resultMs);}
           this.phaseEffect='';

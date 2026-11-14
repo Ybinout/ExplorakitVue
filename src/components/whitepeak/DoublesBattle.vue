@@ -5,13 +5,13 @@
    <battle-rain v-if="display?.weather==='raindance'" :animations-enabled="!reduced" environment="arena"/><battle-snow v-if="display?.weather==='hail' || display?.weather==='snowscape'" :animations-enabled="!reduced" environment="arena"/><battle-sandstorm v-if="display?.weather==='sandstorm'" :animations-enabled="!reduced" environment="arena"/>
    <div class="double-side-effects"><span v-for="(side,i) in display?.sideEffects||[]" :key="i"><b v-if="side.length">{{ i===frame.side?'Ton camp':'Camp adverse' }}</b><small v-for="e in side" :key="e.id">{{ e.name }}{{ e.layers?' ×'+e.layers:e.turns?' · '+e.turns+' t':'' }}</small></span></div>
    <battle-weather-info v-if="weatherName" class="double-weather" :weather="weatherName"/>
-   <div v-for="spot in spots" :key="spot.key" :ref="spot.key" :data-double-position="spot.key" class="double-combatant" :class="[spot.own?'own':'foe',isMoveActor(spot)?'double-caster-'+fx.stage:'',{'is-corrupted':spot.p?.corrupted,'is-target':targets.some(t=>t.side===spot.side&&t.slot===spot.slot),'is-fainted':spot.p?.fainted,'takes-hit':effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect.kind==='-damage','is-critical':effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect.kind==='-crit'}]" :style="{'--x':spot.x+'%','--y':spot.y+'%'}">
+   <div v-for="spot in spots" :key="spot.key" :ref="spot.key" :data-double-position="spot.key" class="double-combatant" :class="[spot.own?'own':'foe',isMoveActor(spot)?'double-caster-'+fx.stage:'',{'is-corrupted':spot.p?.corrupted,'is-target':targets.some(t=>t.side===spot.side&&t.slot===spot.slot),'is-fainted':spot.p?.fainted,'takes-hit':effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect.kind==='-damage','is-critical':effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect.kind==='-damage'&&effect.critical}]" :style="{'--x':spot.x+'%','--y':spot.y+'%'}">
     <button v-if="spot.p" class="double-target" :disabled="!targets.some(t=>t.side===spot.side&&t.slot===spot.slot)" @click="target(spot.side,spot.slot)" :aria-label="`Cibler ${spot.p.name}`">
      <span class="double-card"><span><b>{{ spot.p.name }}</b><small>N. {{ spot.p.level }} {{ spot.p.gender==='M'?'♂':spot.p.gender==='F'?'♀':'' }}</small></span><span class="double-hp"><i :style="{width:Math.max(0,spot.p.currentHp/spot.p.maxHp*100)+'%'}"/></span><small>{{ spot.p.currentHp }}/{{ spot.p.maxHp }} PV <span v-if="spot.p.status!=='normal'">· {{ status(spot.p.status) }}</span></small><em v-if="boostText(spot.p)">{{ boostText(spot.p) }}</em></span>
-     <pokemon-portrait :src="sprite(spot.p,spot.own)" :alt="spot.p.name" :class="{'double-recall':effect?.kind==='switch'&&effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot}"/>
+     <pokemon-portrait class="battle-tintable" :tint="tintStyle(spot)" :src="sprite(spot.p,spot.own)" :alt="spot.p.name" :class="{'double-recall':effect?.kind==='switch'&&effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot}"/>
      <span v-if="effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot&&effect?.amount" class="double-damage" :class="{'is-heal':effect.kind==='-heal'}">{{ effect.kind==='-heal'?'+':'−' }}{{ effect.amount }}</span>
      <battle-stat-change v-if="!reduced&&['-boost','-unboost'].includes(effect?.kind)&&effect?.actor?.side===spot.side&&effect?.actor?.slot===spot.slot" class="double-stat" :key="effect.id" :effects="[{kind:effect.delta>0?'up':'down',delta:effect.delta,key:effect.stat,text:statLabel(effect.stat)+' '+(effect.delta>0?'+':'')+effect.delta}]"/>
-     <battle-status-effect v-if="statusFx?.actor?.side===spot.side && statusFx?.actor?.slot===spot.slot" :key="statusFx.nonce" class="double-status-visual" :effect="statusFx" :reduced="reduced"/>
+     <battle-status-effect v-if="statusFx?.actor?.side===spot.side && statusFx?.actor?.slot===spot.slot" :key="statusFx.nonce" class="double-status-visual" :effect="statusFx" @finished="clearStatusFx" :reduced="reduced"/>
      <battle-persistent-effect v-if="spot.p.effects" class="double-persistent" :effects="spot.p.effects" :reduced="reduced"/>
      <span v-if="spot.own&&!spectator" class="double-owner">{{ control?.slots?.[spot.slot]?.ownerName }}<b v-if="control?.slots?.[spot.slot]?.delegated"> → {{ control.slots[spot.slot].controllerName }}</b></span>
     </button>
@@ -54,8 +54,9 @@ import BattleSandstorm from '../battle/BattleSandstorm.vue';
 import BattleWeatherInfo from '../battle/BattleWeatherInfo.vue';
 import {moveVisual} from '@/services/moveVisuals';
 import BattleStatusEffect from '../battle/BattleStatusEffect.vue';
-import {nativeStatusVisual,STATUS_VISUALS} from '@/services/battleStatusVisuals';
+import {nativeStatusVisual,effectSourceLabel} from '@/services/battleStatusVisuals';
 import {BATTLE_PACING,battleReadingTime,nativeEventPause} from '@/services/battlePacing';
+import {spriteTint} from '@/services/spriteTint';
 import {doubleMoveVisual} from '@/services/doubleMoveVisuals';
 import {localizeTypeName} from '@/services/pokemonTypes';
 const colors={Normal:'#92927b',Fire:'#cf7049',Water:'#558cc5',Electric:'#c6a841',Grass:'#66975d',Ice:'#65a9b1',Fighting:'#b56559',Poison:'#a36ca2',Ground:'#aa8855',Flying:'#8e8fbe',Psychic:'#c16d92',Bug:'#8a993f',Rock:'#a49860',Ghost:'#8172a6',Dragon:'#7978be',Dark:'#817064',Steel:'#859aa2',Fairy:'#c68eae'};
@@ -67,6 +68,8 @@ export default {
  mounted(){this._previousFocus=document.activeElement;this.$refs.dialog.focus({preventScroll:true});this._resize=new ResizeObserver(entries=>{this.narrow=entries[0].contentRect.width<641;});this._resize.observe(this.$refs.stage);this._visibility=()=>{if(document.hidden){this._readUntil=0;for(const finish of this._waiters||[])finish();this.statusFx=null;}};document.addEventListener('visibilitychange',this._visibility);},
  beforeDestroy(){if(this._previousFocus?.isConnected)this._previousFocus.focus({preventScroll:true});this._resize?.disconnect();document.removeEventListener('visibilitychange',this._visibility);this._closed=true;for(const finish of this._waiters||[])finish();},
  methods:{
+ clearStatusFx(nonce){if(this.statusFx?.nonce===nonce)this.statusFx=null;},
+ tintStyle(spot){const active=this.effect?.actor?.side===spot.side&&this.effect?.actor?.slot===spot.slot;return spriteTint(this.statusFx?.actor?.side===spot.side&&this.statusFx?.actor?.slot===spot.slot?this.statusFx:null,active&&['-boost','-unboost'].includes(this.effect.kind)?[{kind:this.effect.delta>0?'up':'down'}]:[],this.reduced,'drop-shadow(0 5px 3px #192f4244)');},
  async holdNarration(){const ms=(this._readUntil||0)-performance.now();if(ms>0&&!document.hidden)await this.sleep(ms);},
  async narrate(text,move=false){if(!text)return;await this.holdNarration();if(this._closed)return;this.message=text;this._readUntil=performance.now()+battleReadingTime(text,{move,hidden:document.hidden});},
  statusCue(e){const cue=nativeStatusVisual(e);if(cue&&e.actor){this.statusFx={...cue,actor:e.actor,nonce:++this.statusNonce};return cue;}return null;},
@@ -80,9 +83,12 @@ export default {
   const events=frame.events||[];
   for(let n=0;n<events.length;n++){
    const e=events[n];if(this._closed)break;
+   if(e.kind==='-crit')continue;
    const cue=nativeStatusVisual(e);
    const residual=e.kind==='-damage'&&e.direct===false;
-   const message=residual&&cue?`${this.display.active[e.actor?.side]?.[e.actor?.slot]?.name} · ${STATUS_VISUALS[cue.status].label}.`:e.message;
+   const reason=effectSourceLabel(e);
+   const message=residual&&reason?`${this.display.active[e.actor?.side]?.[e.actor?.slot]?.name} · ${reason}.`:e.message;
+   if(residual||cue||['-boost','-unboost'].includes(e.kind)){await this.finishMoveFx();this.fx=null;}
    if(e.kind==='move'){await this.finishMoveFx();await this.sleep(this.reduced||document.hidden?0:BATTLE_PACING.actionPause);}
    if(message&&!(e.kind==='-damage'&&!residual))await this.narrate(message,e.kind==='move');
    if(this._closed)break;
@@ -97,6 +103,7 @@ export default {
      // residual damage never masquerade as another successful move impact.
      if(e.kind==='-damage'&&e.direct!==false&&this.fx){const target=this.fx.fullTargets.find(t=>t.side===e.actor.side&&t.slot===e.actor.slot);if(target?.connected){const key=`${e.actor.side}:${e.actor.slot}`,seen=this._moveHitCount[key]||0;
       if(seen>0&&target.hits>1&&!this.reduced){this.fx={...this.fx,stage:'travel',travelMs:BATTLE_PACING.hitGap,result:{success:true,hits:1},path:{...this.fx.path,targets:[target]}};await this.sleep(BATTLE_PACING.hitGap);}
+      if(target.critical){this.effect.critical=true;this.message='Coup critique !';this._readUntil=performance.now()+battleReadingTime(this.message);}
       this._moveHitCount[key]=seen+1;this._impactAt=performance.now();this.fx={...this.fx,stage:'impact',pulse:(this.fx.pulse||0)+1,result:{success:true,hits:1,critical:target.critical},path:{...this.fx.path,targets:[target]}};}}
      if(e.kind==='-heal'&&this.fx?.family==='drain'&&!this.reduced){this.fx={...this.fx,stage:'drain',path:{...this.fx.path,targets:this.fx.fullTargets.filter(t=>t.connected)}};await this.sleep(BATTLE_PACING.drain);}
      this.effect.amount=Math.abs(p.currentHp-e.hp);this.$set(p,'currentHp',e.hp);if(e.maxHp)this.$set(p,'maxHp',e.maxHp);

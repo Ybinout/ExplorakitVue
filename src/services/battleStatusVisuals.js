@@ -63,3 +63,7 @@ export function narratedStatusVisual(message, fighters) {
   else if (/^(?:perd|est draine).*(?:vampigraine)/.test(s)) status='seed';
   return status ? {side:match.side,status,phase,uuid:match.pokemon.uuid} : null;
 }
+
+export function statusEffectDuration(effect){return ['poison','burn'].includes(effect?.status)?1100:860;}
+
+export function effectSourceLabel(event){const cue=nativeStatusVisual(event);if(cue)return STATUS_VISUALS[cue.status].label;return ({sandstorm:'Tempête de sable',hail:'Grêle',grassyterrain:'Terrain Herbu',stealthrock:'Piège de Roc',spikes:'Picots'})[id(event?.source)]||'';}

@@ -1,3 +1,4 @@
+import {drawMoveVariant} from './moveVariantEffects.js';
 import { ELEMENTS } from './moveVisuals.js';
 import { drawElementAccents } from './moveElementAccents.js';
 const TAU=Math.PI*2,clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
@@ -71,7 +72,17 @@ export class MoveEffectRenderer {
   }c.globalAlpha=1;
  }
  streak(x,y,angle,length,color,width){this.line(x-Math.cos(angle)*length,y-Math.sin(angle)*length,x,y,color,width);}
- bolt(x1,y1,x2,y2,t,width=4){const c=this.c,p=this.palette;c.beginPath();c.moveTo(x1,y1);for(let n=1;n<=10;n++){const u=n/10,k=Math.sin(n*11.2+Math.floor(t*8))*((n===10)?0:12*this.unit);c.lineTo(lerp(x1,x2,u)+k,lerp(y1,y2,u)-k*.4);}c.strokeStyle=p.dark;c.lineWidth=width*2.7;c.stroke();c.strokeStyle=p.ink;c.lineWidth=width*1.5;c.stroke();c.strokeStyle=p.light;c.lineWidth=width*.45;c.stroke();}
+ bolt(x1,y1,x2,y2,t,width=4){const c=this.c,p=this.palette;c.beginPath();c.moveTo(x1,y1);for(let n=1;n<=10;n++){const u=n/10,k=Math.sin(n*11.2+t*18)*((n===10)?0:12*this.unit);c.lineTo(lerp(x1,x2,u)+k,lerp(y1,y2,u)-k*.4);}c.strokeStyle=p.dark;c.lineWidth=width*2.7;c.stroke();c.strokeStyle=p.ink;c.lineWidth=width*1.5;c.stroke();c.strokeStyle=p.light;c.lineWidth=width*.45;c.stroke();}
+ flowingBeam(x1,y1,x2,y2,width,t){
+  const c=this.c,k=this.palette,s=this.unit,dx=x2-x1,dy=y2-y1,a=Math.atan2(dy,dx),steps=this.quality<.6?10:16;
+  const gentle=['water-jet','water-cannon','frost-beam','solar-lance'].includes(this.fx.style),amplitude=(gentle?3:7)*s+width*.17;
+  const pulse=.9+.1*Math.sin(t*TAU*4),frequency=this.fx.variant==='helix-stream'?3:2;
+  for(let layer=0;layer<3;layer++){
+   c.beginPath();c.moveTo(x1,y1);let lastX=x1,lastY=y1;
+   for(let n=1;n<=steps;n++){const u=n/steps,off=Math.sin(u*TAU*frequency-t*12+layer*.2)*amplitude*Math.sin(u*Math.PI);const x=x1+dx*u-Math.sin(a)*off,y=y1+dy*u+Math.cos(a)*off;c.quadraticCurveTo(lastX,lastY,(lastX+x)/2,(lastY+y)/2);lastX=x;lastY=y;}
+   c.quadraticCurveTo(lastX,lastY,x2,y2);c.lineCap='round';c.lineJoin='round';c.strokeStyle=layer===0?k.dark:layer===1?k.ink:k.light;c.lineWidth=width*pulse*(layer===0?2.4:layer===1?1.5:.42);c.stroke();
+  }
+ }
  beam(target,t){const p=this.path,c=this.c,k=this.palette,x=lerp(p.startX,target.x,ease(t)),y=lerp(p.startY,target.y,ease(t)),a=Math.atan2(y-p.startY,x-p.startX),s=this.unit,style=this.fx.style;
   if(['lightning-chain','charge-beam','volt-return'].includes(style)){this.bolt(p.startX,p.startY,x,y,t,4*s);return;}
   const stream=style==='flame-stream'||style==='dragon-breath'||style==='bubble-stream',width=(style==='hyper-beam'?19:style==='water-cannon'?14:8)*s*Math.min(this.presence,1.6)*(.65+this.fx.intensity*.6);
@@ -79,10 +90,10 @@ export class MoveEffectRenderer {
    if(style!=='bubble-stream'){
     const length=Math.hypot(x-p.startX,y-p.startY),breadth=(style==='flame-stream'?19:13)*s*Math.min(this.presence,1.5);c.save();c.translate(p.startX,p.startY);c.rotate(a);
     for(let layer=0;layer<2;layer++){const w=breadth*(layer? .65:1);c.beginPath();c.moveTo(0,-2*s);for(let n=1;n<=16;n++){const u=n/16;c.lineTo(u*length,-w*(.2+u)*(.8+Math.sin(n*.9-t*13)*.2));}for(let n=16;n>=1;n--){const u=n/16;c.lineTo(u*length,w*(.2+u)*(.8+Math.sin(n*.9-t*13+1.3)*.2));}c.closePath();c.fillStyle=layer?k.ink:k.dark;c.fill();}
-    this.line(0,0,length,0,k.light,4*s);c.restore();
+    c.beginPath();c.moveTo(0,0);for(let n=1;n<=16;n++){const u=n/16;c.lineTo(u*length,Math.sin(u*TAU*2-t*12)*3*s*Math.sin(u*Math.PI));}c.strokeStyle=k.light;c.lineWidth=4*s;c.stroke();c.restore();
    }
    for(let n=0;n<Math.floor(22*this.quality);n++){const u=fract(n/22+t*1.7),px=lerp(p.startX,x,u),py=lerp(p.startY,y,u)+Math.sin(n*2+t*12)*9*s*u;c.globalAlpha=.6+.4*u;this.particle(style==='bubble-stream'?'bubble':this.palette.shape,px,py,(4+u*7)*s,a+t*2);}c.globalAlpha=1;}
-  else{this.line(p.startX,p.startY,x,y,k.dark,width*2.4);this.line(p.startX,p.startY,x,y,k.ink,width*1.5);this.line(p.startX,p.startY,x,y,k.light,width*.45);}
+  else this.flowingBeam(p.startX,p.startY,x,y,width,t);
   if(style==='psy-beam'||style==='aurora-beam'||style==='dragon-beam'){
    for(let band=0;band<2;band++){c.beginPath();for(let n=0;n<=18;n++){const u=n/18,off=Math.sin(u*TAU*2-t*8+band*Math.PI)*13*s;const xx=lerp(p.startX,x,u)-Math.sin(a)*off,yy=lerp(p.startY,y,u)+Math.cos(a)*off;if(n===0)c.moveTo(xx,yy);else c.lineTo(xx,yy);}c.strokeStyle=band?k.light:k.ink;c.lineWidth=(band?2:4)*s;c.stroke();}
   }
@@ -220,7 +231,7 @@ export class MoveEffectRenderer {
    }
   }
   }
-  drawElementAccents(this,stage,t);
+  this.stats.variantParticles=0;drawElementAccents(this,stage,t);drawMoveVariant(this,targets,t,stage);
   c.restore();const cost=this.now()-began;this.stats.frames++;this.stats.drawMs+=(cost-this.stats.drawMs)*.12;this.stats.maxDrawMs=Math.max(this.stats.maxDrawMs,cost);
   if(this.stats.frames>8&&this.stats.drawMs>3&&this.quality>.5)this.quality=Math.max(.45,this.quality-.15);this.stats.quality=this.quality;
  }
