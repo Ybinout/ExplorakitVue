@@ -313,6 +313,7 @@ import {spriteTint} from '@/services/spriteTint';
 import {isMoveAnnouncement,moveAnnouncementDuration} from '@/services/battleNarration';
 import { playExperienceGain } from '@/services/experiencePlayback';
 import { BattleAudio } from '@/services/battleAudio';
+import {moveOrigin} from '@/services/moveOrigin';
 import { battleMusicTrack, trainerPreludeMusicTrack } from '@/services/battleMusic';
 import { SequencedMusic } from '@/services/sequencedMusic';
 import moveReference from '@/data/pokemonReference.fr.json';
@@ -696,7 +697,7 @@ export default {
     this.syncAudio();
     window.addEventListener('pointerdown', this.resumeAudio);
     window.addEventListener('pointerup', this.resumeAudio);
-    window.addEventListener('keydown', this.resumeAudio);
+    window.addEventListener('keydown', this.resumeAudio,true);
     document.addEventListener('visibilitychange', this.syncAudio);
   },
   updated() { this.measureFeedback(); },
@@ -710,7 +711,7 @@ export default {
     clearTimeout(this.experienceTimer);
     window.removeEventListener('pointerdown', this.resumeAudio);
     window.removeEventListener('pointerup', this.resumeAudio);
-    window.removeEventListener('keydown', this.resumeAudio);
+    window.removeEventListener('keydown', this.resumeAudio,true);
     document.removeEventListener('visibilitychange', this.syncAudio);
     this.clearAllTimers();
     this._battleAudio?.dispose();
@@ -1146,7 +1147,7 @@ export default {
         await this.transitionWait(Math.max(0,move.windupMs-(performance.now()-(this._moveWindupAt||0))));if(epoch!==this.visualEpoch)return;
         // No HP changes until the projectile/beam reaches its target. The queued
         // server result is authoritative for misses, immunity and protection.
-        this.movePath = this.buildMovePath(move.actor,move.damageClass,move.moveTarget);
+        this.movePath = this.buildMovePath(move.actor,move.damageClass,move.moveTarget,move);
         this.movePath.groundY = this.getSpriteGeometry(move.actor === 'opponent' ? 'player' : 'wild').bottomY - 4;
         move.stage = 'travel';
         await this.transitionWait(move.travelMs);
@@ -1271,6 +1272,7 @@ export default {
     showCriticalAtImpact(){if(this._criticalNarrationShown)return;this._criticalNarrationShown=true;this.showMessage(this._deferredCriticalText||(this.preferences.language==='en'?'Critical hit!':'Coup critique !'),true);this._deferredCriticalText=null;},
     revealMoveFeedback(){
       const pending=this._pendingResultFeedback;if(!pending)return;this._pendingResultFeedback=null;
+      if(pending.labels.some(e=>e.key==='miss'))this.playCombatCue({kind:'miss'});
       clearTimeout(this.resultTimer);Object.assign(this.resultFx,pending,{visible:pending.labels.length>0,nonce:this.resultFx.nonce+1});
       this.resultTimer=setTimeout(()=>{this.resultFx.visible=false;},1000);
     },
@@ -1321,8 +1323,8 @@ export default {
       return {left:`${g.centerX-size/2}px`,top:`${g.centerY-size/2}px`,width:`${size}px`,height:`${size}px`};
     },
     playStatusVisual(side,effect) {
-      if(this.reducedMotion())return;
-      this.$set(this.statusVisuals,side,{...effect,nonce:++this.statusVisualNonce});
+      if(!this.reducedMotion())this.$set(this.statusVisuals,side,{...effect,nonce:++this.statusVisualNonce});
+      this.playCombatCue({kind:'status',status:effect.status});
     },
     conditionPosition(side) {
       const geometry = this.getSpriteGeometry(side);
@@ -1345,6 +1347,7 @@ export default {
       this.conditionNotice = ['player','wild'].filter(side=>changes[side].length).map(side=>`${side==='player'?'Allié':'Adversaire'} · ${changes[side].map(e=>e.text).join(' · ')}`).join(' / ');
       this.conditionNonce++;
       this.conditionFx = this.reducedMotion() ? {player:[],wild:[]} : changes;
+      for(const kind of new Set([...changes.player,...changes.wild].filter(e=>e.kind==='up'||e.kind==='down').map(e=>'stat-'+e.kind)))this.playCombatCue({kind});
       for(const side of ['player','wild']){const effect=changes[side].map(conditionStatusVisual).find(Boolean);if(effect)this.playStatusVisual(side,effect);}
       this.conditionTimer = setTimeout(()=>{this.conditionFx={player:[],wild:[]};this.conditionNotice='';},Math.max(1300,STAT_CHANGE_DURATION+120));
     },
@@ -1473,15 +1476,16 @@ export default {
         width: `${maxWidth}px`, maxHeight: `${Math.max(1, bottomLimit - topLimit)}px`
       };
     },
-    buildMovePath(actor, damageClass, moveTarget) {
+    buildMovePath(actor, damageClass, moveTarget, profile = {}) {
       const sourceSide = actor === 'opponent' ? 'wild' : 'player';
       const targetSide = actor === 'opponent' ? 'player' : 'wild';
       const source = this.getSpriteGeometry(sourceSide);
       const target = damageClass === 'status' && moveTargetsSelf(moveTarget) ? source : this.getSpriteGeometry(targetSide);
       if (damageClass === 'status') return {startX:source.centerX,startY:source.centerY,targetX:target.centerX,targetY:target.centerY,groundY:target.bottomY-4};
+      const start=moveOrigin({x:source.centerX,y:source.centerY,width:source.width,height:source.height},{x:target.centerX,y:target.centerY},{own:actor!=='opponent',family:profile.family});
       return {
-        startX: source.centerX,
-        startY: source.centerY,
+        startX: start.x,
+        startY: start.y,
         targetX: target.centerX,
         targetY: target.centerY
       };
@@ -1563,7 +1567,7 @@ export default {
       clearTimeout(this.resultTimer); this.resultFx.visible = false;
       if (this.reducedMotion()) return;
       this._moveWindupAt=performance.now();
-      this.movePath = this.buildMovePath(actor, damageClass, payload.phase === 'prepare' ? 'self' : profile.target);
+      this.movePath = this.buildMovePath(actor, damageClass, payload.phase === 'prepare' ? 'self' : profile.target,profile);
       const targetSide = actor === 'opponent' ? 'player' : 'wild';
       this.movePath.groundY = this.getSpriteGeometry(targetSide).bottomY - 4;
       Object.assign(this.battleMoveFx, profile, {
@@ -1579,6 +1583,7 @@ export default {
       clearTimeout(this.criticalTimer);
       this.criticalFx.side = null;
       this.pendingCritical = critical ? {side, key:this.getPokemonBattleKey(side === 'player' ? this.currentPokemon : this.opponent)} : null;
+      this._pendingImpactSound=Number(payload.damage)>0&&moveConnected(payload)?{side,key:this.getPokemonBattleKey(side==='player'?this.currentPokemon:this.opponent),result:payload}:null;
       if (Number(payload.hits)>1 && !payload.missed && !payload.blocked && !payload.immune) {
         const side=payload.actor==='opponent'?'player':'wild';
         const hits=Math.min(10,Math.floor(Number(payload.hits)));
@@ -1623,7 +1628,10 @@ export default {
       }
       // Called only for the same Pokémon's authoritative HP change, after the
       // projectile/beam arrives. No launch sound, no duplicate critical/KO cue.
-      if (numericDelta < 0) this._battleAudio?.impact({
+      const sound=this._pendingImpactSound,direct=sound?.side===target&&sound.key===this.getPokemonBattleKey(target==='player'?this.currentPokemon:this.opponent);
+      if(direct)this._pendingImpactSound=null;
+      if (numericDelta < 0) this.playImpact({
+        direct,critical:direct&&sound.result.critical,effectiveness:direct?sound.result.effectiveness:1,
         damage: -numericDelta,
         maxHp: Number((target === 'player' ? this.currentPokemon : this.opponent)?.maxHp)
       });
@@ -1701,6 +1709,9 @@ export default {
       this.captureTimers = timers;
       return playback;
     },
+    playCombatCue(payload){if(this.soundEnabled&&this.audioVolume&&!document.hidden)this._battleAudio?.cue(payload);},
+    playImpact(payload){if(this.soundEnabled&&this.audioVolume&&!document.hidden)this._battleAudio?.impact(payload);},
+    stopCombatAudio(){this._battleAudio?.stop();},
     unlockAudio() {
       this.syncAudio();
       return this._battleAudio?.unlock();
@@ -1732,6 +1743,7 @@ export default {
       }
     },
     clearMoveFx() {
+      this._pendingImpactSound=null;
       this._pendingMoveHits=null;
       if (this.moveTimer) clearTimeout(this.moveTimer);
       this.moveTimer = null;

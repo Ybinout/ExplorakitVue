@@ -83,8 +83,24 @@ export class MoveEffectRenderer {
    c.quadraticCurveTo(lastX,lastY,x2,y2);c.lineCap='round';c.lineJoin='round';c.strokeStyle=layer===0?k.dark:layer===1?k.ink:k.light;c.lineWidth=width*pulse*(layer===0?2.4:layer===1?1.5:.42);c.stroke();
   }
  }
+ beamFlow(x1,y1,x2,y2,t,electric=false,width=8){
+  const c=this.c,k=this.palette,s=this.unit,dx=x2-x1,dy=y2-y1,a=Math.atan2(dy,dx);
+  const count=Math.max(3,Math.floor(32*this.quality/Math.max(1,this.targetCount))),amplitude=(electric?9:5)*s+width*.16;
+  this.stats.beamParticles=(this.stats.beamParticles||0)+count;
+  // Stratified motes cover the whole living beam even at its slowest frame.
+  for(let n=0;n<count;n++){
+   const seed=this.seeds[n],u=(n+fract(t*2.6+seed))/count;
+   const bend=Math.sin(u*TAU*2-t*12)*amplitude*Math.sin(u*Math.PI),orbit=Math.sin(t*14+n*2.4)*width*.28;
+   const x=x1+dx*u-Math.sin(a)*(bend+orbit),y=y1+dy*u+Math.cos(a)*(bend+orbit),size=(1.4+seed*2.4)*s;
+   c.globalAlpha=.45+.5*Math.sin(Math.PI*u);
+   this.streak(x,y,a,(5+seed*12)*s,k.light,size*.8);
+   this.particle(electric?'bolt':k.shape,x,y,size,a+t*2);
+   if(n%5===0){this.halo(x,y,size*3,.38);if(electric)this.bolt(x,y,x-Math.sin(a)*12*s,y+Math.cos(a)*12*s,t+n,1.1*s);}
+  }
+  c.globalAlpha=1;
+ }
  beam(target,t){const p=this.path,c=this.c,k=this.palette,x=lerp(p.startX,target.x,ease(t)),y=lerp(p.startY,target.y,ease(t)),a=Math.atan2(y-p.startY,x-p.startX),s=this.unit,style=this.fx.style;
-  if(['lightning-chain','charge-beam','volt-return'].includes(style)){this.bolt(p.startX,p.startY,x,y,t,4*s);return;}
+  if(['lightning-chain','charge-beam','volt-return'].includes(style)){this.bolt(p.startX,p.startY,x,y,t,(3.6+.5*Math.sin(t*TAU*4))*s);this.beamFlow(p.startX,p.startY,x,y,t,true,10*s);return;}
   const stream=style==='flame-stream'||style==='dragon-breath'||style==='bubble-stream',width=(style==='hyper-beam'?19:style==='water-cannon'?14:8)*s*Math.min(this.presence,1.6)*(.65+this.fx.intensity*.6);
   if(stream){
    if(style!=='bubble-stream'){
@@ -97,7 +113,7 @@ export class MoveEffectRenderer {
   if(style==='psy-beam'||style==='aurora-beam'||style==='dragon-beam'){
    for(let band=0;band<2;band++){c.beginPath();for(let n=0;n<=18;n++){const u=n/18,off=Math.sin(u*TAU*2-t*8+band*Math.PI)*13*s;const xx=lerp(p.startX,x,u)-Math.sin(a)*off,yy=lerp(p.startY,y,u)+Math.cos(a)*off;if(n===0)c.moveTo(xx,yy);else c.lineTo(xx,yy);}c.strokeStyle=band?k.light:k.ink;c.lineWidth=(band?2:4)*s;c.stroke();}
   }
-  for(let n=0;n<Math.floor(9*this.quality);n++){const u=fract(n/9+t*.65);this.particle(k.shape,lerp(p.startX,x,u)+Math.sin(n+t*7)*12*s,lerp(p.startY,y,u)+Math.cos(n+t*7)*12*s,3*s,a);}
+  this.beamFlow(p.startX,p.startY,x,y,t,false,width);
  }
  projectile(target,t){const p=this.path,c=this.c,style=this.fx.style,s=this.unit,angle=Math.atan2(target.y-p.startY,target.x-p.startX),scale=this.presence;
   const actualHits=clamp(Number(this.fx.result?.hits)||1,1,10),multi=['seed-volley','pin-volley','rock-volley','ice-volley'].includes(style);
@@ -199,7 +215,7 @@ export class MoveEffectRenderer {
  paintAt(ms){if(!this.c||!this.fx||!this.path)return;const began=this.now(),c=this.c,fx=this.fx,p=this.path,t=clamp(ms/this.duration()),stage=fx.stage;
   c.setTransform(this.dpr,0,0,this.dpr,0,0);c.clearRect(0,0,this.width,this.height);if(t>=1)return;c.save();
   if(this.exclusions.length){c.beginPath();c.rect(0,0,this.width,this.height);for(const r of this.exclusions)c.rect(r.x-2,r.y-2,r.width+4,r.height+4);c.clip('evenodd');}
-  c.lineJoin='round';c.lineCap='round';this.stats.particles=0;this.stats.elementParticles=0;
+  c.lineJoin='round';c.lineCap='round';this.stats.particles=0;this.stats.elementParticles=0;this.stats.beamParticles=0;
   const targets=this.targets;this.targetCount=Math.max(1,targets.length);
   if(stage==='windup'){
    const count=Math.floor((8+fx.intensity*12)*this.quality);for(let n=0;n<count;n++){const a=n*2.4+t*3,r=(1-t)*60*this.unit;this.particle(this.palette.shape,p.startX+Math.cos(a)*r,p.startY+Math.sin(a)*r*.55,(2+t*3)*this.unit*(this.presence>1?1.7:1),a);}

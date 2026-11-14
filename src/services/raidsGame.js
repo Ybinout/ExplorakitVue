@@ -145,7 +145,7 @@ export default {
       this.raidError = '';
     },
     raidImpact(data) {
-      this._feedbackAudio?.impact(data);
+      this.$refs.battleOverlay?.playImpact(data);
     }
   }
 };

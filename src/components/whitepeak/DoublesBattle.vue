@@ -53,6 +53,7 @@ import BattleSnow from '../battle/BattleSnow.vue';
 import BattleSandstorm from '../battle/BattleSandstorm.vue';
 import BattleWeatherInfo from '../battle/BattleWeatherInfo.vue';
 import {moveVisual} from '@/services/moveVisuals';
+import {moveOrigin} from '@/services/moveOrigin';
 import BattleStatusEffect from '../battle/BattleStatusEffect.vue';
 import {nativeStatusVisual,effectSourceLabel} from '@/services/battleStatusVisuals';
 import {BATTLE_PACING,battleReadingTime,nativeEventPause} from '@/services/battlePacing';
@@ -66,13 +67,13 @@ export default {
  computed:{weatherName(){return({raindance:'rain',sunnyday:'sun',sandstorm:'sandstorm',hail:'hail',snowscape:'snow'})[this.display?.weather]||null;},own(){return this.frame.active?.[this.frame.side]||[];},controls(){return this.control?.slots?.[this.slot];},decision(){return this.frame.request?.slots?.[this.slot];},canAct(){return !this.playing&&!this.loading&&!this.busy&&!this.control?.paused&&!!this.controls?.canControl&&!!this.decision?.required&&!this.frame.choices[this.slot];},prompt(){return this.canAct?'Choisis une capacité puis sa cible.':'Les dresseurs préparent leurs actions.';},targets(){return this.selectedMove?.targets||[];},spots(){const s=this.display||this.frame;return [0,1].flatMap(side=>[0,1].map(slot=>({side,slot,key:`double-${side}-${slot}`,p:s.active?.[side]?.[slot],own:side===this.frame.side,x:side===this.frame.side?(this.narrow?[18,50]:[18,43])[slot]:(this.narrow?[52,84]:[58,83])[slot],y:side===this.frame.side?100:this.narrow?50:60})));}},
  watch:{frame:{immediate:true,handler(frame){this._frames ||= [];this._frames.push(JSON.parse(JSON.stringify(frame)));this.play();}},'frame.turnId'(){this.selectedMove=null;this.reserves=false;this.autoSlot();},control(){this.autoSlot();}},
  mounted(){this._previousFocus=document.activeElement;this.$refs.dialog.focus({preventScroll:true});this._resize=new ResizeObserver(entries=>{this.narrow=entries[0].contentRect.width<641;});this._resize.observe(this.$refs.stage);this._visibility=()=>{if(document.hidden){this._readUntil=0;for(const finish of this._waiters||[])finish();this.statusFx=null;}};document.addEventListener('visibilitychange',this._visibility);},
- beforeDestroy(){if(this._previousFocus?.isConnected)this._previousFocus.focus({preventScroll:true});this._resize?.disconnect();document.removeEventListener('visibilitychange',this._visibility);this._closed=true;for(const finish of this._waiters||[])finish();},
+ beforeDestroy(){if(this._previousFocus?.isConnected)this._previousFocus.focus({preventScroll:true});this._resize?.disconnect();document.removeEventListener('visibilitychange',this._visibility);this._closed=true;this.$emit('audio-stop');for(const finish of this._waiters||[])finish();},
  methods:{
  clearStatusFx(nonce){if(this.statusFx?.nonce===nonce)this.statusFx=null;},
  tintStyle(spot){const active=this.effect?.actor?.side===spot.side&&this.effect?.actor?.slot===spot.slot;return spriteTint(this.statusFx?.actor?.side===spot.side&&this.statusFx?.actor?.slot===spot.slot?this.statusFx:null,active&&['-boost','-unboost'].includes(this.effect.kind)?[{kind:this.effect.delta>0?'up':'down'}]:[],this.reduced,'drop-shadow(0 5px 3px #192f4244)');},
  async holdNarration(){const ms=(this._readUntil||0)-performance.now();if(ms>0&&!document.hidden)await this.sleep(ms);},
  async narrate(text,move=false){if(!text)return;await this.holdNarration();if(this._closed)return;this.message=text;this._readUntil=performance.now()+battleReadingTime(text,{move,hidden:document.hidden});},
- statusCue(e){const cue=nativeStatusVisual(e);if(cue&&e.actor){this.statusFx={...cue,actor:e.actor,nonce:++this.statusNonce};return cue;}return null;},
+ statusCue(e){const cue=nativeStatusVisual(e);if(cue&&e.actor){this.statusFx={...cue,actor:e.actor,nonce:++this.statusNonce};this.$emit('cue',{kind:'status',status:cue.status});return cue;}return null;},
  areaMove:isAreaMove,onKey(e){if(e.key==='Escape'){this.selectedMove=null;this.reserves=false;}if(e.key!=='Tab')return;const list=[...this.$el.querySelectorAll('button:not(:disabled),input,textarea')].filter(n=>n.getClientRects().length);const first=list[0],last=list[list.length-1];if(e.shiftKey&&[first,this.$el].includes(document.activeElement)){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}},statLabel(s){return({atk:'Attaque',def:'Défense',spa:'Att. Spé.',spd:'Déf. Spé.',spe:'Vitesse',accuracy:'Précision',evasion:'Esquive'})[s]||s;},type:localizeTypeName,color(type){return colors[type]||colors.Normal;},status(s){return({brn:'BRÛ',psn:'PSN',tox:'PSN+',par:'PAR',slp:'SOM',frz:'GEL'})[s]||s;},boostText(p){return Object.entries(p.boosts||{}).filter(([,n])=>n).map(([s,n])=>`${({atk:'Att',def:'Déf',spa:'ASp',spd:'DSp',spe:'Vit',accuracy:'Préc',evasion:'Esq'})[s]||s} ${n>0?'+':''}${n}`).join(' · ');},sprite(p,back=false){return this.$pokemonSprite({...p,gender:p.gender==='F'?'female':p.gender==='M'?'male':'genderless',data:{id:p.pokemonId}},{side:back?'back':'front',animated:!this.reduced});},chooseSlot(slot){this.slot=slot;this.reserves=false;this.selectedMove=null;},autoSlot(){if(this.controls?.canControl&&!this.frame.choices[this.slot])return;const next=this.control?.slots?.find(s=>s.canControl&&!this.frame.choices[s.slot]);if(next)this.chooseSlot(next.slot);},move(m){if(!this.canAct)return;const selected=['normal','any','adjacentAlly','adjacentAllyOrSelf'].includes(m.target);if(selected){this.selectedMove=m;if(m.targets.length===1)this.submitMove(m.targets[0].loc);}else{this.selectedMove=m;if(!this.areaMove(m))this.submitMove();}},target(side,slot){if(this.areaMove(this.selectedMove))return;const t=this.targets.find(t=>t.side===side&&t.slot===slot);if(t)this.submitMove(t.loc);},submitMove(targetLoc){const m=this.selectedMove;if(m)this.submit({action:'attack',moveIndex:m.index,targetLoc});},submit(payload){if(!this.canAct)return;this.$emit('action',{...payload,slot:this.slot,turnId:this.frame.turnId,controlRevision:this.controls.revision});this.selectedMove=null;this.reserves=false;},sleep(ms){if(this._closed||document.hidden)return Promise.resolve();return new Promise(resolve=>{this._waiters ||= new Set();const finish=()=>{clearTimeout(timer);this._waiters.delete(finish);resolve();};const timer=setTimeout(finish,ms);this._waiters.add(finish);});},
  async preload(frame){const urls=[hallBackground,...frame.active.flat().filter(Boolean).map(p=>this.sprite(p))];await Promise.race([Promise.all(urls.map(src=>new Promise(resolve=>{const img=new Image();img.onload=img.onerror=resolve;img.src=src;}))),this.sleep(5000)]);},
  async play(){
@@ -83,7 +84,7 @@ export default {
   const events=frame.events||[];
   for(let n=0;n<events.length;n++){
    const e=events[n];if(this._closed)break;
-   if(e.kind==='-crit')continue;
+   if(['-crit','-supereffective','-resisted'].includes(e.kind))continue;
    const cue=nativeStatusVisual(e);
    const residual=e.kind==='-damage'&&e.direct===false;
    const reason=effectSourceLabel(e);
@@ -106,12 +107,13 @@ export default {
       if(target.critical){this.effect.critical=true;this.message='Coup critique !';this._readUntil=performance.now()+battleReadingTime(this.message);}
       this._moveHitCount[key]=seen+1;this._impactAt=performance.now();this.fx={...this.fx,stage:'impact',pulse:(this.fx.pulse||0)+1,result:{success:true,hits:1,critical:target.critical},path:{...this.fx.path,targets:[target]}};}}
      if(e.kind==='-heal'&&this.fx?.family==='drain'&&!this.reduced){this.fx={...this.fx,stage:'drain',path:{...this.fx.path,targets:this.fx.fullTargets.filter(t=>t.connected)}};await this.sleep(BATTLE_PACING.drain);}
-     this.effect.amount=Math.abs(p.currentHp-e.hp);this.$set(p,'currentHp',e.hp);if(e.maxHp)this.$set(p,'maxHp',e.maxHp);
+     this.effect.amount=Math.abs(p.currentHp-e.hp);this.$set(p,'currentHp',e.hp);if(e.maxHp)this.$set(p,'maxHp',e.maxHp);if(e.kind==='-damage'&&this.effect.amount){const t=this.fx?.fullTargets?.find(t=>t.side===e.actor.side&&t.slot===e.actor.slot);this.$emit('impact',{damage:this.effect.amount,maxHp:p.maxHp,direct:e.direct!==false,critical:e.direct!==false&&t?.critical,effectiveness:e.direct!==false?t?.effectiveness:1});}
     }
    }
    if(['-status','-curestatus'].includes(e.kind)&&e.actor){const p=this.display.active[e.actor.side]?.[e.actor.slot];if(p)this.$set(p,'status',e.kind==='-curestatus'?'normal':e.effect);}
    if(e.kind==='faint'&&e.actor&&this.display.active[e.actor.side]?.[e.actor.slot])this.$set(this.display.active[e.actor.side][e.actor.slot],'fainted',true);
-   if(['-boost','-unboost'].includes(e.kind)&&e.actor){const p=this.display.active[e.actor.side]?.[e.actor.slot];if(p)this.$set(p,'boosts',{...p.boosts,[e.stat]:Math.min(6,Math.max(-6,(p.boosts?.[e.stat]||0)+e.delta))});}
+   if(['-boost','-unboost'].includes(e.kind)&&e.actor){this.$emit('cue',{kind:e.kind==='-boost'?'stat-up':'stat-down'});const p=this.display.active[e.actor.side]?.[e.actor.slot];if(p)this.$set(p,'boosts',{...p.boosts,[e.stat]:Math.min(6,Math.max(-6,(p.boosts?.[e.stat]||0)+e.delta))});}
+   if(e.kind==='-miss')this.$emit('cue',{kind:'miss'});
    if(['-immune','-miss','-fail'].includes(e.kind)&&this.fx){const point=this.point(e.kind==='-miss'?e.target:e.actor);this.fx={...this.fx,stage:'miss',path:{...this.fx.path,targets:[{...point,connected:false}]}};}
    await this.sleep(document.hidden?0:['-boost','-unboost'].includes(e.kind)?(this.reduced?20:STAT_CHANGE_DURATION):this.reduced?20:nativeEventPause(e,cue));
    this.statusFx=null;
@@ -121,7 +123,7 @@ export default {
 },
  point(actor){
   const spot=this.spots.find(s=>s.side===actor?.side&&s.slot===actor?.slot),stage=this.$refs.stage,ref=spot&&this.$refs[spot.key],node=(Array.isArray(ref)?ref[0]:ref)?.querySelector('.pokemon-portrait');
-  if(node&&stage){const a=node.getBoundingClientRect(),b=stage.getBoundingClientRect();return{x:a.left-b.left+a.width/2,y:a.top-b.top+a.height*.5,groundY:a.bottom-b.top-5};}
+  if(node&&stage){const a=node.getBoundingClientRect(),b=stage.getBoundingClientRect();return{x:a.left-b.left+a.width/2,y:a.top-b.top+a.height*.5,width:a.width*.78,height:a.height*.78,groundY:a.bottom-b.top-5};}
   if(!spot||!stage)return{x:0,y:0,groundY:0};return{x:stage.clientWidth*spot.x/100,y:stage.clientHeight*(spot.y-14)/100,groundY:stage.clientHeight*spot.y/100};
  },
  isMoveActor(spot){return this.fx&&['charge','punch'].includes(this.fx.family)&&this.fx.actor?.side===spot.side&&this.fx.actor?.slot===spot.slot;},
@@ -132,7 +134,8 @@ export default {
  async animate(e,plan){
   await this.finishMoveFx();if(this._closed)return;
   await this.$nextTick();const targets=plan.targets.map(t=>({...t,...this.point(t)})),target=targets[0]||this.point(e.target),start=e.delayed?{x:target.x,y:target.y-80}:this.point(e.actor),v=moveVisual({moveName:e.moveName,moveType:e.moveType,power:e.power,damageClass:e.category?.toLowerCase(),moveTarget:e.moveTarget,phase:plan.prepared?'prepare':undefined});
-  const fx={...v,id:Math.random(),actor:e.actor,result:{success:!plan.failed,hits:1},stage:'windup',fullTargets:targets,path:{startX:start.x,startY:start.y,targetX:target.x,targetY:target.y,groundY:target.groundY,targets}};
+  const origin=moveOrigin(start,target,{own:e.actor?.side===this.frame.side,family:v.family,self:['self','allySide','allyTeam'].includes(e.moveTarget),delayed:e.delayed||plan.prepared});
+  const fx={...v,id:Math.random(),actor:e.actor,result:{success:!plan.failed,hits:1},stage:'windup',fullTargets:targets,path:{startX:origin.x,startY:origin.y,targetX:target.x,targetY:target.y,groundY:target.groundY,targets}};
   this._moveHitCount={};this.fx=fx;await this.sleep(this.reduced?0:v.windupMs);if(this._closed)return;
   this.fx={...fx,stage:plan.prepared?'windup':'travel'};await this.sleep(this.reduced?20:v.travelMs);if(this._closed)return;
   this.fx={...fx,stage:plan.failed?'miss':plan.prepared?'await':e.category==='Status'?'aura':'await'};

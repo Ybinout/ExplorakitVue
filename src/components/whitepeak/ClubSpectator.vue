@@ -1,6 +1,6 @@
 <template>
  <div class="club-spectator" @keydown.esc.stop.prevent="$emit('close')" @keydown.stop @keyup.stop role="dialog" aria-modal="true" aria-label="Tribunes de la maison des combats" data-club-spectator>
-  <doubles-battle v-if="doubleFrame" :frame="doubleFrame" spectator settled :reduced="!preferences.animationsEnabled" @close="$emit('close')"/>
+  <doubles-battle @cue="$refs.battle && $refs.battle.playCombatCue($event)" @impact="$refs.battle && $refs.battle.playImpact($event)" @audio-stop="$refs.battle && $refs.battle.stopCombatAudio()" v-if="doubleFrame" :frame="doubleFrame" spectator settled :reduced="!preferences.animationsEnabled" @close="$emit('close')"/>
   <battle-overlay v-show="!doubleFrame" ref="battle" :active="!doubleFrame" :external-music-active="!!doubleFrame" read-only :mobile="mobile" map-name="ville5_maison1" :preferences="preferences"/>
   <div v-if="!doubleFrame" class="spectator-ribbon"><span><i :class="{live:!result}"/>{{ result?'Duel terminé':'Spectateur · En direct' }}<small>{{ start.names.join(' contre ') }}</small></span><button ref="close" data-close-club-watch @click="$emit('close')">{{ result?'Retour dans la salle':'Quitter les tribunes' }} ×</button></div>
   <div v-if="result && !doubleFrame" class="spectator-result" role="status">{{ result.refunded?'Le duel est terminé. Les mises ont été rendues.':'Le résultat du duel a été enregistré.' }}</div>

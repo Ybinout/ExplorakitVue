@@ -3,7 +3,7 @@ const live=p=>p&&p.currentHp>0&&!p.withdrawn;
 export function raidMovePlan(events, index, frame) {
   const move=events[index], outcomes=[];
   for(let n=index+1;n<events.length&&!['move','upkeep','turn'].includes(events[n].kind);n++)outcomes.push(events[n]);
-  const results=new Map(),add=slot=>{if(slot!==null&&slot!==undefined&&!results.has(slot))results.set(slot,{slot,connected:true,hits:0,critical:false});};
+  const results=new Map(),add=slot=>{if(slot!==null&&slot!==undefined&&!results.has(slot))results.set(slot,{slot,connected:true,hits:0,critical:false,effectiveness:1});};
   if(['allAdjacent','allAdjacentFoes','all','allies','allySide','allyTeam'].includes(move.moveTarget)){
     if(move.slot===4){if(!['allies','allySide','allyTeam'].includes(move.moveTarget))frame.allies.forEach((p,i)=>{if(live(p))add(i);});else add(4);}
     else {
@@ -17,6 +17,8 @@ export function raidMovePlan(events, index, frame) {
     const target=results.get(e.kind==='-miss'?e.target:e.slot);if(!target)continue;
     if(['-immune','-miss'].includes(e.kind)||e.kind==='-activate'&&/Protect|Wide Guard|Mat Block|Quick Guard/.test(e.effect||''))target.connected=false;
     if(e.kind==='-crit')target.critical=true;
+    if(e.kind==='-supereffective')target.effectiveness=2;
+    if(e.kind==='-resisted')target.effectiveness=.5;
     if(e.kind==='-damage'&&e.direct!==false)target.hits++;
   }
   if(prepared||failed)for(const t of results.values())t.connected=false;

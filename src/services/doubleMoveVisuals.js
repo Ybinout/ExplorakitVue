@@ -6,7 +6,7 @@ export function doubleMoveVisual(events,index,active=[]) {
  const prepared=next.some(e=>e.kind==='-prepare');
  const failed=next.some(e=>e.kind==='-fail'&&key(e.actor)===key(move.actor));
  const results=new Map();
- const add=p=>{if(p&&!results.has(key(p)))results.set(key(p),{...p,connected:!failed&&!prepared,hits:0,critical:false});};
+ const add=p=>{if(p&&!results.has(key(p)))results.set(key(p),{...p,connected:!failed&&!prepared,hits:0,critical:false,effectiveness:1});};
  if(['allAdjacent','allAdjacentFoes'].includes(move.moveTarget)){
   for(let side=0;side<2;side++)for(let slot=0;slot<2;slot++)if(active[side]?.[slot]&&!active[side][slot].fainted&&(side!==move.actor.side||move.moveTarget==='allAdjacent'&&slot!==move.actor.slot))add({side,slot});
  }else add(move.target||(['self','allySide'].includes(move.moveTarget)?move.actor:{side:1-move.actor.side,slot:0}));
@@ -16,6 +16,8 @@ export function doubleMoveVisual(events,index,active=[]) {
   const p=results.get(key(e.kind==='-miss'?e.target:e.actor));if(!p)continue;
   if(['-miss','-immune'].includes(e.kind)||e.kind==='-activate'&&/Protect|Wide Guard|Mat Block|Quick Guard/.test(e.effect))p.connected=false;
   if(e.kind==='-crit')p.critical=true;
+  if(e.kind==='-supereffective')p.effectiveness=2;
+  if(e.kind==='-resisted')p.effectiveness=.5;
   if(direct)p.hits++;
  }
  return {prepared,failed,targets:[...results.values()],events:next};

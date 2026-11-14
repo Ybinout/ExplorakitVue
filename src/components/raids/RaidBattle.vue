@@ -69,6 +69,7 @@ import BattleSnow from '../battle/BattleSnow.vue';
 import BattleSandstorm from '../battle/BattleSandstorm.vue';
 import BattleWeatherInfo from '../battle/BattleWeatherInfo.vue';
 import { moveVisual } from '@/services/moveVisuals';
+import {moveOrigin} from '@/services/moveOrigin';
 import BattleStatusEffect from '../battle/BattleStatusEffect.vue';
 import {nativeStatusVisual,STATUS_VISUALS,statusEffectDuration,effectSourceLabel} from '@/services/battleStatusVisuals';
 import {BATTLE_PACING,battleReadingTime} from '@/services/battlePacing';
@@ -203,7 +204,7 @@ export default {
     });
   },
   beforeDestroy() {
-    this._closed = true;
+    this._closed = true;this.$emit('audio-stop');
     document.removeEventListener('visibilitychange',this._visibility);
     this._consoleObserver?.disconnect();
     cancelAnimationFrame(this._consoleMeasure);
@@ -219,7 +220,7 @@ export default {
     say(text,move=false){this.message=text;this._readUntil=performance.now()+battleReadingTime(text,{move,hidden:document.hidden});},
     async holdNarration(){const ms=(this._readUntil||0)-performance.now();if(ms>0&&!document.hidden)await this.sleep(ms);},
     statusPosition(slot){const p=this.point(slot),size=slot===4?210:190;return {left:`${p.x-size/2}px`,top:`${p.y-size/2}px`,width:`${size}px`,height:`${size}px`};},
-    async statusCue(e){const cue=nativeStatusVisual(e);if(!cue)return null;await this.finishMoveFx();this.fx=null;if(e.slot<4)await this.focusAlly(e.slot);if(this._closed)return null;this.statusFx={...cue,slot:e.slot,nonce:++this.statusNonce};return cue;},
+    async statusCue(e){const cue=nativeStatusVisual(e);if(!cue)return null;await this.finishMoveFx();this.fx=null;if(e.slot<4)await this.focusAlly(e.slot);if(this._closed)return null;this.statusFx={...cue,slot:e.slot,nonce:++this.statusNonce};this.$emit('cue',{kind:'status',status:cue.status});return cue;},
     measureConsole() {
       cancelAnimationFrame(this._consoleMeasure);
       this._consoleMeasure = requestAnimationFrame(() => {
@@ -376,7 +377,7 @@ export default {
         p = node.getBoundingClientRect();
       return {
         x: p.left - r.left + p.width / 2,
-        y: p.top - r.top + p.height * .5,
+        y: p.top - r.top + p.height * .5,width:p.width*.78,height:p.height*.78,
         groundY: p.bottom - r.top
       };
     },
@@ -415,7 +416,8 @@ export default {
       // The large visible Pokémon receives the scene effect; the other allies
       // receive individual impacts and exact damage on their four persistent cards.
       const targets=fullTargets.filter(t=>t.slot===4||t.slot===this.shown),end=targets[0]||this.point(e.target??4);
-      const fx={...v,id:Math.random(),stage:'windup',windupMs:Math.max(v.windupMs,timing.windupMinMs),travelMs:Math.max(v.travelMs,timing.travelMinMs),impactMs:Math.max(v.impactMs,timing.impactMinMs),fullTargets,result:{success:!plan.failed&&!plan.prepared},path:{startX:start.x,startY:start.y,targetX:end.x,targetY:end.y,groundY:end.groundY,targets}};
+      const origin=moveOrigin(start,end,{own:e.slot<4,family:v.family,self:['self','allySide','allyTeam'].includes(e.moveTarget),delayed:plan.prepared});
+      const fx={...v,id:Math.random(),stage:'windup',windupMs:Math.max(v.windupMs,timing.windupMinMs),travelMs:Math.max(v.travelMs,timing.travelMinMs),impactMs:Math.max(v.impactMs,timing.impactMinMs),fullTargets,result:{success:!plan.failed&&!plan.prepared},path:{startX:origin.x,startY:origin.y,targetX:end.x,targetY:end.y,groundY:end.groundY,targets}};
       const sequential=e.slot===4&&plan.targets.filter(t=>t.slot<4).length>1&&['allAdjacent','allAdjacentFoes','all','allies'].includes(e.moveTarget);
       if(sequential){this._sequentialMove={event:e,visual:v,plan,seen:new Set()};this.announce(e.message.replace(/ utilise .*$/,'')+' : '+(e.message.split(' utilise ')[1]||e.moveName).replace(/ !$/,'')+' frappe les alliés !');}
       this.fx=fx;await this.sleep(this.reduced?20:fx.windupMs);if(this._closed)return;
@@ -463,7 +465,7 @@ export default {
       }
       if(e.kind==='-heal'&&this.fx?.family==='drain'&&!this.reduced){await this.finishMoveFx();this.fx={...this.fx,stage:'drain'};await this.sleep(BATTLE_PACING.drain);}
       this.$set(p,'currentHp',e.hp);if(e.maxHp)this.$set(p,'maxHp',e.maxHp);
-      if(e.kind==='-damage'&&amount)this.$emit('impact',{damage:amount,maxHp:p.maxHp});
+      if(e.kind==='-damage'&&amount)this.$emit('impact',{damage:amount,maxHp:p.maxHp,direct:e.direct!==false,critical:e.direct!==false&&target?.critical,effectiveness:e.direct!==false?target?.effectiveness:1});
       if(e.kind==='-damage'&&e.direct!==false&&target?.critical)this.say('Coup critique !');
       if(e.kind==='-heal'||e.direct===false){
         const reason=effectSourceLabel(e)?' · '+effectSourceLabel(e):'';
@@ -491,7 +493,7 @@ export default {
         const events=eventKey!==this._eventToken?frame.events||[]:[];this._eventToken=eventKey;
         for(let i=0;i<events.length&&!this._closed;i++){
           const e=events[i];
-          if(e.kind==='-crit')continue;
+          if(['-crit','-supereffective','-resisted'].includes(e.kind))continue;
           if(e.kind==='bossRage'){this.$set(this.display.boss,'rage',{value:e.value,bonusPercent:e.bonusPercent,maximum:e.maximum,highThreshold:e.highThreshold});continue;}
           if(e.kind==='aggro'){if(e.shares)this.display.allies.forEach((p,i)=>this.$set(p,'aggro',e.shares[i]||0));else if(this.display.allies[e.slot])this.$set(this.display.allies[e.slot],'aggro',e.value);if(this.display.intention&&!this.display.intention.area&&e.focus!==undefined)this.$set(this.display.intention,'target',e.focus);continue;}
           if(e.kind==='weather'){this.$set(this.display,'weather',e.effect);continue;}
@@ -521,11 +523,11 @@ export default {
           }else if(e.kind==='-activate'&&p&&/Protect|Wide Guard|Mat Block|Quick Guard/.test(e.effect||'')){this.$set(p,'effects',{...p.effects,shield:true});this.say(p.name+' est protégé !');await this.sleep(this.reduced?20:timing.statusMs);
           }else if(cue&&['-start','-end','-activate','cant'].includes(e.kind)){this.say(p.name+' · '+STATUS_VISUALS[cue.status].label+'.');await this.sleep(this.reduced?30:Math.max(timing.statusMs,statusEffectDuration(cue)));
           }else if(e.kind==='-crit'){await this.sleep(this.reduced?20:180);
-          }else if(['-boost','-unboost'].includes(e.kind)&&p){this.$set(p,'boosts',{...p.boosts,[e.effect]:Math.max(-6,Math.min(6,(p.boosts[e.effect]||0)+(e.kind==='-boost'?1:-1)*Number(e.value)))});this.say(p.name+' : '+this.statEffect(e)[0].text+(e.kind==='-boost'?' augmente.':' diminue.'));await this.sleep(this.reduced?30:timing.statMs);
+          }else if(['-boost','-unboost'].includes(e.kind)&&p){this.$emit('cue',{kind:e.kind==='-boost'?'stat-up':'stat-down'});this.$set(p,'boosts',{...p.boosts,[e.effect]:Math.max(-6,Math.min(6,(p.boosts[e.effect]||0)+(e.kind==='-boost'?1:-1)*Number(e.value)))});this.say(p.name+' : '+this.statEffect(e)[0].text+(e.kind==='-boost'?' augmente.':' diminue.'));await this.sleep(this.reduced?30:timing.statMs);
           }else if(['-sidestart','-sideend','-fieldstart','-fieldend'].includes(e.kind)){this.collectiveEvent(e);await this.sleep(this.reduced?30:Math.max(timing.statusMs,statusEffectDuration(cue)));
           }else if(['-status','-curestatus'].includes(e.kind)&&p){this.$set(p,'status',e.kind==='-curestatus'?'normal':({brn:'burn',psn:'poison',tox:'badly_poison',par:'paralyze',slp:'sleep',frz:'freeze'})[e.effect]||e.effect);this.say(p.name+(e.kind==='-curestatus'?' est rétabli.':' : '+this.status(p.status)+'.'));await this.sleep(this.reduced?30:Math.max(timing.statusMs,statusEffectDuration(cue)));
           }else if(e.kind==='faint'&&e.slot===4){await this.faintBoss();
-          }else if(['-immune','-miss','-fail','cant','faint'].includes(e.kind)&&p){this.say(e.kind==='-immune'?p.name+' est immunisé.':e.kind==='-miss'?'L’attaque manque sa cible.':e.kind==='faint'?p.name+(e.slot<4&&frame.allies[e.slot]?.survivalKitUsed?' reste K.O. : son Kit de survie a été consommé.':e.slot<4&&frame.allies[e.slot]?.permanentlyLost?' est définitivement perdu.':' est K.O.'):e.kind==='cant'?p.name+' ne peut pas agir.':'La capacité échoue.');await this.sleep(this.reduced?30:timing.resultMs);}
+          }else if(['-immune','-miss','-fail','cant','faint'].includes(e.kind)&&p){if(e.kind==='-miss')this.$emit('cue',{kind:'miss'});this.say(e.kind==='-immune'?p.name+' est immunisé.':e.kind==='-miss'?'L’attaque manque sa cible.':e.kind==='faint'?p.name+(e.slot<4&&frame.allies[e.slot]?.survivalKitUsed?' reste K.O. : son Kit de survie a été consommé.':e.slot<4&&frame.allies[e.slot]?.permanentlyLost?' est définitivement perdu.':' est K.O.'):e.kind==='cant'?p.name+' ne peut pas agir.':'La capacité échoue.');await this.sleep(this.reduced?30:timing.resultMs);}
           this.phaseEffect='';
         }
         await this.finishMoveFx();await this.holdNarration();this.statusFx=null;if(frame.boss.currentHp<=0&&!this.bossFainted)await this.faintBoss();this.display=JSON.parse(JSON.stringify(frame));this.fx=null;this.effect=null;this.amount=0;this.actionOrder=[];this.cardHits={};this.shieldDamage=null;this.message='';this.phaseEffect='';
